@@ -1,0 +1,58 @@
+{
+  "sentence_length_t10": {
+    "path": "scalar/sentence_length_t10/trajectories.jsonl",
+    "description": "Qwen3-4B sentence-length control, requested range 5-100 words, T=10",
+    "output_columns": ["normalized_output"],
+    "target_columns": ["effective_norm"],
+    "common_seed_turns": 4
+  },
+  "character_length_t5": {
+    "path": "scalar/character_length_t5/trajectories.jsonl",
+    "description": "Qwen3-4B exact character-length control, targets 1-10, T=5",
+    "output_columns": ["normalized_output"],
+    "target_columns": ["effective_norm"],
+    "common_seed_turns": 4
+  },
+  "average_word_length_t5": {
+    "path": "scalar/average_word_length_t5/trajectories.jsonl",
+    "description": "Qwen3-4B average-word-length control, T=5",
+    "output_columns": ["normalized_output"],
+    "target_columns": ["effective_norm"],
+    "common_seed_turns": 4
+  },
+  "sentiment_t5": {
+    "path": "scalar/sentiment_t5/trajectories.jsonl",
+    "description": "Qwen3-4B sentiment control with Cardiff normalized readout, T=5",
+    "output_columns": ["normalized_output"],
+    "target_columns": ["effective_norm"],
+    "common_seed_turns": 4
+  },
+  "formality_t5": {
+    "path": "scalar/formality_t5/trajectories.jsonl",
+    "description": "Qwen3-4B continuous formality control with calibrated collection fields, T=5",
+    "output_columns": ["normalized_output"],
+    "target_columns": ["effective_norm"],
+    "common_seed_turns": 4
+  },
+  "even_odd_t5": {
+    "path": "scalar/even_odd_t5/trajectories.jsonl",
+    "description": "Qwen3-4B even/odd integer control smoke data, T=5",
+    "output_columns": ["normalized_output"],
+    "target_columns": ["effective_norm"],
+    "common_seed_turns": 4
+  },
+  "vector_count_stage1_t10": {
+    "path": "vector/vector_count_stage1_t10/trajectories.jsonl",
+    "description": "Joint word-count and average-word-length control, T=10",
+    "output_columns": ["word_count_norm", "avg_word_length_norm"],
+    "target_columns": ["target_word_count_norm", "target_avg_word_length_norm"],
+    "common_seed_turns": 4
+  },
+  "vector_count_stage2_t10": {
+    "path": "vector/vector_count_stage2_t10/trajectories.jsonl",
+    "description": "Joint word-count, average-word-length, and comma-count control, T=10",
+    "output_columns": ["word_count_norm", "avg_word_length_norm", "comma_count_norm"],
+    "target_columns": ["target_word_count_norm", "target_avg_word_length_norm", "target_comma_count_norm"],
+    "common_seed_turns": 4
+  }
+}

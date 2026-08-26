@@ -1,0 +1,2 @@
+# Keep large generated-text trajectory files out of normal line-by-line diffs.
+datasets/**/*.jsonl -diff
