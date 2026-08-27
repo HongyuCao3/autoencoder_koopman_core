@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Train and evaluate the standalone controlled Autoencoder--Koopman model."""
+"""Train and evaluate the standalone controlled Autoencoder--Koopman model.
+
+Configuration is composed by Hydra from `configs/config.yaml` and its
+`dataset/state/model/trainer` groups. Swap a whole group from the command
+line (`dataset=character_length_t5`, `state=augmented`) or override a single
+field (`model.latent_dim=32`, `trainer.epochs=400`, `trainer.device=cuda`).
+See `configs/` for the available groups and `README.md` for examples.
+"""
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import pathlib
@@ -11,8 +17,10 @@ import re
 import sys
 from typing import Any
 
+import hydra
 import numpy as np
 import pandas as pd
+from omegaconf import DictConfig, OmegaConf
 
 from koopman_ae import (
     AugmentedStateConfig,
@@ -28,15 +36,7 @@ from koopman_ae import (
 
 
 PACKAGE_ROOT = pathlib.Path(__file__).resolve().parents[1]
-REGISTRY_PATH = PACKAGE_ROOT / "configs" / "datasets.json"
-DEFAULT_DATA_ROOT = PACKAGE_ROOT / "datasets"
-DEFAULT_CHECKPOINT_ROOT = pathlib.Path(
-    "/scratch/ruimind/checkpoints/idea-LLMControl/autoencoder_koopman_core"
-)
-
-
-def _load_registry() -> dict[str, dict[str, Any]]:
-    return json.loads(REGISTRY_PATH.read_text())
+CONFIG_DIR = PACKAGE_ROOT / "configs"
 
 
 def _load_table(path: pathlib.Path) -> pd.DataFrame:
@@ -103,7 +103,7 @@ def _state_config(
     target_columns: tuple[str, ...],
 ) -> AugmentedStateConfig:
     if lag < 0:
-        raise ValueError("--lag must be non-negative")
+        raise ValueError("state.lag must be non-negative")
     if family == "markov":
         output_memory, input_memory = 1, 0
     elif family == "memory":
@@ -123,21 +123,15 @@ def _safe_name(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-")
 
 
-def _resolve_dataset(args: argparse.Namespace) -> tuple[pathlib.Path, dict[str, Any], str]:
-    registry = _load_registry()
-    if args.dataset_key:
-        spec = registry[args.dataset_key]
-        path = (args.data_root / spec["path"]).resolve()
-        label = args.dataset_key
-    else:
-        spec = {}
-        path = args.dataset.resolve()
-        label = path.stem
+def _resolve_dataset_path(dataset_cfg: DictConfig, data_root: pathlib.Path) -> pathlib.Path:
+    path = pathlib.Path(dataset_cfg.path)
+    if not path.is_absolute():
+        path = (data_root / path).resolve()
     if not path.is_file():
         raise FileNotFoundError(
             f"trajectory dataset not found: {path}. See DATASETS.md for setup."
         )
-    return path, spec, label
+    return path
 
 
 def _split(frame: pd.DataFrame, name: str) -> pd.DataFrame:
@@ -189,78 +183,36 @@ def _latest_checkpoint(checkpoint_dir: pathlib.Path) -> pathlib.Path | None:
     return max(complete, default=None)
 
 
-def build_parser() -> argparse.ArgumentParser:
-    registry_keys = sorted(_load_registry())
-    parser = argparse.ArgumentParser(
-        description="Train a controlled Autoencoder--Koopman model on collected trajectories."
-    )
-    source = parser.add_mutually_exclusive_group(required=True)
-    source.add_argument("--dataset-key", choices=registry_keys)
-    source.add_argument("--dataset", type=pathlib.Path)
-    parser.add_argument("--data-root", type=pathlib.Path, default=DEFAULT_DATA_ROOT)
-    parser.add_argument("--output-columns", nargs="+", default=None)
-    parser.add_argument("--target-columns", nargs="+", default=None)
-    parser.add_argument(
-        "--state-family", choices=["markov", "memory", "augmented"], default="memory"
-    )
-    parser.add_argument("--lag", type=int, default=3)
-    parser.add_argument(
-        "--training-mode",
-        choices=["joint", "reconstruction_then_ridge"],
-        default="reconstruction_then_ridge",
-    )
-    parser.add_argument("--control-mode", choices=["error", "error_abs_sign"], default="error")
-    parser.add_argument("--common-seed-turns", type=int, default=None)
-    parser.add_argument("--latent-dim", type=int, default=16)
-    parser.add_argument("--hidden-dim", type=int, default=64)
-    parser.add_argument("--num-layers", type=int, default=2)
-    parser.add_argument("--activation", choices=["tanh", "relu", "gelu", "silu"], default="tanh")
-    parser.add_argument("--learning-rate", type=float, default=1e-3)
-    parser.add_argument("--weight-decay", type=float, default=1e-5)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--epochs", type=int, default=200)
-    parser.add_argument("--lambda-rec", type=float, default=1.0)
-    parser.add_argument("--lambda-pred", type=float, default=1.0)
-    parser.add_argument("--lambda-latent", type=float, default=0.1)
-    parser.add_argument("--lambda-multi", type=float, default=0.0)
-    parser.add_argument("--multi-step-horizon", type=int, default=0)
-    parser.add_argument("--dynamics-alpha", type=float, default=1e-4)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--device", default=None, help="cpu, cuda, cuda:0, ...")
-    parser.add_argument("--run-name", default=None)
-    parser.add_argument("--checkpoint-dir", type=pathlib.Path, default=None)
-    parser.add_argument("--checkpoint-every-epochs", type=int, default=20)
-    parser.add_argument("--no-resume", action="store_true")
-    parser.add_argument("--result-dir", type=pathlib.Path, default=None)
-    return parser
+@hydra.main(config_path=str(CONFIG_DIR), config_name="config", version_base=None)
+def main(cfg: DictConfig) -> None:
+    dataset_cfg = cfg.dataset
+    state_cfg = cfg.state
+    model_cfg = cfg.model
+    trainer_cfg = cfg.trainer
 
+    data_root = (
+        pathlib.Path(trainer_cfg.data_root).resolve()
+        if trainer_cfg.data_root
+        else PACKAGE_ROOT / "datasets"
+    )
+    dataset_path = _resolve_dataset_path(dataset_cfg, data_root)
 
-def main() -> int:
-    args = build_parser().parse_args()
-    dataset_path, dataset_spec, dataset_label = _resolve_dataset(args)
-    output_columns = tuple(
-        args.output_columns or dataset_spec.get("output_columns", ["normalized_output"])
-    )
-    target_columns = tuple(
-        args.target_columns or dataset_spec.get("target_columns", ["effective_norm"])
-    )
-    frame = _clean_trajectories(
-        _load_table(dataset_path),
-        output_columns,
-        target_columns,
-    )
-    cfg = _state_config(
-        args.state_family,
-        args.lag,
-        args.control_mode,
-        output_columns,
-        target_columns,
-    )
-    minimum_seed = max(cfg.output_memory, cfg.input_memory)
+    output_columns = tuple(dataset_cfg.output_columns)
+    target_columns = tuple(dataset_cfg.target_columns)
+    frame = _clean_trajectories(_load_table(dataset_path), output_columns, target_columns)
+
+    lag = int(state_cfg.lag)
+    state = _state_config(state_cfg.family, lag, state_cfg.control_mode, output_columns, target_columns)
+
+    minimum_seed = max(state.output_memory, state.input_memory)
     common_seed_turns = int(
-        args.common_seed_turns
-        if args.common_seed_turns is not None
-        else dataset_spec.get("common_seed_turns", minimum_seed)
+        trainer_cfg.common_seed_turns
+        if trainer_cfg.common_seed_turns is not None
+        else (
+            dataset_cfg.common_seed_turns
+            if dataset_cfg.get("common_seed_turns") is not None
+            else minimum_seed
+        )
     )
     if common_seed_turns < minimum_seed:
         raise ValueError(
@@ -273,27 +225,28 @@ def main() -> int:
     train_frame = _split(frame, "train")
     if train_frame.empty:
         raise ValueError("dataset has no rows with topic_split='train'")
-    train_dataset = build_augmented_state_dataset(train_frame, cfg)
+    train_dataset = build_augmented_state_dataset(train_frame, state)
     sequences = (
-        build_augmented_state_sequences(train_frame, cfg)
-        if args.training_mode == "joint" and args.lambda_multi > 0
+        build_augmented_state_sequences(train_frame, state)
+        if model_cfg.training_mode == "joint" and model_cfg.lambda_multi > 0
         else None
     )
+
     run_name = _safe_name(
-        args.run_name
+        trainer_cfg.run_name
         or (
-            f"{dataset_label}-{args.state_family}-lag{args.lag}-"
-            f"{args.training_mode}-k{args.latent_dim}-seed{args.seed}"
+            f"{dataset_cfg.name}-{state_cfg.family}-lag{lag}-"
+            f"{model_cfg.training_mode}-k{model_cfg.latent_dim}-seed{trainer_cfg.seed}"
         )
     )
     checkpoint_dir = (
-        args.checkpoint_dir.resolve()
-        if args.checkpoint_dir
-        else DEFAULT_CHECKPOINT_ROOT / run_name
+        pathlib.Path(trainer_cfg.checkpoint_dir).resolve()
+        if trainer_cfg.checkpoint_dir
+        else pathlib.Path(trainer_cfg.checkpoint_root) / run_name
     )
     result_dir = (
-        args.result_dir.resolve()
-        if args.result_dir
+        pathlib.Path(trainer_cfg.result_dir).resolve()
+        if trainer_cfg.result_dir
         else PACKAGE_ROOT / "results" / run_name
     )
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -303,9 +256,9 @@ def main() -> int:
     resume_spec = {
         "dataset": str(dataset_path),
         "dataset_sha256": dataset_hash,
-        "state_family": args.state_family,
-        "lag": int(args.lag),
-        "control_mode": args.control_mode,
+        "state_family": state_cfg.family,
+        "lag": lag,
+        "control_mode": state_cfg.control_mode,
         "output_columns": list(output_columns),
         "target_columns": list(target_columns),
     }
@@ -319,43 +272,43 @@ def main() -> int:
             )
     else:
         resume_spec_path.write_text(json.dumps(resume_spec, indent=2) + "\n")
-    if args.no_resume and _latest_checkpoint(checkpoint_dir) is not None:
+    if trainer_cfg.no_resume and _latest_checkpoint(checkpoint_dir) is not None:
         raise ValueError(
-            "--no-resume requires an empty/new checkpoint directory; use a new "
-            "--run-name or --checkpoint-dir"
+            "trainer.no_resume requires an empty/new checkpoint directory; use a new "
+            "trainer.run_name or trainer.checkpoint_dir"
         )
 
-    model_cfg = DeepAugmentedKoopmanConfig(
-        latent_dim=args.latent_dim,
-        hidden_dim=args.hidden_dim,
-        num_layers=args.num_layers,
-        activation=args.activation,
-        learning_rate=args.learning_rate,
-        weight_decay=args.weight_decay,
-        batch_size=args.batch_size,
-        num_epochs=args.epochs,
-        lambda_rec=args.lambda_rec,
-        lambda_pred=args.lambda_pred,
-        lambda_latent=args.lambda_latent,
-        lambda_multi=args.lambda_multi,
-        multi_step_horizon=args.multi_step_horizon,
-        training_mode=args.training_mode,
-        dynamics_alpha=args.dynamics_alpha,
-        random_state=args.seed,
-        device=args.device,
+    model_config = DeepAugmentedKoopmanConfig(
+        latent_dim=model_cfg.latent_dim,
+        hidden_dim=model_cfg.hidden_dim,
+        num_layers=model_cfg.num_layers,
+        activation=model_cfg.activation,
+        learning_rate=trainer_cfg.learning_rate,
+        weight_decay=trainer_cfg.weight_decay,
+        batch_size=trainer_cfg.batch_size,
+        num_epochs=trainer_cfg.epochs,
+        lambda_rec=model_cfg.lambda_rec,
+        lambda_pred=model_cfg.lambda_pred,
+        lambda_latent=model_cfg.lambda_latent,
+        lambda_multi=model_cfg.lambda_multi,
+        multi_step_horizon=model_cfg.multi_step_horizon,
+        training_mode=model_cfg.training_mode,
+        dynamics_alpha=model_cfg.dynamics_alpha,
+        random_state=trainer_cfg.seed,
+        device=trainer_cfg.device,
     )
     model = DeepAugmentedKoopmanAutoencoder(
         state_dim=train_dataset.state_dim,
         target_dim=train_dataset.target_dim,
         output_dim=train_dataset.output_dim,
-        config=model_cfg,
+        config=model_config,
         name=run_name,
     )
     print(f"[data] {dataset_path}")
     print(f"[data] rows={len(frame)} trajectories={frame['trajectory_id'].nunique()}")
     print(
-        f"[fit] family={args.state_family} state_dim={train_dataset.state_dim} "
-        f"latent_dim={args.latent_dim} mode={args.training_mode} device={model.device}"
+        f"[fit] family={state_cfg.family} state_dim={train_dataset.state_dim} "
+        f"latent_dim={model_cfg.latent_dim} mode={model_cfg.training_mode} device={model.device}"
     )
     print(f"[fit] checkpoint_dir={checkpoint_dir}")
     try:
@@ -365,32 +318,33 @@ def main() -> int:
             train_dataset.Z_next,
             multi_step_sequences=sequences,
             checkpoint_dir=checkpoint_dir,
-            checkpoint_every_epochs=args.checkpoint_every_epochs,
-            resume=not args.no_resume,
+            checkpoint_every_epochs=trainer_cfg.checkpoint_every_epochs,
+            resume=not trainer_cfg.no_resume,
         )
     except InterruptedError as exc:
         latest = _latest_checkpoint(checkpoint_dir)
         print(f"[stop] {exc}", file=sys.stderr)
         print(f"[stop] latest_resumable_checkpoint={latest}", file=sys.stderr)
-        return 130
+        sys.exit(130)
 
     horizon = int(frame["turn"].max())
-    metrics = _evaluate(model, frame, cfg, common_seed_turns)
+    metrics = _evaluate(model, frame, state, common_seed_turns)
     diagnostics = model.diagnostics(horizon=horizon)
-    run_metadata = {
+    run_metadata: dict[str, Any] = {
         "run_name": run_name,
         "dataset": str(dataset_path),
         "dataset_sha256": dataset_hash,
         "rows": int(len(frame)),
         "trajectories": int(frame["trajectory_id"].nunique()),
         "splits": {key: int(value) for key, value in frame["topic_split"].value_counts().items()},
-        "state_family": args.state_family,
-        "lag": int(args.lag),
+        "state_family": state_cfg.family,
+        "lag": lag,
         "output_columns": list(output_columns),
         "target_columns": list(target_columns),
         "common_seed_turns": common_seed_turns,
         "checkpoint_dir": str(checkpoint_dir),
         "latest_resumable_checkpoint": str(_latest_checkpoint(checkpoint_dir)),
+        "config": OmegaConf.to_container(cfg, resolve=True),
         "metrics": metrics,
     }
     (result_dir / "run.json").write_text(json.dumps(run_metadata, indent=2) + "\n")
@@ -400,8 +354,7 @@ def main() -> int:
     print(json.dumps(metrics, indent=2))
     print(f"[done] result_dir={result_dir}")
     print(f"[done] latest_resumable_checkpoint={_latest_checkpoint(checkpoint_dir)}")
-    return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

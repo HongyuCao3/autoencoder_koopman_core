@@ -1,0 +1,7 @@
+# @package dataset
+name: vector_count_stage2_t10
+path: vector/vector_count_stage2_t10/trajectories.jsonl
+description: "Joint word-count, average-word-length, and comma-count control, T=10"
+output_columns: [word_count_norm, avg_word_length_norm, comma_count_norm]
+target_columns: [target_word_count_norm, target_avg_word_length_norm, target_comma_count_norm]
+common_seed_turns: 4

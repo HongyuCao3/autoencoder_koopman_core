@@ -8,7 +8,7 @@
 autoencoder_koopman_core/datasets/
 ```
 
-`datasets` 是真实目录而不是符号链接，因此 clone GitHub 仓库后即可直接运行。完整行数、轨迹数、文件大小与 SHA-256 见 `DATASET_MANIFEST.csv`，训练列映射见 `configs/datasets.json`。
+`datasets` 是真实目录而不是符号链接，因此 clone GitHub 仓库后即可直接运行。完整行数、轨迹数、文件大小与 SHA-256 见 `DATASET_MANIFEST.csv`，训练列映射见 `configs/dataset/*.yaml`（每个数据集一个 Hydra 配置文件）。
 
 ## 已收录数据
 

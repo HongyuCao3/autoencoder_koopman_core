@@ -1,0 +1,7 @@
+# @package dataset
+name: average_word_length_t5
+path: scalar/average_word_length_t5/trajectories.jsonl
+description: "Qwen3-4B average-word-length control, T=5"
+output_columns: [normalized_output]
+target_columns: [effective_norm]
+common_seed_turns: 4

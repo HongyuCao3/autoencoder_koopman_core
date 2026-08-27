@@ -1,0 +1,7 @@
+# @package dataset
+name: even_odd_t5
+path: scalar/even_odd_t5/trajectories.jsonl
+description: "Qwen3-4B even/odd integer control smoke data, T=5"
+output_columns: [normalized_output]
+target_columns: [effective_norm]
+common_seed_turns: 4

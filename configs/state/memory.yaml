@@ -1,0 +1,6 @@
+# @package state
+# Memory-L state: z_t = [y_t, y_(t-1), ..., y_(t-lag)]. `control_mode` has no
+# effect for this family (input_memory is always 0).
+family: memory
+lag: 3
+control_mode: error

@@ -1,0 +1,6 @@
+# @package state
+# Augmented-L state with the error_abs_sign control feature triple
+# [error, |error|, sign(error)] instead of plain error.
+family: augmented
+lag: 3
+control_mode: error_abs_sign

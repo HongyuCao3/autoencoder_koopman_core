@@ -1,0 +1,12 @@
+# @package model
+training_mode: reconstruction_then_ridge  # joint | reconstruction_then_ridge
+latent_dim: 16
+hidden_dim: 64
+num_layers: 2
+activation: tanh  # tanh | relu | gelu | silu
+lambda_rec: 1.0
+lambda_pred: 1.0
+lambda_latent: 0.1
+lambda_multi: 0.0
+multi_step_horizon: 0
+dynamics_alpha: 1.0e-4

@@ -1,0 +1,7 @@
+# @package dataset
+name: sentence_length_t10
+path: scalar/sentence_length_t10/trajectories.jsonl
+description: "Qwen3-4B sentence-length control, requested range 5-100 words, T=10"
+output_columns: [normalized_output]
+target_columns: [effective_norm]
+common_seed_turns: 4

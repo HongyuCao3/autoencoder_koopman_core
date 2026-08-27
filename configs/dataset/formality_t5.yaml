@@ -1,0 +1,7 @@
+# @package dataset
+name: formality_t5
+path: scalar/formality_t5/trajectories.jsonl
+description: "Qwen3-4B continuous formality control with calibrated collection fields, T=5"
+output_columns: [normalized_output]
+target_columns: [effective_norm]
+common_seed_turns: 4

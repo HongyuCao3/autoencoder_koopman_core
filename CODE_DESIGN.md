@@ -26,8 +26,8 @@ Two optimization modes share the same architecture:
 
 - `src/koopman_ae/core.py`: state construction, affine baseline, deep AE--Koopman model, training, exact-resume checkpoints, rollout, and diagnostics.
 - `src/koopman_ae/__init__.py`: stable public imports.
-- `scripts/train.py`: dataset resolution, validation, training, evaluation, and lightweight artifact writing.
-- `configs/datasets.json`: canonical dataset path and column contracts.
+- `scripts/train.py`: Hydra entry point — dataset resolution, validation, training, evaluation, and lightweight artifact writing.
+- `configs/`: Hydra configuration groups (`dataset/`, `state/`, `model/`, `trainer/`) plus the top-level `config.yaml` defaults list. `configs/dataset/*.yaml` holds the canonical dataset path and column contracts, one file per registered dataset.
 - `datasets/`: repository-local copies of the eight canonical raw trajectory files so a clone is immediately runnable.
 - `DATASET_MANIFEST.csv`: immutable size/count/hash inventory.
 - `tests/test_core.py`: interface, training-mode, incomplete-checkpoint, and exact-resume tests.
@@ -101,13 +101,17 @@ Install:
 python -m pip install -e '.[test]'
 ```
 
-Train the default two-stage sentence-length Memory-L3 model:
+Train the default two-stage sentence-length Memory-L3 model (this is also the config default, so a bare `python scripts/train.py` runs it):
 
 ```bash
-python scripts/train.py --dataset-key sentence_length_t10 \
-  --state-family memory --lag 3 \
-  --training-mode reconstruction_then_ridge --latent-dim 16 --epochs 200
+python scripts/train.py \
+  dataset=sentence_length_t10 \
+  state=memory state.lag=3 \
+  model.training_mode=reconstruction_then_ridge model.latent_dim=16 \
+  trainer.epochs=200
 ```
+
+`python scripts/train.py --help` lists the available `dataset/state/model/trainer` groups and prints the fully-resolved config.
 
 Run validation:
 
@@ -133,7 +137,7 @@ The collected files are byte-identical to their source trajectory artifacts; `DA
 
 ## Extension Points
 
-- Add a registry entry for another trajectory file without changing the core.
+- Add a `configs/dataset/<name>.yaml` entry for another trajectory file without changing the core.
 - Pass multi-output columns to train vector systems.
 - Add task/context target columns so they enter the learned `B` matrix.
 - Add state families by mapping them to output/control memory in `_state_config()`.
@@ -141,5 +145,6 @@ The collected files are byte-identical to their source trajectory artifacts; `DA
 
 ## Recent Changes
 
+- 2026-08-27: Replaced the argparse CLI and `configs/datasets.json` registry with a Hydra-composed config layer (`configs/{dataset,state,model,trainer}/*.yaml` + `configs/config.yaml`). `core.py`'s public API and the custom exact-resume training loop are unchanged; this only reorganizes how `scripts/train.py` reads its parameters.
 - 2026-08-26: Replaced the scratch-backed dataset symlink with repository-local data copies and added GitHub publication guidance. All current files remain below GitHub's regular-Git warning threshold.
 - 2026-08-26: Extracted the current Model III AE--Koopman core, added a single runnable CLI, organized eight canonical raw datasets, and strengthened exact-resume validation for checkpoint completeness, configuration, and dataset identity.

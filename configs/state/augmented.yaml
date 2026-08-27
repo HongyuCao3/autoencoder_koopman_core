@@ -1,0 +1,5 @@
+# @package state
+# Augmented-L state: memory state plus control history u_t = r - y_t.
+family: augmented
+lag: 3
+control_mode: error

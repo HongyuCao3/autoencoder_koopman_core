@@ -1,0 +1,6 @@
+# @package state
+# Markov state: z_t = [y_t]. `lag` and `control_mode` are accepted for schema
+# consistency with the other state families but have no effect here.
+family: markov
+lag: 0
+control_mode: error

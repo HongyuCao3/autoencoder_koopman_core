@@ -1,0 +1,12 @@
+# @package dataset
+# Template for a trajectory table that is not in the registry. Point `dataset.path`
+# at an absolute path (or one relative to `trainer.data_root`) and override the
+# column lists to match your table, e.g.:
+#   python scripts/train.py dataset=custom dataset.path=/abs/path/custom.jsonl \
+#     dataset.output_columns=[y1,y2] dataset.target_columns=[r1,r2]
+name: custom
+path: ???
+description: "Explicit trajectory table outside the built-in registry."
+output_columns: [normalized_output]
+target_columns: [effective_norm]
+common_seed_turns: null

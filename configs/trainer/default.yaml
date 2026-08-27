@@ -1,0 +1,16 @@
+# @package trainer
+learning_rate: 1.0e-3
+weight_decay: 1.0e-5
+batch_size: 64
+epochs: 200
+seed: 0
+device: null  # null = auto-select (cuda if available else cpu); or "cpu"/"cuda"/"cuda:0"
+common_seed_turns: null  # null = fall back to dataset.common_seed_turns, then the minimum required history
+
+run_name: null  # null = derive from dataset/state/model
+data_root: null  # null = <repo_root>/datasets
+checkpoint_root: /scratch/ruimind/checkpoints/idea-LLMControl/autoencoder_koopman_core
+checkpoint_dir: null  # null = checkpoint_root/<run_name>
+checkpoint_every_epochs: 20
+no_resume: false
+result_dir: null  # null = <repo_root>/results/<run_name>

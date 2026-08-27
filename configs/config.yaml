@@ -1,0 +1,14 @@
+defaults:
+  - dataset: sentence_length_t10
+  - state: memory
+  - model: default
+  - trainer: default
+  - override hydra/job_logging: stdout  # console-only; skip the per-run train.log file
+  - _self_
+
+hydra:
+  job:
+    chdir: false  # keep relative paths (datasets/, results/) resolved against the launch cwd, as before Hydra
+  run:
+    dir: .
+  output_subdir: null  # skip writing .hydra/ run bookkeeping; run_spec.json under the checkpoint dir already pins the config
