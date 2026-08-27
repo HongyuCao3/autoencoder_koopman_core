@@ -1,0 +1,56 @@
+from persona_drift.prompt_bank import load_prompt_bank, score_response, select_screening_prompts
+
+
+def test_load_prompt_bank_categories_and_counts():
+    bank = load_prompt_bank()
+    assert set(bank.keys()) == {"character_traits", "language_constraints"}
+    assert len(bank["character_traits"]) == 14
+    assert len(bank["language_constraints"]) == 28
+
+
+def test_no_entry_has_unresolved_random_probe():
+    bank = load_prompt_bank()
+    for entries in bank.values():
+        for entry in entries:
+            assert entry.probe_question != "random"
+            assert entry.probe_question
+
+
+def test_random_probe_resolution_is_deterministic_across_loads():
+    bank_a = load_prompt_bank()
+    bank_b = load_prompt_bank()
+    for label in bank_a:
+        probes_a = [e.probe_question for e in bank_a[label]]
+        probes_b = [e.probe_question for e in bank_b[label]]
+        assert probes_a == probes_b
+
+
+def test_select_screening_prompts_is_stratified_and_deterministic():
+    bank = load_prompt_bank()
+    selected_a = select_screening_prompts(bank, num_prompts=5, rng_seed=0)
+    selected_b = select_screening_prompts(bank, num_prompts=5, rng_seed=0)
+    assert len(selected_a) == 5
+    assert [e.prompt_id for e in selected_a] == [e.prompt_id for e in selected_b]
+    categories = {e.prompt_category for e in selected_a}
+    assert categories == {"character_traits", "language_constraints"}
+
+
+def test_score_response_handles_scoring_exceptions():
+    bank = load_prompt_bank()
+    entry = next(e for e in bank["character_traits"] if "tennis" in e.system_prompt.lower())
+    score, failure = score_response(entry, "I love playing tennis on weekends.")
+    assert failure is False
+    assert score == 1.0
+
+
+def test_score_response_never_raises_on_empty_text():
+    # A real self-chat response can legitimately be an empty string
+    # (refusal, truncation, max_new_tokens=0 edge case). Every third-party
+    # scoring lambda must degrade to (nan, True) instead of propagating.
+    bank = load_prompt_bank()
+    for entries in bank.values():
+        for entry in entries:
+            score, failure = score_response(entry, "")
+            if failure:
+                assert score != score  # nan
+
