@@ -1,8 +1,15 @@
 # Persona Drift Control
 
-独立于同事仓库 `autoencoder_koopman_core`（数据采集协议见其
-`persona_drift_control_plan/DATA_COLLECTION_PROTOCOL.md` 与
-`KV_INJECTION_MONITORING.md`，本仓库不重复存放这两份协议文档，以它们为准）。
+`autoencoder_koopman_core`（这个仓库）是我自己 fork 之后的仓库，不是需要
+和同事分开维护的共享仓库，所以这个子项目就直接放在这里，不再单独建仓库。
+（早前一版曾以为要与同事仓库分开维护，短暂建过一个独立仓库
+`persona_drift_control`，后来发现前提不成立，已经用 `git merge
+--allow-unrelated-histories` 把那个仓库的完整历史并回这里，`git log --all
+--oneline` 仍能看到原来的独立 commit。）
+
+数据采集协议见 `../persona_drift_control_plan/DATA_COLLECTION_PROTOCOL.md`
+与 `KV_INJECTION_MONITORING.md`，本目录不重复存放这两份协议文档，以它们
+为准。
 
 当前只实现了协议第 7 节要求的**采集前 1 小时信号探针**——这是正式采集
 （40 prompt × 2 通道 × 4 seed）之前的强制关卡：三个问题任一不过，都要先改协议
@@ -48,9 +55,11 @@ character_traits，把 `pattern_system_prompts`（28 条，字母/大小写/词�
 ## 运行
 
 还没有实际跑起来（需要真实交互 shell 里的 conda + GPU 环境，这台机器上写
-代码用的沙箱没有 python/conda/nvidia-smi）：
+代码用的沙箱没有 python/conda/nvidia-smi）。以下命令都在本目录
+（`autoencoder_koopman_core/persona_drift_control/`）下执行：
 
 ```bash
+cd persona_drift_control                # 若当前在仓库根目录，先进这个子目录
 bash environment/setup_env.sh          # 一次性：建 conda env，装依赖，下 nltk 数据
 # 之后每次运行前:
 export HF_HOME=/scratch/hcao2/hf_cache

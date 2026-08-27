@@ -20,8 +20,12 @@ autoencoder_koopman_core/
 ├── DATASET_MANIFEST.csv         # 行数、轨迹数、大小、SHA-256
 ├── tests/test_core.py           # 两种训练模式与精确续训测试
 ├── results/                     # 轻量 metrics/Koopman 诊断
-└── CODE_DESIGN.md               # 代码级设计文档
+├── CODE_DESIGN.md               # 代码级设计文档
+├── persona_drift_control_plan/  # 人格漂移闭环控制的采集协议文档（草案）
+└── persona_drift_control/       # 上述协议的实现：采集前信号探针 pilot（独立 git 历史已并入本仓库）
 ```
+
+`persona_drift_control_plan/` 和 `persona_drift_control/` 是同一个子项目：前者是协议文档，后者是代码。这个仓库本身是我 fork 之后的仓库，不是需要与同事分开维护的共享仓库，所以子项目直接放在这里，不必再单独建仓库。
 
 ## 上传到 GitHub
 
