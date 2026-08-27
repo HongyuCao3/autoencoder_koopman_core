@@ -4,3 +4,5 @@ __pycache__/
 *.egg-info/
 outputs/*
 !outputs/.gitkeep
+environment/slurm_logs/*
+!environment/slurm_logs/.gitkeep

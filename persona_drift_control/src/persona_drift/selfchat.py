@@ -35,7 +35,10 @@ USER_SYSTEM_PROMPT_TEMPLATE = (
 )
 
 _REFUSAL_MARKERS = (
-    "i cannot", "i can't", "i won't", "i will not", "as an ai",
+    # "as an AI" is deliberately excluded: observed in a real screening run
+    # (see RUNNING_ON_PALMETTO.md) as a hedge inside an otherwise-normal
+    # answer, not an actual refusal.
+    "i cannot", "i can't", "i won't", "i will not",
     "i'm not able to", "i am not able to", "i'm unable to",
 )
 
