@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "persona-drift-control"
+version = "0.1.0"
+description = "Persona/instruction-drift closed-loop control: excitation data collection and pre-experiment signal screening"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24,<3",
+  "pandas>=2.0",
+  "scipy>=1.11",
+  "torch>=2.1",
+  "transformers>=4.51",
+  "accelerate>=0.30",
+  "nltk>=3.8",
+  "langdetect>=1.0.9",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
