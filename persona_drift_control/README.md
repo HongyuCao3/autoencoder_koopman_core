@@ -54,9 +54,11 @@ character_traits，把 `pattern_system_prompts`（28 条，字母/大小写/词�
 
 ## 运行
 
-还没有实际跑起来（需要真实交互 shell 里的 conda + GPU 环境，这台机器上写
-代码用的沙箱没有 python/conda/nvidia-smi）。以下命令都在本目录
-（`autoencoder_koopman_core/persona_drift_control/`）下执行：
+环境已经用 `environment/setup_env.sh` 建好了（`/scratch/hcao2/envs/persona_drift_pilot`）。
+Slurm 命令行调试/提交作业的具体做法见 `RUNNING_ON_PALMETTO.md`（这台机器是
+Clemson Palmetto 2，写代码用的沙箱没有 python/conda/nvidia-smi/sbatch，
+所以那份文档也没有实际跑过，第一次用时留意资源参数是否合理）。以下命令都
+在本目录（`autoencoder_koopman_core/persona_drift_control/`）下执行：
 
 ```bash
 cd persona_drift_control                # 若当前在仓库根目录，先进这个子目录
