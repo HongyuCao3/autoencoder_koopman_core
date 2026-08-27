@@ -9,7 +9,7 @@ common_seed_turns: null  # null = fall back to dataset.common_seed_turns, then t
 
 run_name: null  # null = derive from dataset/state/model
 data_root: null  # null = <repo_root>/datasets
-checkpoint_root: /scratch/ruimind/checkpoints/idea-LLMControl/autoencoder_koopman_core
+checkpoint_root: /scratch/${oc.env:USER}/checkpoints/autoencoder_koopman_core  # derived from $USER; override with trainer.checkpoint_root=... (e.g. a local path off-cluster)
 checkpoint_dir: null  # null = checkpoint_root/<run_name>
 checkpoint_every_epochs: 20
 no_resume: false

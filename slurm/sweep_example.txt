@@ -1,0 +1,14 @@
+# One line = one train.py invocation (Hydra overrides). Lines starting with # are skipped.
+# Submit: sbatch --array=1-6%4 slurm/sweep_array.sbatch slurm/sweep_example.txt
+
+# two-stage baseline, latent_dim sweep (run_name differs via k<latent_dim>)
+dataset=sentence_length_t10 state=memory state.lag=3 model.training_mode=reconstruction_then_ridge model.latent_dim=8  trainer.epochs=200
+dataset=sentence_length_t10 state=memory state.lag=3 model.training_mode=reconstruction_then_ridge model.latent_dim=16 trainer.epochs=200
+dataset=sentence_length_t10 state=memory state.lag=3 model.training_mode=reconstruction_then_ridge model.latent_dim=32 trainer.epochs=200
+
+# joint mode, seed sweep (run_name differs via seed<n>)
+dataset=sentence_length_t10 state=augmented state.lag=3 model.training_mode=joint model.latent_dim=16 model.multi_step_horizon=3 trainer.epochs=400 trainer.seed=0
+dataset=sentence_length_t10 state=augmented state.lag=3 model.training_mode=joint model.latent_dim=16 model.multi_step_horizon=3 trainer.epochs=400 trainer.seed=1
+
+# learning-rate sweep: same derived run_name -> explicit trainer.run_name required
+dataset=sentence_length_t10 state=augmented state.lag=3 model.training_mode=joint model.latent_dim=16 trainer.epochs=400 trainer.learning_rate=3e-4 trainer.run_name=sentence_length_t10-aug3-joint-k16-lr3e-4

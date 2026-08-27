@@ -20,6 +20,7 @@ autoencoder_koopman_core/
 ├── DATASET_MANIFEST.csv         # 行数、轨迹数、大小、SHA-256
 ├── tests/test_core.py           # 两种训练模式与精确续训测试
 ├── results/                     # 轻量 metrics/Koopman 诊断
+├── slurm/                       # Palmetto 2 (Slurm) 提交脚本：单次训练、job array 扫描
 ├── CODE_DESIGN.md               # 代码级设计文档
 ├── persona_drift_control_plan/  # 人格漂移闭环控制的采集协议文档（草案）
 └── persona_drift_control/       # 上述协议的实现：采集前信号探针 pilot（独立 git 历史已并入本仓库）
@@ -34,7 +35,7 @@ autoencoder_koopman_core/
 建议先创建一个 **Private** 空仓库，因为 JSONL 中保留了原始 prompt、模型生成文本和评分字段。创建仓库时不要预先添加 README、License 或 `.gitignore`，然后执行：
 
 ```bash
-cd /home/ruimind/code/idea/idea-LLMControl/autoencoder_koopman_core
+cd /path/to/autoencoder_koopman_core
 
 git init -b main
 git config user.name "你的 GitHub 用户名"
@@ -92,15 +93,18 @@ L = lambda_rec * L_rec
 
 ## 环境安装
 
-环境和缓存应放在 `/scratch`：
+环境和缓存应放在 `/scratch`（Palmetto 2 上 `/home` 配额小，且 `slurm/*.sbatch` 默认从 `/scratch/$USER/envs/autoencoder-koopman-core` 激活环境）：
 
 ```bash
-cd /home/ruimind/code/idea/idea-LLMControl/autoencoder_koopman_core
-python3 -m venv /scratch/ruimind/envs/autoencoder-koopman-core
-source /scratch/ruimind/envs/autoencoder-koopman-core/bin/activate
+cd /path/to/autoencoder_koopman_core
+module load anaconda3                      # Palmetto 2；本机可跳过
+conda create -y -p /scratch/$USER/envs/autoencoder-koopman-core python=3.10
+source activate /scratch/$USER/envs/autoencoder-koopman-core
 python -m pip install --upgrade pip
 python -m pip install -e '.[test]'
 ```
+
+如果用其它位置或 venv，运行 sbatch 前设置 `export KOOPMAN_ENV=/your/env/prefix`（脚本用 `source activate "$KOOPMAN_ENV"`，venv 用户请相应改成 `source "$KOOPMAN_ENV/bin/activate"`）。
 
 最低依赖是 Python 3.10、NumPy、pandas、PyTorch，以及配置管理用的 Hydra/OmegaConf。CPU 可以运行；较大的 joint/K 扫描建议使用 GPU。
 
@@ -155,10 +159,10 @@ python scripts/train.py \
 
 ## Checkpoint 与精确续训
 
-默认 checkpoint 位于：
+默认 checkpoint 位于（`trainer.checkpoint_root` 由 `$USER` 派生；不在集群上时用 `trainer.checkpoint_root=./checkpoints` 之类覆盖）：
 
 ```text
-/scratch/ruimind/checkpoints/idea-LLMControl/autoencoder_koopman_core/<run-name>/
+/scratch/$USER/checkpoints/autoencoder_koopman_core/<run-name>/
 ```
 
 每个完整 checkpoint 保存 encoder、decoder、`K/B/c`、AdamW optimizer、PyTorch/NumPy/Python RNG、CUDA RNG（如有）、DataLoader RNG、epoch 和训练配置。临时目录只有在 `state.pt` 完整写入后才原子重命名，并用 `_COMPLETE` 标记。启动时会自动跳过不完整 checkpoint 并恢复最新完整项。
@@ -176,6 +180,49 @@ python scripts/train.py \
 ```
 
 允许改变总 epoch 数和 CPU/GPU 设备；改变学习率、网络结构、loss 权重、数据文件或状态定义会拒绝复用旧 checkpoint。若确实要从头训练，请改 `trainer.run_name`；`trainer.no_resume=true` 只允许用于空 checkpoint 目录。
+
+## 在 Palmetto 2 上运行（Slurm）
+
+集群通用操作（账户/分区查询、`salloc` 调试、监控、连进运行中的节点）见子项目的 [`persona_drift_control/RUNNING_ON_PALMETTO.md`](persona_drift_control/RUNNING_ON_PALMETTO.md)，这里只写本训练代码特有的部分。
+
+### 何时需要 GPU
+
+数据集总共约 71 MB，`reconstruction_then_ridge` 模式在 CPU 上几分钟内可完成，**默认不申请 GPU**（排队最快、fair share 消耗最小）。只有 `joint` 模式配合较大的 `latent_dim`/`epochs` 扫描才值得申请 GPU：在 `sbatch` 命令行加 `--gpus a100:1` 并传 `trainer.device=cuda`。
+
+### 单次训练
+
+```bash
+# CPU，1 小时上限（脚本默认）
+sbatch slurm/train.sbatch dataset=sentence_length_t10 state=memory state.lag=3 trainer.epochs=200
+
+# GPU，覆盖资源参数（必须写在脚本名之前），Hydra 覆盖写在脚本名之后
+sbatch --time 02:00:00 --gpus a100:1 slurm/train.sbatch \
+  dataset=vector_count_stage2_t10 state=augmented state.lag=3 \
+  model.training_mode=joint model.latent_dim=64 trainer.epochs=400 trainer.device=cuda
+```
+
+日志在 `slurm/logs/<job-name>-<jobid>.out`；结果和 checkpoint 位置同上文。提交前可用 `sbatch --test-only slurm/train.sbatch ...` 看预计启动时间而不真正入队。
+
+### 参数扫描（job array）
+
+用 job array 而不是循环 `sbatch`：一次提交只消耗一个请求额度，也便于整体取消/补跑。扫描文件一行一组 Hydra 覆盖，见 `slurm/sweep_example.txt`：
+
+```bash
+sbatch --array=1-$(grep -cvE '^\s*(#|$)' slurm/sweep_example.txt)%4 \
+  slurm/sweep_array.sbatch slurm/sweep_example.txt
+```
+
+`%4` 限制同时运行的任务数。失败的行用 `--array=2,5` 只补跑那几行（索引不变，参数映射不变）。日志为 `slurm/logs/koopman-sweep-<arrayid>_<index>.out`。
+
+注意 `run_name` 只由 dataset/state/lag/mode/latent_dim/seed 派生：**只改 `learning_rate`、`weight_decay`、`lambda_*`、`hidden_dim` 的行必须显式给 `trainer.run_name=...`**，否则 `train.py` 会因为配置与已有 checkpoint 不一致而拒绝运行。Hydra 的 `-m` multirun 是在单个进程里串行跑，不推荐在集群上代替 job array。
+
+### 抢占与超时
+
+Palmetto 的 owner 分区作业可以抢占 `work1` 上的作业，批处理作业默认会被 requeue。本代码对此是安全的：`fit()` 捕获 SIGTERM 后写完整 checkpoint 并以退出码 130 退出，requeue 后同一命令自动从最新完整 checkpoint 续训。`slurm/*.sbatch` 里的 `--signal=B:TERM@120` 让作业在到达 walltime 前 120 秒也走同一条路径，因此 `--time` 写短了只是多排一次队而不会丢进度。因为退出码非零，被抢占/超时时会收到 `FAIL` 邮件，属于预期；真正的失败看日志末尾的 traceback。
+
+### 存储
+
+checkpoint 在 `/scratch`，受集群的 scratch 清理策略约束；`results/<run-name>/*.json` 很小且在仓库目录内，需要长期保留的结果以它为准。
 
 ## 输出
 

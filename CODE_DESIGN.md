@@ -89,7 +89,7 @@ Canonical scalar datasets use `normalized_output` and `effective_norm`. Vector S
 
 ## Configuration and Runtime Assumptions
 
-Source, documentation, manifests, raw datasets, and compact JSON results live under `/home/ruimind/code/idea/idea-LLMControl/autoencoder_koopman_core` so the directory can be published as one Git repository. This repository-local dataset placement is an explicit portability exception to the normal scratch-storage policy. Checkpoints remain under `/scratch/ruimind/checkpoints/idea-LLMControl/autoencoder_koopman_core` and are excluded from Git.
+Source, documentation, manifests, raw datasets, and compact JSON results live in the repository checkout itself so the directory can be published as one Git repository. This repository-local dataset placement is an explicit portability exception to the normal scratch-storage policy. Checkpoints default to `/scratch/$USER/checkpoints/autoencoder_koopman_core` (`trainer.checkpoint_root`, derived from `$USER`) and are excluded from Git. Slurm submission scripts for Palmetto 2 live in `slurm/`.
 
 The package requires Python 3.10+, NumPy, pandas, and PyTorch. CPU is supported. CUDA is selected automatically when available unless `--device` is specified.
 
