@@ -14,6 +14,8 @@
 - [KV_INJECTION_MONITORING.md](KV_INJECTION_MONITORING.md) — 通道 D（KV 注入）机制与监控协议
 - [LLM_LATENT_STATE_FEASIBILITY.md](LLM_LATENT_STATE_FEASIBILITY.md) — 用内部隐状态替代/增广
   Koopman 状态 z_t 的可行性分析（备选方向，暂不默认采用）
+- [SCRIPTED_USER_TURNS_FEASIBILITY.md](SCRIPTED_USER_TURNS_FEASIBILITY.md) — 用预生成脚本
+  替代活的 user-simulator LLM 的可行性分析（降成本备选方向，暂不默认采用）
 
 ## 方法（实现细节）
 
@@ -36,3 +38,7 @@
 - [experiments/signal_screening_pilot.md](experiments/signal_screening_pilot.md) — 采集前
   信号探针（协议第 7 节的 gate）真实规模作业的状态记录：job ID、怎么查进度、耗时预估、
   作业结束后该做什么。**新开一次对话想知道"之前那个作业现在怎么样了"，看这份文档。**
+  该作业三问全挂，排查结论见文档内"排查"一节。
+- [experiments/drift_confirmation_pilot.md](experiments/drift_confirmation_pilot.md) — 上面
+  那次 screening 三问全挂之后，为判断"漂移到底存不存在还是样本太小测不出"而做的 10-prompt
+  功效放大 pilot：job 状态、scripted-user 方案尝试失败的完整记录、结论待补。
