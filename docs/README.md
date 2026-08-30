@@ -29,8 +29,8 @@
 - [EVALUATION_METRICS.md](EVALUATION_METRICS.md) — 实验完成后用什么指标判断成败
 - [BASELINES.md](BASELINES.md) — 待对比的 baseline 清单（控制器层、代理建模层）及对应论文
 
-## 实验（进行中，暂无独立文档）
+## 实验
 
-采集前信号探针（协议第 7 节的 gate）目前正在 Palmetto 2 上跑（`persona_drift_control/environment/run_screening.sbatch`），
-结果落在 `persona_drift_control/outputs/signal_screening/`（未入库，见该目录的
-`.gitignore`）。gate 通过后才会开始正式的 320 条轨迹采集；跑完后再补一份实验记录文档。
+- [experiments/signal_screening_pilot.md](experiments/signal_screening_pilot.md) — 采集前
+  信号探针（协议第 7 节的 gate）真实规模作业的状态记录：job ID、怎么查进度、耗时预估、
+  作业结束后该做什么。**新开一次对话想知道"之前那个作业现在怎么样了"，看这份文档。**
