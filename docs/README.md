@@ -15,7 +15,10 @@
 - [LLM_LATENT_STATE_FEASIBILITY.md](LLM_LATENT_STATE_FEASIBILITY.md) — 用内部隐状态替代/增广
   Koopman 状态 z_t 的可行性分析（备选方向，暂不默认采用）
 - [SCRIPTED_USER_TURNS_FEASIBILITY.md](SCRIPTED_USER_TURNS_FEASIBILITY.md) — 用预生成脚本
-  替代活的 user-simulator LLM 的可行性分析（降成本备选方向，暂不默认采用）
+  替代活的 user-simulator LLM 的可行性分析（尝试后放弃，见 `experiments/drift_confirmation_pilot.md`）
+- [ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md](ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md) —
+  Alhafni et al. 2024（Personalized Text Generation with Fine-Grained Linguistic Control）
+  任务/数据集是否适合本项目 Koopman 框架的核实分析（数据集不适用，特征抽取代码候选可复用）
 
 ## 方法（实现细节）
 

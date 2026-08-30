@@ -54,7 +54,7 @@ Li et al. 发布的 LLaMA2-70B-chat 自聊对话与逐轮探针结果。u≡0 �
 |---|---|---|---|
 | MMLU | 能力代价：第 4 轮插入 MMLU 题，只报干预前后准确率差；带 system prompt 与历史时的绝对值无意义，每次比较须有同条件无干预基线 | Li §6.3 | 在用（`EVALUATION_METRICS.md` 3.2 已定） |
 | LLM-judge 打分样本 | 对话质量代价；小参数量本地模型（≤8B），先做一致率检验 | Stolfo Fig. 4 的做法，模型换低成本 | 在用（judge 模型待定） |
-| Alhafni 2024 的 ~50 个连续表层特征 | 免费连续 readout（词数、POS 频率、可读性、依存关系），放在 `y_probe` 旁边缓解探针分近似二值的问题；其 251 作者/106k 文档数据本身不用 | Alhafni et al. 2024 及其特征抽取代码 | 候选（`EVALUATION_METRICS.md` 1.4） |
+| Alhafni 2024 的 ~50 个连续表层特征 | 免费连续 readout（词数、POS 频率、可读性、依存关系），放在 `y_probe` 旁边缓解探针分近似二值的问题；其 251 作者/106k 文档数据本身不用；任务/数据集适配性核实见 [`ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md`](ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md) | Alhafni et al. 2024 及其特征抽取代码 | 候选（`EVALUATION_METRICS.md` 1.4） |
 
 ## 5. 未决事项
 
