@@ -48,3 +48,6 @@
 - [experiments/drift_confirmation_pilot.md](experiments/drift_confirmation_pilot.md) — 上面
   那次 screening 三问全挂之后，为判断"漂移到底存不存在还是样本太小测不出"而做的 10-prompt
   功效放大 pilot：job 状态、scripted-user 方案尝试失败的完整记录、结论待补。
+- [experiments/surface_features_backfill.md](experiments/surface_features_backfill.md) — CPU-only
+  分析：对 signal_screening_pilot 已完成的文本回填免费表层特征并重跑漂移检验，
+  `avg_word_len` 测出统计显著的下降趋势（`y_probe` 未测到），`num_tokens` 方向一致但未显著。
