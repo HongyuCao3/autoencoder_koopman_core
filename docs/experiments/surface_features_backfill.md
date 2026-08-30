@@ -68,12 +68,64 @@ zero_control）里的 `agent_message` 文本，回填几个免费特征，重跑
 具体、可复现的反例（`avg_word_len` 测到了，`y_probe` 没测到），值得在下一步设计里正视，而不是
 简单假设"换指标就能解决 signal_screening_pilot 的空效应问题"。
 
+## 结果第二部分：u_remind 对全部9个特征都测不出效应（job 15394133，2026-08-30）
+
+代码重构：`backfill()`/`analyze_feature_drift()` 从脚本挪进可导入、可单测的
+`src/persona_drift/surface_feature_analysis.py`（`backfill_dataframe`/`analyze_zero_control_drift`/
+`analyze_input_effect`/两个 `render_*_markdown`），`scripts/backfill_surface_features.py` 和新增的
+`scripts/analyze_surface_feature_input_effect.py` 变成薄封装——跟第一次提交时的实现方式不一致
+（逻辑直接写在脚本里），这次统一到项目"逻辑在 src/、脚本只是CLI入口"的既有约定，补了对应的
+CPU 单测（`tests/test_surface_feature_analysis.py`，5个）。job 15394128 验证：60 passed，1个
+无关的既有 flaky test（`test_logging_setup.py`，日志文件读写时序竞争，跟本次改动无关）失败，
+不影响这批新代码。
+
+`analyze_input_effect`（`analysis.py` 的 Q2/Q3 方法，换成对每个表层特征做）在
+`trajectories_with_surface_features.jsonl` 的 excite_iid 子集（n=150对/140对）上跑了一遍：
+
+| 特征 | Q2 diff (u=1-u=0) | Q2 p | Q3 slope | Q3 p |
+|---|---:|---:|---:|---:|
+| num_tokens | 5.99 | 0.642 | 9.99 | 0.450 |
+| num_sents | -0.25 | 0.759 | 0.14 | 0.863 |
+| avg_word_len | 0.05 | 0.807 | 0.02 | 0.915 |
+| ttr | -0.02 | 0.641 | -0.01 | 0.748 |
+| adj_ratio | 0.03 | 0.420 | 0.02 | 0.634 |
+| noun_ratio | -0.01 | 0.518 | -0.00 | 0.958 |
+| verb_ratio | -0.01 | 0.551 | -0.01 | 0.415 |
+| adv_ratio | 0.00 | 0.521 | -0.00 | 0.392 |
+| vader_sentiment | 0.01 | 0.762 | 0.00 | 0.980 |
+
+**9个特征全部测不出 `u_remind` 的 next-turn 或滞后效应，p值全部远大于0.05（0.39–0.98），
+没有任何一个接近显著，也没有像 Q1 那样出现"方向一致但未显著"的次强信号——是彻底的平坦结果。**
+
+## 综合解读：这把"换个输出指标"这个假说往回拉了一截
+
+结合两部分结果：`avg_word_len`/`num_tokens` 在 zero_control（无输入）下有初步的、未经多重
+比较校正的自发漂移信号；但 `u_remind` 对这10个readout（`y_probe` + 这9个新特征）**没有一个
+测出效应**。这意味着"只是 `y_probe` 选错了要测的东西，换个更敏感的指标就能看到输入的控制
+效果"这个假说，这次没有得到支持——10个不同构造的指标在"`u_remind` 有没有效果"这一点上给出
+了一致的空结果，比单独 `y_probe` 说"测不到"更有说服力，因为排除了"选错输出"这个解释。
+
+这把怀疑的重心从"输出测量方式"重新推回到 `signal_screening_pilot.md` 早先列出的另一条、
+一直没有排查的可能：**`excite_iid` 的输入强度/形式本身是否足够**——screening 用的是简化的
+0/1 二值提醒，`DATA_COLLECTION_PROTOCOL.md` 正式设计的 `u_remind` 是 {0, 0.25, 0.5, 0.75, 1}
+五档，问题可能不在"测什么"，而在"当前这档输入强度太弱，不管测什么输出都推不动"。
+
+也需要相应调整上次对 `avg_word_len` 的乐观解读：它展示的最多是系统可能存在自发动态
+（Koopman 意义上的 A 矩阵那部分），**没有**证据表明它能被现有的 `u_remind` 输入控制（B 矩阵
+那部分）——Koopman 控制两者都需要，只有前者不足以支撑"这是个更好的控制目标"这个判断。
+
 ## 下一步（留待决定，本次未做）
 
+- **优先级更高的方向**：排查输入强度本身，而不是继续找更敏感的输出指标——比如在协议允许的
+  范围内用 {0,0.25,0.5,0.75,1} 五档而非0/1二值重新做一次小规模输入效应检验，或者换成通道B
+  （`u_gain`，注意力增益）看是否比通道A（`u_remind`，文本重申）更有效。这个方向这次完全没碰，
+  需要新的 GPU 生成（换输入强度意味着要重新采集），跟这次纯 CPU 回填不是一类工作量。
 - 要不要在正式的 `analysis.py`/`selfchat.py` 里把 `avg_word_len`（或全部9个特征）正式接入
   为常规产出的一列，而不只是这次的离线回填脚本——如果接入，`y_formality`/`y_sentiment` 现在
   一直是 `None` 的两个占位列，`vader_sentiment` 可以先填其中一个（性质相近但不是同一个打分器，
-  需要在文档里说明是替代品不是原计划的 Cardiff RoBERTa）。
+  需要在文档里说明是替代品不是原计划的 Cardiff RoBERTa）。鉴于本次 Q2/Q3 结果全平，这一步的
+  优先级应该排在上面"排查输入强度"之后，而不是之前设想的那样直接接入。
 - 要不要在 `drift_confirmation_pilot`（更大样本、10个prompt）跑完之后，对那批数据也做一次
-  同样的回填，看 `avg_word_len` 的显著性在更大样本下是增强还是消失——现在 n=5 个 prompt 的
-  显著性本身统计功效有限，值得在更大样本上复核，而不是直接采信这一次的结果。
+  同样的回填（Q1式和Q2/Q3式都做），看 `avg_word_len` 的 Q1 信号在更大样本下是增强还是消失、
+  Q2/Q3 的平坦结果是否在更大样本下依然平坦——现在 n=5 个 prompt / n=150对 的功效都有限，
+  值得在更大样本上复核，而不是直接采信这一次的结果。
