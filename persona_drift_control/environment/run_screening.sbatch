@@ -2,7 +2,7 @@
 #SBATCH --job-name persona-drift-screening
 #SBATCH --cpus-per-task 8
 #SBATCH --mem 32G
-#SBATCH --time 03:00:00
+#SBATCH --time 06:00:00
 #SBATCH --gpus a100:1
 #SBATCH --output /home/hcao2/autoencoder_koopman_core/persona_drift_control/environment/slurm_logs/screening-%j.out
 
