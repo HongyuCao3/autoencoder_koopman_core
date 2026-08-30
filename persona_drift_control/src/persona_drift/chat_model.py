@@ -28,6 +28,15 @@ class GenerationConfig:
     top_p: float = 0.95
     max_new_tokens: int = 256
     do_sample: bool = True
+    # Defaults are transformers' own no-op values, so existing callers (the
+    # live self-chat loop in selfchat.py, validated across the completed
+    # signal-screening run) are byte-for-byte unaffected. Non-default values
+    # are used by scripts/generate_user_scripts.py, whose long ungrounded
+    # reference/script self-chat (no real feedback loop turn to turn) was
+    # observed to collapse into near-verbatim repeated paragraphs by ~turn 10
+    # without them -- see docs/experiments/signal_screening_pilot.md.
+    repetition_penalty: float = 1.0
+    no_repeat_ngram_size: int = 0
 
 
 class ChatModel:
@@ -87,6 +96,8 @@ class ChatModel:
                 do_sample=config.do_sample,
                 temperature=config.temperature,
                 top_p=config.top_p,
+                repetition_penalty=config.repetition_penalty,
+                no_repeat_ngram_size=config.no_repeat_ngram_size,
                 pad_token_id=self.tokenizer.eos_token_id,
             )
 

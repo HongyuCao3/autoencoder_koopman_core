@@ -10,7 +10,7 @@ generation/measurement harness.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -18,6 +18,7 @@ from .chat_model import ChatModel, GenerationConfig
 from .control import Controller
 from .prompt_bank import PromptEntry, score_response
 from .reminder import build_reminder_text, count_inserted_tokens
+from .user_scripts import load_user_script
 
 TOPICS = [
     "public transportation", "remote work", "weekend hiking", "home gardening",
@@ -48,6 +49,11 @@ class TrajectoryConfig:
     agent_gen: GenerationConfig = field(default_factory=lambda: GenerationConfig(max_new_tokens=256))
     user_gen: GenerationConfig = field(default_factory=lambda: GenerationConfig(max_new_tokens=96))
     probe_gen: GenerationConfig = field(default_factory=lambda: GenerationConfig(max_new_tokens=256))
+    # "live" (default): user_sim.generate() every turn, matching every run so
+    # far. "scripted": read a pre-generated turn from user_scripts.py instead
+    # -- see docs/SCRIPTED_USER_TURNS_FEASIBILITY.md; must not become the
+    # default until its section 5 live-vs-scripted consistency check passes.
+    user_mode: Literal["live", "scripted"] = "live"
 
 
 def _looks_like_refusal(text: str) -> bool:
@@ -57,7 +63,7 @@ def _looks_like_refusal(text: str) -> bool:
 
 def run_trajectory(
     agent: ChatModel,
-    user_sim: ChatModel,
+    user_sim: ChatModel | None,
     entry: PromptEntry,
     controller: Controller,
     seed: int,
@@ -67,6 +73,12 @@ def run_trajectory(
     config: TrajectoryConfig,
     run_id: str = "signal_screening_v0.1",
 ) -> list[dict[str, Any]]:
+    if config.user_mode == "live" and user_sim is None:
+        raise ValueError("user_mode='live' requires a user_sim ChatModel")
+    script = load_user_script(topic, seed) if config.user_mode == "scripted" else None
+    if script is not None and len(script) < config.num_turns:
+        raise ValueError(f"scripted user turns for topic={topic!r} seed={seed} has only {len(script)} turns, need {config.num_turns}")
+
     user_history: list[dict[str, str]] = [
         {"role": "system", "content": USER_SYSTEM_PROMPT_TEMPLATE.format(topic=topic)}
     ]
@@ -76,8 +88,11 @@ def run_trajectory(
     for turn in range(1, config.num_turns + 1):
         u_remind = controller.next_u_remind(turn, rows)
 
-        user_seed = seed * 1_000_000 + turn * 100
-        user_text = user_sim.generate(user_history, seed=user_seed, config=config.user_gen)
+        if config.user_mode == "scripted":
+            user_text = script[turn - 1]
+        else:
+            user_seed = seed * 1_000_000 + turn * 100
+            user_text = user_sim.generate(user_history, seed=user_seed, config=config.user_gen)
         user_history.append({"role": "assistant", "content": user_text})
 
         reminder_text = build_reminder_text(entry.system_prompt, u_remind)
@@ -128,6 +143,7 @@ def run_trajectory(
                     "max_new_tokens": config.agent_gen.max_new_tokens,
                 },
                 "topic": topic,
+                "user_mode": config.user_mode,
                 "user_message": user_text,
                 "agent_message": agent_text,
                 "probe_question": entry.probe_question,

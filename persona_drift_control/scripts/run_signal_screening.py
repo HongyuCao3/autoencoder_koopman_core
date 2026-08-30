@@ -30,6 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-turns", type=int, default=16)
     parser.add_argument("--probe-repeats", type=int, default=4)
     parser.add_argument("--excite-p-remind", type=float, default=0.5)
+    parser.add_argument("--user-mode", choices=["live", "scripted"], default="live")
     return parser.parse_args()
 
 
@@ -39,6 +40,7 @@ def main() -> None:
         num_turns=args.num_turns,
         probe_repeats=args.probe_repeats,
         excite_p_remind=args.excite_p_remind,
+        user_mode=args.user_mode,
     )
     report = run_screening(
         agent_model_id=args.agent_model,
