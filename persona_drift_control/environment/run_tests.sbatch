@@ -15,4 +15,5 @@ export NLTK_DATA=/scratch/hcao2/nltk_data
 
 cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
 
+python -m pip install -e ".[test]" -q
 pytest -q

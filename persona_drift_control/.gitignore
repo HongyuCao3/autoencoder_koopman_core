@@ -6,3 +6,5 @@ outputs/*
 !outputs/.gitkeep
 environment/slurm_logs/*
 !environment/slurm_logs/.gitkeep
+logs/*
+!logs/.gitkeep

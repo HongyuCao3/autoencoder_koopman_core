@@ -17,11 +17,15 @@ import json
 import pathlib
 import random
 import time
+from datetime import datetime
 from typing import Any
+
+from loguru import logger
 
 from .analysis import analyze_screening
 from .chat_model import ChatModel
 from .control import Controller, RandomExciteController, ZeroControlController
+from .logging_setup import configure_run_logger
 from .prompt_bank import load_prompt_bank, select_screening_prompts
 from .selfchat import TOPICS, TrajectoryConfig, run_trajectory
 
@@ -53,7 +57,27 @@ def run_screening(
     bank = load_prompt_bank()
     prompts = select_screening_prompts(bank, num_prompts=num_prompts, rng_seed=prompt_rng_seed)
 
+    run_id = f"{output_dir.name}_{datetime.now():%Y%m%d_%H%M%S}"
+    run_config = {
+        "agent_model_id": agent_model_id,
+        "user_model_id": user_model_id,
+        "num_prompts": num_prompts,
+        "seeds": list(seeds),
+        "prompt_rng_seed": prompt_rng_seed,
+        "device": device,
+        "conditions": list(CONDITIONS),
+        "trajectory_config": {
+            "num_turns": trajectory_config.num_turns,
+            "probe_repeats": trajectory_config.probe_repeats,
+            "excite_p_remind": trajectory_config.excite_p_remind,
+        },
+        "prompt_ids": [entry.prompt_id for entry in prompts],
+        "output_dir": str(output_dir),
+    }
+    configure_run_logger(run_id, run_config)
+    logger.info("loading agent model {}", agent_model_id)
     agent = ChatModel(agent_model_id, device=device)
+    logger.info("loading user-simulator model {}", user_model_id)
     user_sim = ChatModel(user_model_id, device=device)
 
     topic_rng = random.Random(prompt_rng_seed)
@@ -68,10 +92,12 @@ def run_screening(
             for seed in seeds:
                 for condition in CONDITIONS:
                     trajectory_id = f"{entry.prompt_id}__seed{seed}__{condition}"
-                    print(
-                        f"[{completed}/{total_trajectories}] starting {trajectory_id} "
-                        f"(+{time.monotonic() - run_start:.0f}s)",
-                        flush=True,
+                    logger.info(
+                        "[{}/{}] starting {} (+{:.0f}s)",
+                        completed,
+                        total_trajectories,
+                        trajectory_id,
+                        time.monotonic() - run_start,
                     )
                     controller = _make_controller(condition, seed, trajectory_config)
                     trajectory_start = time.monotonic()
@@ -91,31 +117,22 @@ def run_screening(
                     handle.flush()
                     rows.extend(trajectory_rows)
                     completed += 1
-                    print(
-                        f"[{completed}/{total_trajectories}] finished {trajectory_id} "
-                        f"in {time.monotonic() - trajectory_start:.0f}s "
-                        f"(+{time.monotonic() - run_start:.0f}s total)",
-                        flush=True,
+                    logger.info(
+                        "[{}/{}] finished {} in {:.0f}s (+{:.0f}s total)",
+                        completed,
+                        total_trajectories,
+                        trajectory_id,
+                        time.monotonic() - trajectory_start,
+                        time.monotonic() - run_start,
                     )
 
     report = analyze_screening(rows)
-    report["config"] = {
-        "agent_model_id": agent_model_id,
-        "user_model_id": user_model_id,
-        "num_prompts": num_prompts,
-        "seeds": list(seeds),
-        "conditions": list(CONDITIONS),
-        "trajectory_config": {
-            "num_turns": trajectory_config.num_turns,
-            "probe_repeats": trajectory_config.probe_repeats,
-            "excite_p_remind": trajectory_config.excite_p_remind,
-        },
-        "prompt_ids": [entry.prompt_id for entry in prompts],
-    }
+    report["config"] = run_config
 
     report_path = output_dir / "screening_report.json"
     report_path.write_text(json.dumps(report, indent=2))
     (output_dir / "screening_report.md").write_text(_render_markdown(report))
+    logger.info("overall_pass={} report written to {}", report["overall_pass"], output_dir)
 
     return report
 

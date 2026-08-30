@@ -17,6 +17,7 @@ dependencies = [
   "nltk>=3.8",
   "langdetect>=1.0.9",
   "requests>=2.31",
+  "loguru>=0.7",
 ]
 
 [project.optional-dependencies]
