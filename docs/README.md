@@ -19,6 +19,9 @@
 - [ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md](ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md) —
   Alhafni et al. 2024（Personalized Text Generation with Fine-Grained Linguistic Control）
   任务/数据集是否适合本项目 Koopman 框架的核实分析（数据集不适用，特征抽取代码候选可复用）
+- [OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md](OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md) —
+  其他开源数据集候选（ContextEcho 长会话数据、多会话人格对话数据集等）与长文本轨迹采集的
+  工程加速分析（KV cache 复用、探针前缀共享、横向并行）
 
 ## 方法（实现细节）
 

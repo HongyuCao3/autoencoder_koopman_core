@@ -42,11 +42,11 @@ Li et al. 2024 persona_drift 论文配套的 benchmark，已 vendored 至 `perso
 
 ### 3.1 likenneth/persona_drift 官方数据 — 候选（参照用）
 
-Li et al. 发布的 LLaMA2-70B-chat 自聊对话与逐轮探针结果。u≡0 的自由漂移数据，**不能**用于辨识 B；用途是在采集前先验证 `EVALUATION_METRICS.md` 1.1 的 SNR_drift 与 1.2 的衰减率 λ 在另一模型上的量级，作为 Qwen3-4B 结果的参照。获取：GitHub 仓库（当前沙盒与设备 VM 均不能访问外网，需手动下载）。
+Li et al. 发布的 LLaMA2-70B-chat 自聊对话与逐轮探针结果。u≡0 的自由漂移数据，**不能**用于辨识 B；用途是在采集前先验证 `EVALUATION_METRICS.md` 1.1 的 SNR_drift 与 1.2 的衰减率 λ 在另一模型上的量级，作为 Qwen3-4B 结果的参照。获取：GitHub 仓库（当前沙盒与设备 VM 均不能访问外网，需手动下载）。另见 `OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md` 2.1/2.3 节：ContextEcho 长会话数据是同类"参照用、不能辨识 B"的数据，覆盖的是长程 agentic 场景，与本条互补。
 
 ### 3.2 模拟用户的话题池 — 待定
 
-`selfchat.py` 的用户模板为 "chatting naturally with an assistant about {topic}"，但话题来源尚未在协议中写明。候选：同事数据的 `topic` 列（已有 train/validation/test 锁定切分）；Li 代码中的对话起始句。需要统一的一点：`topic_split` 列名暗示按话题切分，而协议第 6 节实际按 `system_prompt_id` 切分——两者若同时存在，须明确以后者为准、前者只作记录列，或改名。
+`selfchat.py` 的用户模板为 "chatting naturally with an assistant about {topic}"，但话题来源尚未在协议中写明。候选：同事数据的 `topic` 列（已有 train/validation/test 锁定切分）；Li 代码中的对话起始句；`OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md` 2.4 节新增的 LMSYS-Chat-1M/WildChat 真实对话话题分布。需要统一的一点：`topic_split` 列名暗示按话题切分，而协议第 6 节实际按 `system_prompt_id` 切分——两者若同时存在，须明确以后者为准、前者只作记录列，或改名。
 
 ## 4. 评价用外部数据
 
