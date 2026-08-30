@@ -7,9 +7,9 @@
 --allow-unrelated-histories` 把那个仓库的完整历史并回这里，`git log --all
 --oneline` 仍能看到原来的独立 commit。）
 
-数据采集协议见 `../persona_drift_control_plan/DATA_COLLECTION_PROTOCOL.md`
-与 `KV_INJECTION_MONITORING.md`，本目录不重复存放这两份协议文档，以它们
-为准。
+协议、方法实现细节、baseline 调研等文档全部在 `../docs/`，
+以 [`../docs/README.md`](../docs/README.md)
+为索引入口，本目录不重复存放，以那边为准。
 
 当前只实现了协议第 7 节要求的**采集前 1 小时信号探针**——这是正式采集
 （40 prompt × 2 通道 × 4 seed）之前的强制关卡：三个问题任一不过，都要先改协议

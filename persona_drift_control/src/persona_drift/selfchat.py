@@ -1,24 +1,21 @@
 """One self-chat trajectory: simulated user + agent under a persona/pattern
 system prompt, per-turn probe forking and scoring, optional reminder
-injection (channel A, u_remind) driven by the trajectory's condition.
-
-Two conditions, matching DATA_COLLECTION_PROTOCOL.md section 7's three gate
-questions:
-  - "zero_control": u_remind == 0 every turn (pure drift, answers gate
-    question 1 and serves as the protocol's own required u==0 baseline).
-  - "excite_iid": u_remind drawn i.i.d. Bernoulli(p) each turn (answers gate
-    questions 2 and 3, which both need u_remind to vary).
+injection (channel A, u_remind) driven by a pluggable `Controller`
+(control.py) rather than hardcoded here -- this is what lets baseline
+controllers (constant reminder, periodic, threshold feedback) and the random
+open-loop excitation used for system identification share the exact same
+generation/measurement harness.
 """
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 
 from .chat_model import ChatModel, GenerationConfig
+from .control import Controller
 from .prompt_bank import PromptEntry, score_response
 from .reminder import build_reminder_text, count_inserted_tokens
 
@@ -62,7 +59,7 @@ def run_trajectory(
     agent: ChatModel,
     user_sim: ChatModel,
     entry: PromptEntry,
-    condition: str,
+    controller: Controller,
     seed: int,
     topic: str,
     trajectory_id: str,
@@ -70,10 +67,6 @@ def run_trajectory(
     config: TrajectoryConfig,
     run_id: str = "signal_screening_v0.1",
 ) -> list[dict[str, Any]]:
-    if condition not in ("zero_control", "excite_iid"):
-        raise ValueError(f"unknown condition: {condition!r}")
-
-    rng = random.Random(seed)
     user_history: list[dict[str, str]] = [
         {"role": "system", "content": USER_SYSTEM_PROMPT_TEMPLATE.format(topic=topic)}
     ]
@@ -81,7 +74,7 @@ def run_trajectory(
     rows: list[dict[str, Any]] = []
 
     for turn in range(1, config.num_turns + 1):
-        u_remind = 0 if condition == "zero_control" else int(rng.random() < config.excite_p_remind)
+        u_remind = controller.next_u_remind(turn, rows)
 
         user_seed = seed * 1_000_000 + turn * 100
         user_text = user_sim.generate(user_history, seed=user_seed, config=config.user_gen)
@@ -126,7 +119,7 @@ def run_trajectory(
                 "system_prompt_id": entry.prompt_id,
                 "prompt_category": entry.prompt_category,
                 "input_channel": "remind",
-                "excitation_design": "iid" if condition == "excite_iid" else "zero_control",
+                "excitation_design": controller.name,
                 "seed": seed,
                 "model": agent.model_id,
                 "decoding_config": {

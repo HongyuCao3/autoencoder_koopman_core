@@ -22,11 +22,13 @@ autoencoder_koopman_core/
 ├── results/                     # 轻量 metrics/Koopman 诊断
 ├── slurm/                       # Palmetto 2 (Slurm) 提交脚本：单次训练、job array 扫描
 ├── CODE_DESIGN.md               # 代码级设计文档
-├── persona_drift_control_plan/  # 人格漂移闭环控制的采集协议文档（草案）
-└── persona_drift_control/       # 上述协议的实现：采集前信号探针 pilot（独立 git 历史已并入本仓库）
+├── docs/                        # 人格漂移闭环控制的协议/方法/baseline 文档，外部论文 PDF 缓存
+└── persona_drift_control/       # 上述文档描述的实现：采集前信号探针 pilot（独立 git 历史已并入本仓库）
 ```
 
-`persona_drift_control_plan/` 和 `persona_drift_control/` 是同一个子项目：前者是协议文档，后者是代码。这个仓库本身是我 fork 之后的仓库，不是需要与同事分开维护的共享仓库，所以子项目直接放在这里，不必再单独建仓库。
+`docs/` 和 `persona_drift_control/` 是同一个子项目：前者是协议/方法文档（索引见
+`docs/README.md`），后者是代码。这个仓库本身是我 fork 之后的仓库，不是需要与同事分开维护的
+共享仓库，所以子项目直接放在这里，不必再单独建仓库。
 
 ## 上传到 GitHub
 

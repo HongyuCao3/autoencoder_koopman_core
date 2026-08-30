@@ -6,3 +6,4 @@ results/*
 !results/.gitkeep
 slurm/logs/*
 !slurm/logs/.gitkeep
+docs/references/*.pdf

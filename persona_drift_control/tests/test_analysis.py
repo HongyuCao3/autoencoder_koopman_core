@@ -34,7 +34,7 @@ def test_q2_and_q3_use_only_excite_condition_and_detect_a_synthetic_effect():
         # y_probe boosted for two turns after a remind, so both the
         # next-turn and the +2-turn effect should be detectable.
         boost = 0.3 if (turn >= 2 and rows and rows[-1]["u_remind"] == 1) else 0.0
-        rows.append(_row("t1", turn, 0.5 + boost, u, "excite_iid"))
+        rows.append(_row("t1", turn, 0.5 + boost, u, "iid"))
     report = analyze_screening(rows)
     assert report["q2_input_effective"]["n_pairs"] == 15
     assert report["q3_inertia"]["n_pairs"] == 14

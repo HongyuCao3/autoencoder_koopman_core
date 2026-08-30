@@ -20,10 +20,19 @@ from typing import Any
 
 from .analysis import analyze_screening
 from .chat_model import ChatModel
+from .control import Controller, RandomExciteController, ZeroControlController
 from .prompt_bank import load_prompt_bank, select_screening_prompts
 from .selfchat import TOPICS, TrajectoryConfig, run_trajectory
 
 CONDITIONS = ("zero_control", "excite_iid")
+
+
+def _make_controller(condition: str, seed: int, trajectory_config: TrajectoryConfig) -> Controller:
+    if condition == "zero_control":
+        return ZeroControlController()
+    if condition == "excite_iid":
+        return RandomExciteController(p=trajectory_config.excite_p_remind, seed=seed)
+    raise ValueError(f"unknown condition: {condition!r}")
 
 
 def run_screening(
@@ -55,11 +64,12 @@ def run_screening(
             for seed in seeds:
                 for condition in CONDITIONS:
                     trajectory_id = f"{entry.prompt_id}__seed{seed}__{condition}"
+                    controller = _make_controller(condition, seed, trajectory_config)
                     trajectory_rows = run_trajectory(
                         agent=agent,
                         user_sim=user_sim,
                         entry=entry,
-                        condition=condition,
+                        controller=controller,
                         seed=seed,
                         topic=topic,
                         trajectory_id=trajectory_id,
