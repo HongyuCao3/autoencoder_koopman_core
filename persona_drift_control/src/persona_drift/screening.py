@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import pathlib
 import random
+import time
 from typing import Any
 
 from .analysis import analyze_screening
@@ -58,13 +59,22 @@ def run_screening(
     topic_rng = random.Random(prompt_rng_seed)
     rows: list[dict[str, Any]] = []
     trajectories_path = output_dir / "trajectories.jsonl"
+    total_trajectories = len(prompts) * len(seeds) * len(CONDITIONS)
+    completed = 0
+    run_start = time.monotonic()
     with trajectories_path.open("w") as handle:
         for entry in prompts:
             topic = topic_rng.choice(TOPICS)
             for seed in seeds:
                 for condition in CONDITIONS:
                     trajectory_id = f"{entry.prompt_id}__seed{seed}__{condition}"
+                    print(
+                        f"[{completed}/{total_trajectories}] starting {trajectory_id} "
+                        f"(+{time.monotonic() - run_start:.0f}s)",
+                        flush=True,
+                    )
                     controller = _make_controller(condition, seed, trajectory_config)
+                    trajectory_start = time.monotonic()
                     trajectory_rows = run_trajectory(
                         agent=agent,
                         user_sim=user_sim,
@@ -78,7 +88,15 @@ def run_screening(
                     )
                     for row in trajectory_rows:
                         handle.write(json.dumps(row) + "\n")
+                    handle.flush()
                     rows.extend(trajectory_rows)
+                    completed += 1
+                    print(
+                        f"[{completed}/{total_trajectories}] finished {trajectory_id} "
+                        f"in {time.monotonic() - trajectory_start:.0f}s "
+                        f"(+{time.monotonic() - run_start:.0f}s total)",
+                        flush=True,
+                    )
 
     report = analyze_screening(rows)
     report["config"] = {

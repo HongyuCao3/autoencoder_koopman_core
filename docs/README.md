@@ -23,6 +23,8 @@
   具体如何对话：每轮流程、长度控制、主题控制、随机性控制
 - [method/controllers.md](method/controllers.md) — 控制器（Controller）可插拔接口，已实现
   的 baseline 控制器，Koopman-MPC 与其他 baseline 的扩展点
+- [method/koopman_surrogate.md](method/koopman_surrogate.md) — Koopman 代理拟合/评测代码，
+  ARX baseline 作为同一套代码的特例，与 baseline 公平对比的具体设计
 
 ## 评价与对比
 

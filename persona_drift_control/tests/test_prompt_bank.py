@@ -5,7 +5,7 @@ def test_load_prompt_bank_categories_and_counts():
     bank = load_prompt_bank()
     assert set(bank.keys()) == {"character_traits", "language_constraints"}
     assert len(bank["character_traits"]) == 14
-    assert len(bank["language_constraints"]) == 28
+    assert len(bank["language_constraints"]) == 29
 
 
 def test_no_entry_has_unresolved_random_probe():

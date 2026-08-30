@@ -23,10 +23,14 @@
   各自怎么控制。
 - [控制器抽象](controllers.md)：`u_remind` 取值策略的可插拔接口，已实现的 baseline 控制器，
   以及给 Koopman-MPC 和其他 baseline（split-softmax、激活转向）留的扩展点。
+- [Koopman 代理与 ARX baseline](koopman_surrogate.md)：`modeling/` 下的数据加载/状态构造/
+  拟合/评测代码，ARX 作为同一套代码的特例，公平对比的具体设计。
 
 ## 尚未覆盖 / 已知缺口
 
 - `u_gain`（split-softmax 注意力放大）和 `u_steer`（激活转向）两个通道目前完全未实现，
   `selfchat.py` 里对应字段恒为 0，只是占位。
-- Koopman 代理拟合与 MPC 控制器代码本身还不存在（见 `../BASELINES.md`），本目录的方法文档
-  只覆盖"如何生成/测量数据"，不覆盖"如何从数据拟合模型、如何控制"。
+- MPC 控制器（用拟合出的 Koopman 代理求解最优 `u_remind` 序列）还不存在，`modeling/koopman.py`
+  目前只有拟合/预测/可控性诊断，没有闭环求解器。
+- Koopman/ARX 代理还只在合成数据上验证过，没有接到真实采集数据；LSTM baseline 还没实现。
+  详见 [koopman_surrogate.md](koopman_surrogate.md) 的"已知缺口"。

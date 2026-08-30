@@ -40,7 +40,7 @@ persona_drift_control/
 `memorization` / `language`（且 `language` 只有 3 条，指"讲法语"，不是协议
 意义上的"语言/风格约束"）。按协议自己给出的筛选标准（"探针分数更接近连续
 量"），`prompt_bank.py` 把 `persona_system_prompts`（14 条）当作
-character_traits，把 `pattern_system_prompts`（28 条，字母/大小写/词数/句
+character_traits，把 `pattern_system_prompts`（29 条，字母/大小写/词数/句
 式等格式约束）当作 language_constraints。这个映射是我按标准做的判断，不是
 协议原文写死的，值得你确认一遍是否符合本意。
 
