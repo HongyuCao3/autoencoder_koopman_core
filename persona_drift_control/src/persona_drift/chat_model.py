@@ -18,8 +18,31 @@ if "HF_HOME" not in os.environ:
     pathlib.Path(_DEFAULT_HF_HOME).mkdir(parents=True, exist_ok=True)
     os.environ["HF_HOME"] = _DEFAULT_HF_HOME
 
+import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: E402
+
+
+@dataclass(frozen=True)
+class SteeringConfig:
+    """Channel C (u_steer, DATA_COLLECTION_PROTOCOL.md section 3): adds
+    alpha * direction to the residual stream at `layer` for every generated
+    token, via a forward hook on that decoder layer -- see
+    ChatModel._register_steering_hook. `direction` is the raw (unnormalized)
+    diff-in-means vector from activation_direction.compute_safety_direction;
+    its own magnitude already is the natural alpha=1 scale (the protocol's
+    "alpha0"), so the sweep grid {-1, -0.5, 0, 0.5, 1} multiplies it
+    directly rather than needing a separately calibrated scalar."""
+
+    # Uses the same 1-indexed convention as hidden_state_at_layer's
+    # output_hidden_states (hidden_states[0]=embeddings, hidden_states[L]=
+    # output of decoder block index L-1): so a direction calibrated at
+    # layer=L is steered by adding to block index L-1's output, which is
+    # exactly the tensor hidden_states[L] was read from. See
+    # _register_steering_hook.
+    layer: int
+    direction: np.ndarray  # shape (hidden_size,), points toward the harmless/safe pole
+    alpha: float
 
 
 @dataclass(frozen=True)
@@ -68,7 +91,13 @@ class ChatModel:
         self.model.to(device)
         self.model.eval()
 
-    def generate(self, messages: list[dict[str, str]], seed: int, config: GenerationConfig | None = None) -> str:
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        seed: int,
+        config: GenerationConfig | None = None,
+        steering: SteeringConfig | None = None,
+    ) -> str:
         config = config or GenerationConfig()
         try:
             prompt_text = self.tokenizer.apply_chat_template(
@@ -89,17 +118,64 @@ class ChatModel:
         if self.device.startswith("cuda"):
             torch.cuda.manual_seed_all(seed)
 
-        with torch.no_grad():
-            output_ids = self.model.generate(
-                **inputs,
-                max_new_tokens=config.max_new_tokens,
-                do_sample=config.do_sample,
-                temperature=config.temperature,
-                top_p=config.top_p,
-                repetition_penalty=config.repetition_penalty,
-                no_repeat_ngram_size=config.no_repeat_ngram_size,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
+        hook_handle = self._register_steering_hook(steering) if steering is not None else None
+        try:
+            with torch.no_grad():
+                output_ids = self.model.generate(
+                    **inputs,
+                    max_new_tokens=config.max_new_tokens,
+                    do_sample=config.do_sample,
+                    temperature=config.temperature,
+                    top_p=config.top_p,
+                    repetition_penalty=config.repetition_penalty,
+                    no_repeat_ngram_size=config.no_repeat_ngram_size,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                )
+        finally:
+            if hook_handle is not None:
+                hook_handle.remove()
 
         new_tokens = output_ids[0][inputs["input_ids"].shape[1] :]
         return self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+    def hidden_state_at_layer(self, messages: list[dict[str, str]], layer: int) -> np.ndarray:
+        """One forward pass, no generation: returns the last-token residual
+        stream activation at `layer` (transformers' `output_hidden_states=True`
+        convention: hidden_states[0] is the embedding output, hidden_states[i]
+        is the output of decoder layer i for i=1..num_layers). Used only for
+        diff-in-means direction calibration (activation_direction.py) --
+        generation-time steering uses _register_steering_hook instead, since
+        a hook composes with `.generate()`'s incremental decoding while a
+        single forward pass here does not."""
+
+        try:
+            prompt_text = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True, enable_thinking=self.enable_thinking
+            )
+        except TypeError:
+            prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+        inputs = self.tokenizer(prompt_text, return_tensors="pt", add_special_tokens=False).to(self.device)
+        with torch.no_grad():
+            outputs = self.model(**inputs, output_hidden_states=True)
+        last_token_state = outputs.hidden_states[layer][0, -1, :]
+        return last_token_state.float().cpu().numpy()
+
+    def _register_steering_hook(self, steering: SteeringConfig):
+        # Qwen3ForCausalLM (this project's only model family) exposes decoder
+        # layers at .model.layers, standard for HF's Llama-style causal LMs.
+        # A forward hook (rather than editing generate()'s internals) adds
+        # the same delta at every decoding step, prefill included, and
+        # composes with KV-cached incremental generation for free.
+        # steering.layer - 1: see SteeringConfig's docstring for why this
+        # offset is needed to land on the same tensor hidden_state_at_layer
+        # read from.
+        delta = torch.as_tensor(steering.direction, dtype=self.model.dtype, device=self.device) * steering.alpha
+        target_layer = self.model.model.layers[steering.layer - 1]
+
+        def hook(module, inputs, output):
+            if isinstance(output, tuple):
+                return (output[0] + delta,) + output[1:]
+            return output + delta
+
+        return target_layer.register_forward_hook(hook)

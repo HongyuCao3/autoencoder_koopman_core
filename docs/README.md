@@ -61,8 +61,12 @@
   分析：对 signal_screening_pilot 已完成的文本回填免费表层特征并重跑漂移检验，
   `avg_word_len` 测出统计显著的下降趋势（`y_probe` 未测到），`num_tokens` 方向一致但未显著。
 - [experiments/adversarial_screening_pilot.md](experiments/adversarial_screening_pilot.md) —
-  ★ 当前正在做：`ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md` 第 7 节步骤 1 的 screening
-  （攻击序列回放 + LLM-judge 安全打分 + 渐进侵蚀/自相关检验）。**新开一次对话想知道"这个
-  任务现在进展到哪一步了"，看这份文档。** 状态：步骤 1 **通过**（new-Q1/new-Q3 均 p<0.0001，
-  20 攻击里 18 个负斜率，与人格漂移任务的完全空结果形成鲜明对比）；步骤 2（安全方向 steering
-  剂量-响应扫描）进行中。
+  `ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md` 第 7 节步骤 1 的 screening（攻击序列回放 +
+  LLM-judge 安全打分 + 渐进侵蚀/自相关检验）。状态：步骤 1 **通过**（new-Q1/new-Q3 均
+  p<0.0001，20 攻击里 18 个负斜率，与人格漂移任务的完全空结果形成鲜明对比）。
+- [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) — ★ 当前正在做：
+  步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。
+  **新开一次对话想知道"这个任务现在进展到哪一步了"，看这份文档。** 状态：工程全链路已验证
+  跑通，但 new-Q2 **不过**（p=0.0563，天花板效应——直接单轮问有害目标本身就已经被拒绝到
+  接近满分，没有侵蚀空间给 steering 影响），根因不是代码问题；下一步候选是换成步骤 1 里
+  turn4/turn5（已经部分被攻破）的查询重测。
