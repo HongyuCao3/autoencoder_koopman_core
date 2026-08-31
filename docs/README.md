@@ -7,6 +7,15 @@
 
 ## 任务与协议
 
+- **[ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md](ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md) —
+  ★ 当前优先级最高：任务选型候选"Koopman 闭环控制抵抗多轮 prompt 攻击"的分析
+  （任务定义、扰动通道建模、相对 NBF-LLM/GenCtrl 的 delta、验证顺序）**
+- [CONTROL_THEORETIC_LLM_RELATED_WORK.md](CONTROL_THEORETIC_LLM_RELATED_WORK.md) —
+  2025–2026 控制论×LLM 相关工作调研：按时间轴分类、gap 确认、任务选型信号
+- [STOLFO_ACTIVATION_STEERING_FEASIBILITY.md](STOLFO_ACTIVATION_STEERING_FEASIBILITY.md) —
+  Stolfo et al. ICLR 2025 激活转向论文的任务适配性分析（任务不照搬、要素可移植：
+  通道 C 执行器 + 连续约束 readout）
+
 - [DATA_COLLECTION_PROTOCOL.md](DATA_COLLECTION_PROTOCOL.md) — 激励数据采集协议：被控对象、
   readout、输入通道、采集前信号探针（gate）
 - [DATA_SOURCES.md](DATA_SOURCES.md) — 数据来源与候选清单：prompt 库、已有轨迹、待采集数据、
