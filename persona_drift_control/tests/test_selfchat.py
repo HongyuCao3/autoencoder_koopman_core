@@ -93,6 +93,49 @@ def test_scripted_mode_rejects_a_too_short_script(monkeypatch):
         )
 
 
+def test_pressure_mode_uses_the_category_keyed_script_instead_of_user_sim(monkeypatch):
+    script = ["pressure turn one", "pressure turn two", "pressure turn three"]
+    calls = []
+    monkeypatch.setattr(
+        selfchat,
+        "load_pressure_script",
+        lambda prompt_category: calls.append(prompt_category) or script,
+    )
+
+    rows = run_trajectory(
+        agent=FakeChatModel(),
+        user_sim=None,
+        entry=_entry(),
+        controller=ZeroControlController(),
+        seed=0,
+        topic="weekend hiking",
+        trajectory_id="t1",
+        topic_split="test",
+        config=_config("pressure"),
+    )
+
+    assert calls == ["character_traits"]  # keyed by entry.prompt_category, not topic/seed
+    assert [row["user_message"] for row in rows] == script
+    assert all(row["user_mode"] == "pressure" for row in rows)
+
+
+def test_pressure_mode_rejects_a_too_short_script(monkeypatch):
+    monkeypatch.setattr(selfchat, "load_pressure_script", lambda prompt_category: ["only one turn"])
+
+    with pytest.raises(ValueError, match="only 1 turns"):
+        run_trajectory(
+            agent=FakeChatModel(),
+            user_sim=None,
+            entry=_entry(),
+            controller=ZeroControlController(),
+            seed=0,
+            topic="weekend hiking",
+            trajectory_id="t1",
+            topic_split="test",
+            config=_config("pressure", num_turns=3),
+        )
+
+
 def test_live_mode_still_calls_user_sim_each_turn():
     user_sim = FakeChatModel(reply="live user reply")
     rows = run_trajectory(

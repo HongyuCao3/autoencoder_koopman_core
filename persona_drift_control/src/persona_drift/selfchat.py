@@ -16,6 +16,7 @@ import numpy as np
 
 from .chat_model import ChatModel, GenerationConfig
 from .control import Controller
+from .pressure_scripts import load_pressure_script
 from .prompt_bank import PromptEntry, score_response
 from .reminder import build_reminder_text, count_inserted_tokens
 from .user_scripts import load_user_script
@@ -53,7 +54,10 @@ class TrajectoryConfig:
     # far. "scripted": read a pre-generated turn from user_scripts.py instead
     # -- see docs/SCRIPTED_USER_TURNS_FEASIBILITY.md; must not become the
     # default until its section 5 live-vs-scripted consistency check passes.
-    user_mode: Literal["live", "scripted"] = "live"
+    # "pressure": read a fixed, hand-authored escalating-pressure turn from
+    # pressure_scripts.py, keyed by entry.prompt_category (not topic/seed) --
+    # see docs/experiments/drift_confirmation_pilot.md's "下一步的小范围实验建议".
+    user_mode: Literal["live", "scripted", "pressure"] = "live"
 
 
 def _looks_like_refusal(text: str) -> bool:
@@ -75,9 +79,17 @@ def run_trajectory(
 ) -> list[dict[str, Any]]:
     if config.user_mode == "live" and user_sim is None:
         raise ValueError("user_mode='live' requires a user_sim ChatModel")
-    script = load_user_script(topic, seed) if config.user_mode == "scripted" else None
+    if config.user_mode == "scripted":
+        script = load_user_script(topic, seed)
+    elif config.user_mode == "pressure":
+        script = load_pressure_script(entry.prompt_category)
+    else:
+        script = None
     if script is not None and len(script) < config.num_turns:
-        raise ValueError(f"scripted user turns for topic={topic!r} seed={seed} has only {len(script)} turns, need {config.num_turns}")
+        raise ValueError(
+            f"{config.user_mode!r} user turns for topic={topic!r} seed={seed} "
+            f"has only {len(script)} turns, need {config.num_turns}"
+        )
 
     user_history: list[dict[str, str]] = [
         {"role": "system", "content": USER_SYSTEM_PROMPT_TEMPLATE.format(topic=topic)}
@@ -88,7 +100,7 @@ def run_trajectory(
     for turn in range(1, config.num_turns + 1):
         u_remind = controller.next_u_remind(turn, rows)
 
-        if config.user_mode == "scripted":
+        if script is not None:
             user_text = script[turn - 1]
         else:
             user_seed = seed * 1_000_000 + turn * 100
