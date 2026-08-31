@@ -60,3 +60,9 @@
 - [experiments/surface_features_backfill.md](experiments/surface_features_backfill.md) — CPU-only
   分析：对 signal_screening_pilot 已完成的文本回填免费表层特征并重跑漂移检验，
   `avg_word_len` 测出统计显著的下降趋势（`y_probe` 未测到），`num_tokens` 方向一致但未显著。
+- [experiments/adversarial_screening_pilot.md](experiments/adversarial_screening_pilot.md) —
+  ★ 当前正在做：`ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md` 第 7 节步骤 1 的 screening
+  （攻击序列回放 + LLM-judge 安全打分 + 渐进侵蚀/自相关检验）。**新开一次对话想知道"这个
+  任务现在进展到哪一步了"，看这份文档。** 状态：步骤 1 **通过**（new-Q1/new-Q3 均 p<0.0001，
+  20 攻击里 18 个负斜率，与人格漂移任务的完全空结果形成鲜明对比）；步骤 2（安全方向 steering
+  剂量-响应扫描）进行中。
