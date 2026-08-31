@@ -56,7 +56,13 @@
   该作业三问全挂，排查结论见文档内"排查"一节。
 - [experiments/drift_confirmation_pilot.md](experiments/drift_confirmation_pilot.md) — 上面
   那次 screening 三问全挂之后，为判断"漂移到底存不存在还是样本太小测不出"而做的 10-prompt
-  功效放大 pilot：job 状态、scripted-user 方案尝试失败的完整记录、结论待补。
+  功效放大 pilot：job 状态、scripted-user 方案尝试失败的完整记录、结论（10-prompt 规模下
+  仍是干净的空结果），以及 2026-08-31 补充分析——4B 容量不是瓶颈（同模型在对抗任务上有清晰
+  信号），换 7B 前应先验证是否为刺激强度问题。
+- [experiments/pressure_screening_pilot.md](experiments/pressure_screening_pilot.md) — ★
+  正在做：上面那条补充分析提出的直接验证——把对抗任务的"渐进升级施压"设计移植到人格域，
+  测 Qwen3-4B 是否会表现出可测漂移。**新开一次对话想知道"这个 pilot 现在进展到哪一步了"，
+  看这份文档。**
 - [experiments/surface_features_backfill.md](experiments/surface_features_backfill.md) — CPU-only
   分析：对 signal_screening_pilot 已完成的文本回填免费表层特征并重跑漂移检验，
   `avg_word_len` 测出统计显著的下降趋势（`y_probe` 未测到），`num_tokens` 方向一致但未显著。
@@ -67,6 +73,7 @@
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) — ★ 当前正在做：
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。
   **新开一次对话想知道"这个任务现在进展到哪一步了"，看这份文档。** 状态：工程全链路已验证
-  跑通，但 new-Q2 **不过**（p=0.0563，天花板效应——直接单轮问有害目标本身就已经被拒绝到
-  接近满分，没有侵蚀空间给 steering 影响），根因不是代码问题；下一步候选是换成步骤 1 里
-  turn4/turn5（已经部分被攻破）的查询重测。
+  跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；v2 换成步骤 1
+  里真实"已部分被攻破"的对话上下文重测，天花板问题解决了但响应噪声大、不单调（p=0.4535），
+  根因假设指向校准点（短单轮 prompt）和应用点（数千 token 深层上下文）不匹配，或单层
+  steering 压不过已建立的多轮上下文；两次都不是代码问题，下一步候选见文档。

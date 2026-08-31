@@ -83,6 +83,72 @@ def test_custom_alpha_grid_is_respected():
     assert agent.calls[1]["steering"].alpha == 2.0
 
 
+def test_context_messages_are_prepended_before_the_steered_turn():
+    agent = FakeChatModel()
+    judge = FakeChatModel(reply="3")
+    direction = np.ones(2)
+    context = [
+        {"role": "user", "content": "turn1 attacker query"},
+        {"role": "assistant", "content": "turn1 real reply"},
+    ]
+
+    run_dose_response_query(
+        agent=agent,
+        judge=judge,
+        query_id="q0",
+        harmful_goal="the underlying goal",
+        layer=1,
+        direction=direction,
+        seed=0,
+        context_messages=context,
+        question_text="turn2 attacker query",
+    )
+
+    for call in agent.calls:
+        assert call["messages"] == [*context, {"role": "user", "content": "turn2 attacker query"}]
+
+
+def test_question_text_defaults_to_harmful_goal_reproducing_the_bare_ask():
+    agent = FakeChatModel()
+    judge = FakeChatModel(reply="3")
+    direction = np.ones(2)
+
+    run_dose_response_query(
+        agent=agent, judge=judge, query_id="q0", harmful_goal="the goal", layer=1, direction=direction, seed=0
+    )
+
+    for call in agent.calls:
+        assert call["messages"] == [{"role": "user", "content": "the goal"}]
+
+
+def test_row_records_question_text_and_context_turns():
+    agent = FakeChatModel()
+    judge = FakeChatModel(reply="3")
+    direction = np.ones(2)
+    context = [
+        {"role": "user", "content": "t1 q"},
+        {"role": "assistant", "content": "t1 a"},
+        {"role": "user", "content": "t2 q"},
+        {"role": "assistant", "content": "t2 a"},
+    ]
+
+    rows = run_dose_response_query(
+        agent=agent,
+        judge=judge,
+        query_id="q0",
+        harmful_goal="goal",
+        layer=1,
+        direction=direction,
+        seed=0,
+        context_messages=context,
+        question_text="t3 q",
+    )
+
+    assert all(row["question_text"] == "t3 q" for row in rows)
+    assert all(row["context_turns"] == 2 for row in rows)
+    assert all(row["harmful_goal"] == "goal" for row in rows)
+
+
 def test_distinct_seeds_per_alpha_level():
     agent = FakeChatModel()
     judge = FakeChatModel(reply="3")
