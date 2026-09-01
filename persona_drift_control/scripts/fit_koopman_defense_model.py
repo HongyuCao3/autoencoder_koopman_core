@@ -6,6 +6,17 @@ one-step/rollout error on a held-out attack_id split, and run
 controllability diagnostics on B -- the go/no-go gate before designing a
 KoopmanMPCController on top of it.
 
+Also supports detection-design option 4
+(docs/experiments/koopman_detection_design.md): pass
+`--aux-cols attack_similarity` to lift `attacker_query` text into an extra
+state dimension via modeling.content_similarity, measuring resemblance to a
+reference corpus built ONLY from this run's own train-split attacks (never
+the held-out ones, so a held-out attack's near-identical replayed text can't
+leak into its own reference corpus). The reference corpus's texts and the
+`aux_cols` list are written into the report so
+scripts/fit_koopman_benign_model.py and scripts/evaluate_koopman_detector.py
+can reconstruct an identical corpus without re-deriving the split.
+
 CPU-only, pure numpy/pandas -- no GPU needed. Run directly (no sbatch).
 """
 
@@ -18,6 +29,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
+from persona_drift.modeling.content_similarity import (  # noqa: E402
+    annotate_similarity,
+    fit_tfidf_corpus,
+    reference_texts_excluding_ids,
+)
 from persona_drift.modeling.dataset import (  # noqa: E402
     ReducedStateConfig,
     build_identification_dataset,
@@ -44,6 +60,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--held-out-frac", type=float, default=0.25)
     parser.add_argument("--split-seed", type=int, default=0)
     parser.add_argument(
+        "--aux-cols",
+        nargs="*",
+        default=[],
+        choices=["attack_similarity"],
+        help="detection-design option 4: lift extra content-derived features into z",
+    )
+    parser.add_argument(
         "--out-path", type=pathlib.Path, default=pathlib.Path("outputs/koopman_defense_phaseB_random_excite/koopman_fit_report.json")
     )
     return parser.parse_args()
@@ -66,7 +89,6 @@ def _fit_and_evaluate(name, extra_features_fn, train_rows, held_out_rows, config
 def main() -> None:
     args = parse_args()
     rows = load_trajectories(args.rows_path)
-    config = ReducedStateConfig(nu=args.nu, mu=args.mu)
 
     split = split_by_system_prompt_id(
         rows,
@@ -81,6 +103,19 @@ def main() -> None:
     held_out_attack_ids = sorted({r["attack_id"] for r in held_out_rows})
     n_held_out_attacks = len(held_out_attack_ids)
 
+    reference_texts = None
+    if "attack_similarity" in args.aux_cols:
+        # Corpus built ONLY from train_rows -- held_out_attack_ids' own text
+        # never enters it, so a held-out attack can't trivially match itself.
+        reference_texts = reference_texts_excluding_ids(
+            train_rows, exclude_ids=set(held_out_attack_ids), text_col="attacker_query", id_col="attack_id"
+        )
+        corpus = fit_tfidf_corpus(reference_texts)
+        train_rows = annotate_similarity(train_rows, "attacker_query", corpus, out_col="attack_similarity")
+        held_out_rows = annotate_similarity(held_out_rows, "attacker_query", corpus, out_col="attack_similarity")
+
+    config = ReducedStateConfig(nu=args.nu, mu=args.mu, aux_cols=tuple(args.aux_cols))
+
     arx_report, arx_model = _fit_and_evaluate(
         "arx", no_extra_features, train_rows, held_out_rows, config, args.ridge
     )
@@ -91,10 +126,17 @@ def main() -> None:
     controllability = arx_model.controllability(args.controllability_horizon)
 
     report = {
-        "config": {"nu": args.nu, "mu": args.mu, "ridge": args.ridge, "rows_path": str(args.rows_path)},
+        "config": {
+            "nu": args.nu,
+            "mu": args.mu,
+            "ridge": args.ridge,
+            "rows_path": str(args.rows_path),
+            "aux_cols": list(args.aux_cols),
+        },
         "n_train_attacks": n_train_attacks,
         "n_held_out_attacks": n_held_out_attacks,
         "held_out_attack_ids": held_out_attack_ids,
+        "content_reference_texts": reference_texts,
         "arx": arx_report,
         "richer_abs_sign": richer_report,
         "controllability_arx": controllability,

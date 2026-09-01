@@ -128,3 +128,44 @@ def test_build_identification_dataset_accepts_custom_cols():
         rows, ReducedStateConfig(nu=1, mu=0), id_col="trajectory_id", y_col="y_safety"
     )
     assert dataset["Z"].shape[0] == 2
+
+
+def test_reduced_state_config_state_dim_includes_aux_cols():
+    assert ReducedStateConfig(nu=1, mu=2).state_dim == 3
+    assert ReducedStateConfig(nu=1, mu=2, aux_cols=("attack_similarity",)).state_dim == 4
+    assert ReducedStateConfig(nu=1, mu=2, aux_cols=("attack_similarity", "turn_index")).state_dim == 5
+
+
+def test_build_reduced_state_pairs_appends_aux_col_current_and_next_value():
+    traj = [
+        {"trajectory_id": "t1", "system_prompt_id": "p1", "turn": turn, "y_probe": y, "u_remind": u, "sim": s}
+        for turn, (y, u, s) in enumerate([(1.0, 0, 0.1), (0.8, 1, 0.4), (0.6, 0, 0.9)])
+    ]
+    config = ReducedStateConfig(nu=1, mu=0, aux_cols=("sim",))
+    pairs = build_reduced_state_pairs(traj, config)
+    assert len(pairs) == 2
+    # z_0 = [y_0, sim_0] = [1.0, 0.1]; z_next = [y_1, sim_1] = [0.8, 0.4]
+    assert np.allclose(pairs[0]["z"], [1.0, 0.1])
+    assert np.allclose(pairs[0]["z_next"], [0.8, 0.4])
+    assert np.allclose(pairs[1]["z"], [0.8, 0.4])
+    assert np.allclose(pairs[1]["z_next"], [0.6, 0.9])
+
+
+def test_build_reduced_state_pairs_drops_turns_with_nan_aux_col():
+    traj = [
+        {"trajectory_id": "t1", "system_prompt_id": "p1", "turn": turn, "y_probe": y, "u_remind": u, "sim": s}
+        for turn, (y, u, s) in enumerate([(1.0, 0, 0.1), (0.8, 1, float("nan")), (0.6, 0, 0.9)])
+    ]
+    config = ReducedStateConfig(nu=1, mu=0, aux_cols=("sim",))
+    pairs = build_reduced_state_pairs(traj, config)
+    assert pairs == []  # every pair touches the NaN-aux turn
+
+
+def test_build_identification_dataset_with_aux_cols_shapes_z_correctly():
+    rows = [
+        {"trajectory_id": "t1", "system_prompt_id": "p1", "turn": turn, "y_probe": y, "u_remind": u, "sim": s}
+        for turn, (y, u, s) in enumerate([(1.0, 0, 0.1), (0.8, 1, 0.4), (0.6, 0, 0.9)])
+    ]
+    config = ReducedStateConfig(nu=1, mu=0, aux_cols=("sim",))
+    dataset = build_identification_dataset(rows, config)
+    assert dataset["Z"].shape == (2, config.state_dim)

@@ -19,6 +19,14 @@ trajectory_id is arm-qualified here before combining, otherwise
 group_by_trajectory would silently merge four arms' rows into one corrupted
 per-session sequence.
 
+Also supports detection-design option 4
+(docs/experiments/koopman_detection_design.md): pass
+`--aux-cols attack_similarity` to lift each benign turn's `question` text
+into the SAME reference corpus scripts/fit_koopman_defense_model.py built for
+the attack-regime model (read from `--content-reference-report`'s
+`content_reference_texts`, not re-derived) -- so both regimes' models see the
+"does this look like a known attack" feature computed the identical way.
+
 CPU-only, pure numpy/pandas -- no GPU needed. Run directly (no sbatch).
 """
 
@@ -31,6 +39,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
+from persona_drift.modeling.content_similarity import annotate_similarity, fit_tfidf_corpus  # noqa: E402
 from persona_drift.modeling.dataset import (  # noqa: E402
     ReducedStateConfig,
     build_identification_dataset,
@@ -59,6 +68,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--controllability-horizon", type=int, default=5)
     parser.add_argument("--held-out-frac", type=float, default=0.25)
     parser.add_argument("--split-seed", type=int, default=0)
+    parser.add_argument(
+        "--aux-cols",
+        nargs="*",
+        default=[],
+        choices=["attack_similarity"],
+        help="detection-design option 4: lift extra content-derived features into z",
+    )
+    parser.add_argument(
+        "--content-reference-report",
+        type=pathlib.Path,
+        default=pathlib.Path("outputs/koopman_detection_content_feature/attack_fit_report.json"),
+        help="attack-regime fit report to read content_reference_texts from (only used if --aux-cols attack_similarity)",
+    )
     parser.add_argument(
         "--out-path",
         type=pathlib.Path,
@@ -98,7 +120,6 @@ def _fit_and_evaluate(name, extra_features_fn, train_rows, held_out_rows, config
 def main() -> None:
     args = parse_args()
     rows = load_all_arms(args.phase_f_dir_template)
-    config = ReducedStateConfig(nu=args.nu, mu=args.mu)
 
     split = split_by_system_prompt_id(
         rows,
@@ -112,6 +133,17 @@ def main() -> None:
     n_train_benign = len({r["benign_id"] for r in train_rows})
     held_out_benign_ids = sorted({r["benign_id"] for r in held_out_rows})
 
+    if "attack_similarity" in args.aux_cols:
+        # Same frozen reference corpus the attack-regime model used -- NOT
+        # refit from benign text, so both regimes' models measure "resembles
+        # a known attack" against the identical reference.
+        reference_texts = json.loads(args.content_reference_report.read_text())["content_reference_texts"]
+        corpus = fit_tfidf_corpus(reference_texts)
+        train_rows = annotate_similarity(train_rows, "question", corpus, out_col="attack_similarity")
+        held_out_rows = annotate_similarity(held_out_rows, "question", corpus, out_col="attack_similarity")
+
+    config = ReducedStateConfig(nu=args.nu, mu=args.mu, aux_cols=tuple(args.aux_cols))
+
     arx_report, arx_model = _fit_and_evaluate(
         "arx", no_extra_features, train_rows, held_out_rows, config, args.ridge
     )
@@ -122,7 +154,13 @@ def main() -> None:
     controllability = arx_model.controllability(args.controllability_horizon)
 
     report = {
-        "config": {"nu": args.nu, "mu": args.mu, "ridge": args.ridge, "source": "phaseF_all_arms_combined"},
+        "config": {
+            "nu": args.nu,
+            "mu": args.mu,
+            "ridge": args.ridge,
+            "source": "phaseF_all_arms_combined",
+            "aux_cols": list(args.aux_cols),
+        },
         "n_train_benign_categories": n_train_benign,
         "n_held_out_benign_categories": len(held_out_benign_ids),
         "held_out_benign_ids": held_out_benign_ids,

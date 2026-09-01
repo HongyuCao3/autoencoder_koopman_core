@@ -81,9 +81,12 @@
   以更低代价（约 40% 的提醒次数/token）追平 constant_remind。Phase F（良性查询 helpfulness
   代价检查，四臂并行，无 go/no-go 门槛）已提交，结果待补。
 - [experiments/koopman_detection_design.md](experiments/koopman_detection_design.md) — Phase E
-  打赢后的支线：让 Koopman 代理模型具备显式"检测"能力（而不只是隐含在选动作过程里）。
-  方案 1（一步预测残差/innovation）在 Phase E 数据上执行结果为负面/持平，未跑赢"下一轮=
-  上一轮"基线，与 `koopman_defense_pilot.md` 主线分开接续。
+  打赢后的支线：让 Koopman 代理模型具备显式"检测"能力（而不只是隐含在选动作过程里）。四个方案
+  都已跑完：方案 1（一步预测残差）、方案 3（良性 vs 攻击双 regime 对比）、方案 4（状态里塞入
+  攻击文本相似度特征，`ReducedStateConfig.aux_cols` + 新增 `modeling/content_similarity.py`）
+  均为负面结果，方案 2（前瞻预警）因方案 1 负结果未执行。文档里说明了这不是 Koopman/线性代理
+  方法本身的局限，是这套项目当前状态表示/数据规模能提供的信息量不够，与 `koopman_defense_pilot.md`
+  主线分开接续。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；

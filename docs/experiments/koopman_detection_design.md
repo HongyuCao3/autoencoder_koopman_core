@@ -54,7 +54,75 @@
 是现成例子）。可以写一个新的 `extra_features_fn`，除了 `abs(y)/sign(y)`，再拼入轮次编号，或者
 攻击文本相对 `attack_bank` 已知攻击原型的相似度，让状态本身携带"当前对话像不像已知攻击模式"的
 证据。改动量最小（一个新函数），但引入文本特征后需要重新验证 `controllability_diagnostics`
-这类诊断是否还站得住。**未执行**。
+这类诊断是否还站得住。**已执行，见下方"方案 4 执行结果"——负面结果。**
+
+---
+
+## 方案 4 执行结果
+
+**实现方式（和文档原计划有一处偏差，如实记录）**：写完才发现 `extra_features_fn` 的签名
+`Callable[[np.ndarray], np.ndarray]` 只看得到数值化的 `z`，看不到轮次原文，没法在这个接口
+内部算文本相似度。真正落地的做法是把 `dataset.py::ReducedStateConfig` 加一个可选
+`aux_cols: tuple[str, ...] = ()` 字段（默认空，不影响任何现有调用），让 `z_t` 变成
+`[y 历史, v 历史, aux_1(t), ...]`——辅助列作为"当前轮"取值直接拼进 `z`（不带自己的滞后阶数），
+`z_next` 里对应取下一轮的值，和 `y`/`v` 走同一套 NaN 跳过与状态推进逻辑。这样文本特征就能通过
+预处理阶段算好、以数值列的形式进入 `z`，`extra_features_fn`（`no_extra_features`/
+`abs_sign_extra_features`）本身不用改一行。
+
+**相似度特征本身**：新增 `modeling/content_similarity.py`，纯 numpy 从零实现的 TF-IDF +
+余弦相似度（不引入 sklearn，理由和 `controllability_diagnostics` 当年不跨包 import 一致）。
+参照语料只取"这次拟合的训练集里的攻击"（`attack_id` 排除掉 8 个 held-out），避免 held-out
+攻击的原文直接躺在自己的参照语料里造成平凡意义上的"重合"。`scripts/fit_koopman_defense_model.py`
+新增 `--aux-cols attack_similarity`：用 train_rows 建参照语料、给 train/held-out 都打分，
+再把参照语料原文存进 fit report 的 `content_reference_texts` 字段；
+`scripts/fit_koopman_benign_model.py` 读这个字段复用同一个冻结语料，给良性文本
+（`question` 列）打同样的相似度分；`scripts/evaluate_koopman_detector.py` 评测时对 Phase E/F
+的 eval 行做同样的标注。三个脚本都加了 `--aux-cols`，默认空、不影响原有跑法。
+
+**拟合质量：加入这个维度让攻击 regime 的 rollout MSE 变差**（`nu=1,mu=2` 基线 ARX 0.051→0.064，
+richer 0.043→0.074），良性 regime 基本不受影响（0.027→0.028）。说明"当前轮"的攻击相似度
+不是能被安全分历史线性外推预测的量——这符合预期：文本内容和安全分数值走的是两条不同的因果链，
+模型被迫用同一套线性 A/B 去同时预测两者，多花的自由度换来的是拟合变差，不是变好。
+
+**检测准确率：仍然是负面结果，没有清楚跑赢 always-attack 基线**。在 4 种
+`{arx, richer_abs_sign}` 攻击/良性模型组合里都测了一遍（避免只挑一个看起来最好的组合汇报）：
+
+| 攻击模型 | 良性模型 | 逐轮准确率 | 逐轨迹准确率 |
+|---|---|---|---|
+| arx | arx | 0.517–0.546（两版语料） | 0.463–0.575 |
+| arx | richer_abs_sign | 0.540–0.574 | 0.513 |
+| richer_abs_sign | arx | 0.472–0.477 | 0.438–0.488 |
+| richer_abs_sign | richer_abs_sign | 0.466–0.506 | 0.450–0.500 |
+
+（区间来自两版参照语料：第一版纯 bag-of-words，第二版加了一份手写停用词表后重跑——诊断见下段。
+8 个组合里最好的是 arx/richer_abs_sign，逐轮 0.574；`always-attack` 基线是逐轮 0.727、
+逐轨迹 0.800，8 个组合没有一个够到。）**比方案 3 的纯残差比较（0.551/0.475）略好但幅度很小，
+没有改变"跑不赢平凡基线"这个结论。**
+
+**诊断了原因，不是实现 bug**：直接算了一下 held-out 攻击轮次和良性轮次相对参照语料的相似度分布——
+攻击轮次均值 0.315(std 0.091)，良性轮次均值 0.286(std 0.102)，两组几乎完全重叠（加停用词表前是
+0.338 vs 0.311，加了之后差距几乎没变，说明不是停用词污染的问题）。**根因是 bag-of-words 相似度
+在这批短指令式文本上分辨力太弱**：攻击查询和 MT-Bench 良性问题都大量使用"explain/write/how
+would you/describe"这类指令式措辞，这些词在只有 ~20 个攻击的参照语料里出现频率也不算低、
+IDF 压不干净，真正带区分度的内容词（"phishing" vs "poem"之类）在整句余弦相似度里权重被稀释了。
+参照语料本身也小（22 个攻击、每个 4-6 轮），统计上撑不起更细的词表。
+
+**结论：方案 4 在这个最小实现（TF-IDF 词袋 + 冻结小语料）下也是负结果**，且诊断指向的瓶颈
+（短指令式文本上词袋相似度分辨力不足）不是这次实现的偶然缺陷,是这类特征在这个数据规模下的
+真实天花板——继续往前推需要换成语义 embedding 相似度或扩大参照语料规模,而不是在当前 TF-IDF
+实现上继续调参（比如换 n-gram、调 IDF 平滑）。四个方案目前都跑完了：方案 1（残差）负面、
+方案 2（前瞻预警）因方案 1 负结果未执行、方案 3（双 regime）负面、方案 4（内容特征）负面。
+按最上面"这个负结果说明了什么"一节的框架看,这不是"Koopman 方法不行",而是这套项目当前能拿到的
+状态表示（少量数值读数 + 小规模参照语料）信息量上限如此;真要把检测这条线做起来,需要的是更大规模
+的数据或更强的文本表示,不是在现有框架内换一种拟合方式。
+
+产物：`outputs/koopman_detection_content_feature/attack_fit_report.json`（攻击 regime，
+含 `content_reference_texts`）、`benign_fit_report.json`（良性 regime）、
+`two_regime_{attack_model}_{benign_model}/two_regime_detector_report.json`（4 种组合 ×
+2 版语料的检测器评测结果）。代码改动：`modeling/dataset.py`（`ReducedStateConfig.aux_cols`）、
+新增 `modeling/content_similarity.py`，三个脚本加 `--aux-cols`/`--content-reference-report`
+选项，均向后兼容（默认空，不影响任何已有调用），新增单测覆盖 aux_cols 状态构造和相似度计算
+（`tests/test_modeling_dataset.py`、`tests/test_content_similarity.py`，`pytest` 全绿）。
 
 ---
 

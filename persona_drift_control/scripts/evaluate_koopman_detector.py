@@ -16,6 +16,15 @@ Classification rule per trajectory (or per turn): predict "attack" if the
 attack model's mean one-step |residual| is lower than the benign model's,
 else "benign" -- whichever model explains the observed dynamics better.
 
+Also supports detection-design option 4
+(docs/experiments/koopman_detection_design.md): if the loaded fit reports
+carry a non-empty `aux_cols` (written by fit_koopman_defense_model.py /
+fit_koopman_benign_model.py when run with `--aux-cols attack_similarity`),
+this script re-derives the SAME frozen reference corpus (from the attack
+report's `content_reference_texts`) and annotates every eval row with the
+matching content-similarity column before building state pairs, so the
+content-augmented models see the same feature at eval time they were fit on.
+
 CPU-only, pure numpy/pandas -- no GPU needed. Run directly (no sbatch).
 """
 
@@ -31,6 +40,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
+from persona_drift.modeling.content_similarity import annotate_similarity, fit_tfidf_corpus  # noqa: E402
 from persona_drift.modeling.dataset import (  # noqa: E402
     ReducedStateConfig,
     build_reduced_state_pairs,
@@ -80,7 +90,7 @@ def load_model(fit_report_path: pathlib.Path, model_key: str):
     report = json.loads(fit_report_path.read_text())
     cfg = report["config"]
     model_report = report[model_key]
-    config = ReducedStateConfig(nu=cfg["nu"], mu=cfg["mu"])
+    config = ReducedStateConfig(nu=cfg["nu"], mu=cfg["mu"], aux_cols=tuple(cfg.get("aux_cols", [])))
     model = surrogate_from_arrays(
         A=model_report["A"],
         B=model_report["B"],
@@ -159,12 +169,24 @@ def main() -> None:
     args = parse_args()
     attack_model, config = load_model(args.attack_fit_report, args.attack_model_key)
     benign_model, config_benign = load_model(args.benign_fit_report, args.benign_model_key)
-    assert (config.nu, config.mu) == (config_benign.nu, config_benign.mu), "state configs must match to compare"
+    assert (config.nu, config.mu, config.aux_cols) == (
+        config_benign.nu,
+        config_benign.mu,
+        config_benign.aux_cols,
+    ), "state configs must match to compare"
 
     held_out_benign = benign_held_out_ids(args.benign_fit_report)
-    eval_rows = load_attack_eval_rows(args.phase_e_dir_template) + load_benign_eval_rows(
-        args.phase_f_dir_template, held_out_benign
-    )
+    attack_eval_rows = load_attack_eval_rows(args.phase_e_dir_template)
+    benign_eval_rows = load_benign_eval_rows(args.phase_f_dir_template, held_out_benign)
+
+    if config.aux_cols:
+        assert config.aux_cols == ("attack_similarity",), f"unsupported aux_cols {config.aux_cols}"
+        reference_texts = json.loads(args.attack_fit_report.read_text())["content_reference_texts"]
+        corpus = fit_tfidf_corpus(reference_texts)
+        attack_eval_rows = annotate_similarity(attack_eval_rows, "attacker_query", corpus, out_col="attack_similarity")
+        benign_eval_rows = annotate_similarity(benign_eval_rows, "question", corpus, out_col="attack_similarity")
+
+    eval_rows = attack_eval_rows + benign_eval_rows
 
     records = per_trajectory_residuals(attack_model, benign_model, config, eval_rows)
     df = pd.DataFrame.from_records(records)

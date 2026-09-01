@@ -31,13 +31,23 @@ import numpy as np
 
 @dataclass(frozen=True)
 class ReducedStateConfig:
-    """z_t = [y_t, ..., y_(t-nu+1), v_(t-1), ..., v_(t-mu)] per
-    Control_of_Foundational_Model_revised.pdf eq. (8): `nu` past outputs
-    (including the current one) and `mu` past inputs (NOT including the
-    current one -- v_t enters the transition separately, eq. (15))."""
+    """z_t = [y_t, ..., y_(t-nu+1), v_(t-1), ..., v_(t-mu), aux_1(t), ...,
+    aux_k(t)] -- the first two blocks are PDF eq. (8) (`nu` past outputs
+    including the current one, `mu` past inputs NOT including the current
+    one, since v_t enters the transition separately per eq. (15)). `aux_cols`
+    is an optional extension (docs/experiments/koopman_detection_design.md
+    option 4): each name is an extra per-turn scalar column (e.g. a
+    content-derived feature computed outside this module, see
+    modeling.content_similarity) appended to z as its CURRENT-turn value
+    only, no lag history of its own -- `z_next`'s aux block is the same
+    column's value one turn later, so it participates in the fit like any
+    other state component (predictable or not; a column the linear model
+    can't predict just contributes noise in that dimension, it doesn't break
+    anything). Defaults to `()` so every existing caller is unaffected."""
 
     nu: int = 1
     mu: int = 1
+    aux_cols: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.nu < 1:
@@ -47,7 +57,7 @@ class ReducedStateConfig:
 
     @property
     def state_dim(self) -> int:
-        return self.nu + self.mu
+        return self.nu + self.mu + len(self.aux_cols)
 
 
 def load_trajectories(path: str | pathlib.Path) -> list[dict]:
@@ -119,6 +129,7 @@ def build_reduced_state_pairs(
     nu, mu = config.nu, config.mu
     ys = [row[y_col] for row in traj_rows]
     vs = [float(row[u_col]) for row in traj_rows]
+    aux_series = [[float(row[col]) for row in traj_rows] for col in config.aux_cols]
     pairs: list[dict] = []
     start = max(nu - 1, mu)
     for t in range(start, len(traj_rows) - 1):
@@ -126,15 +137,17 @@ def build_reduced_state_pairs(
         v_hist = vs[t - mu : t]
         y_hist_next = ys[t - nu + 2 : t + 2]
         v_hist_next = vs[t - mu + 1 : t + 1]
-        values = y_hist + v_hist + [vs[t]] + y_hist_next + v_hist_next
+        aux_now = [series[t] for series in aux_series]
+        aux_next = [series[t + 1] for series in aux_series]
+        values = y_hist + v_hist + [vs[t]] + y_hist_next + v_hist_next + aux_now + aux_next
         if any(value != value for value in values):  # NaN check without numpy
             continue
         pairs.append(
             {
-                "z": np.array(y_hist + v_hist, dtype=float),
+                "z": np.array(y_hist + v_hist + aux_now, dtype=float),
                 "v": np.array([vs[t]], dtype=float),
                 "y": float(ys[t]),
-                "z_next": np.array(y_hist_next + v_hist_next, dtype=float),
+                "z_next": np.array(y_hist_next + v_hist_next + aux_next, dtype=float),
             }
         )
     return pairs
