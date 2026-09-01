@@ -10,6 +10,7 @@ still import `hundred_system_prompts.py` and score probe responses.
 | `word_lists/google-10000-english-usa.txt` | `first20hours/google-10000-english`, `google-10000-english-usa.txt` | `main` branch (fetched 2026-08-27; upstream `hundred_system_prompts.py` still pointed at the old `master` branch, which 404s) | see upstream repo |
 | `word_lists/one-syllable-sorted-by-prevalence.txt` | `gautesolheim/25000-syllabified-words-list`, `1-syllable-sorted-by-frequency.txt` | `main` branch (fetched 2026-08-27; file was renamed and the `master` branch removed upstream since `hundred_system_prompts.py` was written) | see `LICENSE.md` in that repo |
 | `safemtdata_attack_600.json` | `SafeMTData/SafeMTData` on Hugging Face, `SafeMTData/Attack_600.json` (ActorAttack, Ren et al., "Derail Yourself", arXiv 2410.10700) | sha `04af7bd0b6b6044e797e936d79674e348316b9b8` (fetched 2026-08-31) | MIT |
+| `mtbench_questions.jsonl` | `lm-sys/FastChat` on GitHub, `fastchat/llm_judge/data/mt_bench/question.jsonl` (MT-Bench, Zheng et al., "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena", NeurIPS 2023) | commit `b494d0c6b4e7935f1764f8439e75da3e66beccc7` (last touched that path; fetched 2026-09-01) | Apache-2.0 |
 
 `hundred_system_prompts.py` carries two small local patches relative to the
 upstream file, documented in a comment at the top of the file itself:
@@ -25,6 +26,7 @@ curl -s "https://huggingface.co/datasets/Naomibas/llm-system-prompts-benchmark/r
 curl -s "https://raw.githubusercontent.com/first20hours/google-10000-english/main/google-10000-english-usa.txt" -o word_lists/google-10000-english-usa.txt
 curl -s "https://raw.githubusercontent.com/gautesolheim/25000-syllabified-words-list/main/1-syllable-sorted-by-frequency.txt" -o word_lists/one-syllable-sorted-by-prevalence.txt
 curl -sL "https://huggingface.co/datasets/SafeMTData/SafeMTData/resolve/main/SafeMTData/Attack_600.json" -o safemtdata_attack_600.json
+curl -s "https://raw.githubusercontent.com/lm-sys/FastChat/main/fastchat/llm_judge/data/mt_bench/question.jsonl" -o mtbench_questions.jsonl
 ```
 
 `safemtdata_attack_600.json` contains multi-turn jailbreak attack query sequences (600 rows,
@@ -37,3 +39,12 @@ open-weight model's own responses, not to develop new attacks.
 
 Re-applying the two local patches to `download_file()` and `random_probes` is
 manual after a re-fetch.
+
+`mtbench_questions.jsonl` contains 80 benign multi-turn question pairs (10 per category, 8
+categories: writing/roleplay/reasoning/math/coding/extraction/stem/humanities), each with a
+fixed 2-turn `turns: [turn1, turn2]` follow-up. Used as **fixed, pre-generated benign session
+content** for the Phase F helpfulness-cost check
+(`docs/experiments/koopman_defense_pilot.md`) -- loaded by `benign_bank.py`, which chains 3
+same-category entries into one 6-turn session so the Koopman-MPC controller has enough history
+to act (mirrors how `attack_bank.py`/`safemtdata_attack_600.json` supplies fixed multi-turn
+content for the adversarial-defense line).

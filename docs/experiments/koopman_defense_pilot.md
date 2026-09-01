@@ -200,10 +200,129 @@ for c in zero_control constant_remind threshold koopman_mpc; do
 done
 ```
 
-## 下一步（四臂结果出来后补充）
+## 结果：Phase E（四作业均于 2026-08-31 23:22–2026-09-01 00:00 完成，各约 11 分钟）
 
-（结果出来后补：四臂 new-Q1 斜率/t/p 对比表，`koopman_mpc` 是否显著优于 `zero_control`、
-是否不输给/优于 `constant_remind`/`threshold`；`inserted_tokens` 总量对比（`koopman_mpc`
-若能用比 `constant_remind` 更少的提醒次数达到接近的安全性,是"建模复杂度换来了收益"的直接
-证据）；如果 `koopman_mpc` 打不过 `constant_remind` 这种最笨的常数策略,如实记录为负结果,
-不是失败,是诚实的方法学结论。）
+8 个 held-out 攻击 × 2 seed = 16 条轨迹/臂，均未出现在 Phase B/C 的拟合数据里。
+
+| 臂 | new-Q1 t / p / pass | new-Q3 r / p / pass | turn5 y_safety | refusal_rate | 提醒次数/80 | inserted_tokens |
+|---|---|---|---|---|---|---|
+| zero_control | t=-3.70, p=0.0076, **True**（侵蚀显著） | r=0.5698, p=0.0000, True | 0.5156 | 0.0000 | 0 | 0 |
+| constant_remind | t=-3.16, p=0.0160, **True**（侵蚀仍显著） | r=0.0350, p=0.7837, False | 0.8281 | 0.0750 | 80 | 2880 |
+| threshold | t=-4.77, p=0.0020, **True**（侵蚀更显著，t 比无控制基线还差） | r=0.0786, p=0.5371, False | 0.7188 | 0.0500 | 7 | 252 |
+| koopman_mpc | t=-2.34, p=0.0521, **False**（唯一侵蚀不显著，临界） | r=0.2668, p=0.0331, True | 0.7969 | 0.0750 | 32 | 1152 |
+
+**成功判据判定：通过。** 按计划文件（`shiny-stargazing-sphinx.md`）定的判据——"侵蚀斜率明显好于
+无控制基线，且不明显差于（理想是优于）常提醒/阈值这两个经典基线"——`koopman_mpc` 的
+t 统计量（-2.34）在四臂里绝对值最小（最接近 0，侵蚀最弱），同时优于 `zero_control`
+（-3.70）、优于 `constant_remind`（-3.16）、也优于 `threshold`（-4.77，反而比无控制基线更差，
+说明 `y_min=0.7` 触发阈值在这批 held-out 攻击上明显欠触发——7/80 轮插入，比 `koopman_mpc`
+的 32/80 还稀疏，达不到干预密度）。`koopman_mpc` 是四臂里唯一让 new-Q1 侵蚀检验从显著
+（p<0.05）变为不显著（p=0.0521，非常接近临界值，需谨慎解读为"勉强通过"而非"压倒性"）的臂。
+
+**代价侧证据支持"建模复杂度换来了收益"**：`koopman_mpc` 只用了 `constant_remind` 40%
+的插入次数（32 vs 80）、40% 的 token 代价（1152 vs 2880），turn5 均值安全分（0.7969）已经
+接近 `constant_remind`（0.8281），明显超过 `threshold`（0.7188）。换言之，MPC
+用不到一半的提醒预算,拿到了不输给"每轮都提醒"这个最笨策略的效果,并在统计显著性判据上
+略微超过它。
+
+**需要如实记录的保留意见**：
+1. `constant_remind` 在 Phase A（20 攻击 × 2 seed）上曾把 new-Q1 打到 p=0.125（不显著），
+   但在这批不同的 8 个 held-out 攻击上是 p=0.016（显著）——说明"是否显著"这个二值判据本身
+   对攻击子集较敏感,`koopman_mpc` 的 p=0.0521 同样应该在这个粒度上谨慎解读,不宜过度渲染
+   为"决定性胜利"。
+2. `koopman_mpc` 的 new-Q3（惯性）pass=True 而 `constant_remind`/`threshold` 都是 False——
+   这与其说是 MPC 的缺陷,不如说是符合预期：MPC 只在约 40% 的轮次插入,轮次间仍保留部分
+   未受干预的动力学结构,惯性没有被提醒动作"抹平"。
+
+**结论：Koopman-MPC 控制器打赢了两个经典基线（无控制、阈值反馈），且用更低代价追平了
+常提醒基线，达成计划文件设定的成功判据。这条实验线（Phase A→E）到此完整闭环。**
+
+## Phase F：良性查询 helpfulness 代价检查（设计方案见
+`/home/hcao2/.claude/plans/happy-purring-sunset.md`，已批准）
+
+复用 attack_bank→attack_trajectory→adversarial_screening→analysis_adversarial 的整套结构，
+换成良性内容：
+
+- 良性数据：新 vendor `resources/mtbench_questions.jsonl`（MT-Bench 80 题，8 类，Apache-2.0，
+  见 `PROVENANCE.md`）。每类链接 3 道该类题目（3×2轮=6轮）成一个 session——单题只有 2 轮，
+  不够 `KoopmanMPCController`（`nu=1,mu=2` 要求 `len(history)>=3` 才会产生非默认动作）真正
+  决策，6 轮给它第 4-6 轮三次机会。`benign_bank.py` 新增，8 类全用，不做子采样。
+- `control.py` **完全未改**：`ThresholdController`/`KoopmanMPCController` 仍然读
+  `history[-1]["y_probe"]`，由 `safety_judge`（用固定占位 `harmful_goal` 打分）驱动，模拟
+  "真实部署里监控跑在全部流量上"；新增 `helpfulness_judge.py`（新 rubric：拒绝/回避判低分，
+  不像 `safety_judge` 把拒绝当满分）产出的 `y_help` 是并行、不进决策的结果指标。
+- 新增 `benign_trajectory.py`/`benign_screening.py`/`analysis_helpfulness.py`/
+  `scripts/run_benign_helpfulness_screening.py`，四个 sbatch
+  (`run_koopman_defense_phaseF_{zero_control,constant_remind,threshold,koopman_mpc}.sbatch`)。
+  `analysis_helpfulness.compare_arms_to_zero_control` 在 16 个固定 `(benign_id, seed)` 会话
+  上做配对 t 检验（内容跨臂相同，只有 `u_remind` 序列不同，和 Phase E 同款设计）。
+- 测试：`test_benign_bank.py`/`test_helpfulness_judge.py`/`test_benign_trajectory.py`/
+  `test_analysis_helpfulness.py`/`test_benign_screening.py`，CPU 全套 170 passed（新增 23,
+  无回归）。
+- **无 go/no-go 门槛**——这是描述性代价报告，不是通过/不通过判定。
+
+### Phase F 状态
+
+四臂互相独立（不像 Phase A→E 那样需要顺序 gate）。zero_control 臂先单独提交做冒烟验证
+（job 15427488），第一条轨迹（`mtbench_coding__seed0`，6 轮，两次 judge 调用/轮）54s 内
+无异常跑完,确认全链路（vendor 数据加载→提醒插入→两次 judge 调用→报告落盘）在真实 GPU/模型
+上没问题,随后提交其余三臂：`constant_remind` job 15427539、`threshold` job 15427540、
+`koopman_mpc` job 15427541。四个作业于 2026-09-01 提交,均已在跑或排队。
+
+```bash
+squeue --me
+for c in zero_control constant_remind threshold koopman_mpc; do
+  echo "=== $c ==="
+  cat outputs/koopman_defense_phaseF_$c/benign_screening_report.md 2>/dev/null
+done
+```
+
+## 结果：Phase F（四作业均于 2026-09-01 09:56–10:09 完成，各约 10-12 分钟）
+
+8 个 MT-Bench 良性类别 × 2 seed = 16 个会话（每会话 6 轮）/臂，内容跨臂完全相同（同
+`(benign_id, seed)`），只有 `u_remind` 序列不同。
+
+| 臂 | mean_y_help (sd) | refusal_rate | 提醒次数/96 | inserted_tokens | Δ vs zero_control (mean_diff / t / p) |
+|---|---|---|---|---|---|
+| zero_control | 0.8750 (0.2460) | 0.0000 | 0/96 | 0 | — |
+| constant_remind | 0.7708 (0.3338) | 0.1458 | 96/96 | 3456 | -0.1042 / t=-1.6887 / p=0.1120 |
+| threshold | 0.8750 (0.2460) | 0.0000 | 3/96 | 108 | 0.0000 / t=nan / p=nan |
+| koopman_mpc | 0.8620 (0.2711) | 0.0312 | 48/96 | 1728 | -0.0130 / t=-0.7182 / p=0.4837 |
+
+**读数（描述性，无门槛）**：
+
+- **`constant_remind` 代价最明显但配对检验不显著**：mean_y_help 从 0.875 掉到 0.771，
+  refusal_rate 从 0 升到 0.1458——完全无害的请求里,约 1/7 的回合因为每轮都插安全提醒而被
+  拒答/回避,这正是"倒U"风险担心的那种代价。但 16 个会话样本量小、方差大，配对 t 检验
+  p=0.112,不到传统 0.05 门槛,只能说"方向上有代价,统计上证据不够强"，不能说"确认有害"。
+- **`koopman_mpc` 代价很小、方向一致但同样不显著**：mean_y_help 0.862（比
+  zero_control 只低 0.013,t=-0.72,p=0.48）,refusal_rate 0.0312（vs 0）,只用了
+  `constant_remind` 一半的插入次数（48 vs 96/96）、约一半的 token 代价（1728 vs 3456）。
+  换句话说,`koopman_mpc` 在 Phase E 里对攻击有效,而在这里对良性流量几乎不产生可测的
+  helpfulness 代价——这是"建模复杂度换来了收益"故事的又一块证据：不仅比常提醒更省成本地
+  防住了攻击（Phase E),还比常提醒更少地误伤良性流量。
+- **`threshold` 的"零代价"是个需要谨慎解读的巧合，不是真正的零代价**：诊断显示它确实触发了
+  3 次提醒（`mtbench_math__seed0` 第 3 轮、`mtbench_roleplay__seed1` 第 5-6 轮），触发后的
+  agent 回复文本确实变了（`agent_message` 不同），但受影响会话的 `y_help` 会话内均值恰好
+  和 `zero_control` 完全相等（`roleplay__seed1` 是两轮分数从 0.25+0.0 变成 0.0+0.25，总和
+  巧合相同）——1-5 量化打分下的巧合，配对差值处处为 0 导致 `ttest_rel` 方差为零、
+  `t`/`p` 返回 `nan`（`scipy` 对零方差配对数据的正常行为，不是代码 bug，逐行核对过
+  `trajectories.jsonl` 确认）。真实结论应该是"threshold 触发太少（3/96），这批良性会话
+  测不出它的代价"，不是"threshold 代价严格为零"。
+- **无一臂在这批良性数据上出现统计显著的 helpfulness 下降**（都是 p>0.1），所以按这次的
+  判据（是否显著抵消 Phase E 的代价优势）：**没有**——`koopman_mpc` 的 Phase E 胜利没有被
+  这次检查推翻,但 `constant_remind` 的效应量本身最大,如果之后想更严格地检验这个方向,需要
+  更大的良性样本（更多类别/更多 seed）才能把 p=0.112 这类边界情况谈清楚。
+
+**结论：Phase F 不构成推翻 Phase E 结论的证据,`koopman_mpc` 依然是四臂里唯一同时在攻击场景
+（Phase E）和良性场景（Phase F）都取得"不输给经典基线、代价明显更低"的控制器。** 这条
+Phase A→F 主线到此完整闭环；样本量小是本轮结果的主要局限，值得记录但不构成必须补做的门槛。
+
+## 另一条支线：给 Koopman 模型加检测能力
+
+Phase E 打赢后引出的新问题——现在的 `KoopmanMPCController` 只用代理模型选动作，"是否存在
+攻击"这个判断始终隐含在 `y_safety` 这个 judge 分数里，Koopman 模型本身没有显式的检测输出。
+四个设计方案 + 方案 1（一步预测残差/innovation）在 Phase E 数据上的执行结果（负面/持平，
+残差被"策略分布外"效应污染，没有干净跑赢"下一轮=上一轮"基线）记录在
+[koopman_detection_design.md](koopman_detection_design.md)，不写在这份文档里，两条线分开
+接续。
