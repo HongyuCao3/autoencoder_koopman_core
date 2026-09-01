@@ -8,6 +8,7 @@ from persona_drift.modeling.koopman import (
     abs_sign_extra_features,
     controllability_diagnostics,
     no_extra_features,
+    surrogate_from_arrays,
 )
 
 
@@ -126,6 +127,45 @@ def test_rollout_output_error_accepts_custom_cols():
 
     held_out_rows = _rows([0.2])
     assert rollout_output_error(model, held_out_rows, config, y_col="y_safety") < 1e-6
+
+
+def test_surrogate_from_arrays_reconstructs_a_usable_model():
+    a, g, c = 0.85, 0.3, 0.05
+    v_pattern = [0, 1, 0, 0, 1, 1, 0, 1]
+    rows = _simulate_linear_trajectories(a, g, c, y0s=[1.0, 0.5, -0.3], v_pattern=v_pattern, num_turns=20)
+    config = ReducedStateConfig(nu=1, mu=0)
+    fitted = KoopmanSurrogate(ridge=1e-10).fit(build_identification_dataset(rows, config))
+
+    reloaded = surrogate_from_arrays(fitted.A, fitted.B, fitted.b, fitted.C, state_dim=fitted.state_dim)
+    assert reloaded.state_dim == fitted.state_dim
+    z = np.array([0.4])
+    assert np.allclose(reloaded.step(z, np.array([1.0])), fitted.step(z, np.array([1.0])))
+    assert np.isclose(reloaded.readout(z), fitted.readout(z))
+
+
+def test_surrogate_from_arrays_with_a_real_lifting_can_be_rolled_out_multiple_steps():
+    # Regression guard: state_dim must come from the caller, not from A's
+    # shape -- with a real (non-identity) lifting, A is (d_psi, d_psi) with
+    # d_psi > state_dim, and step()'s eta_next[:state_dim] truncation
+    # silently breaks (feeds a stale-sized vector back into _psi on the next
+    # call) if state_dim is wrongly inferred as A.shape[0].
+    a, g, c = 0.85, 0.3, 0.05
+    v_pattern = [0, 1, 0, 0, 1, 1, 0, 1]
+    rows = _simulate_linear_trajectories(a, g, c, y0s=[1.0, 0.5, -0.3], v_pattern=v_pattern, num_turns=20)
+    config = ReducedStateConfig(nu=1, mu=0)
+    fitted = KoopmanSurrogate(extra_features_fn=abs_sign_extra_features, ridge=1e-8).fit(
+        build_identification_dataset(rows, config)
+    )
+    assert fitted.A.shape[0] != fitted.state_dim  # sanity: the lifting really does change d_psi
+
+    reloaded = surrogate_from_arrays(
+        fitted.A, fitted.B, fitted.b, fitted.C, state_dim=fitted.state_dim, extra_features_fn=abs_sign_extra_features
+    )
+    z = np.array([0.4])
+    for v in (np.array([1.0]), np.array([0.0]), np.array([1.0])):
+        z = reloaded.step(z, v)  # must not raise across repeated calls
+        assert z.shape == (fitted.state_dim,)
+    assert np.isfinite(reloaded.readout(z))
 
 
 def test_fit_raises_on_empty_dataset():

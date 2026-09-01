@@ -23,7 +23,7 @@ from typing import Any, Callable
 from loguru import logger
 
 from .analysis_adversarial import analyze_adversarial_screening
-from .attack_bank import load_attack_bank, select_screening_attacks
+from .attack_bank import load_attack_bank, select_attacks_by_id, select_screening_attacks
 from .attack_trajectory import AttackTrajectoryConfig, run_attack_trajectory
 from .chat_model import ChatModel
 from .control import Controller, ZeroControlController
@@ -70,6 +70,7 @@ def run_adversarial_screening(
     trajectory_config: AttackTrajectoryConfig | None = None,
     enable_thinking: bool = False,
     controller_factory: Callable[[int], Controller] | None = None,
+    attack_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -88,7 +89,16 @@ def run_adversarial_screening(
     controller_factory = controller_factory or (lambda seed: ZeroControlController())
 
     bank = load_attack_bank()
-    attacks = select_screening_attacks(bank, num_attacks=num_attacks, rng_seed=attack_rng_seed)
+    # An explicit attack_ids list (e.g. Phase C's held-out split from a
+    # Koopman identification run) takes precedence over the random
+    # rng_seed-based sample -- see docs/experiments/koopman_defense_pilot.md
+    # for why Phase E's closed-loop validation needs this rather than
+    # relying on a different attack_rng_seed to merely reduce overlap odds.
+    attacks = (
+        select_attacks_by_id(bank, attack_ids)
+        if attack_ids is not None
+        else select_screening_attacks(bank, num_attacks=num_attacks, rng_seed=attack_rng_seed)
+    )
 
     # One throwaway construction just to read .name for the run_id/config
     # below, before the real per-trajectory instances are built inside the

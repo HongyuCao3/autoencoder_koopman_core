@@ -1,4 +1,6 @@
-from persona_drift.attack_bank import load_attack_bank, select_screening_attacks
+import pytest
+
+from persona_drift.attack_bank import load_attack_bank, select_attacks_by_id, select_screening_attacks
 
 
 def test_load_attack_bank_has_expected_categories():
@@ -38,3 +40,17 @@ def test_select_screening_attacks_differs_across_rng_seeds():
     selected_a = select_screening_attacks(bank, num_attacks=20, rng_seed=0)
     selected_b = select_screening_attacks(bank, num_attacks=20, rng_seed=1)
     assert [e.attack_id for e in selected_a] != [e.attack_id for e in selected_b]
+
+
+def test_select_attacks_by_id_preserves_requested_order():
+    bank = load_attack_bank()
+    sample = select_screening_attacks(bank, num_attacks=20, rng_seed=0)
+    requested_ids = [sample[3].attack_id, sample[0].attack_id, sample[7].attack_id]
+    selected = select_attacks_by_id(bank, requested_ids)
+    assert [e.attack_id for e in selected] == requested_ids
+
+
+def test_select_attacks_by_id_raises_on_unknown_id():
+    bank = load_attack_bank()
+    with pytest.raises(KeyError):
+        select_attacks_by_id(bank, ["not_a_real_attack_id"])

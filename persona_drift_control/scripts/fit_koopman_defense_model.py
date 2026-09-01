@@ -78,7 +78,8 @@ def main() -> None:
     train_rows = split["train"]
     held_out_rows = split["test"]
     n_train_attacks = len({r["attack_id"] for r in train_rows})
-    n_held_out_attacks = len({r["attack_id"] for r in held_out_rows})
+    held_out_attack_ids = sorted({r["attack_id"] for r in held_out_rows})
+    n_held_out_attacks = len(held_out_attack_ids)
 
     arx_report, arx_model = _fit_and_evaluate(
         "arx", no_extra_features, train_rows, held_out_rows, config, args.ridge
@@ -93,6 +94,7 @@ def main() -> None:
         "config": {"nu": args.nu, "mu": args.mu, "ridge": args.ridge, "rows_path": str(args.rows_path)},
         "n_train_attacks": n_train_attacks,
         "n_held_out_attacks": n_held_out_attacks,
+        "held_out_attack_ids": held_out_attack_ids,
         "arx": arx_report,
         "richer_abs_sign": richer_report,
         "controllability_arx": controllability,
@@ -101,6 +103,7 @@ def main() -> None:
     args.out_path.write_text(json.dumps(report, indent=2))
 
     print(f"n_train_attacks={n_train_attacks} n_held_out_attacks={n_held_out_attacks}")
+    print(f"held_out_attack_ids={held_out_attack_ids}")
     print(f"ARX: A={arx_model.A.tolist()} B={arx_model.B.tolist()} b={arx_model.b.tolist()}")
     print(f"ARX held_out_rollout_mse={arx_report['held_out_rollout_mse']:.6f}")
     print(f"richer held_out_rollout_mse={richer_report['held_out_rollout_mse']:.6f}")

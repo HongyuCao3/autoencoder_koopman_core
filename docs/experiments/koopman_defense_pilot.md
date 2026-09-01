@@ -154,4 +154,56 @@ MSE=0.068，和 Phase A"常提醒让终轮安全分翻倍"这个明确证据不�
 **结论（go/no-go）：通过，但用 `nu=1, mu=2` 而不是原计划的 `nu=1, mu=1` 作为 Phase D/E 的
 状态阶数**——单一"是否插了这一轮提醒"的记忆不够，需要看最近两轮的插入历史才能让线性模型
 看出"持续提醒"和"偶尔提醒"的区别，这和 Phase A（常提醒，持续 100%）与 Phase B（随机激励，
-平均 50%）效果强度不同这一现象本身是自洽的。
+平均 50%）效果强度不同这一现象本身是自洽的。`mu=2` 下 `richer_abs_sign`
+（`abs_sign_extra_features`）比纯 ARX 拟合更好（held-out rollout MSE 0.043 vs 0.051），
+选它作为 Phase D/E 用的模型。
+
+held-out 攻击 id（`split_col="attack_id"`, seed=0, 25%）：`safemtdata_0074/0169/0257/0289/
+0324/0329/0476/0530`——这 8 个攻击没有进入 Phase C 的拟合数据,专门留给 Phase E 做真正的
+样本外闭环验证。
+
+## Phase D：KoopmanMPCController 接上真实模型
+
+`control.py::KoopmanMPCController` 在写测试时用的是手造的合成 surrogate,这次是第一次接上
+真实拟合出的模型,过程中发现并修了一个 bug：**`modeling/koopman.py::surrogate_from_arrays`
+最初从 `A.shape[0]` 推断 `state_dim`,但 `A` 是提升后的维度（`d_psi`）,只有 `no_extra_features`
+（ARX，无提升）时才等于真正的状态维度；用 `abs_sign_extra_features` 这种真提升时 `d_psi
+> state_dim`,`step()` 里 `eta_next[:state_dim]` 的截断会用错误的长度截断,导致下一次调用
+`_psi()` 时输入维度对不上,矩阵乘法直接报错。** 用真实模型做冒烟测试时当场触发（`A.shape[0]=5`
+但真实 `state_dim=3`）,已修复为要求调用方显式传 `state_dim`（`ReducedStateConfig(nu,
+mu).state_dim`），`tests/test_koopman.py` 新增一个用 `abs_sign_extra_features` 的回归测试
+专门覆盖这个情况（纯 ARX 测试测不出来,因为两个维度那时候恰好相等）。
+
+`scripts/run_defended_screening.py` 新增 `--controller koopman_mpc`（读
+`koopman_fit_report.json`、`--koopman-model-key {arx,richer_abs_sign}`、`--koopman-nu/mu/
+horizon/repeat-penalty`）和 `--attack-ids`（显式攻击 id 列表,替代随机抽样，配合
+`attack_bank.select_attacks_by_id`/`adversarial_screening.run_adversarial_screening` 新增的
+`attack_ids` 参数——这样 Phase E 四臂可以在完全相同、且不在 Phase B 训练集里的攻击集合上
+对比,而不是像 Phase A 那样靠不同 `attack_rng_seed` 只是"降低"重叠概率)。
+
+## Phase E：四臂闭环验证（已提交）
+
+四个作业都用同一批 8 个 held-out 攻击 × 2 seed = 16 条轨迹：
+
+| 作业 | Controller | sbatch |
+|---|---|---|
+| zero_control | 无控制 | `run_koopman_defense_phaseE_zero_control.sbatch` |
+| constant_remind | 常提醒 | `run_koopman_defense_phaseE_constant_remind.sbatch` |
+| threshold | y_min=0.7 阈值反馈（经典基线，Koopman-MPC 必须打赢的对照） | `run_koopman_defense_phaseE_threshold.sbatch` |
+| koopman_mpc | `richer_abs_sign`, nu=1/mu=2, horizon=2, 无代价惩罚 | `run_koopman_defense_phaseE_koopman_mpc.sbatch` |
+
+```bash
+squeue --me
+for c in zero_control constant_remind threshold koopman_mpc; do
+  echo "=== $c ==="
+  cat persona_drift_control/outputs/koopman_defense_phaseE_$c/adversarial_screening_report.md 2>/dev/null
+done
+```
+
+## 下一步（四臂结果出来后补充）
+
+（结果出来后补：四臂 new-Q1 斜率/t/p 对比表，`koopman_mpc` 是否显著优于 `zero_control`、
+是否不输给/优于 `constant_remind`/`threshold`；`inserted_tokens` 总量对比（`koopman_mpc`
+若能用比 `constant_remind` 更少的提醒次数达到接近的安全性,是"建模复杂度换来了收益"的直接
+证据）；如果 `koopman_mpc` 打不过 `constant_remind` 这种最笨的常数策略,如实记录为负结果,
+不是失败,是诚实的方法学结论。）

@@ -67,3 +67,15 @@ def select_screening_attacks(
         pool = bank[label]
         selected.extend(rng.sample(pool, k=min(take, len(pool))))
     return selected
+
+
+def select_attacks_by_id(bank: dict[str, list[AttackEntry]], attack_ids: list[str]) -> list[AttackEntry]:
+    """Look up specific attacks by id across all categories, preserving
+    `attack_ids`'s order -- for replaying an exact, externally-determined
+    attack set (e.g. a held-out split held back from a Koopman
+    identification run, see docs/experiments/koopman_defense_pilot.md)
+    rather than drawing a fresh random sample. Raises KeyError if any id
+    isn't found."""
+
+    by_id = {entry.attack_id: entry for entries in bank.values() for entry in entries}
+    return [by_id[attack_id] for attack_id in attack_ids]

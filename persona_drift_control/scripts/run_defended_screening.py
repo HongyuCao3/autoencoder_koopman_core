@@ -19,6 +19,7 @@ adversarial_screening_report.json, and adversarial_screening_report.md under
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import sys
 from typing import Callable
@@ -31,15 +32,50 @@ from persona_drift.chat_model import GenerationConfig  # noqa: E402
 from persona_drift.control import (  # noqa: E402
     ConstantRemindController,
     Controller,
+    KoopmanMPCController,
     RandomExciteController,
     ThresholdController,
     ZeroControlController,
 )
+from persona_drift.modeling.dataset import ReducedStateConfig  # noqa: E402
+from persona_drift.modeling.koopman import abs_sign_extra_features, no_extra_features, surrogate_from_arrays  # noqa: E402
 
-CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "random_excite")
+CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "random_excite", "koopman_mpc")
+_EXTRA_FEATURES_FNS = {"arx": no_extra_features, "richer_abs_sign": abs_sign_extra_features}
 
 
-def _make_controller_factory(name: str, threshold_y_min: float, random_excite_p: float) -> Callable[[int], Controller]:
+def _load_koopman_mpc_controller(
+    model_path: pathlib.Path,
+    model_key: str,
+    nu: int,
+    mu: int,
+    horizon: int,
+    repeat_penalty: float,
+) -> KoopmanMPCController:
+    report = json.loads(model_path.read_text())
+    fit = report[model_key]
+    surrogate = surrogate_from_arrays(
+        fit["A"],
+        fit["B"],
+        fit["b"],
+        fit["C"],
+        state_dim=ReducedStateConfig(nu=nu, mu=mu).state_dim,
+        extra_features_fn=_EXTRA_FEATURES_FNS[model_key],
+    )
+    return KoopmanMPCController(
+        surrogate=surrogate,
+        state_config=ReducedStateConfig(nu=nu, mu=mu),
+        horizon=horizon,
+        repeat_penalty=repeat_penalty,
+    )
+
+
+def _make_controller_factory(
+    name: str,
+    threshold_y_min: float,
+    random_excite_p: float,
+    koopman_mpc_controller: KoopmanMPCController | None,
+) -> Callable[[int], Controller]:
     if name == "zero_control":
         return lambda seed: ZeroControlController()
     if name == "constant_remind":
@@ -48,6 +84,11 @@ def _make_controller_factory(name: str, threshold_y_min: float, random_excite_p:
         return lambda seed: ThresholdController(y_min=threshold_y_min)
     if name == "random_excite":
         return lambda seed: RandomExciteController(p=random_excite_p, seed=seed)
+    if name == "koopman_mpc":
+        # Stateless given a fixed fitted surrogate -- safe to hand out the
+        # same instance to every trajectory (unlike RandomExciteController,
+        # there's no per-trajectory RNG state to keep independent).
+        return lambda seed: koopman_mpc_controller
     raise ValueError(f"unknown controller: {name!r}")
 
 
@@ -68,6 +109,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--controller", choices=CONTROLLER_CHOICES, required=True)
     parser.add_argument("--threshold-y-min", type=float, default=0.7)
     parser.add_argument("--random-excite-p", type=float, default=0.5)
+    parser.add_argument(
+        "--attack-ids",
+        nargs="+",
+        default=None,
+        help="replay this exact set of attack ids instead of a random --num-attacks/--attack-rng-seed sample "
+        "(e.g. Phase E's held-out split from koopman_fit_report.json)",
+    )
+    parser.add_argument(
+        "--koopman-model-path",
+        type=pathlib.Path,
+        default=pathlib.Path("outputs/koopman_defense_phaseB_random_excite/koopman_fit_report.json"),
+        help="only used when --controller koopman_mpc",
+    )
+    parser.add_argument("--koopman-model-key", choices=list(_EXTRA_FEATURES_FNS), default="richer_abs_sign")
+    parser.add_argument("--koopman-nu", type=int, default=1)
+    parser.add_argument("--koopman-mu", type=int, default=2)
+    parser.add_argument("--koopman-horizon", type=int, default=2)
+    parser.add_argument("--koopman-repeat-penalty", type=float, default=0.0)
     return parser.parse_args()
 
 
@@ -77,7 +136,21 @@ def main() -> None:
     trajectory_config = AttackTrajectoryConfig(
         agent_gen=GenerationConfig(max_new_tokens=args.agent_max_new_tokens),
     )
-    controller_factory = _make_controller_factory(args.controller, args.threshold_y_min, args.random_excite_p)
+    koopman_mpc_controller = (
+        _load_koopman_mpc_controller(
+            args.koopman_model_path,
+            args.koopman_model_key,
+            args.koopman_nu,
+            args.koopman_mu,
+            args.koopman_horizon,
+            args.koopman_repeat_penalty,
+        )
+        if args.controller == "koopman_mpc"
+        else None
+    )
+    controller_factory = _make_controller_factory(
+        args.controller, args.threshold_y_min, args.random_excite_p, koopman_mpc_controller
+    )
     report = run_adversarial_screening(
         agent_model_id=args.agent_model,
         judge_model_id=judge_model,
@@ -88,6 +161,7 @@ def main() -> None:
         device=args.device,
         trajectory_config=trajectory_config,
         controller_factory=controller_factory,
+        attack_ids=args.attack_ids,
     )
     print(f"controller={args.controller}")
     print(f"new_q1_escalation.pass={report['new_q1_escalation']['pass']}")

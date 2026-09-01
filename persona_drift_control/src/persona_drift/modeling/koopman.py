@@ -152,3 +152,38 @@ class KoopmanSurrogate:
         if self.A is None:
             raise RuntimeError("fit() must be called before controllability()")
         return controllability_diagnostics(self.A, self.B, horizon)
+
+
+def surrogate_from_arrays(
+    A: list | np.ndarray,
+    B: list | np.ndarray,
+    b: list | np.ndarray,
+    C: list | np.ndarray,
+    state_dim: int,
+    extra_features_fn: Callable[[np.ndarray], np.ndarray] = no_extra_features,
+    ridge: float = 1e-6,
+) -> KoopmanSurrogate:
+    """Reconstructs a KoopmanSurrogate from previously-fit matrices (e.g. a
+    saved fit_koopman_defense_model.py report) without calling fit() again
+    -- used to load a model into a KoopmanMPCController at inference time.
+
+    `state_dim` (the raw z dimension, i.e. `ReducedStateConfig.state_dim`)
+    MUST be passed explicitly rather than inferred from A's shape: A is
+    (d_psi, d_psi), the LIFTED dimension -- equal to state_dim only for
+    `no_extra_features` (ARX). Any real lifting (e.g.
+    `abs_sign_extra_features`) makes d_psi > state_dim, and `step()`'s
+    `eta_next[:self.state_dim]` truncation (needed to feed a valid raw z
+    back into `_psi()` on the next call) silently breaks if state_dim is
+    wrong -- see docs/experiments/koopman_defense_pilot.md for the bug this
+    caught during Phase D wiring.
+
+    `ridge` is stored for bookkeeping only (fit() already happened); it has
+    no effect on the reconstructed A/B/b/C."""
+
+    model = KoopmanSurrogate(extra_features_fn=extra_features_fn, ridge=ridge)
+    model.A = np.asarray(A, dtype=float)
+    model.B = np.asarray(B, dtype=float)
+    model.b = np.asarray(b, dtype=float)
+    model.C = np.asarray(C, dtype=float)
+    model.state_dim = state_dim
+    return model
