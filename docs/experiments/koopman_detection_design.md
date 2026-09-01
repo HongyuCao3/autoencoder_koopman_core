@@ -99,3 +99,60 @@ Bernoulli 插入）策略下拟合的，而 Phase E 四臂的插入策略分别�
 **下一步建议**：方案 1 目前的结果不支持继续投入方案 2（在一个混杂着策略分布外效应的残差上加
 "预警阈值"，噪声太大意义有限）。如果要继续做检测这条线，方案 3（良性基线双 regime 对比）
 是更值得投入的方向——但需要先决定是否值得为此新采一批良性对话数据。
+
+## 方案 3 执行结果
+
+**意外发现：不需要新采数据。** `koopman_defense_pilot.md` 的 Phase F（良性 helpfulness 代价
+检查，2026-09-01 完成）为了衡量控制器对良性流量的误伤，本来就把 MT-Bench 良性对话跑过了
+和攻击轨迹完全同一套 `safety_judge`（用固定占位 `harmful_goal` 打分）——`trajectories.jsonl`
+里已经有 `y_safety`/`y_probe`/`u_remind`，schema 和攻击域一模一样。写方案 3 的第一版设计时
+还以为要专门去采，实际检查 Phase F 输出后发现数据已经现成，直接省了这一步。
+
+**第一步：拟合"良性 regime"模型**（`scripts/fit_koopman_benign_model.py`，纯 CPU，几秒）。
+合并 Phase F 四臂（`zero_control`/`constant_remind`/`threshold`/`koopman_mpc`）的
+`trajectories.jsonl` 作为一个辨识数据集（换取 `u_remind` 输入多样性）——**踩了一个坑**：
+Phase F 四臂复用同一批良性会话内容，`trajectory_id` 在四臂之间完全相同（例如
+`mtbench_coding__seed0` 在四个臂里都叫这个名字），直接合并会被 `group_by_trajectory` 静默
+合并成一条错误的长轨迹；脚本里在加载时把 `trajectory_id` 加上臂前缀（`f"{arm}__{tid}"`）
+处理掉了这个问题。按 `benign_id`（8 个 MT-Bench 类别）切 75/25，held-out 类别
+`mtbench_stem`/`mtbench_writing`。`nu=1,mu=2` 下 ARX（`held_out_rollout_mse=0.027`）比
+`richer_abs_sign`（0.037）更好——和攻击域相反（那边非线性提升更好）——符合直觉：良性对话下
+`y_safety` 基本贴着 1.0 小幅波动，线性 ARX 就够，用不上 `abs_sign` 这种为不对称侵蚀反应设计
+的提升。良性模型选 ARX。
+
+**第二步：双 regime 残差比较检测器**（`scripts/evaluate_koopman_detector.py`）。评测集严格
+避开两个模型各自的训练数据：攻击标签用 Phase E 四臂（8 个 held-out 攻击 × 2 seed × 4 臂）、
+良性标签用 Phase F 四臂里 held-out 的 2 个类别 × 2 seed × 4 臂。每轮/每条轨迹分别用攻击模型
+和良性模型算一步预测残差，`|residual|` 更小的模型判给哪个 regime。
+
+| 粒度 | n | 准确率 | "always 猜 attack"基线 |
+|---|---|---|---|
+| 逐轮 | 176（128 attack / 48 benign） | **0.551** | 0.727 |
+| 逐轨迹 | 80（64 attack / 16 benign） | **0.475** | 0.800 |
+
+**诚实结论（负面结果）：这版检测器比"什么都不判断、无脑猜 attack"这个平凡基线还差**，两个
+粒度上都是——大部分攻击轨迹被误判成良性（逐轮 74/128，逐轨迹 41/64）。
+
+**排查了两个可能原因，都不是主因**：
+1. **不是量纲/噪声尺度不匹配**——两个模型各自训练集上的 `train_one_step_mse` 很接近
+   （攻击 `richer_abs_sign`=0.059，良性 `arx`=0.050），不存在"一个模型残差天生数值更大"这种
+   会系统性偏向另一个模型的量纲问题。
+2. **不是策略分布外效应的混淆**——只看 `zero_control` 臂（Phase E/F 里两边都是"完全不插提醒"
+   的匹配策略，排除了方案 1 发现的那种策略不一致污染）单独算，逐轮准确率 0.568，仍然低于
+   该子集的 always-attack 基线（0.727）。
+
+**真正的原因,如实记录**：很多攻击轨迹——尤其是被 `constant_remind`/`threshold`/`koopman_mpc`
+成功防住的那些——`y_safety` 全程维持在较高水平，动力学形状（`nu=1,mu=2` 状态里能看到的东西：
+最近的安全分读数 + 最近两轮插没插提醒）和良性对话几乎没有区别；良性模型在这些"看起来很稳"的
+攻击轮次上预测得反而更准。**这不是实现细节的 bug，是这条检测思路本身的天花板**：仅凭
+`y_safety` 数值和提醒插入历史这两类信号,防御生效的攻击轨迹在动力学层面就是长得像良性对话——
+要把它们分开,需要方案 4 那种能看到"这轮在聊什么"的内容特征,而不是在方案 3 现有的状态表示上
+继续调（比如加方差归一化）。
+
+**结论：方案 3 到此完整跑通一轮（数据→拟合→检测器→评测），是清楚的负结果，不建议在当前状态
+表示上继续投入调参。如果还要做检测这条线,下一步应该直接跳到方案 4（状态里塞入攻击文本相似度
+之类的内容特征），而不是在方案 3 的残差比较规则上打补丁。**
+
+产物：`outputs/koopman_detection_benign_baseline/koopman_fit_report.json`（良性模型）、
+`outputs/koopman_detection_two_regime/two_regime_residuals.csv` + `two_regime_detector_report.json`
+（逐轮残差明细 + 混淆矩阵/准确率汇总）。
