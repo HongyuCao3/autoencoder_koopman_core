@@ -160,20 +160,52 @@ y_safety=0.0`，模型在原始记录里已经在配合）：5 个 α 值（-1 �
 3. 也可能是 α 范围/层选择不是最优（见下方候选方案 2、3）——目前证据不能区分是上面两条
    根因，还是纯粹的超参数问题。
 
-## 下一步（更新，两轮结果之后）
+## 结果（续2）：宽 alpha 范围重跑 + 退化点排除检验（job 15406762 + job 15410096，2026-08-31）
 
-**候选方案（按优先级，供讨论，这次会话未做）**：
-1. **扩大 |α| 范围**（比如到 ±2、±3、±5）：如果根因假设 1/2 成立（深层上下文里同样的绝对
-   增量效果被稀释），更大的系数可能是最直接的下一步验证——如果加大系数后曲线开始动起来，
-   说明方向是对的只是强度不够；如果加大后依然纹丝不动或只是让文本变差不变安全，更支持
-   "单层干预打不过已建立上下文"这个更悲观的假设。
-2. **换层，或多层同时 steering**：`layer=18`（36 层的一半）没有扫描过；也可以尝试在校准
+按上一版"下一步"候选方案 1，把 α 网格从 {-1,-0.5,0,0.5,1} 扩到 {-5,-3,-2,-1,-0.5,0,0.5,1,2,3,5}，
+其余设定（eroded-context 查询、layer=18、方向不变）不动。`environment/
+run_eroded_dose_response_wide_alpha.sbatch`（job 15406762，29.5 分钟）。
+
+**new-Q2：仍然不过，但这次是显著的负向关系（不是不显著）**——19 个查询全部负斜率
+（0/19 正、19/19 负），t=-5.1726，**p=0.0001**（判定条件要求 t>0 且 p<0.05，方向不对所以
+`pass=False`，但这次不是"测不出"，是"测出了一个和方向向量符号预测相反的显著效应"）。
+按 α 的均值：α=-5→0.171，α=-3→0.487，α=-2→0.487，α=-1→0.421，α=-0.5→0.355，
+**α=0→0.500（峰值）**，α=0.5→0.474，α=1→0.421，α=2→0.316，α=3→0.171，α=5→0.000——
+形状接近以 α=0 为峰的倒 V，两端都比不 steer 低，α=±5 处几乎降到 0（怀疑生成质量在极端系数下
+已经退化，而不是"更不安全"）。
+
+**排除"退化点造假"假设**：用 `scripts/reanalyze_dose_response_subset.py`（新增，纯 CPU、
+对同一批 `dose_response_rows.jsonl` 按不同 α 子集重新跑 new-Q2，不用重新生成）分别检验：
+- 去掉 |α|=5 两个端点：t=-5.4717，p=0.0000339——**显著性没有减弱，反而略强**，说明 α=±5 的
+  退化文本不是负向信号的来源。
+- 只看 α∈{0,0.5,1,2,3}（非负半段）：t=-4.1812，**p=0.0006，仍显著为负**——α 越朝"安全"方向
+  加大，y_safety 反而越低。
+- 只看 α∈{-3,-2,-1,-0.5,0}（非正半段）：t=-0.9752，**p=0.3424，不显著**。
+
+**这打破了"方向符号简单反了"这个之前隐含的猜测**：如果纯粹是方向向量符号弄反，应该是负 α
+段显著、正 α 段不显著（因为"反向"之后负 α 才是真正朝安全方向）；但实际看到的是反过来——
+**显著性完全来自正 α 段，负 α 段本身就是噪声**。更贴合数据的假设是：**α=0（不 steer）本身
+就是这批已侵蚀上下文里 y_safety 的局部最优点，任何方向、任何幅度的单层扰动都在拉低它**，
+而不是"方向搞反了，改个负号就行"。这和上一版"根因假设 2"（单层干预打不过已建立的多轮上下文，
+只会引入扰动噪声而非定向改变）更吻合，比"校准点/应用点不匹配"（假设 1，那个假设更倾向预测
+"方向存在但强度不够"而不是"任何方向都是噪声"）更接近真实情况——但仍未做因果验证（比如换层/
+多层 steering 是否也是这个模式），只是从这两次数据看，"加大系数"这条路已经被这次的宽网格结果
+否证：加大后不是"曲线开始动起来朝对的方向"，而是两端都更差，符合根因假设 2 而非假设 1/3。
+
+## 下一步（更新，宽 alpha 结果之后）
+
+**候选方案 1（扩大 |α| 范围）已做，结果是反面证据**——不再建议在当前层/当前方向上继续加大 α。
+剩余候选（按优先级）：
+
+1. **换层，或多层同时 steering**：`layer=18`（36 层的一半）没有扫描过；也可以尝试在校准
    和应用时都换到更靠后的层（更接近输出，可能因果影响力更直接），或者同时在多层加同一个
-   方向（比单层更贴近"persuasion"类研究里常见的做法）。
-3. **在应用位置重新校准方向**：不用单轮短 prompt 校准，改用步骤 1 数据里"已侵蚀"位置的
+   方向（比单层更贴近"persuasion"类研究里常见的做法）。宽 alpha 结果支持"单层干预本身是
+   噪声源"这个假设，换层/多层是下一个能直接检验这个假设的实验。
+2. **在应用位置重新校准方向**：不用单轮短 prompt 校准，改用步骤 1 数据里"已侵蚀"位置的
    harmful/harmless 激活对比（比如同一批 turn4/5 位置，对比 y_safety 高低两端的激活均值）
-   ——直接在目标分布上算方向，排除"校准点/应用点不匹配"这条根因假设。
-4. 以上都做完仍不过 → 回到 `ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md` 第 4 节重议，
+   ——直接在目标分布上算方向，排除"校准点/应用点不匹配"这条根因假设。优先级降到候选 1 之后，
+   因为宽 alpha 结果更像"扰动即噪声"而非"方向不够准"。
+3. 以上都做完仍不过 → 回到 `ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md` 第 4 节重议，
    这时候才是真正要怀疑通道 C（至少是这种单层线性 steering 的实现方式）本身是否可行的
    时候——`KV_INJECTION_MONITORING.md` 的通道 D（KV 注入）是文档里已经列出的备选执行器。
 
@@ -190,9 +222,12 @@ squeue --me
 sacct -j 15404586 --format=JobID,State,Elapsed,ExitCode   # 方向校准 job，已完成
 sacct -j 15404914 --format=JobID,State,Elapsed,ExitCode   # 剂量-响应 v1（裸单轮），已完成，不过
 sacct -j 15405662 --format=JobID,State,Elapsed,ExitCode   # 剂量-响应 v2（eroded-context），已完成，不过
+sacct -j 15406762 --format=JobID,State,Elapsed,ExitCode   # 剂量-响应 v3（宽 alpha），已完成，不过（显著负向）
+sacct -j 15410096 --format=JobID,State,Elapsed,ExitCode   # 宽 alpha 子集重分析（CPU-only），已完成
 cat persona_drift_control/outputs/safety_direction/safety_direction_stats.json
-cat persona_drift_control/outputs/dose_response/dose_response_report.md          # v1
-cat persona_drift_control/outputs/dose_response_eroded/dose_response_report.md   # v2
+cat persona_drift_control/outputs/dose_response/dose_response_report.md                     # v1
+cat persona_drift_control/outputs/dose_response_eroded/dose_response_report.md              # v2
+cat persona_drift_control/outputs/dose_response_eroded_wide_alpha/dose_response_report.md    # v3
 ```
 
 重跑（比如换 α 范围/层号/重新校准方向之后）：`sbatch environment/run_calibrate_safety_direction.sbatch`
