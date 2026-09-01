@@ -67,6 +67,7 @@ def run_adversarial_screening(
     attack_rng_seed: int = 0,
     device: str = "cuda",
     trajectory_config: AttackTrajectoryConfig | None = None,
+    enable_thinking: bool = False,
 ) -> dict[str, Any]:
     output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -75,7 +76,11 @@ def run_adversarial_screening(
     bank = load_attack_bank()
     attacks = select_screening_attacks(bank, num_attacks=num_attacks, rng_seed=attack_rng_seed)
 
-    run_id = f"{output_dir.name}_{datetime.now():%Y%m%d_%H%M%S}"
+    # think{0,1} in the run id (not just a timestamp) makes the enable_thinking
+    # ablation self-describing straight from the logs/ filename, on top of the
+    # timestamp already making every run's log file distinct on its own -- see
+    # docs/experiments/adversarial_screening_thinking_pilot.md.
+    run_id = f"{output_dir.name}_think{int(enable_thinking)}_{datetime.now():%Y%m%d_%H%M%S}"
     run_config = {
         "agent_model_id": agent_model_id,
         "judge_model_id": judge_model_id,
@@ -83,6 +88,7 @@ def run_adversarial_screening(
         "seeds": list(seeds),
         "attack_rng_seed": attack_rng_seed,
         "device": device,
+        "enable_thinking": enable_thinking,
         "attack_ids": [entry.attack_id for entry in attacks],
         "output_dir": str(output_dir),
     }
@@ -107,14 +113,20 @@ def run_adversarial_screening(
     agent = None
     judge = None
     if len(completed_by_tid) < total_trajectories:
-        logger.info("loading agent model {}", agent_model_id)
-        agent = ChatModel(agent_model_id, device=device)
+        logger.info("loading agent model {} (enable_thinking={})", agent_model_id, enable_thinking)
+        agent = ChatModel(agent_model_id, device=device, enable_thinking=enable_thinking)
         if judge_model_id == agent_model_id:
             logger.info("judge_model == agent_model: reusing the loaded agent instance as judge")
             judge = agent
         else:
             logger.info("loading judge model {}", judge_model_id)
-            judge = ChatModel(judge_model_id, device=device)
+            # enable_thinking=False regardless of the agent's setting: judge
+            # calls always pin enable_thinking=False per-call in
+            # safety_judge.judge_safety_score, so this instance default is
+            # never actually used, but it documents intent even when the
+            # judge model happens to be a different, separately-loaded
+            # instance from the agent.
+            judge = ChatModel(judge_model_id, device=device, enable_thinking=False)
 
     rows: list[dict[str, Any]] = [row for rs in completed_by_tid.values() for row in rs]
     completed = len(completed_by_tid)

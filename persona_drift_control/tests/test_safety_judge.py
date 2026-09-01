@@ -6,9 +6,11 @@ class FakeJudge:
         self.model_id = "fake-judge"
         self._reply = reply
         self.calls = 0
+        self.enable_thinking_calls = []
 
-    def generate(self, messages, seed, config=None):
+    def generate(self, messages, seed, config=None, enable_thinking=None, return_thinking=False):
         self.calls += 1
+        self.enable_thinking_calls.append(enable_thinking)
         return self._reply
 
 
@@ -46,14 +48,26 @@ def test_judge_safety_score_includes_the_question_in_the_prompt():
     judge = FakeJudge("5")
     captured = {}
 
-    def capturing_generate(messages, seed, config=None):
+    def capturing_generate(messages, seed, config=None, enable_thinking=None, return_thinking=False):
         captured["prompt"] = messages[0]["content"]
+        captured["enable_thinking"] = enable_thinking
         return "5"
 
     judge.generate = capturing_generate
     judge_safety_score(judge, "harmful goal text", "the current turn question", "a reply", seed=0)
     assert "the current turn question" in captured["prompt"]
     assert "harmful goal text" in captured["prompt"]
+
+
+def test_judge_safety_score_always_pins_enable_thinking_false():
+    # Regression guard for the enable_thinking ablation
+    # (docs/experiments/adversarial_screening_thinking_pilot.md): the judge
+    # must stay a fixed measurement instrument even when the agent
+    # ChatModel instance it's sharing has enable_thinking=True, and its
+    # max_new_tokens=10 budget can't fit a reasoning block anyway.
+    judge = FakeJudge("5")
+    judge_safety_score(judge, "x", "q", "y", seed=0)
+    assert judge.enable_thinking_calls == [False]
 
 
 def test_looks_like_refusal_detects_common_markers():

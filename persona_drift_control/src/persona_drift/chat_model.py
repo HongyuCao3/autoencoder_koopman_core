@@ -62,6 +62,24 @@ class GenerationConfig:
     no_repeat_ngram_size: int = 0
 
 
+_THINK_END_TAG = "</think>"
+
+
+def _split_at_think_end(token_ids: list[int], think_end_id: int | None) -> tuple[list[int], list[int]]:
+    """Splits generated token ids into (thinking_ids, content_ids) at the
+    first </think> token (inclusive). Returns ([], token_ids) when
+    think_end_id is None or doesn't occur -- covers both
+    enable_thinking=False (no such token is ever emitted) and tokenizers
+    without a </think> token at all. Pure/torch-free so it's unit-testable
+    without a real tokenizer -- see chat_model.py's generate() for the
+    tokenizer-dependent half (looking up think_end_id, decoding each half)."""
+
+    if think_end_id is not None and think_end_id in token_ids:
+        split_at = token_ids.index(think_end_id) + 1
+        return token_ids[:split_at], token_ids[split_at:]
+    return [], token_ids
+
+
 class ChatModel:
     """Loads one causal LM once; each generate() call reseeds torch's RNG
     globally so trajectory-level and probe-repeat-level seeding (protocol
@@ -97,14 +115,32 @@ class ChatModel:
         seed: int,
         config: GenerationConfig | None = None,
         steering: SteeringConfig | None = None,
-    ) -> str:
+        enable_thinking: bool | None = None,
+        return_thinking: bool = False,
+    ) -> str | tuple[str, str]:
+        """enable_thinking overrides self.enable_thinking for this call only
+        (None = use the instance default) -- needed when one ChatModel
+        instance plays two roles that must not share a thinking-mode
+        setting, e.g. self-judging in adversarial_screening.py: the agent
+        may be generating with thinking on while safety_judge.py explicitly
+        pins the same instance's judge calls to enable_thinking=False (a
+        terse 1-5 digit judge response has no token budget for a reasoning
+        block, and the judge is meant to be a fixed measurement instrument
+        independent of the thing being manipulated on the agent side).
+
+        return_thinking=True returns (content, thinking_text) instead of
+        just content -- thinking_text is "" whenever no </think> token was
+        emitted (enable_thinking=False, or a non-Qwen3 tokenizer). Default
+        False keeps every existing caller's return type (str) unchanged."""
+
         config = config or GenerationConfig()
+        effective_enable_thinking = self.enable_thinking if enable_thinking is None else enable_thinking
         try:
             prompt_text = self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True,
-                enable_thinking=self.enable_thinking,
+                enable_thinking=effective_enable_thinking,
             )
         except TypeError:
             # Older tokenizers / non-Qwen3 chat templates without thinking-mode support.
@@ -135,8 +171,17 @@ class ChatModel:
             if hook_handle is not None:
                 hook_handle.remove()
 
-        new_tokens = output_ids[0][inputs["input_ids"].shape[1] :]
-        return self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+        new_tokens = output_ids[0][inputs["input_ids"].shape[1] :].tolist()
+        think_end_id = self.tokenizer.convert_tokens_to_ids(_THINK_END_TAG)
+        if think_end_id == self.tokenizer.unk_token_id:
+            think_end_id = None
+        thinking_ids, content_ids = _split_at_think_end(new_tokens, think_end_id)
+        content_text = self.tokenizer.decode(content_ids, skip_special_tokens=True).strip()
+
+        if not return_thinking:
+            return content_text
+        thinking_text = self.tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
+        return content_text, thinking_text
 
     def hidden_state_at_layer(self, messages: list[dict[str, str]], layer: int) -> np.ndarray:
         """One forward pass, no generation: returns the last-token residual

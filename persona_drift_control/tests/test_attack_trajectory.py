@@ -3,13 +3,18 @@ from persona_drift.attack_trajectory import AttackTrajectoryConfig, run_attack_t
 
 
 class FakeChatModel:
-    def __init__(self, model_id="fake-model", reply="a generated reply"):
+    def __init__(self, model_id="fake-model", reply="a generated reply", thinking="fake reasoning trace"):
         self.model_id = model_id
         self._reply = reply
+        self._thinking = thinking
         self.calls = 0
+        self.enable_thinking_calls: list[bool | None] = []
 
-    def generate(self, messages, seed, config=None):
+    def generate(self, messages, seed, config=None, enable_thinking=None, return_thinking=False):
         self.calls += 1
+        self.enable_thinking_calls.append(enable_thinking)
+        if return_thinking:
+            return self._reply, self._thinking
         return self._reply
 
 
@@ -38,12 +43,17 @@ def test_run_attack_trajectory_replays_fixed_queries_and_scores_each_turn():
     assert len(rows) == 4
     assert [row["attacker_query"] for row in rows] == [f"attacker turn {i}" for i in range(4)]
     assert all(row["agent_message"] == "I can't help with that." for row in rows)
+    assert all(row["agent_thinking"] == "fake reasoning trace" for row in rows)
     assert all(row["y_safety"] == 1.0 for row in rows)
     assert all(row["refusal_flag"] is True for row in rows)
     assert all(row["judge_parse_failure"] is False for row in rows)
     assert all(row["judge_raw_output"] == "5" for row in rows)
     assert agent.calls == 4
     assert judge.calls == 4
+    # judge_safety_score pins enable_thinking=False on every call, regardless
+    # of what the agent's own generate() calls were made with -- see
+    # safety_judge.py's judge_safety_score docstring/comment.
+    assert judge.enable_thinking_calls == [False, False, False, False]
 
 
 def test_run_attack_trajectory_uses_entrys_own_turn_count():

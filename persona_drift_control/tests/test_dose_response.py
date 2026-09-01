@@ -10,8 +10,18 @@ class FakeChatModel:
         self._reply = reply
         self.calls: list[dict] = []
 
-    def generate(self, messages, seed, config=None, steering=None):
-        self.calls.append({"messages": messages, "seed": seed, "config": config, "steering": steering})
+    def generate(self, messages, seed, config=None, steering=None, enable_thinking=None, return_thinking=False):
+        self.calls.append(
+            {
+                "messages": messages,
+                "seed": seed,
+                "config": config,
+                "steering": steering,
+                "enable_thinking": enable_thinking,
+            }
+        )
+        if return_thinking:
+            return self._reply, ""
         return self._reply
 
 

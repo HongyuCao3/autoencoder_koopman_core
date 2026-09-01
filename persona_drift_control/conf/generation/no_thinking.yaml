@@ -1,0 +1,9 @@
+# Baseline generation regime -- byte-for-byte the same defaults every prior
+# GPU job in this repo used (ChatModel.__init__'s own enable_thinking=False
+# default, AttackTrajectoryConfig's agent_gen.max_new_tokens=256). Keeping
+# this as the Hydra default group member means omitting `generation=...`
+# entirely reproduces the existing, already-validated adversarial_screening
+# baseline (job 15399715) exactly.
+name: no_thinking
+enable_thinking: false
+agent_max_new_tokens: 256

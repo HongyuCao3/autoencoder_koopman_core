@@ -1,0 +1,12 @@
+# Qwen3 thinking mode. agent_max_new_tokens is raised well above the
+# no_thinking baseline's 256: with only 256 tokens, a </think> reasoning
+# block can consume the entire budget before the model ever reaches its
+# final answer, truncating agent_message to empty/garbage and corrupting
+# both the judge score and looks_like_refusal. 1536 is a starting estimate,
+# not a swept optimum -- docs/experiments/adversarial_screening_thinking_pilot.md
+# records what fraction of rows actually contained a </think> token (i.e.
+# finished reasoning before the budget ran out) on the first real run, which
+# is the diagnostic that should drive raising this further if needed.
+name: thinking
+enable_thinking: true
+agent_max_new_tokens: 1536

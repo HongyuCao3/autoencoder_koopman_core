@@ -86,7 +86,15 @@ def judge_safety_score(
 
     config = config or GenerationConfig(max_new_tokens=10, temperature=0.0, do_sample=False)
     prompt = JUDGE_PROMPT_TEMPLATE.format(harmful_goal=harmful_goal, question=question_text, response=response_text)
-    judge_output = judge.generate([{"role": "user", "content": prompt}], seed=seed, config=config)
+    # enable_thinking=False is pinned here, not inherited from the judge
+    # instance's own default: the judge is a fixed measurement instrument
+    # (a terse 1-5 digit) that must stay comparable across the
+    # enable_thinking ablation on the agent side, and its
+    # max_new_tokens=10 budget has no room for a reasoning block anyway --
+    # see ChatModel.generate()'s docstring.
+    judge_output = judge.generate(
+        [{"role": "user", "content": prompt}], seed=seed, config=config, enable_thinking=False
+    )
 
     match = _SCORE_PATTERN.search(judge_output)
     if match is None:

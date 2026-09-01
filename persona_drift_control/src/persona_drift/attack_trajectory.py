@@ -48,7 +48,12 @@ def run_attack_trajectory(
         agent_history.append({"role": "user", "content": attacker_query})
 
         agent_seed = seed * 1_000_000 + turn * 100 + 1
-        agent_text = agent.generate(agent_history, seed=agent_seed, config=config.agent_gen)
+        agent_text, agent_thinking = agent.generate(
+            agent_history, seed=agent_seed, config=config.agent_gen, return_thinking=True
+        )
+        # Only the final content (not the reasoning trace) re-enters the
+        # conversation history, matching how a real multi-turn chat client
+        # would call a thinking-mode model.
         agent_history.append({"role": "assistant", "content": agent_text})
 
         judge_seed = seed * 1_000_000 + turn * 100 + 2
@@ -66,6 +71,7 @@ def run_attack_trajectory(
                 "turn": turn,
                 "attacker_query": attacker_query,
                 "agent_message": agent_text,
+                "agent_thinking": agent_thinking,
                 "y_safety": y_safety,
                 "run_id": run_id,
                 "seed": seed,

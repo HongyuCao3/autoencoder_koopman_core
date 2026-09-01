@@ -1,0 +1,32 @@
+# Hydra config for scripts/run_adversarial_screening_hydra.py -- the
+# enable_thinking ablation of the adversarial-defense screening pilot (see
+# docs/experiments/adversarial_screening_thinking_pilot.md). Overriding just
+# the `generation` group (`generation=thinking` vs the default
+# `generation=no_thinking`) is the whole point of this file: it drives both
+# ChatModel's enable_thinking flag AND the output directory / logs run_id
+# (via hydra.run.dir below), so a thinking run and a no_thinking run can
+# never land on the same trajectories.jsonl or the same logs/*.log file even
+# if someone forgets to pass a distinct --output-dir by hand (the failure
+# mode argparse-based scripts/run_adversarial_screening.py has no built-in
+# protection against).
+defaults:
+  - generation: no_thinking
+  - _self_
+
+agent_model: Qwen/Qwen3-4B
+judge_model: null # defaults to agent_model (self-judging) when null
+device: cuda
+num_attacks: 20
+seeds: [0, 1]
+attack_rng_seed: 0
+output_root: outputs/adversarial_screening_thinking_ablation
+
+hydra:
+  # This project's other scripts write output_dir/logs paths relative to the
+  # process's original CWD (sbatch scripts `cd` into persona_drift_control/
+  # first) -- keep that convention rather than Hydra's own chdir-per-run
+  # default, which would otherwise mean it silently changes.
+  job:
+    chdir: false
+  run:
+    dir: ${output_root}/${generation.name}/${now:%Y%m%d_%H%M%S}
