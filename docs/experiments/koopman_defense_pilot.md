@@ -423,7 +423,10 @@ Phase E 打赢后引出的新问题——现在的 `KoopmanMPCController` 只用
 
 Phase G 结论 2/3 留下的开放问题——`koopman_mpc` 相对 `periodic` 的优势未被证明也未被证伪，
 潜在的自适应性优势也未被验证——用逐轮决策的 case 分析来找具体证据（而不是再跑聚合指标）。
-设计（五类目标现象：插入模式是否随攻击变化、前瞻介入 vs 阈值被动反应、选择性节省 vs 常提醒、
-horizon 是否真正改变决策、均值回归校准）记录在
-[koopman_case_study_design.md](koopman_case_study_design.md)，不写在这份文档里。**执行状态：
-设计已记录，分析脚本待写。**
+设计与执行结果（五类目标现象：插入模式是否随攻击变化、前瞻介入 vs 阈值被动反应、选择性节省 vs
+常提醒、horizon 是否真正改变决策、均值回归校准）记录在
+[koopman_case_study_design.md](koopman_case_study_design.md)，不写在这份文档里。**结论提要：
+更负面——`koopman_mpc` 在有真实状态可用的每一次决策（32/32）上都选择提醒，与状态、horizon 均
+无关，根源是这套线性 Koopman/ARX 模型里动作项 `B@v` 和状态无交互，MPC 的最优动作在结构上就是
+一个和 `z_t` 无关的常数。Phase G 的开放问题（自适应优势未证明也未证伪）因此有了更明确的答案：
+不是数据不够，是当前模型架构决定了它不可能自适应。**

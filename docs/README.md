@@ -92,10 +92,11 @@
   方法本身的局限，是这套项目当前状态表示/数据规模能提供的信息量不够，与 `koopman_defense_pilot.md`
   主线分开接续。
 - [experiments/koopman_case_study_design.md](experiments/koopman_case_study_design.md) — Phase G 打平
-  `koopman_mpc`/`periodic` 后留下的开放问题（自适应性优势未证明也未证伪）的 case 分析设计：
-  五类目标现象（插入模式是否随攻击变化、前瞻介入 vs 阈值被动反应、选择性节省 vs 常提醒、
-  horizon 是否真正改变决策、均值回归校准），全部可用 Phase E/G 已有的 `trajectories.jsonl`
-  + 已拟合的 `koopman_fit_report.json` 离线复现，不需要新实验。状态：设计已记录，分析脚本待写。
+  `koopman_mpc`/`periodic` 后留下的开放问题（自适应性优势未证明也未证伪）的 case 分析：五类
+  目标现象全部离线复现完毕，结论更负面——`koopman_mpc` 在有真实状态的每次决策（32/32）都选择
+  提醒，与状态、horizon 无关；根源是这套线性 Koopman/ARX 模型里动作项和状态无交互项，MPC 的
+  最优动作在结构上就是一个和 `z_t` 无关的常数。开放问题因此有了更明确的答案：不是数据不够看出
+  自适应优势，是当前模型架构决定了它不可能自适应。状态：**已完成**。
 - [experiments/lstm_baseline_plan.md](experiments/lstm_baseline_plan.md) — 补齐 `BASELINES.md`
   ③层"LSTM 一步-多步预测模型"这个 ablation 缺口的实现计划（只有 ARX vs `richer_abs_sign`
   两个同结构线性模型对比过,还没有真正的非线性/长记忆模型跑过对比）。记录了两种设计取舍
