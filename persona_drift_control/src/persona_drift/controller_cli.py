@@ -1,7 +1,7 @@
 """Shared controller-construction CLI helpers for
 scripts/run_defended_screening.py and scripts/run_benign_helpfulness_screening.py:
 both scripts expose the same --controller {zero_control,constant_remind,
-threshold,koopman_mpc[,random_excite]} choice and need to (a) load a fitted
+threshold,periodic,koopman_mpc[,random_excite]} choice and need to (a) load a fitted
 Koopman surrogate from a koopman_fit_report.json when --controller
 koopman_mpc, and (b) turn the parsed args into a controller_factory for
 adversarial_screening.run_adversarial_screening / benign_screening.run_benign_screening.
@@ -20,6 +20,7 @@ from .control import (
     ConstantRemindController,
     Controller,
     KoopmanMPCController,
+    PeriodicController,
     RandomExciteController,
     ThresholdController,
     ZeroControlController,
@@ -61,6 +62,7 @@ def make_controller_factory(
     threshold_y_min: float,
     koopman_mpc_controller: KoopmanMPCController | None,
     random_excite_p: float | None = None,
+    periodic_period: int | None = None,
 ) -> Callable[[int], Controller]:
     if name == "zero_control":
         return lambda seed: ZeroControlController()
@@ -68,6 +70,10 @@ def make_controller_factory(
         return lambda seed: ConstantRemindController()
     if name == "threshold":
         return lambda seed: ThresholdController(y_min=threshold_y_min)
+    if name == "periodic":
+        if periodic_period is None:
+            raise ValueError("periodic_period is required for --controller periodic")
+        return lambda seed: PeriodicController(period=periodic_period)
     if name == "random_excite":
         if random_excite_p is None:
             raise ValueError("random_excite_p is required for --controller random_excite")

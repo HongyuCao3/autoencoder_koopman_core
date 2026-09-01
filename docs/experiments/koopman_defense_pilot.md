@@ -318,6 +318,98 @@ done
 （Phase E）和良性场景（Phase F）都取得"不输给经典基线、代价明显更低"的控制器。** 这条
 Phase A→F 主线到此完整闭环；样本量小是本轮结果的主要局限，值得记录但不构成必须补做的门槛。
 
+**这个结论后来被 Phase G（下面）修正**：Phase E/F 只对比了 `zero_control`/`constant_remind`/
+`threshold` 三个经典基线,没有对比 `docs/BASELINES.md` ②层调研过、但一直没实现的
+"周期性/事件触发重提醒"——这是比 `threshold` 更贴近生产环境实际部署的对照,而且完全不需要
+拟合任何模型。Phase G 补上了它,结果表明"koopman_mpc 的收益是靠建模复杂度换来的"这个说法
+需要收窄。
+
+## Phase G：周期性基线（`PeriodicController`，补齐 `BASELINES.md` ②层缺口）
+
+**动机**：`control.py::PeriodicController`（固定周期插入提醒,不看任何反馈信号）早就写好并
+有单测覆盖,但从未接入 `controller_cli.py`,也从未在 Phase E/F 里真正跑过。`threshold` 虽然
+是"经典反馈基线",但它是反应式的（看到低分才触发）；`PeriodicController` 是完全不看任何信号的
+固定日程,是 `BASELINES.md` 里说的"更接近生产环境实际部署策略"的那一类——如果这么简单的策略
+也能打平 `koopman_mpc`,会直接削弱"需要 Koopman 建模"这个论证。
+
+**周期选择**：`period=2`。在提交作业前先用 Phase E 的真实轮次结构算过：8 个攻击的轨迹全部
+恰好 5 轮（16 条轨迹 × 5 = 80,和 `koopman_mpc` 的 80 完全对上）,`period=2` 在 5 轮轨迹上
+恰好命中 2 次/轨迹 = 32/80，**和 `koopman_mpc` 的插入次数完全相等**——不是凑出来的巧合,是
+算过再选的,目的是让这次对比在插入次数/token 代价上完全对齐,排除"代价不同导致效果不同"这个
+混杂因素。Phase F 的良性会话固定 6 轮,`period=2` 命中 3 次/会话 = 48/96,同样和 `koopman_mpc`
+的插入次数完全相等。
+
+**代码改动**：`controller_cli.py::make_controller_factory` 新增 `"periodic"` 分支（需要
+`periodic_period` 参数，缺失时立即 `ValueError`，和 `random_excite_p` 的检查方式一致）；
+`run_defended_screening.py`/`run_benign_helpfulness_screening.py` 都加了 `--controller periodic
+--periodic-period`。新增 `tests/test_controller_cli.py` 覆盖这条 CLI 路径（之前 `controller_cli.py`
+完全没有专门测试）。新增两个 sbatch：`run_koopman_defense_phaseG_periodic.sbatch`（攻击场景，
+job 15440019，13 分 35 秒）、`run_koopman_defense_phaseG_periodic_benign.sbatch`（良性场景，
+job 15440020，15 分 23 秒），均于 2026-09-01 完成。攻击侧沿用和 Phase E 完全相同的 8 个
+held-out 攻击 id。
+
+### 结果：攻击场景（对照 Phase E 四臂）
+
+| 臂 | new-Q1 t/p/pass | new-Q3 r/p/pass | turn5 y_safety | refusal_rate | 提醒次数/80 | inserted_tokens |
+|---|---|---|---|---|---|---|
+| zero_control | t=-3.70, p=0.0076, True | r=0.5698, p=0.0000, True | 0.5156 | 0.0000 | 0 | 0 |
+| constant_remind | t=-3.16, p=0.0160, True | r=0.0350, p=0.7837, False | 0.8281 | 0.0750 | 80 | 2880 |
+| threshold | t=-4.77, p=0.0020, True | r=0.0786, p=0.5371, False | 0.7188 | 0.0500 | 7 | 252 |
+| **periodic (period=2)** | **t=-2.09, p=0.0749, False** | r=0.2266, p=0.0718, False | 0.7500 | 0.0750 | 32 | 1152 |
+| koopman_mpc | t=-2.34, p=0.0521, False | r=0.2668, p=0.0331, True | 0.7969 | 0.0750 | 32 | 1152 |
+
+**在完全相同的插入次数/token 代价下（32/80，1152 tokens）**,`periodic` 在 new-Q1（主判据）上
+的 `pass` 结果和 `koopman_mpc` 一样是 `False`（侵蚀不显著,即"防住了"）,而且 `p=0.0749` 比
+`koopman_mpc` 的 `p=0.0521` 离显著性边界更远——按这个判据看,`periodic` 的防御效果不比
+`koopman_mpc` 差，如果只看这一项甚至更稳一些（`koopman_mpc` 之前被形容为"临界通过",`periodic`
+的边界更宽）。`turn5 y_safety` 上 `koopman_mpc`（0.7969）确实比 `periodic`（0.7500）高一点，
+`refusal_rate` 两者相等（0.0750）。new-Q3 上两者方向相反（`koopman_mpc` 显著、`periodic`
+不显著）,但 new-Q3 从设计上就是次要诊断量,不是 Phase E/G 的主判据（当时定的判据只看 new-Q1）。
+
+### 结果：良性场景（对照 Phase F 四臂，配对 t 检验，用
+`analysis_helpfulness.compare_arms_to_zero_control`）
+
+| 臂 | mean_y_help (sd) | refusal_rate | 提醒次数/96 | inserted_tokens | Δ vs zero_control (mean_diff / t / p) |
+|---|---|---|---|---|---|
+| zero_control | 0.8750 (0.2460) | 0.0000 | 0/96 | 0 | — |
+| constant_remind | 0.7708 (0.3338) | 0.1458 | 96/96 | 3456 | -0.1042 / t=-1.6887 / p=0.1120 |
+| threshold | 0.8750 (0.2460) | 0.0000 | 3/96 | 108 | 0.0000 / t=nan / p=nan |
+| **periodic (period=2)** | **0.8698 (0.2615)** | **0.0208** | **48/96** | **1728** | **-0.0052 / t=-0.2388 / p=0.8145** |
+| koopman_mpc | 0.8620 (0.2711) | 0.0312 | 48/96 | 1728 | -0.0130 / t=-0.7182 / p=0.4837 |
+
+**同样在完全相同的插入次数/token 代价下（48/96，1728 tokens）**,`periodic` 的
+helpfulness 代价比 `koopman_mpc` 更小（mean_diff -0.0052 vs -0.0130,几乎可以忽略）、
+refusal_rate 更低（0.0208 vs 0.0312）——两个指标都比 `koopman_mpc` 略好，且两者都远未达到
+统计显著（p=0.81 和 p=0.48）。
+
+### 诚实结论：修正 Phase E/F 的"建模复杂度换来了收益"这个说法
+
+**在完全对齐插入次数/token 代价的前提下,`periodic`（不看任何反馈信号的固定日程）在攻击场景
+的主判据（new-Q1）和良性场景的 helpfulness 代价上都不输给、甚至略优于 `koopman_mpc`。**
+这直接削弱了 Phase E/F 原先"koopman_mpc 用建模复杂度换来了控制收益"的论证——真实情况更接近
+"只要把提醒频率控制在 `threshold`（欠触发,7/80）和 `constant_remind`（100%,过度）之间的某个
+中间水平,不管这个中间水平是靠 Koopman-MPC 算出来的还是干脆固定周期插,都能拿到差不多的防御
+效果和差不多低的良性代价"。
+
+**这不代表 Koopman-MPC 完全没有价值,但价值需要重新定位**：
+1. **`koopman_mpc` 相对 `threshold` 仍然是明确的胜利**——`threshold` 在这批 held-out 攻击上
+   欠触发（7/80,侵蚀反而比 `zero_control` 更差,t=-4.77 是四臂里最差的）,说明"反应式反馈"
+   本身的阈值调参很脆弱；`periodic`/`koopman_mpc` 靠"不管当前分数多少,固定/自适应地保持插入
+   密度"绕开了这个脆弱性,这个对比依然成立。
+2. **`koopman_mpc` 相对 `periodic` 的优势现在没有被这批数据证明**——如果两者代价相同时效果
+   相当,`koopman_mpc` 唯一还没被排除的潜在优势是**自适应性**：`periodic` 的插入密度是写死的
+   常数,面对更强/更弱的攻击、或者攻击特征随时间变化时不会调整；`koopman_mpc` 原则上会根据
+   预测的安全分调整插入时机。但这批 8 个 held-out 攻击强度相对同质,没有制造出能体现这种
+   自适应优势的条件,现在这只是一个尚未验证的假设,不是已证明的结论。
+3. **对外表述需要收窄**：不能再说"Koopman-MPC 用更低代价达到了 constant_remind 的效果,证明
+   了建模复杂度的价值"——准确的说法是"Koopman-MPC 和同代价的固定周期基线效果相当,都显著
+   优于阈值反馈这个经典反馈基线;Koopman-MPC 相对固定周期基线的潜在优势（自适应不同强度的
+   攻击）还没有被现有数据证伪也没有被证实"。
+
+产物：`outputs/koopman_defense_phaseG_periodic/`（攻击场景 trajectories.jsonl +
+adversarial_screening_report.{json,md}）、`outputs/koopman_defense_phaseG_periodic_benign/`
+（良性场景，同结构）。
+
 ## 另一条支线：给 Koopman 模型加检测能力
 
 Phase E 打赢后引出的新问题——现在的 `KoopmanMPCController` 只用代理模型选动作，"是否存在
@@ -326,3 +418,12 @@ Phase E 打赢后引出的新问题——现在的 `KoopmanMPCController` 只用
 残差被"策略分布外"效应污染，没有干净跑赢"下一轮=上一轮"基线）记录在
 [koopman_detection_design.md](koopman_detection_design.md)，不写在这份文档里，两条线分开
 接续。
+
+## 第三条支线：case 分析回应 Phase G 的自适应性开放问题
+
+Phase G 结论 2/3 留下的开放问题——`koopman_mpc` 相对 `periodic` 的优势未被证明也未被证伪，
+潜在的自适应性优势也未被验证——用逐轮决策的 case 分析来找具体证据（而不是再跑聚合指标）。
+设计（五类目标现象：插入模式是否随攻击变化、前瞻介入 vs 阈值被动反应、选择性节省 vs 常提醒、
+horizon 是否真正改变决策、均值回归校准）记录在
+[koopman_case_study_design.md](koopman_case_study_design.md)，不写在这份文档里。**执行状态：
+设计已记录，分析脚本待写。**

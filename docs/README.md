@@ -77,9 +77,13 @@
 - [experiments/koopman_defense_pilot.md](experiments/koopman_defense_pilot.md) — ★ 当前进展
   最新：把人格漂移这条线的 `control.py`/`modeling/` 几乎零改动复用到对抗防御领域，设计并
   验证 Koopman-MPC 防御控制器。**新开一次对话想知道"Koopman 防御控制器现在做到哪一步了"，
-  看这份文档。** Phase A→E 已完整闭环：`koopman_mpc` 打赢 zero_control/threshold 两个基线，
-  以更低代价（约 40% 的提醒次数/token）追平 constant_remind。Phase F（良性查询 helpfulness
-  代价检查，四臂并行，无 go/no-go 门槛）已提交，结果待补。
+  看这份文档。** Phase A→F 已完整闭环：`koopman_mpc` 打赢 zero_control/threshold 两个基线，
+  以更低代价（约 40% 的提醒次数/token）追平 constant_remind，良性 helpfulness 代价也明显
+  低于 constant_remind。**Phase G（补齐 `BASELINES.md` 的"周期性重提醒"基线，`PeriodicController`）
+  修正了这个结论**：在完全对齐插入次数/token 代价的前提下,不看任何反馈信号的固定周期基线
+  在攻击场景主判据和良性代价上都不输给、甚至略优于 `koopman_mpc`——"建模复杂度换来了收益"
+  这个说法需要收窄为"koopman_mpc 相对 threshold 有明确优势,相对同代价的 periodic 基线的
+  优势还未被证明,潜在的自适应性优势也还未被验证"。
 - [experiments/koopman_detection_design.md](experiments/koopman_detection_design.md) — Phase E
   打赢后的支线：让 Koopman 代理模型具备显式"检测"能力（而不只是隐含在选动作过程里）。四个方案
   都已跑完：方案 1（一步预测残差）、方案 3（良性 vs 攻击双 regime 对比）、方案 4（状态里塞入
@@ -87,6 +91,17 @@
   均为负面结果，方案 2（前瞻预警）因方案 1 负结果未执行。文档里说明了这不是 Koopman/线性代理
   方法本身的局限，是这套项目当前状态表示/数据规模能提供的信息量不够，与 `koopman_defense_pilot.md`
   主线分开接续。
+- [experiments/koopman_case_study_design.md](experiments/koopman_case_study_design.md) — Phase G 打平
+  `koopman_mpc`/`periodic` 后留下的开放问题（自适应性优势未证明也未证伪）的 case 分析设计：
+  五类目标现象（插入模式是否随攻击变化、前瞻介入 vs 阈值被动反应、选择性节省 vs 常提醒、
+  horizon 是否真正改变决策、均值回归校准），全部可用 Phase E/G 已有的 `trajectories.jsonl`
+  + 已拟合的 `koopman_fit_report.json` 离线复现，不需要新实验。状态：设计已记录，分析脚本待写。
+- [experiments/lstm_baseline_plan.md](experiments/lstm_baseline_plan.md) — 补齐 `BASELINES.md`
+  ③层"LSTM 一步-多步预测模型"这个 ablation 缺口的实现计划（只有 ARX vs `richer_abs_sign`
+  两个同结构线性模型对比过,还没有真正的非线性/长记忆模型跑过对比）。记录了两种设计取舍
+  （固定窗口 vs 隐状态跨轮次持续演化，推荐后者）、`Predictor` 接口怎么接、训练/评测口径怎么
+  和现有 Koopman 两件套对齐、参数量/数据规模两个混杂因素怎么处理。**状态：仅有计划，尚未开始
+  实现。**
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；

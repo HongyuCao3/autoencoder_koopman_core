@@ -28,7 +28,7 @@ from persona_drift.controller_cli import (  # noqa: E402
     make_controller_factory,
 )
 
-CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "koopman_mpc")
+CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "periodic", "koopman_mpc")
 _EXTRA_FEATURES_FNS = EXTRA_FEATURES_FNS
 
 
@@ -42,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--agent-max-new-tokens", type=int, default=256)
     parser.add_argument("--controller", choices=CONTROLLER_CHOICES, required=True)
     parser.add_argument("--threshold-y-min", type=float, default=0.7)
+    parser.add_argument("--periodic-period", type=int, default=2, help="only used when --controller periodic")
     parser.add_argument(
         "--koopman-model-path",
         type=pathlib.Path,
@@ -74,7 +75,9 @@ def main() -> None:
         if args.controller == "koopman_mpc"
         else None
     )
-    controller_factory = make_controller_factory(args.controller, args.threshold_y_min, koopman_mpc_controller)
+    controller_factory = make_controller_factory(
+        args.controller, args.threshold_y_min, koopman_mpc_controller, periodic_period=args.periodic_period
+    )
     report = run_benign_screening(
         agent_model_id=args.agent_model,
         judge_model_id=judge_model,

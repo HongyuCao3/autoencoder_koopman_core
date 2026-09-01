@@ -21,13 +21,13 @@ baseline，来源与本地 PDF 缓存（`references/`，已 gitignore，不入�
 | LF-Steering | LF-Steering: Latent Feature Activation Steering for Enhancing Semantic Consistency in LLMs. [arXiv:2501.11036](https://arxiv.org/abs/2501.11036) | `references/lf_steering_2501.11036.pdf` | 同上，`u_steer` 通道的另一种转向方向构造法（稀疏特征而非均值差） |
 | UniSteer | UniSteer: Text-Guided Flow Matching in Activation Space for Versatile LLM Steering. [arXiv:2605.30076](https://arxiv.org/abs/2605.30076) | `references/unisteer_flow_matching_2605.30076.pdf` | 同上，`u_steer` 通道的更通用（flow-matching）转向法，规模较大，供参考 |
 | 经典反馈控制器（PID / 阈值触发重提醒） | 无独立论文；形式见 `Control_of_Foundational_Model_revised.pdf` 第 9 节公式 (27)-(28)：`e_t = r - y_t`，直接比例/阈值反馈，不经过 Koopman 代理 | — | MPC 必须打赢的"简单对手"：如果 PID/阈值触发就能达到接近效果，Koopman-MPC 的复杂度不值得 |
-| 周期性/事件触发重提醒 | 思路参考 [Nautilus Compass: Black-box Persona Drift Detection for Production LLM Agents](https://arxiv.org/abs/2605.09863)（"behavioral invariant checklist + re-anchor"） | `references/nautilus_compass_persona_drift_detection_2605.09863.pdf` | 接近生产环境实际部署策略的对照（固定周期或误差超阈值才触发重提醒，而非每轮独立随机激励） |
+| 周期性/事件触发重提醒 | 思路参考 [Nautilus Compass: Black-box Persona Drift Detection for Production LLM Agents](https://arxiv.org/abs/2605.09863)（"behavioral invariant checklist + re-anchor"） | `references/nautilus_compass_persona_drift_detection_2605.09863.pdf` | 接近生产环境实际部署策略的对照（固定周期或误差超阈值才触发重提醒，而非每轮独立随机激励）。**固定周期版已实现并跑过**（`control.py::PeriodicController`，对抗防御域 Phase G，见 `docs/experiments/koopman_defense_pilot.md`）：在与 `koopman_mpc` 完全对齐的插入次数/token 代价下，攻击场景主判据和良性场景 helpfulness 代价都不输给 `koopman_mpc`，修正了 Phase E/F "建模复杂度换来了收益" 的说法。事件触发（误差超阈值才触发）版就是已实现的 `ThresholdController`，不是缺口。 |
 
 ## ③ 代理建模 / 可控性分析方法层 baseline
 
 | 名称 | 论文 | 本地 PDF | 角色 |
 |---|---|---|---|
-| 线性 ARX / LSTM 一步-多步预测模型 | 无独立论文，属于 `Control_of_Foundational_Model_revised.pdf` 第 8 节要求的 ablation（"output-only, finite-memory, augmented-state models" 对比） | — | 证明 Koopman 代理相对任意非线性/记忆模型的增益不是平凡的 |
+| 线性 ARX / LSTM 一步-多步预测模型 | 无独立论文，属于 `Control_of_Foundational_Model_revised.pdf` 第 8 节要求的 ablation（"output-only, finite-memory, augmented-state models" 对比） | — | 证明 Koopman 代理相对任意非线性/记忆模型的增益不是平凡的。ARX 部分已实现（`no_extra_features`，`fit_koopman_defense_model.py` 里和 `richer_abs_sign` 同代码路径公平对比）。**LSTM 部分仅有实现计划,尚未开始**：设计（固定窗口 vs 真正跨轮次记忆两种方案的取舍、接口、训练/评测口径对齐、参数量混杂因素、数据规模先天局限、成功判据）记录在 [`experiments/lstm_baseline_plan.md`](experiments/lstm_baseline_plan.md)。 |
 | GenCtrl | GenCtrl — A Formal Controllability Toolkit for Generative Models, ICLR 2026（Apple）. [arXiv:2601.05637](https://arxiv.org/abs/2601.05637) · 代码 [apple/ml-genctrl](https://github.com/apple/ml-genctrl) | `references/genctrl_controllability_toolkit_2601.05637.pdf` | 无分布假设的黑盒 PAC 可控集估计，可作为独立于 Koopman 代理的"ground-truth 可控集"参照，对应 `Control_of_Foundational_Model_revised.pdf` 第 8 节的 "controllable-set agreement" 验证步骤 |
 
 ## 检测/评测类参考（非控制器，用于失败分析与评测设计）

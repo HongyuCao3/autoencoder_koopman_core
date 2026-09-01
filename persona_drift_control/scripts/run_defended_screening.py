@@ -9,6 +9,8 @@ Used for:
 - Phase A (executor authority check): --controller constant_remind
 - Phase B (open-loop excitation for Koopman identification): --controller random_excite
 - Phase E (closed-loop validation classical baseline): --controller threshold
+- Phase G (fixed-schedule baseline, docs/BASELINES.md's "周期性/事件触发重提醒"
+  candidate): --controller periodic --periodic-period 2
 
 Must be run where torch/transformers are installed and a GPU (or patient
 CPU) is available - see environment/setup_env.sh. Writes trajectories.jsonl,
@@ -33,7 +35,7 @@ from persona_drift.controller_cli import (  # noqa: E402
     make_controller_factory,
 )
 
-CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "random_excite", "koopman_mpc")
+CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "periodic", "random_excite", "koopman_mpc")
 _EXTRA_FEATURES_FNS = EXTRA_FEATURES_FNS
 
 
@@ -54,6 +56,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--controller", choices=CONTROLLER_CHOICES, required=True)
     parser.add_argument("--threshold-y-min", type=float, default=0.7)
     parser.add_argument("--random-excite-p", type=float, default=0.5)
+    parser.add_argument("--periodic-period", type=int, default=2, help="only used when --controller periodic")
     parser.add_argument(
         "--attack-ids",
         nargs="+",
@@ -98,6 +101,7 @@ def main() -> None:
         args.threshold_y_min,
         koopman_mpc_controller,
         random_excite_p=args.random_excite_p,
+        periodic_period=args.periodic_period,
     )
     report = run_adversarial_screening(
         agent_model_id=args.agent_model,
