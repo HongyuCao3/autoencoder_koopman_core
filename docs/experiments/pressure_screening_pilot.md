@@ -103,3 +103,23 @@ escalating_pressure 都同样测不出"那种彻底空结果——是中间状�
 也不支持被推翻——在下结论之前，更便宜的下一步是扩大这次 4→更多 prompt 的样本量（同一套
 pressure_scripts.py、同一个 Qwen3-4B，纯粹加大 N），如果扩大样本后 escalating_pressure 依然
 测不出显著漂移，那时候才是该认真讨论换 7B 或者重新设计施压脚本强度的时间点。
+
+## 扩样本量跟进（job 15412821，2026-08-31 提交）
+
+`environment/run_pressure_screening_wide.sbatch`：`--num-prompts` 从 4 提到 12（每类 6 个，
+character_traits 池子共 13 个、留有余量），seeds/turns/probe-repeats/模型全部不变，df 从 3
+提到 11。输出到独立目录 `outputs/pressure_screening_wide/`，不覆盖 job 15406535 的结果，
+便于两次直接对比 t/p 值。`--time 06:00:00`（按原 318s/轨迹均速估算 48 条轨迹约 4.24h，留
+~40% 余量），跑法和 `screening.py` 一样支持断点续跑，被 `--time` 杀掉直接重新提交同一脚本。
+
+**注意**：`select_screening_prompts(rng_seed=0, num_prompts=12)` 不保证是
+`num_prompts=4` 那次抽样结果的超集（`random.sample` 的输出依赖 `k`）——这是同一个 prompt
+池子里一次新的、更大的独立抽样，不是"在原来 4 个基础上加了 8 个"。
+
+```bash
+sacct -j 15412821 --format=JobID,State,Elapsed,ExitCode
+cat persona_drift_control/outputs/pressure_screening_wide/pressure_screening_report.md   # 跑完才有
+```
+
+（跑完后补：`q1_escalating_pressure` 的新 t/p 值，和 job 15406535 的 t=-1.2847/p=0.2891 对比，
+是否在更大样本下达到显著。）
