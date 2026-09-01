@@ -122,16 +122,36 @@ sacct -j 15413471 --format=JobID,State,Elapsed,ExitCode
 cat persona_drift_control/outputs/koopman_defense_phaseB_random_excite/adversarial_screening_report.md
 ```
 
-## 下一步（Phase B 跑完后）
+## 结果：Phase B（job 15413471，2026-08-31，41 分钟）
 
-用 `outputs/koopman_defense_phaseB_random_excite/trajectories.jsonl`：
-1. `modeling.dataset.build_identification_dataset(rows, ReducedStateConfig(nu=1, mu=1),
-   y_col="y_safety")`（`u_col`/`id_col` 用默认的 `u_remind`/`trajectory_id`，已经在
-   `attack_trajectory.py` 里对齐）。
-2. 用 `split_by_system_prompt_id(..., split_col="attack_id")` 切出一部分留作 Phase E
-   的 held-out 验证集（注意：Phase B 本身的 30 个攻击和 Phase A/基线的 20 个攻击之间用了不同
-   `attack_rng_seed`，重叠概率降低但未严格保证不相交，见 sbatch 脚本注释——如果 Phase E
-   要更严格的不相交保证，需要在这里补一个显式的 attack_id allowlist）。
-3. `KoopmanSurrogate(extra_features_fn=no_extra_features).fit(dataset)`（先 ARX 基线），
-   `controllability_diagnostics(model.A, model.B, horizon=...)`——检查 B 是否退化，
-   这是 Phase C 的 go/no-go 判定。
+30 攻击 × 2 seed = 60 条轨迹，`random_excite p=0.5`。new-Q1 仍显著（t=-3.12, p=0.0041，比
+无提醒基线弱，符合"只有约一半轮次插了提醒"的预期），new-Q3 惯性显著（p<0.0001）。
+`trajectories.jsonl` 写入 `outputs/koopman_defense_phaseB_random_excite/`，供 Phase C 辨识。
+
+## 结果：Phase C（`scripts/fit_koopman_defense_model.py`，纯 CPU，几秒）
+
+新增脚本：读 Phase B 的 `trajectories.jsonl`，按 `attack_id` 切 75/25 train/held-out
+（`split_by_system_prompt_id(..., split_col="attack_id")`），
+`build_identification_dataset(..., y_col="y_safety")` 建数据集，拟合 ARX
+（`no_extra_features`）和一个非线性提升（`abs_sign_extra_features`），跑
+`controllability_diagnostics`。
+
+**原计划默认的 `nu=1, mu=1`（只记 1 个滞后输入）拟合出的 B 弱且符号和 Phase A 的证据矛盾**：
+`B=[[-0.059],[1.0]]`（第二行是状态里"记录上一次输入"这个位置的恒等式，不是学出来的，只看
+第一行）——单轮 u_remind 对下一轮 y_safety 的边际效应是**负的**、且很小，held-out rollout
+MSE=0.068，和 Phase A"常提醒让终轮安全分翻倍"这个明确证据不吻合。
+
+**换成 `nu=1, mu=2`（记 2 个滞后输入）后结果转为合理、且拟合明显更好**：`B[0,0]=0.156`
+（正号，符合"提醒提升安全性"的方向），held-out rollout MSE 降到 0.051，Gramian 条件数从
+193 降到 12.7（数值上更健康），`controllability_rank=3`（满秩，state_dim=3）。
+
+**继续加到 `mu=3` 不可靠，不能用**：攻击轨迹本身只有 4-5 轮，`mu=3` 时
+`start=max(nu-1,mu)=3`，每条轨迹能提供的可用状态转移几乎被榨干,Gramian 条件数飙到 2.57e11
+（数值上已经退化,矩阵里出现大量精确的 0/整数比例值，是数据不够撑起这个阶数的信号，不是真实
+动力学），`controllability_rank` 反而跌到 3/4（不满秩）——这是"阶数超过数据能支撑的上限"
+的教科书信号,不是"系统本身不可控"。
+
+**结论（go/no-go）：通过，但用 `nu=1, mu=2` 而不是原计划的 `nu=1, mu=1` 作为 Phase D/E 的
+状态阶数**——单一"是否插了这一轮提醒"的记忆不够，需要看最近两轮的插入历史才能让线性模型
+看出"持续提醒"和"偶尔提醒"的区别，这和 Phase A（常提醒，持续 100%）与 Phase B（随机激励，
+平均 50%）效果强度不同这一现象本身是自洽的。
