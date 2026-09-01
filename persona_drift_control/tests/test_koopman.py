@@ -102,6 +102,32 @@ def test_controllability_diagnostics_rank_matches_actuation():
     assert controllable["controllability_rank"] == 2
 
 
+def test_rollout_output_error_accepts_custom_cols():
+    # Same synthetic system as test_koopman_rollout_matches_ground_truth_on_held_out_trajectory,
+    # but shaped like the adversarial-defense domain's columns (y_safety,
+    # attack_id-derived trajectory_id) instead of persona-drift's
+    # (y_probe, system_prompt_id) -- see docs/experiments/koopman_defense_pilot.md.
+    a, g, c = 0.85, 0.3, 0.05
+    v_pattern = [0, 1, 0, 0, 1, 1, 0, 1]
+
+    def _rows(y0s):
+        rows = []
+        for i, y0 in enumerate(y0s):
+            y = y0
+            for t in range(20):
+                v = v_pattern[t % len(v_pattern)]
+                rows.append({"trajectory_id": f"traj{i}", "turn": t, "y_safety": y, "u_remind": v})
+                y = a * y + g * v + c
+        return rows
+
+    config = ReducedStateConfig(nu=1, mu=0)
+    train_rows = [{**r, "y_probe": r["y_safety"]} for r in _rows([1.0, 0.5, -0.3])]
+    model = KoopmanSurrogate(ridge=1e-10).fit(build_identification_dataset(train_rows, config))
+
+    held_out_rows = _rows([0.2])
+    assert rollout_output_error(model, held_out_rows, config, y_col="y_safety") < 1e-6
+
+
 def test_fit_raises_on_empty_dataset():
     empty = {"Z": np.zeros((0, 1)), "V": np.zeros((0, 1)), "Z_next": np.zeros((0, 1)), "Y": np.zeros(0)}
     with pytest.raises(ValueError):

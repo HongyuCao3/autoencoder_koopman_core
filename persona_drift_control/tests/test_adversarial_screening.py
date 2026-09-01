@@ -7,15 +7,24 @@ approach as the existing FakeChatModel tests in test_attack_trajectory.py."""
 
 from __future__ import annotations
 
+import json
+
 from persona_drift import adversarial_screening
 from persona_drift.attack_trajectory import AttackTrajectoryConfig
 from persona_drift.chat_model import GenerationConfig
+from persona_drift.control import ConstantRemindController, RandomExciteController
+
+
+class _FakeTokenizer:
+    def encode(self, text, add_special_tokens=False):
+        return text.split()
 
 
 class _FakeChatModel:
     def __init__(self, model_id, device="cuda", dtype=None, enable_thinking=False):
         self.model_id = model_id
         self.enable_thinking = enable_thinking
+        self.tokenizer = _FakeTokenizer()
 
     def generate(self, messages, seed, config=None, enable_thinking=None, return_thinking=False):
         if return_thinking:
@@ -107,3 +116,83 @@ def test_run_adversarial_screening_run_id_and_output_dir_differ_by_enable_thinki
     assert "think0" in logged_run_ids[0]
     assert "think1" in logged_run_ids[1]
     assert logged_run_ids[0] != logged_run_ids[1]
+
+
+def test_default_controller_factory_is_zero_control(tmp_path, monkeypatch):
+    monkeypatch.setattr(adversarial_screening, "ChatModel", _FakeChatModel)
+
+    report = adversarial_screening.run_adversarial_screening(
+        agent_model_id="fake-model",
+        judge_model_id="fake-model",
+        output_dir=tmp_path / "out",
+        num_attacks=1,
+        seeds=(0,),
+        attack_rng_seed=0,
+        device="cpu",
+        trajectory_config=AttackTrajectoryConfig(agent_gen=GenerationConfig(max_new_tokens=16)),
+    )
+    assert report["config"]["controller"] == "zero_control"
+
+
+def test_controller_factory_is_called_fresh_per_trajectory_with_its_own_seed(tmp_path, monkeypatch):
+    monkeypatch.setattr(adversarial_screening, "ChatModel", _FakeChatModel)
+    seen_seeds: list[int] = []
+
+    def factory(seed: int):
+        seen_seeds.append(seed)
+        return ConstantRemindController()
+
+    report = adversarial_screening.run_adversarial_screening(
+        agent_model_id="fake-model",
+        judge_model_id="fake-model",
+        output_dir=tmp_path / "out",
+        num_attacks=2,
+        seeds=(0, 1),
+        attack_rng_seed=0,
+        device="cpu",
+        trajectory_config=AttackTrajectoryConfig(agent_gen=GenerationConfig(max_new_tokens=16)),
+        controller_factory=factory,
+    )
+    # 2 attacks x 2 seeds = 4 trajectories, one fresh controller call each,
+    # plus one extra upfront call with seeds[0] that run_adversarial_screening
+    # makes solely to read `.name` for the run_id/config before the loop
+    # starts (harmless for every real Controller in control.py: constructing
+    # one is side-effect-free, and RandomExciteController's per-trajectory
+    # instances are still each freshly seeded inside the loop regardless).
+    assert seen_seeds == [0, 0, 1, 0, 1]
+    assert report["config"]["controller"] == "constant_remind"
+
+
+def test_random_excite_controller_is_independently_seeded_per_trajectory(tmp_path, monkeypatch):
+    # A regression guard for the bug a single shared RandomExciteController
+    # instance would have: its RNG must not run continuously across
+    # trajectories (that would break both per-trajectory reproducibility
+    # from its own seed and resumability) -- each trajectory's sequence must
+    # depend only on that trajectory's own seed.
+    monkeypatch.setattr(adversarial_screening, "ChatModel", _FakeChatModel)
+
+    def factory(seed: int):
+        return RandomExciteController(p=0.5, seed=seed)
+
+    adversarial_screening.run_adversarial_screening(
+        agent_model_id="fake-model",
+        judge_model_id="fake-model",
+        output_dir=tmp_path / "a",
+        num_attacks=3,
+        seeds=(0,),
+        attack_rng_seed=0,
+        device="cpu",
+        trajectory_config=AttackTrajectoryConfig(agent_gen=GenerationConfig(max_new_tokens=16)),
+        controller_factory=factory,
+    )
+    # Same seed (0) reused for every one of the 3 attacks above -> every
+    # trajectory must draw the identical u_remind sequence, since each gets
+    # its own fresh RandomExciteController(seed=0).
+    rows_path = tmp_path / "a" / "trajectories.jsonl"
+    rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+    by_trajectory: dict[str, list[int]] = {}
+    for row in sorted(rows, key=lambda r: (r["trajectory_id"], r["turn"])):
+        by_trajectory.setdefault(row["trajectory_id"], []).append(row["u_remind"])
+    sequences = list(by_trajectory.values())
+    assert len(sequences) == 3
+    assert sequences[0] == sequences[1] == sequences[2]

@@ -60,24 +60,34 @@ def load_trajectories(path: str | pathlib.Path) -> list[dict]:
     return rows
 
 
-def group_by_trajectory(rows: list[dict]) -> dict[str, list[dict]]:
+def group_by_trajectory(rows: list[dict], id_col: str = "trajectory_id") -> dict[str, list[dict]]:
     groups: dict[str, list[dict]] = {}
     for row in rows:
-        groups.setdefault(row["trajectory_id"], []).append(row)
+        groups.setdefault(row[id_col], []).append(row)
     for traj_rows in groups.values():
         traj_rows.sort(key=lambda r: r["turn"])
     return groups
 
 
 def split_by_system_prompt_id(
-    rows: list[dict], train_frac: float = 0.7, val_frac: float = 0.15, seed: int = 0
+    rows: list[dict],
+    train_frac: float = 0.7,
+    val_frac: float = 0.15,
+    seed: int = 0,
+    split_col: str = "system_prompt_id",
 ) -> dict[str, list[dict]]:
-    """Rollout-level split (by `system_prompt_id`, not by individual turn):
+    """Rollout-level split (by `split_col`, not by individual turn):
     DATA_COLLECTION_PROTOCOL.md section 6 and the PDF's validation protocol
     (section 5/8) both require this, because adjacent turns within one
-    dialogue are dependent -- a turn-level random split would leak."""
+    dialogue are dependent -- a turn-level random split would leak.
 
-    prompt_ids = sorted({row["system_prompt_id"] for row in rows})
+    `split_col` defaults to `system_prompt_id` (persona-drift's rollout
+    grouping key); other domains pass their own grouping key -- e.g. the
+    adversarial-defense domain's `attack_id`, so that a fixed attack's
+    different seeds always land in the same split -- see
+    docs/experiments/koopman_defense_pilot.md."""
+
+    prompt_ids = sorted({row[split_col] for row in rows})
     rng = random.Random(seed)
     rng.shuffle(prompt_ids)
     n = len(prompt_ids)
@@ -89,19 +99,26 @@ def split_by_system_prompt_id(
     }
     split: dict[str, list[dict]] = {"train": [], "val": [], "test": []}
     for row in rows:
-        split[assignment[row["system_prompt_id"]]].append(row)
+        split[assignment[row[split_col]]].append(row)
     return split
 
 
-def build_reduced_state_pairs(traj_rows: list[dict], config: ReducedStateConfig) -> list[dict]:
+def build_reduced_state_pairs(
+    traj_rows: list[dict], config: ReducedStateConfig, y_col: str = "y_probe", u_col: str = "u_remind"
+) -> list[dict]:
     """One trajectory's rows (sorted by turn) -> transition pairs
-    {z, v, y, z_next}. Turns with a NaN y_probe (scorer failure, see
+    {z, v, y, z_next}. Turns with a NaN readout (scorer failure, see
     prompt_bank.score_response) are dropped from every pair that would
-    otherwise include them, rather than propagating NaN into a fit."""
+    otherwise include them, rather than propagating NaN into a fit.
+
+    `y_col`/`u_col` default to persona-drift's `y_probe`/`u_remind`; other
+    domains (e.g. adversarial-defense's `y_safety`) pass their own column
+    names instead of renaming their data to fit this module's original
+    schema -- see docs/experiments/koopman_defense_pilot.md."""
 
     nu, mu = config.nu, config.mu
-    ys = [row["y_probe"] for row in traj_rows]
-    vs = [float(row["u_remind"]) for row in traj_rows]
+    ys = [row[y_col] for row in traj_rows]
+    vs = [float(row[u_col]) for row in traj_rows]
     pairs: list[dict] = []
     start = max(nu - 1, mu)
     for t in range(start, len(traj_rows) - 1):
@@ -123,16 +140,27 @@ def build_reduced_state_pairs(traj_rows: list[dict], config: ReducedStateConfig)
     return pairs
 
 
-def build_identification_dataset(rows: list[dict], config: ReducedStateConfig) -> dict[str, np.ndarray]:
+def build_identification_dataset(
+    rows: list[dict],
+    config: ReducedStateConfig,
+    id_col: str = "trajectory_id",
+    y_col: str = "y_probe",
+    u_col: str = "u_remind",
+) -> dict[str, np.ndarray]:
     """`rows` (any split, any mix of trajectories) -> stacked arrays Z, V,
     Z_next, Y, ready for `modeling.koopman.KoopmanSurrogate.fit` or any other
-    predictor built on the same state representation. Groups by
-    `trajectory_id` first so state history never leaks across trajectories."""
+    predictor built on the same state representation. Groups by `id_col`
+    first so state history never leaks across trajectories.
+
+    `id_col`/`y_col`/`u_col` default to persona-drift's column names; other
+    domains pass their own (e.g. adversarial-defense: unchanged
+    `trajectory_id`, but `y_safety` instead of `y_probe`) -- see
+    docs/experiments/koopman_defense_pilot.md."""
 
     state_dim = config.state_dim
     Z, V, Z_next, Y = [], [], [], []
-    for traj_rows in group_by_trajectory(rows).values():
-        for pair in build_reduced_state_pairs(traj_rows, config):
+    for traj_rows in group_by_trajectory(rows, id_col=id_col).values():
+        for pair in build_reduced_state_pairs(traj_rows, config, y_col=y_col, u_col=u_col):
             Z.append(pair["z"])
             V.append(pair["v"])
             Z_next.append(pair["z_next"])

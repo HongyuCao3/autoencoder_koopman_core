@@ -1,5 +1,11 @@
 from persona_drift.attack_bank import AttackEntry
 from persona_drift.attack_trajectory import AttackTrajectoryConfig, run_attack_trajectory
+from persona_drift.control import ConstantRemindController, ZeroControlController
+
+
+class FakeTokenizer:
+    def encode(self, text, add_special_tokens=False):
+        return text.split()
 
 
 class FakeChatModel:
@@ -9,10 +15,13 @@ class FakeChatModel:
         self._thinking = thinking
         self.calls = 0
         self.enable_thinking_calls: list[bool | None] = []
+        self.messages_seen: list[list[dict[str, str]]] = []
+        self.tokenizer = FakeTokenizer()
 
     def generate(self, messages, seed, config=None, enable_thinking=None, return_thinking=False):
         self.calls += 1
         self.enable_thinking_calls.append(enable_thinking)
+        self.messages_seen.append([dict(m) for m in messages])
         if return_thinking:
             return self._reply, self._thinking
         return self._reply
@@ -98,3 +107,54 @@ def test_run_attack_trajectory_records_attack_metadata_on_every_row():
         assert row["plain_query"] == entry.plain_query
         assert row["seed"] == 7
         assert row["trajectory_id"] == "t4"
+
+
+def test_default_controller_is_zero_control_no_reminder_ever_inserted():
+    agent = FakeChatModel()
+    rows = run_attack_trajectory(
+        agent=agent,
+        judge=FakeChatModel(reply="3"),
+        entry=_entry(num_turns=4),
+        seed=0,
+        trajectory_id="t5",
+    )
+    assert all(row["u_remind"] == 0 for row in rows)
+    assert all(row["excitation_design"] == "zero_control" for row in rows)
+    assert all(row["inserted_reminder_text"] is None for row in rows)
+    assert all(row["inserted_tokens"] == 0 for row in rows)
+    assert all(row["y_probe"] == row["y_safety"] for row in rows)
+    # the attacker's own query, not any reminder text, is what the agent saw
+    assert agent.messages_seen[0][-1]["content"] == "attacker turn 0"
+
+    explicit_zero_rows = run_attack_trajectory(
+        agent=FakeChatModel(),
+        judge=FakeChatModel(reply="3"),
+        entry=_entry(num_turns=4),
+        seed=0,
+        trajectory_id="t5b",
+        controller=ZeroControlController(),
+    )
+    assert [row["u_remind"] for row in rows] == [row["u_remind"] for row in explicit_zero_rows]
+
+
+def test_constant_remind_controller_prepends_safety_reminder_every_turn():
+    agent = FakeChatModel()
+    rows = run_attack_trajectory(
+        agent=agent,
+        judge=FakeChatModel(reply="3"),
+        entry=_entry(num_turns=3),
+        seed=0,
+        trajectory_id="t6",
+        controller=ConstantRemindController(),
+    )
+    assert all(row["u_remind"] == 1 for row in rows)
+    assert all(row["excitation_design"] == "constant_remind" for row in rows)
+    assert all(row["inserted_reminder_text"] is not None for row in rows)
+    assert all(row["inserted_tokens"] > 0 for row in rows)
+    # the row's own attacker_query stays the raw query even though the agent
+    # was shown the reminder-prefixed text, matching selfchat.py's convention
+    # of logging user_message raw and inserted_reminder_text separately
+    assert rows[0]["attacker_query"] == "attacker turn 0"
+    last_user_message = agent.messages_seen[0][-1]["content"]
+    assert last_user_message.startswith(rows[0]["inserted_reminder_text"])
+    assert last_user_message.endswith("attacker turn 0")

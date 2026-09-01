@@ -49,18 +49,27 @@ def one_step_error(predictor: Predictor, dataset: dict[str, np.ndarray]) -> floa
 
 
 def rollout_output_error(
-    predictor: Predictor, rows: list[dict], config: ReducedStateConfig
+    predictor: Predictor,
+    rows: list[dict],
+    config: ReducedStateConfig,
+    id_col: str = "trajectory_id",
+    y_col: str = "y_probe",
+    u_col: str = "u_remind",
 ) -> float:
     """Multi-step rollout (PDF section 8, "multi-step rollout"): seed each
     held-out trajectory's z from the true initial reading, then propagate
     purely from the predictor using the trajectory's actual recorded input
     sequence -- no re-grounding on the true z_t along the way -- and compare
     the predicted y against the true y at every subsequent turn. `rows`
-    should come from a held-out split, same as `one_step_error`."""
+    should come from a held-out split, same as `one_step_error`.
+
+    `id_col`/`y_col`/`u_col` are forwarded to `group_by_trajectory`/
+    `build_reduced_state_pairs` unchanged -- see their docstrings and
+    docs/experiments/koopman_defense_pilot.md for non-persona-drift domains."""
 
     squared_errors: list[float] = []
-    for traj_rows in group_by_trajectory(rows).values():
-        pairs = build_reduced_state_pairs(traj_rows, config)
+    for traj_rows in group_by_trajectory(rows, id_col=id_col).values():
+        pairs = build_reduced_state_pairs(traj_rows, config, y_col=y_col, u_col=u_col)
         if not pairs:
             continue
         z = pairs[0]["z"]

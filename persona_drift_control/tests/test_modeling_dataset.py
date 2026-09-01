@@ -81,3 +81,50 @@ def test_build_identification_dataset_does_not_leak_across_trajectories():
     assert dataset["Z"].shape[0] == 4  # 2 pairs per trajectory x 2 trajectories
     # every z in the dataset is either all-from-a's constant 1.0 or all-from-b's 0.0
     assert set(dataset["Z"].flatten().tolist()) == {1.0, 0.0}
+
+
+def _other_domain_row(attack_id, turn, y_safety, u_remind):
+    """Adversarial-defense-shaped row: same trajectory_id/turn columns, but
+    a different readout name (y_safety) and rollout-grouping key
+    (attack_id instead of system_prompt_id) -- see
+    docs/experiments/koopman_defense_pilot.md."""
+    return {"trajectory_id": f"{attack_id}_seed0", "attack_id": attack_id, "turn": turn, "y_safety": y_safety, "u_remind": u_remind}
+
+
+def test_group_by_trajectory_accepts_a_custom_id_col():
+    rows = [_other_domain_row("atk1", 2, 0.5, 0), _other_domain_row("atk1", 1, 0.9, 0)]
+    groups = group_by_trajectory(rows, id_col="trajectory_id")
+    assert [r["turn"] for r in groups["atk1_seed0"]] == [1, 2]
+
+
+def test_split_by_system_prompt_id_accepts_a_custom_split_col():
+    rows = [_other_domain_row(f"atk{i}", 1, 0.5, 0) for i in range(10)]
+    split = split_by_system_prompt_id(rows, train_frac=0.7, val_frac=0.15, seed=0, split_col="attack_id")
+    all_ids = set()
+    for part in split.values():
+        ids = {r["attack_id"] for r in part}
+        assert not (ids & all_ids)
+        all_ids |= ids
+    assert all_ids == {f"atk{i}" for i in range(10)}
+
+
+def test_build_reduced_state_pairs_accepts_custom_y_and_u_cols():
+    traj = [
+        _other_domain_row("atk1", turn, y, u)
+        for turn, (y, u) in enumerate([(1.0, 0), (0.8, 1), (0.6, 0), (0.9, 1)])
+    ]
+    pairs = build_reduced_state_pairs(traj, ReducedStateConfig(nu=1, mu=0), y_col="y_safety")
+    assert len(pairs) == 3
+    assert np.allclose(pairs[0]["z"], [1.0])
+    assert np.allclose(pairs[0]["z_next"], [0.8])
+
+
+def test_build_identification_dataset_accepts_custom_cols():
+    rows = [
+        _other_domain_row("atk1", turn, y, u)
+        for turn, (y, u) in enumerate([(1.0, 0), (0.8, 1), (0.6, 0)])
+    ]
+    dataset = build_identification_dataset(
+        rows, ReducedStateConfig(nu=1, mu=0), id_col="trajectory_id", y_col="y_safety"
+    )
+    assert dataset["Z"].shape[0] == 2

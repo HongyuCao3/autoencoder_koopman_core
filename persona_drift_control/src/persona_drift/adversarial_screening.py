@@ -18,7 +18,7 @@ import json
 import pathlib
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from loguru import logger
 
@@ -26,6 +26,7 @@ from .analysis_adversarial import analyze_adversarial_screening
 from .attack_bank import load_attack_bank, select_screening_attacks
 from .attack_trajectory import AttackTrajectoryConfig, run_attack_trajectory
 from .chat_model import ChatModel
+from .control import Controller, ZeroControlController
 from .logging_setup import configure_run_logger
 
 
@@ -68,19 +69,39 @@ def run_adversarial_screening(
     device: str = "cuda",
     trajectory_config: AttackTrajectoryConfig | None = None,
     enable_thinking: bool = False,
+    controller_factory: Callable[[int], Controller] | None = None,
 ) -> dict[str, Any]:
     output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     trajectory_config = trajectory_config or AttackTrajectoryConfig()
+    # A *factory* (one fresh Controller per trajectory, given that
+    # trajectory's own seed), not a single shared Controller instance --
+    # mirrors screening.py's `_make_controller(condition, seed, ...)`. This
+    # matters for stateful controllers like RandomExciteController: a single
+    # shared instance's RNG would run continuously across trajectories,
+    # which breaks both per-trajectory reproducibility from its own seed and
+    # this function's resumability (a resumed run would draw a different
+    # sequence than an uninterrupted one). Every existing call site (no
+    # `controller_factory` argument) is exactly the "无控制" screening this
+    # module's docstring describes -- see
+    # docs/experiments/koopman_defense_pilot.md.
+    controller_factory = controller_factory or (lambda seed: ZeroControlController())
 
     bank = load_attack_bank()
     attacks = select_screening_attacks(bank, num_attacks=num_attacks, rng_seed=attack_rng_seed)
 
-    # think{0,1} in the run id (not just a timestamp) makes the enable_thinking
-    # ablation self-describing straight from the logs/ filename, on top of the
-    # timestamp already making every run's log file distinct on its own -- see
-    # docs/experiments/adversarial_screening_thinking_pilot.md.
-    run_id = f"{output_dir.name}_think{int(enable_thinking)}_{datetime.now():%Y%m%d_%H%M%S}"
+    # One throwaway construction just to read .name for the run_id/config
+    # below, before the real per-trajectory instances are built inside the
+    # loop -- harmless for every Controller in control.py (construction has
+    # no side effects; RandomExciteController's actual per-trajectory RNGs
+    # are still freshly seeded independently of this peek).
+    controller_name = controller_factory(seeds[0]).name
+    # think{0,1} and the controller name in the run id (not just a timestamp)
+    # make both ablations self-describing straight from the logs/ filename,
+    # on top of the timestamp already making every run's log file distinct
+    # on its own -- see docs/experiments/adversarial_screening_thinking_pilot.md
+    # and docs/experiments/koopman_defense_pilot.md.
+    run_id = f"{output_dir.name}_think{int(enable_thinking)}_{controller_name}_{datetime.now():%Y%m%d_%H%M%S}"
     run_config = {
         "agent_model_id": agent_model_id,
         "judge_model_id": judge_model_id,
@@ -89,6 +110,7 @@ def run_adversarial_screening(
         "attack_rng_seed": attack_rng_seed,
         "device": device,
         "enable_thinking": enable_thinking,
+        "controller": controller_name,
         "attack_ids": [entry.attack_id for entry in attacks],
         "output_dir": str(output_dir),
     }
@@ -153,6 +175,7 @@ def run_adversarial_screening(
                     seed=seed,
                     trajectory_id=trajectory_id,
                     config=trajectory_config,
+                    controller=controller_factory(seed),
                 )
                 for row in trajectory_rows:
                     handle.write(json.dumps(row) + "\n")

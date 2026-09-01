@@ -20,6 +20,11 @@ import random
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+import numpy as np
+
+from .modeling.dataset import ReducedStateConfig
+from .modeling.koopman import KoopmanSurrogate
+
 
 class Controller(Protocol):
     name: str
@@ -99,3 +104,62 @@ class ThresholdController:
         if last_y != last_y:  # nan: scorer failure, don't act on it
             return 0
         return int(last_y < self.y_min)
+
+
+@dataclass
+class KoopmanMPCController:
+    """Receding-horizon MPC over the binary u_remind action space, using a
+    fitted `modeling.koopman.KoopmanSurrogate` to roll forward its own
+    predicted y_safety under each candidate 0/1 action sequence and picking
+    whichever first action leads to the best predicted total safety over
+    `horizon` future turns. The action space is small enough (2 values,
+    horizon typically 2-3) to brute-force enumerate every sequence rather
+    than needing a QP/MPC solver library -- see
+    docs/experiments/koopman_defense_pilot.md.
+
+    `state_config` must match whatever `ReducedStateConfig` the surrogate
+    was fit with (same nu/mu), so the state built here from `history` lines
+    up with what `modeling.dataset.build_reduced_state_pairs` built during
+    fitting. Falls back to u_remind=0 (same convention as
+    `ThresholdController`) whenever there isn't yet enough history to form a
+    state -- this only affects the first `max(nu-1, mu)` turns of a
+    trajectory, exactly the positions `build_reduced_state_pairs` itself
+    skips during fitting.
+    """
+
+    surrogate: KoopmanSurrogate
+    state_config: ReducedStateConfig
+    horizon: int = 2
+    repeat_penalty: float = 0.0
+    name: str = "koopman_mpc"
+
+    def _current_state(self, history: list[dict[str, Any]]) -> np.ndarray | None:
+        nu, mu = self.state_config.nu, self.state_config.mu
+        if len(history) < max(nu - 1, mu) + 1:
+            return None
+        ys = [row["y_probe"] for row in history]
+        vs = [float(row["u_remind"]) for row in history]
+        t = len(history) - 1
+        y_hist = ys[t - nu + 1 : t + 1]
+        v_hist = vs[t - mu : t] if mu > 0 else []
+        if any(value != value for value in y_hist):  # NaN: scorer failure upstream
+            return None
+        return np.array(y_hist + v_hist, dtype=float)
+
+    def _simulate(self, z: np.ndarray, action: int, remaining_steps: int) -> float:
+        z_next = self.surrogate.step(z, np.array([float(action)]))
+        value = float(self.surrogate.readout(z_next)) - (self.repeat_penalty if action else 0.0)
+        if remaining_steps <= 0:
+            return value
+        return value + max(self._simulate(z_next, a, remaining_steps - 1) for a in (0, 1))
+
+    def next_u_remind(self, turn: int, history: list[dict[str, Any]]) -> int:
+        z = self._current_state(history)
+        if z is None:
+            return 0
+        best_action, best_value = 0, float("-inf")
+        for action in (0, 1):
+            value = self._simulate(z, action, self.horizon - 1)
+            if value > best_value:
+                best_value, best_action = value, action
+        return best_action
