@@ -2,9 +2,10 @@
 
 `src/persona_drift/modeling/` 是之前缺失的那一块——把采集到的 `trajectories.jsonl` 拟合成
 `Control_of_Foundational_Model_revised.pdf` 第 4/5/6/7 节描述的受控 Koopman 代理，并把 ARX
-baseline（`docs/BASELINES.md` 第③层）实现为同一套代码的特例，而不是另写一份。目前只用**合成的
-已知线性系统数据**验证过（见 `tests/test_koopman.py`），还没有接到真实采集数据上——那要等
-screening 通过、正式 320 条轨迹采完之后。
+baseline（`docs/BASELINES.md` 第③层）实现为同一套代码的特例，而不是另写一份。最初只用**合成的
+已知线性系统数据**验证过（见 `tests/test_koopman.py`）；对抗防御领域（`koopman_defense_pilot.md`
+Phase C）已经接到真实采集数据并完成拟合/闭环验证（`nu=1, mu=2`，`richer_abs_sign` 打赢两个
+经典基线）。人格漂移领域仍是合成数据阶段，要等 screening 通过、正式 320 条轨迹采完之后。
 
 ## 为什么不直接复用 `src/koopman_ae/core.py`
 
@@ -51,10 +52,13 @@ import**——它只有十几行纯 numpy、不依赖任何 pandas 列约定，�
 
 ## 已知缺口 / 还没做的事
 
-- **只在合成数据上验证过**：`tests/test_koopman.py` 用已知 `a,g,c` 的线性系统生成无噪声数据，
-  验证 `fit()` 能把参数 recover 回来、`one_step_error`/`rollout_output_error` 在这种理想情况下
-  接近零。还没有在任何真实 `trajectories.jsonl` 上跑过——等 screening 过关、正式数据采出来后
-  要做的第一件事就是这个。
+- **单元测试只在合成数据上验证**：`tests/test_koopman.py` 用已知 `a,g,c` 的线性系统生成无噪声
+  数据，验证 `fit()` 能把参数 recover 回来、`one_step_error`/`rollout_output_error` 在这种理想
+  情况下接近零——这部分保持不变，仍是最基础的正确性保障。
+- **人格漂移领域还没有在真实 `trajectories.jsonl` 上跑过**：对抗防御领域已经跑通（Phase C，
+  `nu=1, mu=2`，held-out rollout MSE 0.043，详见 `../experiments/koopman_defense_pilot.md`），
+  证明了这套代码在真实数据上是可用的；人格漂移领域仍要等 screening 过关、正式数据采出来后
+  才能做同样的事。
 - **LSTM baseline 还没实现**：`docs/BASELINES.md` 第③层要求的另一个 ablation。`Predictor` 协议
   已经为它留好了扩展点（实现 `step`/`readout` 即可复用 `evaluate.py`），但训练循环本身
   （nonlinear，需要 torch 优化器）还没写，属于范围内明确推迟的部分，不是遗漏。

@@ -70,10 +70,25 @@
   `ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md` 第 7 节步骤 1 的 screening（攻击序列回放 +
   LLM-judge 安全打分 + 渐进侵蚀/自相关检验）。状态：步骤 1 **通过**（new-Q1/new-Q3 均
   p<0.0001，20 攻击里 18 个负斜率，与人格漂移任务的完全空结果形成鲜明对比）。
-- [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) — ★ 当前正在做：
-  步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。
-  **新开一次对话想知道"这个任务现在进展到哪一步了"，看这份文档。** 状态：工程全链路已验证
-  跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；v2 换成步骤 1
-  里真实"已部分被攻破"的对话上下文重测，天花板问题解决了但响应噪声大、不单调（p=0.4535），
-  根因假设指向校准点（短单轮 prompt）和应用点（数千 token 深层上下文）不匹配，或单层
-  steering 压不过已建立的多轮上下文；两次都不是代码问题，下一步候选见文档。
+- [experiments/adversarial_screening_thinking_pilot.md](experiments/adversarial_screening_thinking_pilot.md) —
+  上面那次 screening 结果在 Qwen3 **thinking 模式**下的复现重跑（此前所有实验默认跑在
+  non-thinking 模式，这个变量从未被检视过）。用 Hydra 管理 `enable_thinking`，避免
+  thinking/non-thinking 两次跑的输出目录互相覆盖。
+- [experiments/koopman_defense_pilot.md](experiments/koopman_defense_pilot.md) — ★ 当前进展
+  最新：把人格漂移这条线的 `control.py`/`modeling/` 几乎零改动复用到对抗防御领域，设计并
+  验证 Koopman-MPC 防御控制器。**新开一次对话想知道"Koopman 防御控制器现在做到哪一步了"，
+  看这份文档。** Phase A→E 已完整闭环：`koopman_mpc` 打赢 zero_control/threshold 两个基线，
+  以更低代价（约 40% 的提醒次数/token）追平 constant_remind。Phase F（良性查询 helpfulness
+  代价检查，四臂并行，无 go/no-go 门槛）已提交，结果待补。
+- [experiments/koopman_detection_design.md](experiments/koopman_detection_design.md) — Phase E
+  打赢后的支线：让 Koopman 代理模型具备显式"检测"能力（而不只是隐含在选动作过程里）。
+  方案 1（一步预测残差/innovation）在 Phase E 数据上执行结果为负面/持平，未跑赢"下一轮=
+  上一轮"基线，与 `koopman_defense_pilot.md` 主线分开接续。
+- [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
+  步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
+  工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；
+  v2 换成步骤 1 里真实"已部分被攻破"的对话上下文重测，天花板问题解决了但响应噪声大、不单调
+  （p=0.4535），根因假设指向校准点（短单轮 prompt）和应用点（数千 token 深层上下文）不匹配，
+  或单层 steering 压不过已建立的多轮上下文；两次都不是代码问题。**用户已决定这一轮不再追加
+  channel C 新实验**，改走 `koopman_defense_pilot.md` 的 channel A（提醒注入）路线，本文档
+  不再是活跃开发线。
