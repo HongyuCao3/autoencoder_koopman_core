@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
-"""CLI for the adversarial-defense screening pilot with a defense
-controller active (docs/experiments/koopman_defense_pilot.md) -- the
-channel-A-style safety-reminder actuator (safety_reminder.py) driven by one
-of control.py's `Controller` implementations, instead of the "无控制"
-baseline `scripts/run_adversarial_screening.py` runs.
-
-Used for:
-- Phase A (executor authority check): --controller constant_remind
-- Phase B (open-loop excitation for Koopman identification): --controller random_excite
-- Phase E (closed-loop validation classical baseline): --controller threshold
+"""CLI for the Phase F benign helpfulness-cost check
+(docs/experiments/koopman_defense_pilot.md): deploys one of Phase E's
+controller arms against the fixed 8-category MT-Bench benign session set
+(benign_bank.py) instead of the adversarial attack bank. Controller
+construction (including --controller koopman_mpc's fitted-surrogate loading)
+is shared with scripts/run_defended_screening.py via controller_cli.py.
 
 Must be run where torch/transformers are installed and a GPU (or patient
-CPU) is available - see environment/setup_env.sh. Writes trajectories.jsonl,
-adversarial_screening_report.json, and adversarial_screening_report.md under
---output-dir.
+CPU) is available. Writes trajectories.jsonl, benign_screening_report.json,
+and benign_screening_report.md under --output-dir.
 """
 
 from __future__ import annotations
@@ -24,8 +19,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
-from persona_drift.adversarial_screening import run_adversarial_screening  # noqa: E402
-from persona_drift.attack_trajectory import AttackTrajectoryConfig  # noqa: E402
+from persona_drift.benign_screening import run_benign_screening  # noqa: E402
+from persona_drift.benign_trajectory import BenignTrajectoryConfig  # noqa: E402
 from persona_drift.chat_model import GenerationConfig  # noqa: E402
 from persona_drift.controller_cli import (  # noqa: E402
     EXTRA_FEATURES_FNS,
@@ -33,34 +28,20 @@ from persona_drift.controller_cli import (  # noqa: E402
     make_controller_factory,
 )
 
-CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "random_excite", "koopman_mpc")
+CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "koopman_mpc")
 _EXTRA_FEATURES_FNS = EXTRA_FEATURES_FNS
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--agent-model", default="Qwen/Qwen3-4B")
-    parser.add_argument(
-        "--judge-model",
-        default=None,
-        help="defaults to --agent-model (self-judging, no second model load)",
-    )
+    parser.add_argument("--judge-model", default=None, help="defaults to --agent-model")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--output-dir", type=pathlib.Path, required=True)
-    parser.add_argument("--num-attacks", type=int, default=20)
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1])
-    parser.add_argument("--attack-rng-seed", type=int, default=0)
     parser.add_argument("--agent-max-new-tokens", type=int, default=256)
     parser.add_argument("--controller", choices=CONTROLLER_CHOICES, required=True)
     parser.add_argument("--threshold-y-min", type=float, default=0.7)
-    parser.add_argument("--random-excite-p", type=float, default=0.5)
-    parser.add_argument(
-        "--attack-ids",
-        nargs="+",
-        default=None,
-        help="replay this exact set of attack ids instead of a random --num-attacks/--attack-rng-seed sample "
-        "(e.g. Phase E's held-out split from koopman_fit_report.json)",
-    )
     parser.add_argument(
         "--koopman-model-path",
         type=pathlib.Path,
@@ -78,7 +59,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     judge_model = args.judge_model or args.agent_model
-    trajectory_config = AttackTrajectoryConfig(
+    trajectory_config = BenignTrajectoryConfig(
         agent_gen=GenerationConfig(max_new_tokens=args.agent_max_new_tokens),
     )
     koopman_mpc_controller = (
@@ -93,28 +74,20 @@ def main() -> None:
         if args.controller == "koopman_mpc"
         else None
     )
-    controller_factory = make_controller_factory(
-        args.controller,
-        args.threshold_y_min,
-        koopman_mpc_controller,
-        random_excite_p=args.random_excite_p,
-    )
-    report = run_adversarial_screening(
+    controller_factory = make_controller_factory(args.controller, args.threshold_y_min, koopman_mpc_controller)
+    report = run_benign_screening(
         agent_model_id=args.agent_model,
         judge_model_id=judge_model,
         output_dir=args.output_dir,
-        num_attacks=args.num_attacks,
         seeds=tuple(args.seeds),
-        attack_rng_seed=args.attack_rng_seed,
         device=args.device,
         trajectory_config=trajectory_config,
         controller_factory=controller_factory,
-        attack_ids=args.attack_ids,
     )
     print(f"controller={args.controller}")
-    print(f"new_q1_escalation.pass={report['new_q1_escalation']['pass']}")
-    print(f"new_q3_autocorrelation.pass={report['new_q3_autocorrelation']['pass']}")
-    print(f"report written to {args.output_dir}/adversarial_screening_report.md")
+    print(f"mean_y_help={report['diagnostics']['mean_y_help']:.4f}")
+    print(f"refusal_rate={report['diagnostics']['refusal_rate']:.4f}")
+    print(f"report written to {args.output_dir}/benign_screening_report.md")
 
 
 if __name__ == "__main__":

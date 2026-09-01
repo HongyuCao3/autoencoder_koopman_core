@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import pathlib
-import time
 from datetime import datetime
 from typing import Any, Callable
 
@@ -28,35 +27,7 @@ from .attack_trajectory import AttackTrajectoryConfig, run_attack_trajectory
 from .chat_model import ChatModel
 from .control import Controller, ZeroControlController
 from .logging_setup import configure_run_logger
-
-
-def _prepare_resumable_trajectories_file(
-    trajectories_path: pathlib.Path, expected_rows_by_trajectory_id: dict[str, int]
-) -> dict[str, list[dict[str, Any]]]:
-    """Same resumability contract as screening.py's version (see
-    docs/experiments/signal_screening_pilot.md for why this exists), but
-    keyed per trajectory_id since attack sequences have variable length."""
-
-    completed_by_tid: dict[str, list[dict[str, Any]]] = {}
-    if trajectories_path.exists():
-        rows_by_tid: dict[str, list[dict[str, Any]]] = {}
-        for line in trajectories_path.read_text().splitlines():
-            if not line.strip():
-                continue
-            row = json.loads(line)
-            rows_by_tid.setdefault(row["trajectory_id"], []).append(row)
-        completed_by_tid = {
-            tid: sorted(rs, key=lambda r: r["turn"])
-            for tid, rs in rows_by_tid.items()
-            if len(rs) == expected_rows_by_trajectory_id.get(tid)
-        }
-
-    with trajectories_path.open("w") as handle:
-        for rs in completed_by_tid.values():
-            for row in rs:
-                handle.write(json.dumps(row) + "\n")
-
-    return completed_by_tid
+from .screening_common import load_agent_and_judge, prepare_resumable_trajectories_file, run_trajectories_loop
 
 
 def run_adversarial_screening(
@@ -132,7 +103,7 @@ def run_adversarial_screening(
         for entry in attacks
         for seed in seeds
     }
-    completed_by_tid = _prepare_resumable_trajectories_file(trajectories_path, expected_rows_by_trajectory_id)
+    completed_by_tid = prepare_resumable_trajectories_file(trajectories_path, expected_rows_by_trajectory_id)
     if completed_by_tid:
         logger.info(
             "resuming: {} already-completed trajectories found in {}",
@@ -141,65 +112,27 @@ def run_adversarial_screening(
         )
 
     total_trajectories = len(attacks) * len(seeds)
+    agent, judge = load_agent_and_judge(
+        ChatModel,
+        agent_model_id,
+        judge_model_id,
+        device,
+        enable_thinking,
+        needed=len(completed_by_tid) < total_trajectories,
+    )
 
-    agent = None
-    judge = None
-    if len(completed_by_tid) < total_trajectories:
-        logger.info("loading agent model {} (enable_thinking={})", agent_model_id, enable_thinking)
-        agent = ChatModel(agent_model_id, device=device, enable_thinking=enable_thinking)
-        if judge_model_id == agent_model_id:
-            logger.info("judge_model == agent_model: reusing the loaded agent instance as judge")
-            judge = agent
-        else:
-            logger.info("loading judge model {}", judge_model_id)
-            # enable_thinking=False regardless of the agent's setting: judge
-            # calls always pin enable_thinking=False per-call in
-            # safety_judge.judge_safety_score, so this instance default is
-            # never actually used, but it documents intent even when the
-            # judge model happens to be a different, separately-loaded
-            # instance from the agent.
-            judge = ChatModel(judge_model_id, device=device, enable_thinking=False)
-
-    rows: list[dict[str, Any]] = [row for rs in completed_by_tid.values() for row in rs]
-    completed = len(completed_by_tid)
-    run_start = time.monotonic()
-    with trajectories_path.open("a") as handle:
-        for entry in attacks:
-            for seed in seeds:
-                trajectory_id = f"{entry.attack_id}__seed{seed}"
-                if trajectory_id in completed_by_tid:
-                    logger.info("[{}/{}] skipping already-completed {}", completed, total_trajectories, trajectory_id)
-                    continue
-                logger.info(
-                    "[{}/{}] starting {} (+{:.0f}s)",
-                    completed,
-                    total_trajectories,
-                    trajectory_id,
-                    time.monotonic() - run_start,
-                )
-                trajectory_start = time.monotonic()
-                trajectory_rows = run_attack_trajectory(
-                    agent=agent,
-                    judge=judge,
-                    entry=entry,
-                    seed=seed,
-                    trajectory_id=trajectory_id,
-                    config=trajectory_config,
-                    controller=controller_factory(seed),
-                )
-                for row in trajectory_rows:
-                    handle.write(json.dumps(row) + "\n")
-                handle.flush()
-                rows.extend(trajectory_rows)
-                completed += 1
-                logger.info(
-                    "[{}/{}] finished {} in {:.0f}s (+{:.0f}s total)",
-                    completed,
-                    total_trajectories,
-                    trajectory_id,
-                    time.monotonic() - trajectory_start,
-                    time.monotonic() - run_start,
-                )
+    rows = run_trajectories_loop(
+        entries=attacks,
+        id_fn=lambda entry: entry.attack_id,
+        seeds=seeds,
+        controller_factory=controller_factory,
+        trajectory_config=trajectory_config,
+        agent=agent,
+        judge=judge,
+        trajectory_runner=run_attack_trajectory,
+        trajectories_path=trajectories_path,
+        completed_by_tid=completed_by_tid,
+    )
 
     report = analyze_adversarial_screening(rows)
     report["config"] = run_config

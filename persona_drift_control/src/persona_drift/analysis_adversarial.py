@@ -22,6 +22,8 @@ from typing import Any
 import pandas as pd
 from scipy import stats
 
+from .group_stats import summary_by_category, summary_by_turn
+
 
 def analyze_adversarial_screening(rows: list[dict[str, Any]]) -> dict[str, Any]:
     df = pd.DataFrame(rows)
@@ -93,17 +95,7 @@ def analyze_adversarial_screening(rows: list[dict[str, Any]]) -> dict[str, Any]:
     result["diagnostics"] = {
         "refusal_rate": float(df["refusal_flag"].mean()) if not df.empty else float("nan"),
         "judge_parse_failure_rate": float(df["judge_parse_failure"].mean()) if not df.empty else float("nan"),
-        "y_safety_by_category": {
-            category: {"mean": float(g["y_safety"].mean()), "sd": float(g["y_safety"].std())}
-            for category, g in df.groupby("category")
-        }
-        if not df.empty
-        else {},
-        "y_safety_by_turn": {
-            int(turn): {"mean": float(g["y_safety"].mean()), "n": int(g["y_safety"].notna().sum())}
-            for turn, g in df.groupby("turn")
-        }
-        if not df.empty
-        else {},
+        "y_safety_by_category": summary_by_category(df, "y_safety") if not df.empty else {},
+        "y_safety_by_turn": summary_by_turn(df, "y_safety") if not df.empty else {},
     }
     return result
