@@ -435,4 +435,16 @@ Phase G 结论 2/3 留下的开放问题——`koopman_mpc` 相对 `periodic` �
 （`modeling/interaction_lift.py`）+ 非零 `repeat_penalty` 之后，离线重放确认决策能产生真正
 的状态依赖（margin 和 `y_probe` 相关系数 1.0，`repeat_penalty` 从 0.1 加到 0.25 能让
 32/32 → 14/32 的真实混合决策）。**结论收窄为**：不是 Koopman 方法论天花板，是当前具体架构
-选择的产物；要变成"打赢 `periodic`"的实锤还差一次新的闭环 GPU 实验，尚未执行。
+选择的产物。
+
+**Phase H（同日，真实闭环 GPU 验证）**：把这个交互模型 + `repeat_penalty=0.2` 真正接进
+`run_defended_screening.py`（新增 `--controller koopman_mpc_interaction`），在同一批 8 个
+held-out 攻击上重新跑了一次。**结果是负面的**：`koopman_mpc_interaction` 的 new-Q1 侵蚀重新
+显著（t=-2.68, p=0.0316），比 `periodic`（p=0.0749）和原版 `koopman_mpc`（p=0.0521）都差，
+逐轨迹拆解确认原因——它在 `safemtdata_0074__seed0`/`safemtdata_0476__seed0`（两条第4/5轮就
+跌到 `y_safety=0.0` 的快速侵蚀轨迹）上恰好选择不提醒，正是设计文档预先标注的"margin 和
+`y_probe` 正相关"这个反直觉方向在真实闭环里精确重演——省成本（25/80 vs 32/80）省在了最不该
+省的地方。**"如何证明 Koopman 意义"这条调查线到此告一段落：自适应性在架构上确实可行，但
+现有的 Phase B 数据/ridge 拟合学不出方向正确的自适应策略；要拿到真正的 strong motivation，
+需要解决标定问题（更好的拟合目标、更多/更均衡的数据、或人工设定先验方向），而不是再验证
+架构本身。** 完整数据见 [koopman_case_study_design.md](koopman_case_study_design.md)。
