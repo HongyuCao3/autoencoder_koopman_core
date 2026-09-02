@@ -5,34 +5,44 @@
 [Pytorch-lightning-Hydra-Optuna-MLflow-Slurm-Project-Template-for-Scientific-Research](https://github.com/HongyuCao3/Pytorch-lightining-Hydra-Optuna-MLflow-Slurm-Project-Tempate-for-Scientific-Research)
 的文档分类思路（任务定义/方法/实验/文献），用纯 Markdown 实现，不引入 Quarto 等构建工具。
 
-## 任务与协议
+子目录：`task/`（任务选型与背景调研）、`feasibility/`（各条备选方向的可行性分析）、
+`protocols/`（数据/通道协议）、`evaluation/`（评价指标与 baseline 清单）、`method/`（实现细节）、
+`experiments/`（实验记录）、`references/`（本地 PDF 缓存，已 gitignore）。跨文档的反引号引用
+（如 `` `BASELINES.md` ``）是文字引用，不是可跳转链接，不随文件搬移而失效。
 
-- **[ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md](ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md) —
+## 任务选型（`task/`）
+
+- **[task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md](task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md) —
   ★ 当前优先级最高：任务选型候选"Koopman 闭环控制抵抗多轮 prompt 攻击"的分析
   （任务定义、扰动通道建模、相对 NBF-LLM/GenCtrl 的 delta、验证顺序）**
-- [CONTROL_THEORETIC_LLM_RELATED_WORK.md](CONTROL_THEORETIC_LLM_RELATED_WORK.md) —
+- [task/CONTROL_THEORETIC_LLM_RELATED_WORK.md](task/CONTROL_THEORETIC_LLM_RELATED_WORK.md) —
   2025–2026 控制论×LLM 相关工作调研：按时间轴分类、gap 确认、任务选型信号
-- [STOLFO_ACTIVATION_STEERING_FEASIBILITY.md](STOLFO_ACTIVATION_STEERING_FEASIBILITY.md) —
+
+## 可行性分析（`feasibility/`）
+
+- [feasibility/STOLFO_ACTIVATION_STEERING_FEASIBILITY.md](feasibility/STOLFO_ACTIVATION_STEERING_FEASIBILITY.md) —
   Stolfo et al. ICLR 2025 激活转向论文的任务适配性分析（任务不照搬、要素可移植：
   通道 C 执行器 + 连续约束 readout）
-
-- [DATA_COLLECTION_PROTOCOL.md](DATA_COLLECTION_PROTOCOL.md) — 激励数据采集协议：被控对象、
-  readout、输入通道、采集前信号探针（gate）
-- [DATA_SOURCES.md](DATA_SOURCES.md) — 数据来源与候选清单：prompt 库、已有轨迹、待采集数据、
-  评价用外部数据
-- [KV_INJECTION_MONITORING.md](KV_INJECTION_MONITORING.md) — 通道 D（KV 注入）机制与监控协议
-- [LLM_LATENT_STATE_FEASIBILITY.md](LLM_LATENT_STATE_FEASIBILITY.md) — 用内部隐状态替代/增广
+- [feasibility/LLM_LATENT_STATE_FEASIBILITY.md](feasibility/LLM_LATENT_STATE_FEASIBILITY.md) — 用内部隐状态替代/增广
   Koopman 状态 z_t 的可行性分析（备选方向，暂不默认采用）
-- [SCRIPTED_USER_TURNS_FEASIBILITY.md](SCRIPTED_USER_TURNS_FEASIBILITY.md) — 用预生成脚本
+- [feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md](feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md) — 用预生成脚本
   替代活的 user-simulator LLM 的可行性分析（尝试后放弃，见 `experiments/drift_confirmation_pilot.md`）
-- [ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md](ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md) —
+- [feasibility/ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md](feasibility/ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md) —
   Alhafni et al. 2024（Personalized Text Generation with Fine-Grained Linguistic Control）
   任务/数据集是否适合本项目 Koopman 框架的核实分析（数据集不适用，特征抽取代码候选可复用）
-- [OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md](OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md) —
+- [feasibility/OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md](feasibility/OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md) —
   其他开源数据集候选（ContextEcho 长会话数据、多会话人格对话数据集等）与长文本轨迹采集的
   工程加速分析（KV cache 复用、探针前缀共享、横向并行）
 
-## 方法（实现细节）
+## 数据/通道协议（`protocols/`）
+
+- [protocols/DATA_COLLECTION_PROTOCOL.md](protocols/DATA_COLLECTION_PROTOCOL.md) — 激励数据采集协议：被控对象、
+  readout、输入通道、采集前信号探针（gate）
+- [protocols/DATA_SOURCES.md](protocols/DATA_SOURCES.md) — 数据来源与候选清单：prompt 库、已有轨迹、待采集数据、
+  评价用外部数据
+- [protocols/KV_INJECTION_MONITORING.md](protocols/KV_INJECTION_MONITORING.md) — 通道 D（KV 注入）机制与监控协议
+
+## 方法（实现细节，`method/`）
 
 - [method/overview.md](method/overview.md) — 流水线总览：被控对象/控制器/测量/编排四层的
   代码位置索引
@@ -43,10 +53,10 @@
 - [method/koopman_surrogate.md](method/koopman_surrogate.md) — Koopman 代理拟合/评测代码，
   ARX baseline 作为同一套代码的特例，与 baseline 公平对比的具体设计
 
-## 评价与对比
+## 评价与对比（`evaluation/`）
 
-- [EVALUATION_METRICS.md](EVALUATION_METRICS.md) — 实验完成后用什么指标判断成败
-- [BASELINES.md](BASELINES.md) — 待对比的 baseline 清单（控制器层、代理建模层）及对应论文
+- [evaluation/EVALUATION_METRICS.md](evaluation/EVALUATION_METRICS.md) — 实验完成后用什么指标判断成败
+- [evaluation/BASELINES.md](evaluation/BASELINES.md) — 待对比的 baseline 清单（控制器层、代理建模层）及对应论文
 
 ## 实验
 
