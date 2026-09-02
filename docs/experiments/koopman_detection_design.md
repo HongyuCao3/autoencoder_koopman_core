@@ -3,6 +3,12 @@
 和 [koopman_defense_pilot.md](koopman_defense_pilot.md) 同一类"供跨会话接续"的记录。
 **新开一次对话想知道"给 Koopman 加检测能力这条线想过哪些方案、做到哪一步了"，看这份文档。**
 
+**最新进展（2026-09-02）：文末"v 对齐修正后重新评估方案 1/3"——`koopman_case_study_design.md`
+Phase I 发现的时序配对 bug 同样影响本文档方案 1/3 复用的底层拟合，用
+`ReducedStateConfig.contemporaneous_v=True` 重新拟合、重新评测后，方案 1 的检测信号明显变好
+（残差相关性 0.53→0.86），方案 3 在逐轨迹层面首次跑赢平凡基线（0.475→0.613）——"这套状态
+表示信息量不够"这个原结论需要收窄，方案 2 的 gate 值得重新打开。**
+
 ## 背景与问题设定
 
 `koopman_defense_pilot.md` 记录的 Phase A→E 已经闭环：`KoopmanMPCController` 用拟合出的
@@ -227,6 +233,9 @@ Phase F 四臂复用同一批良性会话内容，`trajectory_id` 在四臂之�
 
 ## 这个负结果说明了什么：不是"Koopman 不行"，是这套状态表示的信息不够
 
+**这一节的判断被文末"2026-09-02 更新"部分修正：方案 1/3 的负结果主要是 v 对齐 bug 的产物，
+不是信息量不够——方案 2 的 gate 需要重新打开。**
+
 方案 3 跑完之后容易被误读成"Koopman/线性代理模型这套方法有局限"，需要在文档里说清楚**不是
 这样**，避免以后重新捡起这条线时被这个误读带偏。
 
@@ -250,3 +259,90 @@ Phase F 四臂复用同一批良性会话内容，`trajectory_id` 在四臂之�
 上不去"的具体约束，跟数据规模有关，不是 Koopman 理论本身的天花板，但在这个项目的实际条件下
 确实限制了状态能装多少历史信息——以后往方案 4 加内容特征时，也得在这个很紧的阶数预算里塞，
 是个实打实的工程约束，不是可以靠"选更好的模型"绕开的问题。
+
+## 2026-09-02 更新：v 对齐修正后重新评估方案 1 / 3
+
+背景：`docs/experiments/koopman_case_study_design.md`"Phase I：v 对齐修正与再验证"发现
+`modeling/dataset.py::build_reduced_state_pairs` 默认把 `v` 和 `z_t`（已含 `y_t`）配同一个
+`t`，实际学到的是"提醒的残留效应"而不是"这轮的直接因果效应"。这个 bug 同样存在于本文档方案
+1/3 底层复用的 `fit_koopman_defense_model.py`/`fit_koopman_benign_model.py`（Phase C 的原版
+攻击/良性 regime 拟合）——Phase I 只重新拟合了交互模型，两个 regime 的基础模型从未用
+`contemporaneous_v=True` 重新拟合过，本节补上。
+
+**代码改动**：`fit_koopman_defense_model.py`/`fit_koopman_benign_model.py` 新增
+`--contemporaneous-v` flag（透传进 `ReducedStateConfig`，写进 report 的
+`config.contemporaneous_v` 字段）；`analyze_koopman_innovation.py`/`evaluate_koopman_detector.py`
+从 report 的 `config` 里自动读取 `contemporaneous_v`（不需要单独传参，避免拟合和评测两边设置
+不一致这个隐患——`evaluate_koopman_detector.py` 的一致性 assert 也加了这一项）。同时修了
+`analyze_koopman_innovation.py` 里一处手动重算的 `start = max(nu-1, mu)`——这行必须和
+`build_reduced_state_pairs` 内部真实用的 `start = max(nu-1, mu-shift)` 完全一致，否则
+`contemporaneous_v=True` 时会把 turn 索引错位一格，静默地把元数据（`attack_id`/`turn`/
+`u_remind`）对到错误的行上；同时把原来硬编码 `row_prev["u_remind"]` 的 `u_remind_prev`
+字段改成直接读 `pair["v"]`（新对齐下这个输入不再是"上一轮"的提醒，而是这一次预测实际用到的
+那个输入，字段改名 `u_remind_input`）。
+
+用新对齐重新拟合了攻击 regime（`nu=1,mu=2`，
+`outputs/koopman_defense_phaseB_random_excite/koopman_fit_report_valigned.json`，
+`B[0,0]=0.160`，和 `koopman_case_study_design.md` Phase I 独立算出的 0.160 完全一致，两处
+互相印证）和良性 regime
+（`outputs/koopman_detection_benign_baseline/koopman_fit_report_valigned.json`），未改动任何
+已有的旧对齐报告。
+
+### 方案 1（一步预测残差）：结果明显变好
+
+| | 旧对齐 | 新对齐 |
+|---|---:|---:|
+| n_total_pairs（4 臂合计） | 128 | 192 |
+| residual vs actual_drop 相关系数 | 0.526 | **0.862** |
+| erosion event 平均 &#124;residual&#124; | 0.309 | **0.475** |
+| 非 erosion 平均 &#124;residual&#124; | 0.250 | 0.166 |
+| erosion / 非 erosion 分辨力比值 | 1.24x | **2.87x** |
+
+残差和真实骤降的相关性从 0.53 涨到 0.86，erosion 时刻和非 erosion 时刻的残差分辨力从几乎
+分不开（1.24x）变成清楚分开（2.87x）。**"残差被策略分布外效应污染，没有干净跑赢基线"这个
+方案 1 的原始负结论主要是 v 对齐 bug 的产物，不是这个方法本身的天花板**——模型现在预测的是
+真实的同轮因果效应，而不是残留效应，残差自然更能反映"预测漏掉了什么"。
+
+### 方案 3（双 regime 对比）：部分变好，逐轨迹层面首次跑赢平凡基线
+
+| | 旧对齐 | 新对齐 |
+|---|---:|---:|
+| 逐轮准确率（平凡基线） | 0.551（0.665，落后 11.4pp） | 0.523（0.555，落后缩小到 3.1pp） |
+| 逐轮 balanced accuracy | 0.641 | 0.551 |
+| 逐轨迹准确率（平凡基线） | 0.475（0.700，**比瞎猜还差**） | **0.613（0.513/0.488，首次跑赢平凡基线）** |
+| 逐轨迹 balanced accuracy | 0.613 | 0.620 |
+
+比方案 1 更微妙：逐轮层面的 balanced accuracy 其实略降（0.641→0.551），但**逐轨迹准确率
+第一次超过了"全猜多数类"这个平凡基线**（旧对齐是 0.475，比瞎猜还差；新对齐是 0.613，比两个
+方向的瞎猜基线都高）——考虑到"这条会话是不是在被攻击"本来就是按轨迹判断比按轮判断更合理，
+这个方向的改善是真实的，但**远没有到"检测能用"的程度**："跑不赢平凡基线"这个判据本身现在
+部分不成立了（逐轨迹层面），需要收窄成"逐轮层面仍然跑不赢平凡基线，逐轨迹层面勉强跑赢，两者
+都远没有到实用准确率"。
+
+### 方案 4（内容相似度特征）：诊断指向的瓶颈与对齐无关，未重跑
+
+方案 4 的负结果诊断链条是——加入 `attack_similarity` 特征后 rollout MSE 变差，直接测的攻击
+轮次/良性轮次相似度分布几乎完全重叠（0.315 vs 0.286），根因锁定在"bag-of-words TF-IDF 在
+这批短指令式文本上分辨力不足"，这是一个**静态的逐轮文本特征质量问题**，和 `v`/`z_t` 的时序
+配对方式无关——即使换成新对齐重新拟合，这个特征本身该有多重叠还是多重叠。判断为**低优先级，
+暂不重跑**；如果之后要继续推进方案 4，瓶颈仍然是"换语义 embedding 或扩大参照语料"，不是对齐。
+
+### 结论：方案 2 的 gate 需要重新打开，"信息不够"这个说法需要限定条件
+
+上面"这个负结果说明了什么"一节写的"这点信息本身就不够分辨"这个判断，主要是在旧对齐（学到
+残留效应而非直接因果效应）下得出的——方案 1 的改善幅度说明**同一组 `nu=1,mu=2` 状态里的信息
+量并不像原判断认为的那么不够**，瓶颈很大一部分是时序配对错了，不是原材料本身贫乏。原文档因为
+方案 1 负结果而跳过的**方案 2（把 MPC 内部前瞻预测显式暴露成"预警"输出）现在值得重新考虑**——
+它直接复用方案 1 同一个 `step`/`readout` 接口，方案 1 的信号质量改善应该直接传导过去。方案 3
+的判断需要收窄为"逐轮不够用，逐轨迹勉强够用但远不到实用水准"，不再是无条件的"不够用"。方案 4
+的判断不受影响，独立诊断仍然成立。
+
+产物：`outputs/koopman_defense_phaseB_random_excite/koopman_fit_report_valigned.json`、
+`outputs/koopman_detection_benign_baseline/koopman_fit_report_valigned.json`、
+`outputs/koopman_detection_innovation_valigned/`、`outputs/koopman_detection_two_regime_valigned/`。
+代码改动：`scripts/fit_koopman_defense_model.py`/`fit_koopman_benign_model.py`（新增
+`--contemporaneous-v`）、`scripts/analyze_koopman_innovation.py`（自动读取
+`contemporaneous_v`、修正 `start` 的 shift-aware 计算、`u_remind_prev`→`u_remind_input`
+改用 `pair["v"]`）、`scripts/evaluate_koopman_detector.py`（自动读取 `contemporaneous_v`、
+assert 校验双 regime 配置一致）。CPU-only，无新数据采集，无 GPU 作业。**下一步方向待定**——
+是否值得正式做方案 2（前瞻预警）、要不要把方案 3 的 held-out 样本量扩大以降低方差，见对话记录。
