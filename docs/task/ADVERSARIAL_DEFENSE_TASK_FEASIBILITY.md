@@ -1,6 +1,8 @@
 # 任务选型：Koopman 闭环控制抵抗多轮 prompt 攻击（草案 v0.1，2026-08-31）
 
-> **状态：当前优先级最高的任务选型候选**（2026-08-31 讨论确定）。本文件是继
+> **状态：调查线已完整收尾**（`koopman_defense_pilot.md` Phase A→I + `koopman_case_study_design.md`，
+> 2026-09-02）。2026-09-02 优先级让位给 `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md`——本文件仍是
+> 该调查线的原始任务定义，历史参考价值保留，不再是当前活跃开发线。本文件是继
 > `STOLFO_ACTIVATION_STEERING_FEASIBILITY.md`（要素移植分析）、
 > `CONTROL_THEORETIC_LLM_RELATED_WORK.md`（领域调研）之后的任务选型分析第三篇，
 > 也是三篇里唯一给出"推荐往下走"结论的一篇。**仅分析记录，未修改代码与协议。**
