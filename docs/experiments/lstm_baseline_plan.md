@@ -1,8 +1,9 @@
 # 计划：LSTM 代理模型 baseline（补齐 `BASELINES.md` ③层缺口）
 
 和 [koopman_detection_design.md](koopman_detection_design.md)/[koopman_defense_pilot.md](koopman_defense_pilot.md)
-同一类"供跨会话接续"的记录。**新开一次对话想知道"LSTM baseline 计划到哪一步、要不要现在做"，
-看这份文档。** 本文档只是计划,**尚未开始实现**。
+同一类"供跨会话接续"的记录。**新开一次对话想知道"LSTM baseline 做到哪一步、结论是什么"，
+看这份文档。** 计划部分（下面到"资源预估"为止）已执行完毕，**结果见文末"执行结果"一节**：
+LSTM 在全部测试的隐层大小上都明显差于 `richer_abs_sign`,不是持平。
 
 ## 目的：现在这个 claim 站不住脚，需要它来补
 
@@ -128,3 +129,87 @@ Phase B 只有 30 个攻击 × 2 seed = 60 条轨迹、每条 4-6 轮，identifi
 纯 CPU 可行——小 LSTM（`H` 个位数）、几十条轨迹、几百个训练样本，训练几秒到几分钟，和
 `fit_koopman_defense_model.py` 一样可以直接在登录节点跑，不需要 GPU/sbatch。唯一的新依赖是
 `torch`（已经是 `pyproject.toml` 的既有依赖，训练脚本本身不需要新增任何包）。
+
+---
+
+## 执行结果（2026-09-01）
+
+按方案 B 实现：新增 `src/persona_drift/modeling/lstm_baseline.py`
+（`LSTMSurrogate` + `teacher_forced_predictions`/`rollout_predictions`/
+`mse_from_predictions`/`train_lstm_surrogate`）、
+`scripts/fit_koopman_lstm_baseline.py`、`tests/test_lstm_baseline.py`（6
+passed，CPU 全套 179 passed，`test_surface_feature*` 两个文件因预先存在的
+`nltk vader_lexicon` 资源缺失报错，与本次改动无关，跳过）。
+
+**评测口径的一个必要修正（如实记录，不在原计划里）**：Koopman 的
+`held_out_rollout_mse`/`train_one_step_mse` 只在 `t >= start =
+max(nu-1,mu) = 2` 的位置产生预测（`build_reduced_state_pairs` 的窗口约束），
+LSTM 理论上从 t=0 就能预测，但 t=0/1 处只有全零初始 `(h,c)` 或极短历史，
+直接对比 t>=0 的全窗口 MSE 对 LSTM 不公平地偏差（早期位置的预测本质上是
+"完全没有信息时的先验猜测"，Koopman 从不在这些位置尝试预测）。因此每个指标都
+报了 `_full`（t>=0）和 `_matched`（t>=2，和 Koopman 用完全相同的位置集合）
+两个版本，结论只看 `_matched`。
+
+**训练**：Phase B 的 30 攻击 × 2 seed = 60 条轨迹，和 `fit_koopman_defense_model.py`
+完全相同的 `attack_id` 75/25 split（`split_seed=0`，22 训练攻击/44 条轨迹，
+8 held-out 攻击/16 条轨迹）。teacher-forced BPTT，Adam，`lr=1e-2`，早停判据
+= held-out rollout MSE（matched window），扫了 `H ∈ {1,2,4,8}`。
+
+| H | 参数量 | epochs | train one-step MSE (matched) | held-out rollout MSE (matched) | 训练耗时 |
+|---|---|---|---|---|---|
+| 1 | 22 | 31 | 0.0708 | **0.0808** | 7.7s |
+| 2 | 51 | 42 | 0.0754 | **0.0809** | 6.2s |
+| 4 | 133 | 90 | 0.0666 | **0.0862** | 13.3s |
+| 8 | 393 | 79 | 0.0652 | **0.0821** | 11.7s |
+| `richer_abs_sign`（对照） | **40** | — | 0.0587 | **0.0430** | — |
+
+**诚实结论：LSTM 在全部 4 个测试的 `H` 上都明显更差，不是持平**——即使
+`H=1`（22 个参数，比 `richer_abs_sign` 的 40 个还少）训练时的 one-step
+拟合和 Koopman 相当（0.071 vs 0.059），held-out rollout MSE 却是
+`richer_abs_sign` 的接近 2 倍（0.081 vs 0.043），且这个差距在 `H` 从 1
+扫到 8（参数量从 22 到 393，接近 20 倍）时几乎不变——增大模型容量没有换来
+更好的泛化，说明这不是"参数不够、欠拟合"，是训练集本身太小（44 条 4-5
+轮轨迹）撑不起一个真正靠梯度下降训练的循环模型去可靠地学到比"固定 2 步线性
+窗口 + `abs`/`sign` 提升"更好的表示——train one-step 拟合相近但 held-out
+rollout 明显更差,是小数据集上过拟合的典型signature。这正是计划里预判的
+"LSTM 持平或更差"的结果,而且比"持平"更明确地支持现有选择。
+
+**结论对应 `BASELINES.md` 的 claim**：`richer_abs_sign` 相对一个真正的
+非线性/长记忆序列模型（不只是相对纯 ARX 换 lifting 字典）的增益**不是
+平凡的**——在这个数据规模下，Koopman 的强结构假设（线性 + 小状态 + 手工
+lifting）是比"让模型自己学多长记忆"更好的归纳偏置,这条 ablation claim
+现在有真实证据支撑,不再是"没测过"。
+
+产物：`outputs/koopman_lstm_baseline/lstm_fit_report.json`（4 个 `H` 的完整
+训练曲线 + 指标）。
+
+## 附：控制器决策计算成本（回应"周期性基线是否只是更省算力"的追问）
+
+Phase G 的 `period=2` 已经让 token 成本（`inserted_tokens`）和插入次数与
+`koopman_mpc` **严格相等**——这是选周期前算过的，不是巧合，见
+`koopman_defense_pilot.md` Phase G。token 成本这个维度不需要再测。
+
+没测过的是另一个维度：**控制器自身"决定要不要插提醒"这一步的计算成本**
+（不是 LLM token 成本）。新增 `scripts/benchmark_controller_decision_cost.py`，
+离线重放 Phase E `koopman_mpc` 臂的真实决策点（80 个，8 held-out 攻击 ×
+2 seed × 5 轮），对 `koopman_mpc`（horizon=2）/`periodic`/`threshold`
+各自的 `next_u_remind` 计时（每个决策点重复 500 次取平均，排除首次调用的
+预热开销）：
+
+| controller | 每次决策耗时 | 相对 periodic |
+|---|---|---|
+| periodic | 0.22 μs | 1.0x |
+| threshold | 0.28 μs | 1.25x |
+| koopman_mpc | 88.60 μs | **400x** |
+
+**如实结论**：`koopman_mpc` 的决策计算确实比 `periodic` 贵约 400
+倍——horizon=2 的穷举前瞻仿真不是免费的。但绝对数值是 88.6 微秒/次，而
+Phase E/G 这批作业的实际 wall-clock 是 16 条轨迹 × 5 轮 × 2 次 judge 调用
+≈ 11-16 分钟，折算下来**每轮的 LLM 生成+打分耗时是秒级**，比
+`koopman_mpc` 的决策计算慢 4-5 个数量级。**这个 400 倍的差距在真实部署的
+wall-clock 里完全可以忽略不计**——`periodic` 更简单这件事在"决策计算成本"
+这个维度上是真的，但它不构成"`periodic` 更省资源"这个论证里有意义的一条
+证据，因为这个维度本来就不是瓶颈；真正的成本瓶颈（token/插入次数）已经
+被 Phase G 的设计严格控制相等。
+
+产物：`outputs/koopman_lstm_baseline/controller_decision_cost.json`。
