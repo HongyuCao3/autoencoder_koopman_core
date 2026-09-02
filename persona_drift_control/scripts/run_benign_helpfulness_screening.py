@@ -25,10 +25,11 @@ from persona_drift.chat_model import GenerationConfig  # noqa: E402
 from persona_drift.controller_cli import (  # noqa: E402
     EXTRA_FEATURES_FNS,
     load_koopman_mpc_controller,
+    load_koopman_mpc_interaction_controller,
     make_controller_factory,
 )
 
-CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "periodic", "koopman_mpc")
+CONTROLLER_CHOICES = ("zero_control", "constant_remind", "threshold", "periodic", "koopman_mpc", "koopman_mpc_interaction")
 _EXTRA_FEATURES_FNS = EXTRA_FEATURES_FNS
 
 
@@ -54,6 +55,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--koopman-mu", type=int, default=2)
     parser.add_argument("--koopman-horizon", type=int, default=2)
     parser.add_argument("--koopman-repeat-penalty", type=float, default=0.0)
+    parser.add_argument(
+        "--koopman-interaction-model-path",
+        type=pathlib.Path,
+        default=pathlib.Path("outputs/koopman_case_study/interaction_model_report.json"),
+        help="only used when --controller koopman_mpc_interaction",
+    )
     return parser.parse_args()
 
 
@@ -75,8 +82,23 @@ def main() -> None:
         if args.controller == "koopman_mpc"
         else None
     )
+    koopman_mpc_interaction_controller = (
+        load_koopman_mpc_interaction_controller(
+            args.koopman_interaction_model_path,
+            args.koopman_nu,
+            args.koopman_mu,
+            args.koopman_horizon,
+            args.koopman_repeat_penalty,
+        )
+        if args.controller == "koopman_mpc_interaction"
+        else None
+    )
     controller_factory = make_controller_factory(
-        args.controller, args.threshold_y_min, koopman_mpc_controller, periodic_period=args.periodic_period
+        args.controller,
+        args.threshold_y_min,
+        koopman_mpc_controller,
+        periodic_period=args.periodic_period,
+        koopman_mpc_interaction_controller=koopman_mpc_interaction_controller,
     )
     report = run_benign_screening(
         agent_model_id=args.agent_model,

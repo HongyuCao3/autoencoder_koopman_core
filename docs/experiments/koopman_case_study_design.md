@@ -231,4 +231,44 @@ margin 的标准差从路径 1 的 ~1e-16 跳到 **0.0567**，margin 范围 `[0.
 测试 `tests/test_interaction_lift.py`（3 passed，CPU 全套 182 个测试里除
 `test_logging_setup.py` 一个历史已知的 loguru 竞态 flaky 测试外全部通过，与本次改动无关）。
 
-**执行状态：路径 1/路径 2 均已跑完，结论已记录，新的 GPU 闭环验证尚未执行（下一步决策待定）。**
+**执行状态：路径 1/路径 2 均已跑完，结论已记录。**
+
+## Phase H：真正的闭环验证（`koopman_mpc_interaction`，2026-09-01 提交）
+
+上面第 2 点的建议——离线证据不够，需要一次真正的闭环 GPU 实验——已经动手做。
+
+**代码改动**：新增 `controller_cli.py::load_koopman_mpc_interaction_controller`（加载
+`analyze_state_action_interaction.py` 存的 `model` 字段，包成
+`InteractionLiftedSurrogate`，再套进不变的 `KoopmanMPCController`），
+`make_controller_factory` 新增 `"koopman_mpc_interaction"` 分支；
+`run_defended_screening.py`/`run_benign_helpfulness_screening.py` 都加了
+`--controller koopman_mpc_interaction`/`--koopman-interaction-model-path`。测试
+`tests/test_controller_cli.py` 新增 2 个（覆盖 factory 分支 + 真实 report 文件加载），
+CPU 全套 184 个测试除 `test_logging_setup.py` 一个历史已知 flaky 外全部通过。用真实存盘的
+`outputs/koopman_case_study/interaction_model_report.json` 跑了一次端到端冒烟检查（离线重放
+Phase E `koopman_mpc` 臂的 32 次真实状态，`repeat_penalty=0.2` 下 `n_remind=26/32`，和
+`analyze_state_action_interaction.py --repeat-penalty 0.2` 的离线结果完全一致）——确认 CLI
+接线本身没有引入偏差，才提交 GPU 作业。
+
+**`repeat_penalty=0.2` 的选择**：离线扫描里 0.1→31/32、0.15→30/32、0.2→26/32、0.25→14/32，
+选 0.2 是两头都不极端的折中——0.25 会把接近一半的真实决策点判成"不提醒"，考虑到 margin 和
+`y_probe` 正相关这个尚未解释的反直觉方向（`repeat_penalty` 会优先削减**更差**状态上的提醒），
+0.25 在这批数据上可能显得过于激进。
+
+**攻击场景**（`run_koopman_defense_phaseH_koopman_mpc_interaction.sbatch`，job 提交见下）：
+和 Phase E/G 完全相同的 8 个 held-out 攻击 × 2 seed = 16 条轨迹。这批攻击本身已经有明显的
+强度异质性（`safemtdata_0074` 在 `zero_control` 下第3轮就崩到 `y_safety=0.0`，
+`safemtdata_0169`/`0530` 全程没跌破 0.75，见上文），不需要新采数据。
+
+**良性场景**（`run_koopman_defense_phaseH_koopman_mpc_interaction_benign.sbatch`）：和
+Phase F/G 完全相同的 16 个固定 `(benign_id, seed)` MT-Bench 会话，检查这次的
+`repeat_penalty` 校准是否在良性流量上产生可测的 helpfulness 代价。
+
+**为什么离线重放不够，必须真跑**：`analyze_state_action_interaction.py` 的离线重放用的是
+Phase E 原 `koopman_mpc`（`repeat_penalty=0`）真实录制的历史状态,只回答"给定这些历史，新策略
+*会*做出什么决策"；但一旦新策略在第 4/5 轮真的省掉了某次提醒，那一轮真实的 agent 回复、以及
+它引出的下一轮 `y_safety`，都会和原录制不同——**这个反事实结果无法从已录制数据反推**，只能
+重新调用真实模型生成。这也是为什么这次是一次新的 GPU job，而不是又一次离线脚本。
+
+产物（跑完后补充结果）：`outputs/koopman_defense_phaseH_koopman_mpc_interaction/`、
+`outputs/koopman_defense_phaseH_koopman_mpc_interaction_benign/`。
