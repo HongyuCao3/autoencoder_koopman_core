@@ -7,3 +7,4 @@ results/*
 slurm/logs/*
 !slurm/logs/.gitkeep
 docs/references/*.pdf
+*.egg-info/
