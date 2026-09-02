@@ -2,6 +2,9 @@
 
 和 [koopman_detection_design.md](koopman_detection_design.md) 同一类"供跨会话接续"的记录。
 **新开一次对话想知道"case 分析这条线想验证什么、怎么做的、做到哪一步了"，看这份文档。**
+**最新进展（2026-09-01）：文末"后续：验证'对下一步方向的启示'"一节——状态-动作交互项
+（加非零 `repeat_penalty`）已经离线证实能让决策产生真正的状态依赖，"无法自适应"不是方法论
+天花板；要转成可验证的 strong motivation 还差一次新的闭环 GPU 实验，尚未执行。**
 
 ## 背景与问题设定
 
@@ -123,3 +126,109 @@ horizon、`abs_sign` 非线性提升都不改变这个结论——多步前瞻�
 `phenomenon{1..5}_*.csv` 五张现象表 + `case_study_summary.json` 汇总数字）。
 
 **执行状态：脚本已写、已跑完，结论已记录。**
+
+## 后续：验证"对下一步方向的启示"（路径1/路径2，2026-09-01）
+
+背景：`periodic` 用同代价打平 `koopman_mpc` 之后，用户提出的问题是"如何才能证明 Koopman
+的意义/这种控制方式的 strong motivation"。上面"对下一步方向的启示"提出的两个候选修复——
+非零 `repeat_penalty`、状态-动作交互项——都离线执行完了（纯 CPU，复用已有拟合数据/已录制
+轨迹，不涉及新 GPU/LLM 调用），结果和理论预判精确吻合，并额外发现了一个需要谨慎解读的现象。
+
+### 路径 1：`repeat_penalty` 扫描（`scripts/analyze_repeat_penalty_sweep.py`），定量证实"确实修不好"
+
+在不改架构的 `richer_abs_sign` 模型上，把 `repeat_penalty` 从 0 扫到 1.0（10 个取值，含
+理论翻转点 0.3672），对 Phase E `koopman_mpc` 臂的全部 32 次真实决策重新计算
+`value_full(1)-value_full(0)`：
+
+| repeat_penalty | n_remind/32 | margin_std |
+|---|---|---|
+| 0.0 – 0.3672 | 32/32 | ~1e-16（浮点噪声） |
+| 0.37 – 1.0 | 0/32 | ~1e-16（浮点噪声） |
+
+**在整段扫描范围内，没有任何一个 `repeat_penalty` 取值产生过 0/1 混合决策**——它是一个纯粹的
+全局开关，在 0.3672 和 0.37 之间一次性从"全部提醒"翻转到"全部不提醒"，此外任何取值下
+margin 的方差都停留在浮点噪声量级。这把此前只是代数推导的结论（"`repeat_penalty` 是和 `z`
+无关的常数，不可能引入状态依赖"）**变成了直接测量到的数字**。
+
+### 路径 2：状态-动作交互项（`scripts/analyze_state_action_interaction.py`），证实"确实能修好"
+
+新增 `modeling/interaction_lift.py`：`augment_with_interaction` 把控制输入从标量 `v` 扩成
+`[v, v*y_t]`，`InteractionLiftedSurrogate` 把这个增广对 `control.py`/`modeling.evaluate`
+完全透明（两边都只看到未增广的 `Predictor.step(z, v)` 接口，`v` 的提升发生在 wrapper 内部）。
+在完全相同的 Phase B 数据、完全相同的 `attack_id` 75/25 split 上重新拟合。
+
+**一个顺带发现，值得单独记录**：拟合时特意选了 `no_extra_features`（纯 ARX）而不是
+`abs_sign_extra_features`，因为核对 Phase B 全部 300 行 `y_safety` 后发现**这个"非线性提升"
+在这个信号上几乎完全退化**——`y_safety∈[0,1]` 永远非负，300 行里 `abs(y)==y` 100% 成立，
+`sign(y)` 在 290/300 行恒为 1（仅 10 行 `y` 恰好等于 0.0 时为 0）。也就是说 `richer_abs_sign`
+比纯 ARX 好一点点（Phase C：held-out rollout MSE 0.043 vs 0.051）很可能不是真的学到了非线性，
+而是 ridge 在一个近乎共线/退化的增广矩阵上数值表现恰好不同——这是此前从未诊断过的一点，
+也是这次刻意选纯 ARX + 交互项、不叠加 `abs_sign` 的原因：避免把交互项的效果和一个本身可疑的
+"非线性"混在一起看不清楚。
+
+**拟合质量（不是这次的重点，但需要如实报）**：交互模型 held-out rollout MSE = 0.0514，
+和纯 ARX（0.0510）基本持平，比 `richer_abs_sign`（0.0430）略差——加交互项本身没有改善
+预测精度，这符合预期：交互项是为了让**决策**依赖状态，不是为了让**预测**更准，两者是不同
+的目标。
+
+**决策重放（`repeat_penalty=0`）**：在 Phase E `koopman_mpc` 臂的同一批 32 次真实决策点上，
+margin 的标准差从路径 1 的 ~1e-16 跳到 **0.0567**，margin 范围 `[0.084, 0.318]`，和 `y_probe`
+的相关系数 **1.0**——marginal value 现在是 `z` 的一个真正的（线性的）函数，不再是常数。
+**结构性证据确认：加交互项确实能让边际价值依赖状态，路径 1 做不到的事，路径 2 做到了。**
+
+**但单靠交互项还不足以翻转任何一次决策**：这批 held-out 状态上 margin 的最小值（0.084）
+仍然是正的，所以 32/32 次决策依然全部选择提醒——不是架构限制，是这批数据里 margin 从未
+跌破 0。
+
+**交互项 + 非零 `repeat_penalty` 组合：产生了真正的混合决策**（`repeat_penalty` 现在有意义，
+因为它要对比的 margin 不再是常数）：
+
+| repeat_penalty | n_remind/32 |
+|---|---|
+| 0.10 | 31/32 |
+| 0.15 | 30/32 |
+| 0.20 | 26/32 |
+| 0.25 | 14/32（接近一半一半） |
+
+**这是本轮调查的核心正面结果：只要同时具备 (a) 状态-动作交互项、(b) 一个卡在 margin 实际
+取值范围内的非零 `repeat_penalty`，`koopman_mpc` 就能产生真正状态依赖、不退化为固定规则的
+决策。**"Koopman 控制无法自适应"不是这套方法论本身的天花板，只是当前
+（`nu=1,mu=2` + `B@v` 无交互）这个具体架构选择的产物,换一个最小的架构改动就能绕开。
+
+**一个需要如实指出、目前还没有答案的问题**：margin 和 `y_probe` 是**正相关**——提高
+`repeat_penalty` 时，最先被排除出"该提醒"名单的，是 `y_probe` **更低**（攻击更成功）的
+状态，不是更高的。这和"情况越糟应该越积极提醒"这个朴素直觉方向相反。可能的解释：
+（a）当 `y_safety` 已经跌到很低时，单轮提醒预测的边际收益本身就小，可能反映"已经造成的
+侵蚀这一轮提醒也挽不回"这个真实现象；（b）也可能是 Phase B 随机激励数据里低 `y_safety`
+样本本来就稀疏（Phase B 用的是 30 个攻击的开环随机激励，不是针对性收集低分样本），拟合在
+这个区域外推不稳。**现有数据不足以区分这两种解释。这意味着"交互项修好了架构"和"修好后
+学到的具体策略在直觉上是对的"是两件不同的事——前者已经证实，后者需要更多数据或专门的
+校准步骤才能回答，不能想当然认为"能自适应了"就等于"自适应得合理"。**
+
+### 对"如何证明 Koopman 意义"这个问题的回答
+
+1. **纯方法论层面**：自适应性从未被证明是 Koopman/线性代理模型这条路线本身的天花板——
+   之前"结构上不可能"的准确表述应该是"这个具体的、动作线性可加无交互的架构不可能"，这个
+   限制现在被证明是可以绕开的（交互项），不需要放弃线性代理模型换成 LSTM 之类的黑盒模型。
+2. **要转成"控制器真的打赢 `periodic`"这个可验证的 strong motivation，离线重放还不够**——
+   需要一次新的闭环 GPU 实验（Phase E/G 同等规模，~15 分钟），用交互模型 + 校准过的
+   `repeat_penalty` 接入 `KoopmanMPCController`，在**强度差异更大的攻击集合**上
+   （例如混合 `safemtdata_0074` 这类第3轮就崩到0的快速侵蚀攻击、和
+   `safemtdata_0169`/`safemtdata_0530` 这类全程没跌破0.75的几乎攻不破的攻击）对比
+   `periodic`——只有在这种混合强度场景下，一个真正自适应的策略才有机会展现出 `periodic`
+   这种固定日程结构性做不到的优势（该省则省、该顶则顶）；这批 8 个 held-out 攻击本身其实已经
+   有这种强度差异（见上），不需要新采数据，可以直接复用。
+3. **上面"方向反直觉"的问题最好先弄清楚再投入新 GPU 实验**——如果交互项学到的"情况越糟
+   边际收益越小"是数据稀疏的假象而非真实现象，那么校准出来的自适应策略可能会在快速侵蚀的
+   攻击上主动省提醒，这是不希望看到的结果。建议先用更细的 `repeat_penalty`/交互系数网格做
+   离线诊断，确认这个方向在物理上说得通，再决定是否值得投入新的 GPU 实验。
+
+产物：`outputs/koopman_case_study/repeat_penalty_sweep.json`（路径 1）、
+`outputs/koopman_case_study/interaction_model_report*.json`（路径 2，
+`repeat_penalty ∈ {0, 0.1, 0.15, 0.2, 0.25}` 共 5 组）。代码改动：新增
+`src/persona_drift/modeling/interaction_lift.py`、
+`scripts/analyze_repeat_penalty_sweep.py`、`scripts/analyze_state_action_interaction.py`，
+测试 `tests/test_interaction_lift.py`（3 passed，CPU 全套 182 个测试里除
+`test_logging_setup.py` 一个历史已知的 loguru 竞态 flaky 测试外全部通过，与本次改动无关）。
+
+**执行状态：路径 1/路径 2 均已跑完，结论已记录，新的 GPU 闭环验证尚未执行（下一步决策待定）。**
