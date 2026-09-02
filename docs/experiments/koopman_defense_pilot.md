@@ -447,4 +447,14 @@ held-out 攻击上重新跑了一次。**结果是负面的**：`koopman_mpc_int
 省的地方。**"如何证明 Koopman 意义"这条调查线到此告一段落：自适应性在架构上确实可行，但
 现有的 Phase B 数据/ridge 拟合学不出方向正确的自适应策略；要拿到真正的 strong motivation，
 需要解决标定问题（更好的拟合目标、更多/更均衡的数据、或人工设定先验方向），而不是再验证
-架构本身。** 完整数据见 [koopman_case_study_design.md](koopman_case_study_design.md)。
+架构本身。**
+
+**2026-09-02 更新：上面这个结论被推翻了。** 根因不是标定或数据量，是
+`modeling/dataset.py::build_reduced_state_pairs` 里训练对的配对方式和真实执行时序错了一格
+（`v` 度量的是提醒的残留效应，不是同轮直接效应）——诊断和修正过程、以及修正后 Phase I 的
+真实闭环重跑结果（同样的 `nu=1,mu=2` 架构，不换模型不加数据，就学出方向正确、更经济的策略，
+Phase H 的两个具名失败轨迹都被救回，但仍未在 new-Q1 上打赢 `periodic`）完整记录在
+[koopman_case_study_design.md](koopman_case_study_design.md) 的"Phase I：v 对齐修正与
+再验证"一节。放宽 `mu=2` 热身门槛（`pad_short_history`）试图让反应式策略在 turn2 抢跑的
+尝试是否定结果（离线重放：turn2 因为永远"看起来一切正常"而 0/16 提醒）——把"反应式控制器
+结构上没法在固定日程之前动手"坐实为架构选择问题，不是 Koopman 模型的问题，调查线到此收尾。

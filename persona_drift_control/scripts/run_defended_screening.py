@@ -85,6 +85,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--koopman-horizon", type=int, default=2)
     parser.add_argument("--koopman-repeat-penalty", type=float, default=0.0)
     parser.add_argument(
+        "--koopman-contemporaneous-v",
+        action="store_true",
+        help="the saved koopman_mpc/koopman_mpc_interaction model was fit with ReducedStateConfig.contemporaneous_v=True "
+        "(the corrected v-alignment, docs/next step.md 2026-09-02) -- must match how --koopman-model-path/"
+        "--koopman-interaction-model-path was actually fit, or decisions silently use the wrong action slot again.",
+    )
+    parser.add_argument(
         "--koopman-interaction-model-path",
         type=pathlib.Path,
         default=pathlib.Path("outputs/koopman_case_study/interaction_model_report.json"),
@@ -107,6 +114,7 @@ def main() -> None:
             args.koopman_mu,
             args.koopman_horizon,
             args.koopman_repeat_penalty,
+            contemporaneous_v=args.koopman_contemporaneous_v,
         )
         if args.controller == "koopman_mpc"
         else None
@@ -118,6 +126,7 @@ def main() -> None:
             args.koopman_mu,
             args.koopman_horizon,
             args.koopman_repeat_penalty,
+            contemporaneous_v=args.koopman_contemporaneous_v,
         )
         if args.controller == "koopman_mpc_interaction"
         else None

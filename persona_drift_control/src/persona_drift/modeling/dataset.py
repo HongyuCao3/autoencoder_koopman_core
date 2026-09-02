@@ -43,11 +43,40 @@ class ReducedStateConfig:
     column's value one turn later, so it participates in the fit like any
     other state component (predictable or not; a column the linear model
     can't predict just contributes noise in that dimension, it doesn't break
-    anything). Defaults to `()` so every existing caller is unaffected."""
+    anything). Defaults to `()` so every existing caller is unaffected.
+
+    `contemporaneous_v` (default `False`, preserves all existing behavior):
+    the PDF's eq. (8)/(15) convention pairs `v_t` with `z_t` (which already
+    contains `y_t`) to predict `z_(t+1)`, i.e. it assumes the actuator's
+    effect on `y` shows up one step LATER than the action. That matches
+    persona-drift's original probe-then-decide loop, but not
+    attack_trajectory.py's adversarial-defense timing, where `u_remind` for
+    turn `t` is inserted BEFORE that same turn's reply is generated and
+    scored -- `u_t` acts on `y_t` in the SAME turn, and `y_t` is already
+    inside `z_t` by the time `v_t` gets fit. Fit that way, the learned `B`
+    coefficient is not the reminder's direct effect; it is only the
+    residual/carryover effect of turn `t`'s reminder text still sitting in
+    the chat history one turn later, on `y_(t+1)`. See
+    docs/experiments/koopman_defense_pilot.md's "错位" analysis (2026-09-02)
+    for the derivation and the anomalies it explains (sign flip between
+    mu=1/mu=2, the state-independent constant marginal-value channel,
+    interaction term's reversed-looking direction).
+
+    `contemporaneous_v=True` shifts every `v`-indexed slot (the lag history
+    AND the free control input) forward by one turn relative to `z_t`'s `y`
+    block, so the pair becomes `(z_t, v=u_(t+1)) -> z_(t+1)` with
+    `z_(t+1)`'s `y` component `y_(t+1)` directly caused by that same
+    `u_(t+1)` -- i.e. `z_t`'s `mu`-lag block now runs up to and including
+    `u_t` (already realized by the time `z_t` is known) instead of stopping
+    at `u_(t-1)`. `control.py::KoopmanMPCController._current_state` mirrors
+    this shift so a controller built on a `contemporaneous_v=True` surrogate
+    evaluates its candidate action in the same slot the surrogate was fit
+    on."""
 
     nu: int = 1
     mu: int = 1
     aux_cols: tuple[str, ...] = ()
+    contemporaneous_v: bool = False
 
     def __post_init__(self) -> None:
         if self.nu < 1:
@@ -127,25 +156,27 @@ def build_reduced_state_pairs(
     schema -- see docs/experiments/koopman_defense_pilot.md."""
 
     nu, mu = config.nu, config.mu
+    shift = 1 if config.contemporaneous_v else 0
     ys = [row[y_col] for row in traj_rows]
     vs = [float(row[u_col]) for row in traj_rows]
     aux_series = [[float(row[col]) for row in traj_rows] for col in config.aux_cols]
     pairs: list[dict] = []
-    start = max(nu - 1, mu)
+    start = max(nu - 1, mu - shift)
     for t in range(start, len(traj_rows) - 1):
+        tv = t + shift
         y_hist = ys[t - nu + 1 : t + 1]
-        v_hist = vs[t - mu : t]
+        v_hist = vs[tv - mu : tv]
         y_hist_next = ys[t - nu + 2 : t + 2]
-        v_hist_next = vs[t - mu + 1 : t + 1]
+        v_hist_next = vs[tv - mu + 1 : tv + 1]
         aux_now = [series[t] for series in aux_series]
         aux_next = [series[t + 1] for series in aux_series]
-        values = y_hist + v_hist + [vs[t]] + y_hist_next + v_hist_next + aux_now + aux_next
+        values = y_hist + v_hist + [vs[tv]] + y_hist_next + v_hist_next + aux_now + aux_next
         if any(value != value for value in values):  # NaN check without numpy
             continue
         pairs.append(
             {
                 "z": np.array(y_hist + v_hist + aux_now, dtype=float),
-                "v": np.array([vs[t]], dtype=float),
+                "v": np.array([vs[tv]], dtype=float),
                 "y": float(ys[t]),
                 "z_next": np.array(y_hist_next + v_hist_next + aux_next, dtype=float),
             }

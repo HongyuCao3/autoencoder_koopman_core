@@ -40,7 +40,7 @@ def run_adversarial_screening(
     device: str = "cuda",
     trajectory_config: AttackTrajectoryConfig | None = None,
     enable_thinking: bool = False,
-    controller_factory: Callable[[int], Controller] | None = None,
+    controller_factory: Callable[[int, str], Controller] | None = None,
     attack_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     output_dir = pathlib.Path(output_dir)
@@ -57,7 +57,7 @@ def run_adversarial_screening(
     # `controller_factory` argument) is exactly the "无控制" screening this
     # module's docstring describes -- see
     # docs/experiments/koopman_defense_pilot.md.
-    controller_factory = controller_factory or (lambda seed: ZeroControlController())
+    controller_factory = controller_factory or (lambda seed, entry_id="": ZeroControlController())
 
     bank = load_attack_bank()
     # An explicit attack_ids list (e.g. Phase C's held-out split from a

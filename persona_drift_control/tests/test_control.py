@@ -122,3 +122,51 @@ def test_koopman_mpc_does_not_act_on_a_scorer_failure():
     surrogate = _known_surrogate()
     controller = KoopmanMPCController(surrogate=surrogate, state_config=ReducedStateConfig(nu=1, mu=0))
     assert controller.next_u_remind(2, _remind_rows((float("nan"), 0))) == 0
+
+
+def test_koopman_mpc_current_state_contemporaneous_v_needs_less_warmup_and_includes_last_action():
+    # With the actuator-timing fix (ReducedStateConfig.contemporaneous_v),
+    # the mu-lag block already includes the most recently taken action
+    # (known by the time z is built), instead of stopping one turn short of
+    # it -- so mu=1 only needs 1 prior row, not 2 like the plain (shift=0)
+    # case in test_koopman_mpc_falls_back_to_zero_with_insufficient_history.
+    surrogate = _known_surrogate()
+    config = ReducedStateConfig(nu=1, mu=1, contemporaneous_v=True)
+    controller = KoopmanMPCController(surrogate=surrogate, state_config=config)
+    assert controller._current_state([]) is None
+    z = controller._current_state(_remind_rows((0.5, 1)))
+    assert np.allclose(z, [0.5, 1.0])  # [y_last, u_last] -- u_last is now IN the state, not the free action
+
+
+def test_koopman_mpc_pad_short_history_still_requires_at_least_nu_rows():
+    # Deciding turn T always needs turn T-1's own y (nu's worth) to build a
+    # state from at all -- pad_short_history can't do anything about that,
+    # turn 1 always defaults to 0 regardless.
+    surrogate = _known_surrogate()
+    config = ReducedStateConfig(nu=1, mu=2, contemporaneous_v=True)
+    controller = KoopmanMPCController(surrogate=surrogate, state_config=config, pad_short_history=True)
+    assert controller._current_state([]) is None
+    assert controller.next_u_remind(1, []) == 0
+
+
+def test_koopman_mpc_pad_short_history_zero_pads_the_missing_lag_slots():
+    # mu=2 needs 2 lagged actions; with only 1 real prior row, the default
+    # (pad_short_history=False) falls back to 0 (matches
+    # test_koopman_mpc_current_state_contemporaneous_v_needs_less_warmup...'s
+    # mu=1 analogue at mu=2: needs len(history)>=2). pad_short_history=True
+    # instead treats the missing older slot as "no reminder before the
+    # trajectory started" (u=0) and returns a real state.
+    surrogate = _known_surrogate()
+    config = ReducedStateConfig(nu=1, mu=2, contemporaneous_v=True)
+    default_controller = KoopmanMPCController(surrogate=surrogate, state_config=config)
+    assert default_controller._current_state(_remind_rows((0.5, 1))) is None
+
+    padded_controller = KoopmanMPCController(surrogate=surrogate, state_config=config, pad_short_history=True)
+    z = padded_controller._current_state(_remind_rows((0.5, 1)))
+    assert np.allclose(z, [0.5, 0.0, 1.0])  # [y_last, pre-trajectory pad, u_last]
+
+    # once there's enough real history, padding and non-padding agree (no
+    # padding actually happens).
+    z_full = padded_controller._current_state(_remind_rows((0.9, 0), (0.5, 1)))
+    z_full_default = default_controller._current_state(_remind_rows((0.9, 0), (0.5, 1)))
+    assert np.allclose(z_full, z_full_default)

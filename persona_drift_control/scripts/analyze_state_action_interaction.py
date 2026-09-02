@@ -60,6 +60,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--nu", type=int, default=1)
     parser.add_argument("--mu", type=int, default=2)
+    parser.add_argument(
+        "--contemporaneous-v",
+        action="store_true",
+        help="fit under the corrected v-alignment (ReducedStateConfig.contemporaneous_v -- v is the SAME turn's "
+        "action as z_next's y, matching attack_trajectory.py's real same-turn causal timing) instead of the "
+        "original 'v contemporaneous with z_t' convention this script originally shipped with, which measures "
+        "only the reminder's residual/carryover effect one turn later -- see docs/next step.md (2026-09-02).",
+    )
     parser.add_argument("--ridge", type=float, default=1e-6)
     parser.add_argument("--held-out-frac", type=float, default=0.25)
     parser.add_argument("--split-seed", type=int, default=0)
@@ -82,7 +90,7 @@ def main() -> None:
         rows, train_frac=1.0 - args.held_out_frac, val_frac=0.0, seed=args.split_seed, split_col="attack_id"
     )
     train_rows, held_out_rows = split["train"], split["test"]
-    config = ReducedStateConfig(nu=args.nu, mu=args.mu)
+    config = ReducedStateConfig(nu=args.nu, mu=args.mu, contemporaneous_v=args.contemporaneous_v)
 
     train_dataset = build_identification_dataset(train_rows, config, y_col="y_safety")
     V_aug = augment_with_interaction(train_dataset["V"], train_dataset["Z"], state_index=0)

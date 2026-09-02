@@ -68,6 +68,27 @@ def test_build_reduced_state_pairs_nu1_mu1_includes_past_input():
     assert np.allclose(pairs[0]["z_next"], [0.6, 1])
 
 
+def test_build_reduced_state_pairs_contemporaneous_v_shifts_v_forward_one_turn():
+    # Same trajectory as test_build_reduced_state_pairs_nu1_mu1_includes_past_input,
+    # but with the actuator-timing fix: v should be the action for the SAME
+    # turn as z_next's y (docs/experiments/koopman_defense_pilot.md's 错位
+    # analysis, 2026-09-02).
+    traj = [_row("t1", "p1", turn, y, u) for turn, (y, u) in enumerate([(1.0, 0), (0.8, 1), (0.6, 0), (0.9, 1)])]
+    pairs = build_reduced_state_pairs(traj, ReducedStateConfig(nu=1, mu=1, contemporaneous_v=True))
+    # start = max(nu-1, mu-shift) = max(0, 0) = 0: one more usable pair than
+    # the mu=1 default (shift=0), since the mu-lag block no longer needs a
+    # turn strictly before the free action.
+    assert len(pairs) == 3
+    # z_0 = [y_0, u_0] = [1.0, 0]; v = u_1 = 1 (not u_0); z_next = [y_1, u_1] = [0.8, 1]
+    assert np.allclose(pairs[0]["z"], [1.0, 0])
+    assert np.allclose(pairs[0]["v"], [1])
+    assert np.allclose(pairs[0]["z_next"], [0.8, 1])
+    # z_1 = [y_1, u_1] = [0.8, 1]; v = u_2 = 0; z_next = [y_2, u_2] = [0.6, 0]
+    assert np.allclose(pairs[1]["z"], [0.8, 1])
+    assert np.allclose(pairs[1]["v"], [0])
+    assert np.allclose(pairs[1]["z_next"], [0.6, 0])
+
+
 def test_build_reduced_state_pairs_drops_nan_scored_turns():
     traj = [_row("t1", "p1", turn, y, u) for turn, (y, u) in enumerate([(1.0, 0), (float("nan"), 1), (0.6, 0)])]
     pairs = build_reduced_state_pairs(traj, ReducedStateConfig(nu=1, mu=0))

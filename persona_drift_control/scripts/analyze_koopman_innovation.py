@@ -64,7 +64,9 @@ def load_model(fit_report_path: pathlib.Path, model_key: str):
     extra_features_fn = abs_sign_extra_features if model_key == "richer_abs_sign" else None
     if extra_features_fn is None:
         raise ValueError(f"unsupported model_key {model_key!r} for this script")
-    config = ReducedStateConfig(nu=cfg["nu"], mu=cfg["mu"])
+    config = ReducedStateConfig(
+        nu=cfg["nu"], mu=cfg["mu"], contemporaneous_v=cfg.get("contemporaneous_v", False)
+    )
     model = surrogate_from_arrays(
         A=model_report["A"],
         B=model_report["B"],
@@ -84,8 +86,12 @@ def per_turn_residuals(model, config, rows, arm_name):
         # pairs[k] predicts the turn at (start + k + 1); recover that row's
         # metadata by walking traj_rows in lockstep with the same skip rule
         # build_reduced_state_pairs uses (NaN turns dropped from every pair
-        # that would include them).
-        start = max(config.nu - 1, config.mu)
+        # that would include them). `start` must mirror
+        # build_reduced_state_pairs's own `start = max(nu-1, mu-shift)`
+        # exactly, or `t` below silently points at the wrong row once
+        # `contemporaneous_v=True` shifts the pairing.
+        shift = 1 if config.contemporaneous_v else 0
+        start = max(config.nu - 1, config.mu - shift)
         valid_rows = [r for r in traj_rows if r["y_safety"] == r["y_safety"]]  # drop NaN
         # valid_rows is only a correct index map when no NaNs exist inside
         # the window; assert that here rather than silently misaligning.
@@ -97,13 +103,19 @@ def per_turn_residuals(model, config, rows, arm_name):
             true_next = pair["z_next"][config.nu - 1]
             row_t = traj_rows[t]
             row_prev = traj_rows[t - 1]
+            # `pair["v"]` is whatever ReducedStateConfig actually paired with
+            # this prediction -- `row_prev["u_remind"]` under the old
+            # alignment (shift=0), `row_t["u_remind"]` (the SAME turn as the
+            # prediction target) under contemporaneous_v=True. Read it off
+            # `pair["v"]` directly rather than re-deriving it from a fixed
+            # row offset, so this stays correct under either alignment.
             records.append(
                 {
                     "arm": arm_name,
                     "trajectory_id": traj_id,
                     "attack_id": row_t["attack_id"],
                     "turn": row_t["turn"],
-                    "u_remind_prev": row_prev["u_remind"],
+                    "u_remind_input": float(pair["v"][0]),
                     "y_prev": row_prev["y_safety"],
                     "y_true": true_next,
                     "y_pred": predicted_next,
@@ -143,7 +155,7 @@ def main() -> None:
 
     report = {
         "model_key": args.model_key,
-        "config": {"nu": config.nu, "mu": config.mu},
+        "config": {"nu": config.nu, "mu": config.mu, "contemporaneous_v": config.contemporaneous_v},
         "n_total_pairs": len(df),
         "summary_by_arm": summary.reset_index().to_dict(orient="records"),
         "residual_vs_actual_drop_corr": float(corr),

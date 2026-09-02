@@ -118,13 +118,40 @@ class KoopmanMPCController:
     docs/experiments/koopman_defense_pilot.md.
 
     `state_config` must match whatever `ReducedStateConfig` the surrogate
-    was fit with (same nu/mu), so the state built here from `history` lines
-    up with what `modeling.dataset.build_reduced_state_pairs` built during
-    fitting. Falls back to u_remind=0 (same convention as
-    `ThresholdController`) whenever there isn't yet enough history to form a
-    state -- this only affects the first `max(nu-1, mu)` turns of a
-    trajectory, exactly the positions `build_reduced_state_pairs` itself
-    skips during fitting.
+    was fit with (same nu/mu/contemporaneous_v), so the state built here
+    from `history` lines up with what `modeling.dataset.build_reduced_state_pairs`
+    built during fitting. Falls back to u_remind=0 (same convention as
+    `ThresholdController`) whenever there isn't even `nu` turns of history to
+    read `y` from at all -- the one thing that's unavoidable regardless of
+    `mu`/`pad_short_history`, since deciding turn T's action always needs
+    turn T-1's own `y` (`nu`'s worth of it) to build a state from in the
+    first place; this is why turn 1 always defaults to 0 for every
+    `KoopmanMPCController` config.
+
+    `pad_short_history` (default `False`, matches all prior behavior):
+    when there's `>=nu` history but fewer than `mu` real actions to fill the
+    lag window with (e.g. only turn 1 completed and `mu=2` needs 2 lagged
+    actions), the default `False` still falls back to 0 -- exactly the
+    positions `build_reduced_state_pairs` itself skips during fitting (see
+    `ReducedStateConfig.contemporaneous_v` for what `shift` is and why: with
+    it set, the candidate action passed to `_simulate` lands in the same
+    "next action directly causes next y" slot the surrogate was fit on,
+    instead of the contemporaneous/residual slot). Set `pad_short_history=True`
+    to instead zero-pad the missing (pre-trajectory) lag slots -- treating
+    "no reminder was ever inserted before the trajectory started" as a
+    reasonable prior -- and make a real (if less certain) decision as early
+    as turn 2, instead of only from turn `max(nu-1, mu-shift)+1` onward.
+    Found while executing docs/next step.md (2026-09-02): with
+    `contemporaneous_v=True` and `mu=2`, the earliest real decision is
+    turn 3, one turn later than `PeriodicController(period=2)`'s turn 2 --
+    a real closed-loop test (Phase I, docs/experiments/koopman_case_study_design.md)
+    showed a v-aligned interaction model reverses Phase H's wrong-direction
+    failure and is more economical, but still loses the new-Q1 significance
+    test because the natural early decline (turns 1-3) happens before this
+    reactive policy's first real decision -- `pad_short_history` is a cheap,
+    offline-checkable way to test whether letting it act one turn earlier
+    closes that gap, matching the same lag-window zero-padding
+    `scripts/analyze_compounding_hypothesis.py`'s rollout already used.
     """
 
     surrogate: KoopmanSurrogate
@@ -132,16 +159,25 @@ class KoopmanMPCController:
     horizon: int = 2
     repeat_penalty: float = 0.0
     name: str = "koopman_mpc"
+    pad_short_history: bool = False
 
     def _current_state(self, history: list[dict[str, Any]]) -> np.ndarray | None:
         nu, mu = self.state_config.nu, self.state_config.mu
-        if len(history) < max(nu - 1, mu) + 1:
+        shift = 1 if self.state_config.contemporaneous_v else 0
+        min_len = nu if self.pad_short_history else max(nu - 1, mu - shift) + 1
+        if len(history) < min_len:
             return None
         ys = [row["y_probe"] for row in history]
         vs = [float(row["u_remind"]) for row in history]
         t = len(history) - 1
+        tv = t + shift
         y_hist = ys[t - nu + 1 : t + 1]
-        v_hist = vs[t - mu : t] if mu > 0 else []
+        if mu == 0:
+            v_hist = []
+        elif self.pad_short_history:
+            v_hist = [vs[i] if 0 <= i < len(vs) else 0.0 for i in range(tv - mu, tv)]
+        else:
+            v_hist = vs[tv - mu : tv]
         if any(value != value for value in y_hist):  # NaN: scorer failure upstream
             return None
         return np.array(y_hist + v_hist, dtype=float)

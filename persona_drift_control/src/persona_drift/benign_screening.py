@@ -34,12 +34,12 @@ def run_benign_screening(
     device: str = "cuda",
     trajectory_config: BenignTrajectoryConfig | None = None,
     enable_thinking: bool = False,
-    controller_factory: Callable[[int], Controller] | None = None,
+    controller_factory: Callable[[int, str], Controller] | None = None,
 ) -> dict[str, Any]:
     output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     trajectory_config = trajectory_config or BenignTrajectoryConfig()
-    controller_factory = controller_factory or (lambda seed: ZeroControlController())
+    controller_factory = controller_factory or (lambda seed, entry_id="": ZeroControlController())
 
     sessions = all_benign_sessions(load_benign_bank())
 

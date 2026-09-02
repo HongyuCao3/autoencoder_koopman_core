@@ -60,6 +60,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--held-out-frac", type=float, default=0.25)
     parser.add_argument("--split-seed", type=int, default=0)
     parser.add_argument(
+        "--contemporaneous-v",
+        action="store_true",
+        help=(
+            "fit with ReducedStateConfig.contemporaneous_v=True (pairs v with the SAME turn's "
+            "y it acts on -- see docs/experiments/koopman_case_study_design.md's Phase I). "
+            "Default False preserves the original Phase C report exactly."
+        ),
+    )
+    parser.add_argument(
         "--aux-cols",
         nargs="*",
         default=[],
@@ -114,7 +123,9 @@ def main() -> None:
         train_rows = annotate_similarity(train_rows, "attacker_query", corpus, out_col="attack_similarity")
         held_out_rows = annotate_similarity(held_out_rows, "attacker_query", corpus, out_col="attack_similarity")
 
-    config = ReducedStateConfig(nu=args.nu, mu=args.mu, aux_cols=tuple(args.aux_cols))
+    config = ReducedStateConfig(
+        nu=args.nu, mu=args.mu, aux_cols=tuple(args.aux_cols), contemporaneous_v=args.contemporaneous_v
+    )
 
     arx_report, arx_model = _fit_and_evaluate(
         "arx", no_extra_features, train_rows, held_out_rows, config, args.ridge
@@ -132,6 +143,7 @@ def main() -> None:
             "ridge": args.ridge,
             "rows_path": str(args.rows_path),
             "aux_cols": list(args.aux_cols),
+            "contemporaneous_v": args.contemporaneous_v,
         },
         "n_train_attacks": n_train_attacks,
         "n_held_out_attacks": n_held_out_attacks,

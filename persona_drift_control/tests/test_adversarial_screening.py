@@ -12,7 +12,8 @@ import json
 from persona_drift import adversarial_screening
 from persona_drift.attack_trajectory import AttackTrajectoryConfig
 from persona_drift.chat_model import GenerationConfig
-from persona_drift.control import ConstantRemindController, RandomExciteController
+from persona_drift.control import ConstantRemindController
+from persona_drift.controller_cli import make_controller_factory
 
 
 class _FakeTokenizer:
@@ -138,7 +139,7 @@ def test_controller_factory_is_called_fresh_per_trajectory_with_its_own_seed(tmp
     monkeypatch.setattr(adversarial_screening, "ChatModel", _FakeChatModel)
     seen_seeds: list[int] = []
 
-    def factory(seed: int):
+    def factory(seed: int, entry_id: str = ""):
         seen_seeds.append(seed)
         return ConstantRemindController()
 
@@ -164,35 +165,48 @@ def test_controller_factory_is_called_fresh_per_trajectory_with_its_own_seed(tmp
 
 
 def test_random_excite_controller_is_independently_seeded_per_trajectory(tmp_path, monkeypatch):
-    # A regression guard for the bug a single shared RandomExciteController
-    # instance would have: its RNG must not run continuously across
-    # trajectories (that would break both per-trajectory reproducibility
-    # from its own seed and resumability) -- each trajectory's sequence must
-    # depend only on that trajectory's own seed.
+    # Regression guard for the bug found while executing docs/next step.md
+    # (2026-09-02): the real `make_controller_factory("random_excite", ...)`
+    # used to build `RandomExciteController(seed=seed)` from the
+    # trajectory-level `seed` (just 0/1 from `--seeds`) alone -- since it's
+    # called fresh per (attack, seed) pair, every attack sharing a `seed`
+    # got a byte-identical `u_remind` draw. Confirmed live in
+    # outputs/koopman_defense_phaseB_random_excite/trajectories.jsonl (all
+    # 30 seed0 attacks: [0,0,1,1,0]; all 30 seed1 attacks: [1,0,0,1,1]) --
+    # not the "i.i.d. Bernoulli(p) each turn" RandomExciteController's own
+    # docstring promises. Fixed in controller_cli.py::_excitation_seed,
+    # which folds `entry_id` into the RNG seed.
     monkeypatch.setattr(adversarial_screening, "ChatModel", _FakeChatModel)
+    factory = make_controller_factory("random_excite", threshold_y_min=0.7, koopman_mpc_controller=None, random_excite_p=0.5)
 
-    def factory(seed: int):
-        return RandomExciteController(p=0.5, seed=seed)
+    def collect_sequences(out_dir):
+        adversarial_screening.run_adversarial_screening(
+            agent_model_id="fake-model",
+            judge_model_id="fake-model",
+            output_dir=out_dir,
+            num_attacks=3,
+            seeds=(0,),
+            attack_rng_seed=0,
+            device="cpu",
+            trajectory_config=AttackTrajectoryConfig(agent_gen=GenerationConfig(max_new_tokens=16)),
+            controller_factory=factory,
+        )
+        rows_path = out_dir / "trajectories.jsonl"
+        rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+        by_trajectory: dict[str, list[int]] = {}
+        for row in sorted(rows, key=lambda r: (r["trajectory_id"], r["turn"])):
+            by_trajectory.setdefault(row["trajectory_id"], []).append(row["u_remind"])
+        return by_trajectory
 
-    adversarial_screening.run_adversarial_screening(
-        agent_model_id="fake-model",
-        judge_model_id="fake-model",
-        output_dir=tmp_path / "a",
-        num_attacks=3,
-        seeds=(0,),
-        attack_rng_seed=0,
-        device="cpu",
-        trajectory_config=AttackTrajectoryConfig(agent_gen=GenerationConfig(max_new_tokens=16)),
-        controller_factory=factory,
-    )
-    # Same seed (0) reused for every one of the 3 attacks above -> every
-    # trajectory must draw the identical u_remind sequence, since each gets
-    # its own fresh RandomExciteController(seed=0).
-    rows_path = tmp_path / "a" / "trajectories.jsonl"
-    rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
-    by_trajectory: dict[str, list[int]] = {}
-    for row in sorted(rows, key=lambda r: (r["trajectory_id"], r["turn"])):
-        by_trajectory.setdefault(row["trajectory_id"], []).append(row["u_remind"])
-    sequences = list(by_trajectory.values())
+    by_trajectory_a = collect_sequences(tmp_path / "a")
+    sequences = list(by_trajectory_a.values())
     assert len(sequences) == 3
-    assert sequences[0] == sequences[1] == sequences[2]
+    # Same seed (0) reused for all 3 attacks above, but different attack_ids
+    # -> the fix must make these NOT all identical (the bug's signature).
+    assert not (sequences[0] == sequences[1] == sequences[2])
+
+    # Reproducibility/resumability must still hold: re-deriving the seed for
+    # the same (entry_id, seed) on a fresh run reproduces the exact same
+    # draws (a resumed run must not diverge from an uninterrupted one).
+    by_trajectory_b = collect_sequences(tmp_path / "b")
+    assert by_trajectory_a == by_trajectory_b

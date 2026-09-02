@@ -89,7 +89,7 @@ def run_trajectories_loop(
     entries: list[Any],
     id_fn: Callable[[Any], str],
     seeds: tuple[int, ...],
-    controller_factory: Callable[[int], Any],
+    controller_factory: Callable[[int, str], Any],
     trajectory_config: Any,
     agent: Any,
     judge: Any,
@@ -128,7 +128,10 @@ def run_trajectories_loop(
                     seed=seed,
                     trajectory_id=trajectory_id,
                     config=trajectory_config,
-                    controller=controller_factory(seed),
+                    # entry_id (not just seed): the fix for the RandomExciteController
+                    # collision bug found while executing docs/next step.md
+                    # (2026-09-02) -- see controller_cli.py::_excitation_seed.
+                    controller=controller_factory(seed, id_fn(entry)),
                 )
                 for row in trajectory_rows:
                     handle.write(json.dumps(row) + "\n")

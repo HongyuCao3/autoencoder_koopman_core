@@ -90,7 +90,12 @@ def load_model(fit_report_path: pathlib.Path, model_key: str):
     report = json.loads(fit_report_path.read_text())
     cfg = report["config"]
     model_report = report[model_key]
-    config = ReducedStateConfig(nu=cfg["nu"], mu=cfg["mu"], aux_cols=tuple(cfg.get("aux_cols", [])))
+    config = ReducedStateConfig(
+        nu=cfg["nu"],
+        mu=cfg["mu"],
+        aux_cols=tuple(cfg.get("aux_cols", [])),
+        contemporaneous_v=cfg.get("contemporaneous_v", False),
+    )
     model = surrogate_from_arrays(
         A=model_report["A"],
         B=model_report["B"],
@@ -169,10 +174,11 @@ def main() -> None:
     args = parse_args()
     attack_model, config = load_model(args.attack_fit_report, args.attack_model_key)
     benign_model, config_benign = load_model(args.benign_fit_report, args.benign_model_key)
-    assert (config.nu, config.mu, config.aux_cols) == (
+    assert (config.nu, config.mu, config.aux_cols, config.contemporaneous_v) == (
         config_benign.nu,
         config_benign.mu,
         config_benign.aux_cols,
+        config_benign.contemporaneous_v,
     ), "state configs must match to compare"
 
     held_out_benign = benign_held_out_ids(args.benign_fit_report)
@@ -205,6 +211,7 @@ def main() -> None:
     report = {
         "attack_model": {"key": args.attack_model_key, "path": str(args.attack_fit_report)},
         "benign_model": {"key": args.benign_model_key, "path": str(args.benign_fit_report)},
+        "contemporaneous_v": config.contemporaneous_v,
         "n_attack_trajectories": int((traj_summary["true_label"] == "attack").sum()),
         "n_benign_trajectories": int((traj_summary["true_label"] == "benign").sum()),
         "per_turn": per_turn,

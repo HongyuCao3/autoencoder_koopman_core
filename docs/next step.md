@@ -1,0 +1,72 @@
+**执行状态（2026-09-02）：这份文档的诊断已验证并修正，完整过程和结果见
+[koopman_case_study_design.md](experiments/koopman_case_study_design.md) 的"Phase I：v
+对齐修正与再验证"一节。** 简要结论：第一节的时序错位诊断成立（`B` 符号翻正、交互项方向
+修正为 `corr(margin,y_probe)=-1.0`），但修正后 `nu=1,mu=1` 的直接效应量级很小（$B\approx0.02$，
+95% CI 包含 0）——继续查发现 Phase A 的大效应是跨轮累积效应，`mu=2`（Phase C-H 一直在用的
+记忆长度）配合修正后的对齐就能重现 107% 的观测效应，不需要更长记忆或换架构。真实闭环重跑
+（Phase I）证实 Phase H 的两个具名失败轨迹被正确救回、更经济，但仍未在 new-Q1 上打赢
+`periodic`；试过放宽 `mu=2` 热身门槛让 turn2 也能决策，离线重放证明这不是门槛问题——turn1
+结构上永远"看起来一切正常"，反应式策略没有信号可依，无法抢在 `periodic` 固定日程之前动手,
+这是控制器架构选择的问题，不是 Koopman 模型的问题。调查线到此收尾。过程中还顺带发现并修了
+一个独立的 bug：`RandomExciteController` 的 Phase B 采集从未真正做到"每轮独立随机"，同一
+`seed` 下所有攻击共享同一条固定序列。
+
+---
+
+先说结论：**periodic 强、消融不达预期，很大概率不是 Koopman 路线的问题，而是有一个可定位的时序错位，加上评测设定本身让"自适应"没有用武之地。** 建议不是换方向，而是先做一次零 GPU 的修正，再改评测设定。
+
+## 一、最可能的根因：控制输入错位了一格
+
+看采样流程（`attack_trajectory.py`）：第 $t$ 轮先向控制器要 $u_t$，把提醒拼进这一轮的用户消息，然后生成回复，再对**这一轮的回复**打分得到 $y_t$。也就是说提醒的主效应是同轮的：$u_t \to y_t$。Phase A 的证据（常提醒把 turn5 从 0.45 拉到 0.81）量的正是这个同轮直接效应。
+
+再看辨识数据怎么配对（`modeling/dataset.py::build_reduced_state_pairs`）。它按论文的"移位状态"约定，把状态里放当前输出、把当轮输入单独作为 $v_t$：
+
+$$
+z_t=\begin{bmatrix} y_t \\ u_{t-1} \\ u_{t-2}\end{bmatrix},\qquad v_t = u_t,\qquad z_{t+1}=\begin{bmatrix} y_{t+1} \\ u_{t} \\ u_{t-1}\end{bmatrix}
+$$
+
+这里 $y_t$ 是第 $t$ 轮回复的安全分，$u_{t}$ 是第 $t$ 轮是否插了提醒，$z_t$ 是模型看到的降阶状态（$\nu=1,\mu=2$）。于是拟合出的转移是
+
+$$
+y_{t+1}\approx a\,y_t + b_0\,u_t + b_1\,u_{t-1} + b_2\,u_{t-2} + c
+$$
+
+$a$ 是自回归系数，$b_0$ 是被当成"控制通道 $B$"的那个系数，$c$ 是截距。问题在于 $u_t$ 对 $y_t$ 的直接效应已经被吸进回归量 $y_t$ 里了，$b_0$ 度量的只是"上一轮插过的提醒文本留在对话历史里，对下一轮的残留效应"，而真正的执行器效应 $u_{t+1}\to y_{t+1}$ 在模型里根本不存在。控制器那边（`KoopmanMPCController.next_u_remind`）在决定第 $T$ 轮动作时，用 history 拼出的是 $z_{T-1}$，再把候选 $u_T$ 塞进 $v$ 的位置——但模型学到的 $v$ 槽位对应的是 $u_{T-1}$（其实已知）。它在用残留效应的系数去评估一个直接效应的决策。
+
+这一个错位可以串起文档里几乎所有"奇怪"的现象：
+
+- **$\mu=1$ 时 $B$ 为负（-0.059），换 $\mu=2$ 才转正**：残留效应本身弱，且在条件于 $y_t$ 之后容易被"插过提醒的高分轮之后回落"这种均值回归压成负号；$B$ 的符号随滞后阶数翻转，本身就是"通道对错了"的信号，而不该被当作"$\mu=2$ 更合理"的理由。
+- **边际收益恒为常数 0.3672、32/32 全提醒**：这一部分文档诊断得对（$B v$ 线性可加），但常数的数值是残留系数，跟"现在插不插提醒"无关。
+- **交互项方向反直觉（$y$ 越低越少提醒）**：交互项 $v\cdot y_t$ 里的 $v$ 仍然是残留槽位。它学到的是"上一轮提过醒、这一轮还是很低，说明这次攻击已经压过提醒了，下一轮也好不了"——这是对**失败案例**的描述，而不是对"现在提醒有没有用"的估计。Phase H 把预算从 0074/0476 抽走，就是这个错误估计在闭环里的精确重演。
+- **一步残差检测失败**：模型对当轮动作没有解释力，残差自然被策略分布外效应污染。
+
+顺带一提，`selfchat.py` 用同一套约定（先插提醒再生成再探针），所以人格漂移线如果做过 Koopman 拟合，也是同样的错位；之前那条线的"提醒无效应"结论是用直接对比测的，不受影响。
+
+**可证伪的预测**：把配对改成 $(z_t,\; v=u_{t+1})\to y_{t+1}$ 后（$\nu=1,\mu=1$ 就够），$B$ 应当是明确的正数、量级接近 Phase A 的同轮差（+0.2 到 +0.3），而且交互项 $v\cdot y_t$ 的符号应当翻成"$y$ 越低提醒越有效"——这不是玄学，而是 $y\in[0,1]$ 有上界带来的饱和效应：$y_t=1$ 时提醒不可能再往上推。如果修正后 $B$ 仍然很弱，那才轮到怀疑执行器或 readout。
+
+## 二、periodic 为什么"应该"很强
+
+这一条即使修好错位也不会变，需要正视。当前 MPC 的目标是最大化预测安全分之和，`repeat_penalty=0`，而 Phase F 显示良性代价很小（常提醒也只掉 0.10 且不显著）。在"提醒有正效应、几乎没有代价"的设定下，**理论最优策略就是常提醒**，MPC 选 32/32 全提醒是在正确地求解一个没有权衡的问题。同代价的 periodic 能打平，是因为对比被人为对齐到相同插入次数，此时任何把这些次数放在侵蚀窗口（turn 2–5）内的固定方案都差不多。自适应策略只有在**代价 binding** 时才有存在的理由：每条对话只有 $k$ 次提醒预算，或者提醒的 helpfulness 代价大到值得省。现在的评测里两者都不成立，所以"Koopman 没有展现自适应优势"在这个设定下是必然结果，不是 Koopman 失败的证据。
+
+## 三、决策点太少、样本太少
+
+轨迹只有 5 轮，$\mu=2$ 让 turn 1–3 强制为 0，MPC 实际上只在 turn 4/5 做两次二值决策，整个策略空间只有 4 种模式；periodic(2) 也是两次插入。每臂 16 条轨迹、judge 是 1–5 五级离散，$p=0.052$ 与 $p=0.075$ 的差别完全在噪声内，用"是否过 0.05"做 pass/fail 会把噪声当结论（文档里 constant_remind 在 Phase A 不显著、Phase E 显著已经说明了这一点）。
+
+## 四、接下来怎么办：先修正再改设定，不建议现在换方向
+
+距摘要截止约两周，我建议按下面顺序，前两步不需要 GPU。
+
+第一步（半天到一天，纯 CPU）：在 `dataset.py` 加一个对齐开关（`v` 取 $u_{t+1}$），用 Phase B 数据重拟合 $\nu=1,\mu=1$ 的 ARX 和交互模型，核对上面的两条预测；同时在 Phase B 数据里直接算一个不依赖模型的对照量——同一轮内 $\mathbb{E}[y_t\mid u_t=1]-\mathbb{E}[y_t\mid u_t=0]$，它就是直接效应的粗估，修正后的 $B$ 应当和它同量级。然后用现有 Phase E 记录做离线重放，看决策是否随 $y$ 变化且方向正确。这一步的结果决定后面一切：如果预测成立，之前 Phase C–H 的负结果全部要重新解读，且这本身就是论文里一段有分量的"可辨识性/时序对齐"分析。
+
+第二步（改评测设定）：把控制问题改成预算约束或带 binding 代价的形式，比如每条对话最多 $k=2$ 次提醒，MPC 的任务是把这两次放在预测侵蚀最快的位置；periodic 就变成这个预算的一种固定分配，自适应的价值才有可能被度量。同时把热身降到 1 轮（$\mu=1$ 对齐后从 turn 2 就能决策），并直接使用那批强度差异大的 held-out 攻击（0074 vs 0169/0530）。
+
+第三步（一次 GPU 实验，约 Phase E 规模的 3 倍）：seed 从 2 扩到 5 以上，报告的主指标改成每条轨迹的效应量（比如 turn 3–5 的安全分均值或 AUC）加 bootstrap 置信区间和配对比较，而不是 new-Q1 的 pass/fail。
+
+如果第一步的预测不成立，再考虑"其他操作"——那时问题会落在执行器或 judge 上，需要换 readout（例如连续的 logit 级安全分）或换执行器，而不是继续在控制器架构上做消融。就论文定位而言，即使控制器最终只是打平 periodic，"用 Koopman/线性代理模型量化防御成本、可辨识性和输入时序对齐"这类结构性结论仍然是 GenCtrl 没有的 delta，值得作为主线保留。
+
+Sources:
+- [koopman_defense_pilot.md](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/docs/experiments/koopman_defense_pilot.md)
+- [koopman_case_study_design.md](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/docs/experiments/koopman_case_study_design.md)
+- [attack_trajectory.py](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/persona_drift_control/src/persona_drift/attack_trajectory.py)
+- [modeling/dataset.py](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/persona_drift_control/src/persona_drift/modeling/dataset.py)
+- [control.py](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/persona_drift_control/src/persona_drift/control.py)

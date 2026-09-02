@@ -55,7 +55,7 @@ def test_all_eight_categories_produce_rows(tmp_path, monkeypatch):
         seeds=(0,),
         device="cpu",
         trajectory_config=BenignTrajectoryConfig(agent_gen=GenerationConfig(max_new_tokens=16)),
-        controller_factory=lambda seed: ConstantRemindController(),
+        controller_factory=lambda seed, entry_id="": ConstantRemindController(),
     )
     rows = [json.loads(line) for line in (tmp_path / "out" / "trajectories.jsonl").read_text().splitlines()]
     categories = {row["category"] for row in rows}

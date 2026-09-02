@@ -69,6 +69,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--held-out-frac", type=float, default=0.25)
     parser.add_argument("--split-seed", type=int, default=0)
     parser.add_argument(
+        "--contemporaneous-v",
+        action="store_true",
+        help=(
+            "fit with ReducedStateConfig.contemporaneous_v=True -- must match the attack-regime "
+            "report's setting for evaluate_koopman_detector.py's comparison to be meaningful."
+        ),
+    )
+    parser.add_argument(
         "--aux-cols",
         nargs="*",
         default=[],
@@ -142,7 +150,9 @@ def main() -> None:
         train_rows = annotate_similarity(train_rows, "question", corpus, out_col="attack_similarity")
         held_out_rows = annotate_similarity(held_out_rows, "question", corpus, out_col="attack_similarity")
 
-    config = ReducedStateConfig(nu=args.nu, mu=args.mu, aux_cols=tuple(args.aux_cols))
+    config = ReducedStateConfig(
+        nu=args.nu, mu=args.mu, aux_cols=tuple(args.aux_cols), contemporaneous_v=args.contemporaneous_v
+    )
 
     arx_report, arx_model = _fit_and_evaluate(
         "arx", no_extra_features, train_rows, held_out_rows, config, args.ridge
@@ -160,6 +170,7 @@ def main() -> None:
             "ridge": args.ridge,
             "source": "phaseF_all_arms_combined",
             "aux_cols": list(args.aux_cols),
+            "contemporaneous_v": args.contemporaneous_v,
         },
         "n_train_benign_categories": n_train_benign,
         "n_held_out_benign_categories": len(held_out_benign_ids),
