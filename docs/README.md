@@ -214,8 +214,13 @@
   覆盖或混淆，新增了 Hydra `conf/experiment/` 配置组（一个文件=一个臂=一个 `output_dir`，攻击集
   /seed/预算集中在 `phaseJ_base.yaml`）和 `persona_drift.run_config_guard`（同一 `output_dir`
   换了配置就拒绝续跑——screening 循环天生可续跑，指错目录不会报错，只会安静地把两个控制器的
-  轨迹混进同一份报告）。状态（2026-09-03）：代码/配置/离线预检完成、CPU 283 测试通过，
-  **7 个 GPU 臂已全部提交（job 15503457–15503463），结果待收**。
+  轨迹混进同一份报告）。**状态（2026-09-03）：7 个臂已全部跑完，结果见该文档第十节——
+  自适应臂没打赢最优固定臂（`fixed_t4`），也没明确打赢 `threshold`：三个臂在安全分上
+  互相都不可区分（CI 宽度和相邻臂真实间距同量级），只在花掉多少预算上可区分。机制上
+  koopman 臂基本重新发现了 `fixed_t4`（16 条里 8 条选了同一轮、逐位相同）。这一轮真正
+  成立的独立结果是"单次提醒放在哪一轮差别很大"（late_y 0.6510→0.7760），即分配问题
+  确实存在，但一个固定日程就能拿到答案。主要限制是 2 seed 不足以分辨相邻臂——
+  `next_step_diagnosis.md` 第三步（扩 seed）现在成了继续的必要条件。**
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) — ★
   正在做：`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**新开一次对话
