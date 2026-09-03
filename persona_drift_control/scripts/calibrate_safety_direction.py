@@ -33,6 +33,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--num-attacks", type=int, default=40)
     parser.add_argument("--rng-seed", type=int, default=100)
+    parser.add_argument(
+        "--exclude-attack-ids",
+        default=None,
+        help="comma-separated attack_ids to drop from the bank before sampling. Required when "
+        "the direction will be used as a READOUT on those attacks (the harmless pole is their "
+        "own turn-1 queries, so overlap makes the projection partly self-fulfilling); "
+        "unnecessary when it is only a channel-C steering actuator. See "
+        "persona_drift.safety_direction_calibration.build_calibration_texts.",
+    )
     return parser.parse_args()
 
 
@@ -45,6 +54,7 @@ def main() -> None:
         num_attacks=args.num_attacks,
         rng_seed=args.rng_seed,
         device=args.device,
+        exclude_attack_ids=args.exclude_attack_ids.split(",") if args.exclude_attack_ids else None,
     )
     print(f"harmless_mean_projection={stats['harmless_mean_projection']:.4f}")
     print(f"harmful_mean_projection={stats['harmful_mean_projection']:.4f}")

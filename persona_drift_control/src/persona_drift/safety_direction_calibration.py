@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any
+from typing import Any, Iterable
 
 import numpy as np
 from loguru import logger
@@ -19,7 +19,9 @@ from .attack_bank import load_attack_bank, select_screening_attacks
 from .chat_model import ChatModel
 
 
-def build_calibration_texts(num_attacks: int, rng_seed: int) -> tuple[list[str], list[str], list[str]]:
+def build_calibration_texts(
+    num_attacks: int, rng_seed: int, exclude_attack_ids: Iterable[str] | None = None
+) -> tuple[list[str], list[str], list[str]]:
     """harmless texts = turn-1 (context-building) queries, harmful texts =
     plain_query (the underlying harmful goal), both drawn from the same
     sampled attacks -- matched-domain pairs, same convention as Arditi et
@@ -29,13 +31,32 @@ def build_calibration_texts(num_attacks: int, rng_seed: int) -> tuple[list[str],
     mean y_safety=0.931, judge scores like the DEA/pet-care examples came
     back correctly as fully safe).
 
-    Known limitation: doesn't track disjointness from whichever attacks a
-    later dose-response run samples with its own rng_seed -- acceptable at
-    this screening scale (600-row bank, different rng_seed per phase makes
-    full overlap unlikely but not impossible), flagged rather than
-    engineered around."""
+    `exclude_attack_ids` drops those attacks from the bank BEFORE sampling.
+    Whether it is needed depends entirely on what the direction is for:
+
+    * As a channel-C STEERING actuator (what this module was written for,
+      ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md section 7 step 2), overlap
+      with the evaluation attacks is not disqualifying -- you are building
+      an input channel, not a measurement, and the original calibration
+      left it unconstrained on purpose (see the note this replaces).
+    * As a READOUT (that document's readout item 1, "每轮回复激活在
+      refusal/安全方向上的投影"), overlap IS disqualifying: the harmless
+      pole is literally the turn-1 queries of the sampled attacks, so a
+      direction fit on the evaluation attacks is fit to score their opening
+      turns as safe, and projecting those same trajectories measures partly
+      that fit. The 2026-08-31 artifact under outputs/safety_direction/
+      turns out to overlap all 8 Phase J held-out attacks (40 sampled from
+      a 600-row bank, so this was luck, not design), which is why it cannot
+      be reused for the readout without recalibrating here."""
 
     bank = load_attack_bank()
+    if exclude_attack_ids:
+        excluded = set(exclude_attack_ids)
+        bank = {
+            category: [entry for entry in entries if entry.attack_id not in excluded]
+            for category, entries in bank.items()
+        }
+        bank = {category: entries for category, entries in bank.items() if entries}
     attacks = select_screening_attacks(bank, num_attacks=num_attacks, rng_seed=rng_seed)
     harmless_texts = [entry.multi_turn_queries[0] for entry in attacks]
     harmful_texts = [entry.plain_query for entry in attacks]
@@ -49,17 +70,24 @@ def run_calibration(
     num_attacks: int = 40,
     rng_seed: int = 100,  # disjoint from step-1 screening's attack_rng_seed=0 and dose_response_screening's default query_rng_seed=200
     device: str = "cuda",
+    exclude_attack_ids: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    harmful_texts, harmless_texts, attack_ids = build_calibration_texts(num_attacks, rng_seed)
+    harmful_texts, harmless_texts, attack_ids = build_calibration_texts(
+        num_attacks, rng_seed, exclude_attack_ids=exclude_attack_ids
+    )
     logger.info("loading agent model {} for direction calibration", agent_model_id)
     chat_model = ChatModel(agent_model_id, device=device)
 
     direction, stats = compute_safety_direction(chat_model, harmful_texts, harmless_texts, layer=layer)
     stats["agent_model_id"] = agent_model_id
     stats["calibration_attack_ids"] = attack_ids
+    # Recorded so a consumer can check disjointness itself rather than
+    # trusting the caller passed the right list -- see build_calibration_texts
+    # on why a readout needs this and a steering actuator does not.
+    stats["excluded_attack_ids"] = sorted(exclude_attack_ids) if exclude_attack_ids else []
 
     direction_path = output_dir / "safety_direction.npy"
     np.save(direction_path, direction)
