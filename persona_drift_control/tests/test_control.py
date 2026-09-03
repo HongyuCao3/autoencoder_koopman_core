@@ -1,7 +1,9 @@
 import numpy as np
 
 from persona_drift.control import (
+    BudgetLimitedController,
     ConstantRemindController,
+    FixedScheduleController,
     KoopmanMPCController,
     PeriodicController,
     RandomExciteController,
@@ -9,6 +11,7 @@ from persona_drift.control import (
     ZeroControlController,
 )
 from persona_drift.modeling.dataset import ReducedStateConfig
+from persona_drift.modeling.interaction_lift import InteractionLiftedSurrogate
 from persona_drift.modeling.koopman import KoopmanSurrogate, no_extra_features
 
 
@@ -170,3 +173,97 @@ def test_koopman_mpc_pad_short_history_zero_pads_the_missing_lag_slots():
     z_full = padded_controller._current_state(_remind_rows((0.9, 0), (0.5, 1)))
     z_full_default = default_controller._current_state(_remind_rows((0.9, 0), (0.5, 1)))
     assert np.allclose(z_full, z_full_default)
+
+
+def _interaction_surrogate(a=0.5, b0=0.5, b1=-0.4, c=0.0):
+    """`y_(t+1) = a*y_t + b0*u_t + b1*(u_t*y_t) + c`, readout y_t = z_t
+    (nu=1, mu=0). With `b1 < 0` a reminder buys MORE the lower `y` already
+    is -- the saturation direction the v-aligned Phase I model actually fit
+    (B=[[0.279, -0.320], ...], docs/experiments/koopman_case_study_design.md).
+    That sign is what makes "save the last reminder for a worse turn" a real
+    decision rather than a tie."""
+
+    model = KoopmanSurrogate(extra_features_fn=no_extra_features)
+    model.state_dim = 1
+    model.A = np.array([[a]])
+    model.B = np.array([[b0, b1]])
+    model.b = np.array([c])
+    model.C = np.array([[1.0]])
+    return InteractionLiftedSurrogate(surrogate=model, state_index=0)
+
+
+def test_fixed_schedule_fires_only_on_listed_turns():
+    controller = FixedScheduleController(turns=(4, 2))
+    assert controller.turns == (2, 4)  # normalized, so the name is schedule-order-independent
+    assert controller.name == "fixed_schedule_t2_4"
+    fired = [t for t in range(1, 6) if controller.next_u_remind(t, _rows(*([1.0] * (t - 1)))) == 1]
+    assert fired == [2, 4]
+
+
+def test_budget_limited_controller_stops_the_inner_controller_once_spent():
+    controller = BudgetLimitedController(ConstantRemindController(), budget=2)
+    assert controller.name == "constant_remind_budget2"
+    assert controller.next_u_remind(1, []) == 1
+    assert controller.next_u_remind(2, _remind_rows((0.5, 1))) == 1
+    assert controller.next_u_remind(3, _remind_rows((0.5, 1), (0.5, 1))) == 0
+    # Counted from history, not instance state: a fresh instance handed the
+    # same already-spent history must agree (shared-instance + resumability).
+    assert BudgetLimitedController(ConstantRemindController(), budget=2).next_u_remind(
+        3, _remind_rows((0.5, 1), (0.5, 1))
+    ) == 0
+
+
+def test_koopman_mpc_budget_makes_it_save_a_reminder_it_would_otherwise_spend_now():
+    # Same state, same model, same horizon: the ONLY difference is the budget.
+    # Unbudgeted the controller can remind on both remaining turns, so
+    # reminding now is optimal; with a single reminder left it waits for the
+    # turn where the interaction term says the reminder buys more.
+    config = ReducedStateConfig(nu=1, mu=0, contemporaneous_v=True)
+    surrogate = _interaction_surrogate()
+    history = _remind_rows((1.0, 0))  # turn 1 done, y still perfect
+
+    unbudgeted = KoopmanMPCController(surrogate=surrogate, state_config=config, horizon=2, episode_length=3)
+    budgeted = KoopmanMPCController(
+        surrogate=surrogate, state_config=config, horizon=2, episode_length=3, remind_budget=1
+    )
+    assert unbudgeted.next_u_remind(2, history) == 1
+    assert budgeted.next_u_remind(2, history) == 0
+    # ...and it does spend it once there is no later turn to save it for.
+    assert budgeted.next_u_remind(3, _remind_rows((1.0, 0), (0.5, 0))) == 1
+
+
+def test_koopman_mpc_never_exceeds_its_budget():
+    config = ReducedStateConfig(nu=1, mu=0, contemporaneous_v=True)
+    controller = KoopmanMPCController(
+        surrogate=_interaction_surrogate(), state_config=config, horizon=2, episode_length=5, remind_budget=1
+    )
+    spent_history = _remind_rows((1.0, 0), (0.5, 1))
+    assert controller.next_u_remind(3, spent_history) == 0
+    assert controller.next_u_remind(4, spent_history + _remind_rows((0.2, 0))[-1:]) == 0
+
+
+def test_koopman_mpc_planning_steps_clip_to_the_end_of_the_episode():
+    config = ReducedStateConfig(nu=1, mu=0, contemporaneous_v=True)
+    controller = KoopmanMPCController(
+        surrogate=_interaction_surrogate(), state_config=config, horizon=5, episode_length=5
+    )
+    assert controller._planning_steps(1) == 5
+    assert controller._planning_steps(4) == 2
+    assert controller._planning_steps(5) == 1
+    assert controller._planning_steps(6) == 1  # never zero: the current turn is always plannable
+    # Without episode_length nothing is clipped (every Phase A-I arm).
+    unclipped = KoopmanMPCController(surrogate=_interaction_surrogate(), state_config=config, horizon=5)
+    assert unclipped._planning_steps(5) == 5
+
+
+def test_koopman_mpc_unbudgeted_behavior_is_unchanged_by_the_new_fields():
+    # Regression guard: remind_budget/episode_length default to None, so a
+    # controller built the Phase A-I way must decide exactly as before.
+    config = ReducedStateConfig(nu=1, mu=0, contemporaneous_v=True)
+    surrogate = _interaction_surrogate()
+    old_style = KoopmanMPCController(surrogate=surrogate, state_config=config, horizon=2)
+    for y in (0.0, 0.25, 0.5, 0.75, 1.0):
+        history = _remind_rows((y, 0))
+        z = old_style._current_state(history)
+        expected = int(old_style._simulate(z, 1, 1) > old_style._simulate(z, 0, 1))
+        assert old_style.next_u_remind(2, history) == expected

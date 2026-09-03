@@ -1,0 +1,16 @@
+# @package _global_
+# Phase J model-free reactive baseline: bang-bang threshold (Phase E's
+# y_min=0.7), capped at the same single reminder via
+# control.BudgetLimitedController -- i.e. "spend it on the first turn that
+# looks bad". This separates the two things the Koopman arm could be adding:
+# reacting to feedback at all (this arm already does), versus using a forward
+# model to decide whether a bad-looking turn is worth the LAST reminder or
+# whether a worse one is predicted to come (only the Koopman arm can).
+defaults:
+  - phaseJ_base
+
+output_dir: outputs/koopman_defense_phaseJ_budget1_threshold
+task:
+  screening:
+    controller: threshold
+    threshold_y_min: 0.7

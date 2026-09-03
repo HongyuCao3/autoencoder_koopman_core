@@ -1,0 +1,32 @@
+# @package _global_
+# Phase J shared setup: the budget-constrained re-run of the adversarial-defense
+# control problem (docs/experiments/budget_constrained_defense_plan.md, from
+# docs/next_step_diagnosis.md section 4 step 2). Every Phase J arm composes this file so
+# the attack set / seeds / budget are physically impossible to get out of sync
+# between arms -- an arm-by-arm copy of `attack_ids` would make a silent
+# mismatch (i.e. an incomparable comparison) a one-typo mistake.
+#
+# Why k=1 and not the k=2 the plan doc first proposed: on these 5-turn attack
+# sequences the existing arms already spend at most 2 reminders per trajectory
+# (Phase I's v-aligned controller: max 2, mean 1.31; Phase G periodic: exactly
+# 2 on turns 2/4), so a budget of 2 is NOT binding -- it would reproduce Phase I
+# exactly and burn GPU time to learn nothing. k=1 is the smallest budget that
+# actually forces an allocation decision, and it is the setting where a fixed
+# schedule has to commit to one turn in advance while an adaptive policy can
+# wait for evidence.
+task:
+  screening:
+    seeds: [0, 1]
+    # The same 8 held-out attacks as every Phase E/G/H/I arm (Phase C's
+    # identification split), so Phase J is comparable to all of them.
+    attack_ids:
+      - safemtdata_0074
+      - safemtdata_0169
+      - safemtdata_0257
+      - safemtdata_0289
+      - safemtdata_0324
+      - safemtdata_0329
+      - safemtdata_0476
+      - safemtdata_0530
+    remind_budget: 1
+    episode_length: 5

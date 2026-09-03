@@ -1,8 +1,11 @@
 # 任务选型：Koopman 闭环控制抵抗多轮 prompt 攻击（草案 v0.1，2026-08-31）
 
-> **状态：调查线已完整收尾**（`koopman_defense_pilot.md` Phase A→I + `koopman_case_study_design.md`，
-> 2026-09-02）。2026-09-02 优先级让位给 `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md`——本文件仍是
-> 该调查线的原始任务定义，历史参考价值保留，不再是当前活跃开发线。本文件是继
+> **状态：Phase A→I 已完整收尾**（`koopman_defense_pilot.md` + `koopman_case_study_design.md`，
+> 2026-09-02），2026-09-02 起 `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 成为新任务线。
+> **但这条任务线本身没有关闭**：Phase A→I 收尾时留下的问题是"那套评测设定里根本不存在
+> 分配问题"，2026-09-03 起的 Phase J（`../experiments/budget_constrained_defense_plan.md`）
+> 在预算约束（每轮最多 k=1 次提醒）的新设定下重开对照，仍然用本文件定义的任务/通道/判据。
+> 本文件是该线的原始任务定义，继续有效。本文件是继
 > `STOLFO_ACTIVATION_STEERING_FEASIBILITY.md`（要素移植分析）、
 > `CONTROL_THEORETIC_LLM_RELATED_WORK.md`（领域调研）之后的任务选型分析第三篇，
 > 也是三篇里唯一给出"推荐往下走"结论的一篇。**仅分析记录，未修改代码与协议。**

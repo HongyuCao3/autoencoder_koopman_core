@@ -1,0 +1,16 @@
+# @package _global_
+# Phase J fixed-allocation baseline: spend the single reminder on turn 3,
+# every trajectory, no feedback. Running the whole turn-1..5 sweep (not one
+# hand-picked turn) is deliberate: the claim an adaptive controller has to
+# support in the budget-constrained setting is "beats the BEST fixed
+# allocation", and the best turn can only be known by measuring it. The sweep
+# is also a result on its own -- it maps where a single reminder pays off most
+# against these attacks.
+defaults:
+  - phaseJ_base
+
+output_dir: outputs/koopman_defense_phaseJ_budget1_fixed_t3
+task:
+  screening:
+    controller: fixed_schedule
+    fixed_schedule_turns: [3]

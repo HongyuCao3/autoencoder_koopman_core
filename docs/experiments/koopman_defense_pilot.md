@@ -17,8 +17,10 @@
 
 这份文档记录：如何把 `control.py`（persona-drift 的 `Controller` 协议 + 已有控制器实现）、
 `reminder.py` 的提醒插入模式、`modeling/koopman.py`/`modeling/evaluate.py` 三块**几乎零改动
-直接复用**到对抗防御这个新领域，设计并验证一个 Koopman-MPC 控制器。完整设计方案见
-`/home/hcao2/.claude/plans/shiny-stargazing-sphinx.md`（已批准的计划文件）。
+直接复用**到对抗防御这个新领域，设计并验证一个 Koopman-MPC 控制器。原始设计方案是一份
+不在本仓库内的本机计划文件（`~/.claude/plans/shiny-stargazing-sphinx.md`，已批准）；**下面
+"执行器"到"Phase E"各节已把该计划的执行器设计、状态定义、成功判据完整转录下来，接续工作
+不需要那份文件**。
 
 ## 执行器：安全提醒注入（channel A 式）
 
@@ -237,8 +239,10 @@ t 统计量（-2.34）在四臂里绝对值最小（最接近 0，侵蚀最弱�
 **结论：Koopman-MPC 控制器打赢了两个经典基线（无控制、阈值反馈），且用更低代价追平了
 常提醒基线，达成计划文件设定的成功判据。这条实验线（Phase A→E）到此完整闭环。**
 
-## Phase F：良性查询 helpfulness 代价检查（设计方案见
-`/home/hcao2/.claude/plans/happy-purring-sunset.md`，已批准）
+## Phase F：良性查询 helpfulness 代价检查
+
+（原始设计方案同样是一份不在本仓库内的本机计划文件，`~/.claude/plans/happy-purring-sunset.md`，
+已批准；本节已转录其设计与判据，接续工作不需要那份文件。）
 
 复用 attack_bank→attack_trajectory→adversarial_screening→analysis_adversarial 的整套结构，
 换成良性内容：
@@ -319,7 +323,7 @@ done
 Phase A→F 主线到此完整闭环；样本量小是本轮结果的主要局限，值得记录但不构成必须补做的门槛。
 
 **这个结论后来被 Phase G（下面）修正**：Phase E/F 只对比了 `zero_control`/`constant_remind`/
-`threshold` 三个经典基线,没有对比 `docs/BASELINES.md` ②层调研过、但一直没实现的
+`threshold` 三个经典基线,没有对比 `BASELINES.md` ②层调研过、但一直没实现的
 "周期性/事件触发重提醒"——这是比 `threshold` 更贴近生产环境实际部署的对照,而且完全不需要
 拟合任何模型。Phase G 补上了它,结果表明"koopman_mpc 的收益是靠建模复杂度换来的"这个说法
 需要收窄。
@@ -458,3 +462,13 @@ Phase H 的两个具名失败轨迹都被救回，但仍未在 new-Q1 上打赢 
 再验证"一节。放宽 `mu=2` 热身门槛（`pad_short_history`）试图让反应式策略在 turn2 抢跑的
 尝试是否定结果（离线重放：turn2 因为永远"看起来一切正常"而 0/16 提醒）——把"反应式控制器
 结构上没法在固定日程之前动手"坐实为架构选择问题，不是 Koopman 模型的问题，调查线到此收尾。
+
+**2026-09-03 更新：这条线在新的评测设定下续作（Phase J）。** Phase A–I 的收尾结论是"在这个
+设定里反应式控制器结构上打不赢固定日程"，但 `next_step_diagnosis.md` 第二节指出了更前一层的
+问题：**当前评测里根本不存在分配问题**——提醒有正效应、良性代价几乎为零（Phase F），理论最优
+策略就是常提醒，所以"自适应没有展现优势"是设定的必然结果，不是方法的证据。Phase J 把设定改成
+每条轨迹最多 k=1 次提醒（核对已收集数据后从建议的 k=2 改成 k=1：`periodic` 恒花 2 次、Phase I
+最多 2 次，k=2 在这批 5 轮轨迹上不 binding），策略的任务变成"把这一次放在哪一轮"，对手是
+turn1–5 的固定日程扫描加一个预算封装的 `threshold`。模型、`nu/mu`、v 对齐全部沿用 Phase I，
+不重新拟合任何东西。设计、离线预检结果、Hydra 输出目录隔离机制见
+[budget_constrained_defense_plan.md](budget_constrained_defense_plan.md)。

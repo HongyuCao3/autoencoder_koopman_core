@@ -18,8 +18,10 @@ import pathlib
 from typing import Callable
 
 from .control import (
+    BudgetLimitedController,
     ConstantRemindController,
     Controller,
+    FixedScheduleController,
     KoopmanMPCController,
     PeriodicController,
     RandomExciteController,
@@ -33,6 +35,15 @@ from .modeling.koopman import abs_sign_extra_features, no_extra_features, surrog
 EXTRA_FEATURES_FNS = {"arx": no_extra_features, "richer_abs_sign": abs_sign_extra_features}
 
 
+def _budgeted_name(base: str, remind_budget: int | None) -> str:
+    """Arm label for the `excitation_design` column / run id / `logs/`
+    filename. Unbudgeted runs keep the exact name every Phase C-I arm was
+    recorded under (`koopman_mpc`), so old and new outputs stay
+    distinguishable without renaming anything already collected."""
+
+    return base if remind_budget is None else f"{base}_budget{remind_budget}"
+
+
 def load_koopman_mpc_controller(
     model_path: pathlib.Path,
     model_key: str,
@@ -41,6 +52,10 @@ def load_koopman_mpc_controller(
     horizon: int,
     repeat_penalty: float,
     contemporaneous_v: bool = False,
+    pad_short_history: bool = False,
+    remind_budget: int | None = None,
+    episode_length: int | None = None,
+    name: str = "koopman_mpc",
 ) -> KoopmanMPCController:
     report = json.loads(model_path.read_text())
     fit = report[model_key]
@@ -58,6 +73,10 @@ def load_koopman_mpc_controller(
         state_config=state_config,
         horizon=horizon,
         repeat_penalty=repeat_penalty,
+        pad_short_history=pad_short_history,
+        remind_budget=remind_budget,
+        episode_length=episode_length,
+        name=_budgeted_name(name, remind_budget),
     )
 
 
@@ -68,6 +87,10 @@ def load_koopman_mpc_interaction_controller(
     horizon: int,
     repeat_penalty: float,
     contemporaneous_v: bool = False,
+    pad_short_history: bool = False,
+    remind_budget: int | None = None,
+    episode_length: int | None = None,
+    name: str = "koopman_mpc",
 ) -> KoopmanMPCController:
     """Phase H (docs/experiments/koopman_case_study_design.md's "后续:
     验证'对下一步方向的启示'"): loads a state-action-interaction-augmented
@@ -82,7 +105,7 @@ def load_koopman_mpc_interaction_controller(
 
     `contemporaneous_v` must match whatever `ReducedStateConfig` the saved
     model was fit with (`analyze_state_action_interaction.py --contemporaneous-v`
-    for the corrected v-alignment, docs/next step.md 2026-09-02) -- a
+    for the corrected v-alignment, docs/next_step_diagnosis.md 2026-09-02) -- a
     mismatch here silently reintroduces the alignment bug at inference
     time even with a correctly-fit model."""
 
@@ -98,13 +121,17 @@ def load_koopman_mpc_interaction_controller(
         state_config=state_config,
         horizon=horizon,
         repeat_penalty=repeat_penalty,
+        pad_short_history=pad_short_history,
+        remind_budget=remind_budget,
+        episode_length=episode_length,
+        name=_budgeted_name(name, remind_budget),
     )
 
 
 def _excitation_seed(seed: int, entry_id: str) -> int:
     """Derives a per-(entry, seed) RNG seed for `RandomExciteController`.
 
-    Found while executing docs/next step.md (2026-09-02): every caller of
+    Found while executing docs/next_step_diagnosis.md (2026-09-02): every caller of
     this factory used to build `RandomExciteController(seed=seed)` with
     `seed` alone (just the trajectory-level 0/1 from `--seeds`), and
     `run_trajectories_loop` calls this factory fresh for every `(entry,
@@ -136,26 +163,57 @@ def make_controller_factory(
     random_excite_p: float | None = None,
     periodic_period: int | None = None,
     koopman_mpc_interaction_controller: KoopmanMPCController | None = None,
+    fixed_schedule_turns: tuple[int, ...] | None = None,
+    remind_budget: int | None = None,
 ) -> Callable[[int, str], Controller]:
     """Returns a `(seed, entry_id) -> Controller` factory -- `entry_id`
     (the attack_id/benign_id the trajectory is being built for, see
     `screening_common.run_trajectories_loop`) defaults to `""` so every
     caller that doesn't need it (every branch here except `random_excite`)
-    can keep calling `factory(seed)` unchanged."""
+    can keep calling `factory(seed)` unchanged.
+
+    `remind_budget` (default None = every Phase A-I arm's unbudgeted
+    behavior) wraps the model-free controllers in
+    `control.BudgetLimitedController`. It is deliberately NOT applied to the
+    two koopman_mpc branches: those receive the budget in their loader above
+    so it enters their planning instead of merely truncating them (see
+    `BudgetLimitedController`'s docstring and docs/next_step_diagnosis.md section 4
+    step 2). Wrapping a `random_excite` excitation run in a budget would
+    also silently break the i.i.d. Bernoulli design the identification data
+    depends on, so that branch rejects it outright."""
+
+    def _budgeted(controller: Controller) -> Controller:
+        return controller if remind_budget is None else BudgetLimitedController(controller, budget=remind_budget)
 
     if name == "zero_control":
-        return lambda seed, entry_id="": ZeroControlController()
+        return lambda seed, entry_id="": _budgeted(ZeroControlController())
     if name == "constant_remind":
-        return lambda seed, entry_id="": ConstantRemindController()
+        return lambda seed, entry_id="": _budgeted(ConstantRemindController())
     if name == "threshold":
-        return lambda seed, entry_id="": ThresholdController(y_min=threshold_y_min)
+        return lambda seed, entry_id="": _budgeted(ThresholdController(y_min=threshold_y_min))
     if name == "periodic":
         if periodic_period is None:
             raise ValueError("periodic_period is required for --controller periodic")
-        return lambda seed, entry_id="": PeriodicController(period=periodic_period)
+        return lambda seed, entry_id="": _budgeted(PeriodicController(period=periodic_period))
+    if name == "fixed_schedule":
+        if not fixed_schedule_turns:
+            raise ValueError("fixed_schedule_turns is required for --controller fixed_schedule")
+        turns = tuple(int(turn) for turn in fixed_schedule_turns)
+        if remind_budget is not None and len(set(turns)) > remind_budget:
+            raise ValueError(
+                f"fixed_schedule_turns={turns} would spend {len(set(turns))} reminders, "
+                f"more than remind_budget={remind_budget} -- the point of this arm is to be "
+                "budget-matched, so this is a config error rather than something to silently truncate"
+            )
+        return lambda seed, entry_id="": FixedScheduleController(turns=turns)
     if name == "random_excite":
         if random_excite_p is None:
             raise ValueError("random_excite_p is required for --controller random_excite")
+        if remind_budget is not None:
+            raise ValueError(
+                "remind_budget is not supported for --controller random_excite: capping the draws "
+                "would break the i.i.d. Bernoulli excitation design the identification fit assumes"
+            )
         return lambda seed, entry_id="": RandomExciteController(p=random_excite_p, seed=_excitation_seed(seed, entry_id))
     if name == "koopman_mpc":
         # Stateless given a fixed fitted surrogate -- safe to hand out the

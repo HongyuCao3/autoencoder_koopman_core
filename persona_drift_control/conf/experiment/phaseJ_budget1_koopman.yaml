@@ -1,0 +1,31 @@
+# @package _global_
+# Phase J adaptive arm: the v-aligned state-action-interaction Koopman MPC
+# (exactly Phase I's model -- interaction_model_report_valigned.json, nu=1,
+# mu=2, contemporaneous_v, repeat_penalty=0) re-solved under the k=1 budget.
+#
+# Two knobs differ from Phase I, both required by the budget setting itself:
+#   * koopman_horizon: 5 (was 2) together with episode_length=5 -- the horizon
+#     is clipped to the turns actually remaining
+#     (KoopmanMPCController._planning_steps), so "spend the last reminder now
+#     or save it for a turn I predict will be worse" is scored against the real
+#     remaining chances. A 2-step horizon cannot represent that trade-off.
+#   * koopman_pad_short_history: true -- lets the controller act from turn 2,
+#     the same turn PeriodicController(period=2) acts on. Phase I's replay
+#     showed it declines to remind at turn 2 anyway (0/16, turn-1 y_safety is
+#     always 1.00), but leaving it off would confound "chose not to spend
+#     early" with "structurally could not", which is precisely what this
+#     experiment is measuring.
+defaults:
+  - phaseJ_base
+
+output_dir: outputs/koopman_defense_phaseJ_budget1_koopman
+task:
+  screening:
+    controller: koopman_mpc_interaction
+    koopman_interaction_model_path: outputs/koopman_case_study/interaction_model_report_valigned.json
+    koopman_nu: 1
+    koopman_mu: 2
+    koopman_horizon: 5
+    koopman_repeat_penalty: 0.0
+    koopman_contemporaneous_v: true
+    koopman_pad_short_history: true

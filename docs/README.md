@@ -14,9 +14,11 @@
 
 - [task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md](task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md) —
   任务选型候选"Koopman 闭环控制抵抗多轮 prompt 攻击"的分析（任务定义、扰动通道建模、相对
-  NBF-LLM/GenCtrl 的 delta、验证顺序）。**调查线已在 `koopman_defense_pilot.md`
-  Phase A→I（含 `koopman_case_study_design.md`）完整收尾，2026-09-02 优先级让位给下面的
-  `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md`**，本文档仍是该线的原始任务定义，历史参考价值保留。
+  NBF-LLM/GenCtrl 的 delta、验证顺序）。**Phase A→I（`koopman_defense_pilot.md` +
+  `koopman_case_study_design.md`）已于 2026-09-02 完整收尾，同日
+  `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 成为新任务线；但这条线没有关闭——2026-09-03 起的
+  Phase J（`experiments/budget_constrained_defense_plan.md`）在预算约束的新评测设定下重开
+  `periodic` 对照，用的仍是本文档定义的任务/通道/判据。**
 - [task/CONTROL_THEORETIC_LLM_RELATED_WORK.md](task/CONTROL_THEORETIC_LLM_RELATED_WORK.md) —
   2025–2026 控制论×LLM 相关工作调研：按时间轴分类、gap 确认、任务选型信号
 - [task/KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md](task/KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md) —
@@ -30,8 +32,10 @@
   SYCON-Bench False Presuppositions 数据已下载核实并 vendor（200 条，MIT 许可）；代码复用
   分析发现 `attack_trajectory.py`/`benign_trajectory.py` 的逐轮循环可抽出共享模块
   （新增 `trajectory_runner.py`，两个既有文件重构为薄封装，行为不变、测试全绿），核心构建块
-  （bank/reminder/judge/trajectory/analysis，均含离散翻转事件判据）已实现，CPU 测试
-  231 passed。编排层（`sycophancy_screening.py`/CLI/sbatch）和 GPU screening 尚未开始。
+  （bank/reminder/judge/trajectory/analysis，均含离散翻转事件判据）已实现。**编排层
+  （`sycophancy_screening.py`/CLI/sbatch）也已实现，两次 GPU screening（job 15483493 自评
+  judge、job 15487325 独立 judge）都已跑完并归档，CPU 全套 238 passed**——结果与解读见
+  下面 `experiments/sycophancy_screening_pilot.md` 条目。
 
 ## 可行性分析（`feasibility/`）
 
@@ -69,7 +73,10 @@
 ## 数据/通道协议（`protocols/`）
 
 - [protocols/DATA_COLLECTION_PROTOCOL.md](protocols/DATA_COLLECTION_PROTOCOL.md) — 激励数据采集协议：被控对象、
-  readout、输入通道、采集前信号探针（gate）
+  readout、输入通道、采集前信号探针（gate）。**注意这是 2026-08-27 为人格漂移线写的草案 v0.1**：
+  其中的具体采集规模（T=16 self-chat、40 prompt × 2 通道 × 4 seed）属于那条已放弃的线，
+  但**通道 A–D 的定义、readout 约定、"screening 先于建模"的 gate 原则被后续所有任务线沿用**，
+  所以它仍是活文档（全仓库被引用最多的一份），读规模数字时按上述区分对待。
 - [protocols/DATA_SOURCES.md](protocols/DATA_SOURCES.md) — 数据来源与候选清单：prompt 库、已有轨迹、待采集数据、
   评价用外部数据
 - [protocols/KV_INJECTION_MONITORING.md](protocols/KV_INJECTION_MONITORING.md) — 通道 D（KV 注入）机制与监控协议
@@ -87,8 +94,23 @@
 
 ## 评价与对比（`evaluation/`）
 
-- [evaluation/EVALUATION_METRICS.md](evaluation/EVALUATION_METRICS.md) — 实验完成后用什么指标判断成败
+- [evaluation/EVALUATION_METRICS.md](evaluation/EVALUATION_METRICS.md) — 实验完成后用什么指标判断成败。
+  **⚠️ 这是 2026-08-28 为已放弃的人格漂移线写的草案 v0.1，未随任务转向更新**：它完全不涉及
+  后来实际在用的 new-Q1/new-Q3/离散翻转判据（那些定义在 `task/*_FEASIBILITY.md` 与各
+  `experiments/*_pilot.md` 里），文中"以本文件为准并更新代码"那句话也已不适用于现在的
+  `analysis_adversarial.py`/`analysis_sycophancy.py`。当作**指标设计的方法论参考和文献出处**
+  读，不要当作现行判据清单。
 - [evaluation/BASELINES.md](evaluation/BASELINES.md) — 待对比的 baseline 清单（控制器层、代理建模层）及对应论文
+
+## 外部输入
+
+- [next_step_diagnosis.md](next_step_diagnosis.md) — 用户 2026-09-02 提供的**外部独立诊断
+  文档**（不是本项目的实验记录，原名 `next step.md`）：针对"periodic 打平 `koopman_mpc`"
+  给出的根因假设与三步建议。第一节的"v 对齐"时序错位诊断已被验证并修好（见
+  `experiments/koopman_case_study_design.md` 的 Phase I）；**第二节的建议（改成预算约束/
+  binding 代价的评测设定）已于 2026-09-03 开始执行，见下面的
+  `experiments/budget_constrained_defense_plan.md`（Phase J）**；第三节（扩 seed、主指标改成
+  效应量+bootstrap）尚未执行，仍是开放建议。
 
 ## 实验
 
@@ -118,9 +140,10 @@
   上面那次 screening 结果在 Qwen3 **thinking 模式**下的复现重跑（此前所有实验默认跑在
   non-thinking 模式，这个变量从未被检视过）。用 Hydra 管理 `enable_thinking`，避免
   thinking/non-thinking 两次跑的输出目录互相覆盖。
-- [experiments/koopman_defense_pilot.md](experiments/koopman_defense_pilot.md) — ★ 当前进展
-  最新：把人格漂移这条线的 `control.py`/`modeling/` 几乎零改动复用到对抗防御领域，设计并
-  验证 Koopman-MPC 防御控制器。**新开一次对话想知道"Koopman 防御控制器现在做到哪一步了"，
+- [experiments/koopman_defense_pilot.md](experiments/koopman_defense_pilot.md) — **Phase A→I
+  已于 2026-09-02 收尾**（该阶段的评测设定下调查结束；同一任务在新设定下的续作见下面的
+  `budget_constrained_defense_plan.md`）：把人格漂移这条线的 `control.py`/`modeling/`
+  几乎零改动复用到对抗防御领域，设计并验证 Koopman-MPC 防御控制器。**新开一次对话想知道"Koopman 防御控制器现在做到哪一步了"，
   看这份文档。** Phase A→F 已完整闭环：`koopman_mpc` 打赢 zero_control/threshold 两个基线，
   以更低代价（约 40% 的提醒次数/token）追平 constant_remind，良性 helpfulness 代价也明显
   低于 constant_remind。**Phase G（补齐 `BASELINES.md` 的"周期性重提醒"基线，`PeriodicController`）
@@ -165,7 +188,9 @@
   两个同结构线性模型对比过,还没有真正的非线性/长记忆模型跑过对比）。记录了两种设计取舍
   （固定窗口 vs 隐状态跨轮次持续演化，采用后者）、`Predictor` 接口怎么接、训练/评测口径怎么
   和现有 Koopman 两件套对齐、参数量/数据规模两个混杂因素怎么处理。**状态：已执行完毕，负结果——
-  LSTM 在全部测试隐层大小上都明显差于 `richer_abs_sign`。**
+  LSTM 在全部测试隐层大小上都明显差于 `richer_abs_sign`（0.081 vs 0.043）。注意这批数字是
+  "v 对齐"bug 修复之前跑的（对照基线在 v-aligned 数据上是 0.0684，见 `ae_baseline_plan.md`），
+  LSTM 侧尚未重跑；差距接近 2 倍所以方向大概率不变，但严格说是待复核。**
 - [experiments/ae_baseline_plan.md](experiments/ae_baseline_plan.md) — 补齐 `BASELINES.md`
   ③层另一个 ablation 缺口：对照根目录 `src/koopman_ae/core.py` 里
   `DeepAugmentedKoopmanAutoencoder` 的 encoder-decoder 架构（非线性 encoder/decoder + 隐空间
@@ -174,6 +199,23 @@
   `modeling/evaluate.py` 而不需要另写评测代码。**状态：已执行完毕，打平——held-out rollout MSE
   和 `richer_abs_sign`/`arx` 基本相等（0.0675±0.007 vs 0.068，3 seed），不同于 LSTM 的明确
   更差；train one-step MSE 上明显更差，但诊断为训练目标不可比,不是拟合能力问题。**
+  **2026-09-03 追加（早停）**：照 `ABLATION_STUDY.md` 第八阶段给这个 trainer 也加了早停并重跑，
+  但**没有复现 core 任务那种改善**——`latent_dim=1` 从打平变成明确更差（0.0756±0.0105），
+  早停轮数在种子间波动到 10 倍以上。诊断：22 个训练攻击里再切约 4 个做验证集，早停判定信号
+  本身样本量不足，不是"AE 更差"的证据；也因此"重建 loss 没收敛是否影响 rollout 结论"这条
+  局限**仍未被解决**，要等更大规模的 Phase B 开环数据。
+- [experiments/budget_constrained_defense_plan.md](experiments/budget_constrained_defense_plan.md) —
+  ★ 正在做（对抗防御线的续作）：Phase A→I 收尾时留下的问题是"当前评测里根本不存在分配问题"
+  （提醒有正效应、代价几乎为零，理论最优就是常提醒，所以 `koopman_mpc` 没有展现自适应优势
+  是设定的必然结果，不是方法的证据）——这条来自 `next_step_diagnosis.md` 第二节的诊断。
+  Phase J 把设定改成**每条轨迹最多 k=1 次提醒**（核对已有轨迹后从建议的 k=2 改成 k=1，因为
+  k=2 在这批数据上不 binding），策略的任务从"要不要提醒"变成"把这一次放在哪一轮"，
+  `koopman_mpc` 对 5 个固定轮次臂 + `threshold` 共 7 个臂。为了不和 Phase A–I 的结果/日志互相
+  覆盖或混淆，新增了 Hydra `conf/experiment/` 配置组（一个文件=一个臂=一个 `output_dir`，攻击集
+  /seed/预算集中在 `phaseJ_base.yaml`）和 `persona_drift.run_config_guard`（同一 `output_dir`
+  换了配置就拒绝续跑——screening 循环天生可续跑，指错目录不会报错，只会安静地把两个控制器的
+  轨迹混进同一份报告）。状态（2026-09-03）：代码/配置/离线预检完成、CPU 283 测试通过，
+  **7 个 GPU 臂的 sbatch 已就绪但尚未提交**。
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) — ★
   正在做：`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**新开一次对话

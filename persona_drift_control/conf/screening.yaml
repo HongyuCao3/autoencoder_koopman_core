@@ -16,10 +16,27 @@
 defaults:
   - task: defense
   - _self_
+  # Listed AFTER _self_ so an experiment file's values win over this file's
+  # own (in particular `output_dir: ???`). Each conf/experiment/*.yaml pins
+  # one arm's output_dir together with its controller settings, which is what
+  # keeps two arms from ever landing in the same directory:
+  #   python scripts/run_screening_hydra.py experiment=phaseJ_budget1_koopman
+  - experiment: null
 
-# Required: every run must pick an explicit output directory (mirrors
-# --output-dir being `required=True` in run_defended_screening.py).
+# Required unless an `experiment=` file sets it: every run must pick an
+# explicit output directory (mirrors --output-dir being `required=True` in
+# run_defended_screening.py).
 output_dir: ???
+
+# Refuse to run into an output_dir that already holds a run with a DIFFERENT
+# config. The screening loop is deliberately resumable
+# (screening_common.prepare_resumable_trajectories_file re-uses completed
+# trajectories), which is exactly what makes a wrong --output-dir dangerous:
+# pointing a new arm at an old arm's directory would silently mix
+# trajectories produced by two different controllers into one report instead
+# of failing. Set true only to deliberately continue a run whose config was
+# edited (run_screening_hydra.py prints which keys changed).
+allow_config_change: false
 
 hydra:
   job:
