@@ -193,6 +193,15 @@
   Phase H 的两个具名失败轨迹被救回，但仍未在 new-Q1 主判据上打赢 `periodic`——反应式策略
   结构上无法在 turn1 抢跑，这是控制器架构选择问题，不是能靠修 Koopman 模型解决的。状态：
   **调查线完整收尾**。
+- [experiments/koopman_phaseI_policy_closed_form.md](experiments/koopman_phaseI_policy_closed_form.md) —
+  上面那条线收尾之后的纯离线补充：把 Phase I 的 `koopman_mpc_interaction` 策略从"跑出来的
+  行为"化简成一条闭式规则。谱半径 $\rho(A)=a_{11}=0.7036<1$（稳态存在，可以讲稳态而不必退回
+  直流增益），边际收益 $C(I+A)(B_1+B_2y)$ 的零点 $y^*=0.8036$、控制器真正在算的两步值零点
+  $y^*=0.7881$，在 0.25 的判官网格上两者等价于同一条阈值 `y_{t-1} <= 0.75 就插`。用它复算
+  Phase I 两个 arm 的每一次决策，攻击 48/48、良性 64/64 零失配；59 个"不插"点 = 32 个热身期
+  强制 + 27 个 $y_{t-1}=1.0$ 的真实负 margin。副产品：$y^*$ 夹在两个开环稳态（0.7677 /
+  0.7908）之间，所以这个策略**结构上必然抖动**，21 插/27 不插不是调出来的比例。状态：
+  **无新实验、无代码改动**。
 - [experiments/lstm_baseline_plan.md](experiments/lstm_baseline_plan.md) — 补齐 `BASELINES.md`
   ③层"LSTM 一步-多步预测模型"这个 ablation 缺口的计划与实现（只有 ARX vs `richer_abs_sign`
   两个同结构线性模型对比过,还没有真正的非线性/长记忆模型跑过对比）。记录了两种设计取舍
