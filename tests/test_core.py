@@ -9,6 +9,7 @@ from koopman_ae import (
     DeepAugmentedKoopmanAutoencoder,
     DeepAugmentedKoopmanConfig,
     build_augmented_state_dataset,
+    build_augmented_state_sequences,
     one_step_predictions,
 )
 
@@ -122,3 +123,122 @@ def test_incomplete_checkpoint_is_ignored(tmp_path, capsys) -> None:
     checkpoint.mkdir()
     assert DeepAugmentedKoopmanAutoencoder._latest_complete_checkpoint(tmp_path) is None
     assert "skipping incomplete checkpoint" in capsys.readouterr().out
+
+
+def _multi_step_model(**config_overrides) -> DeepAugmentedKoopmanAutoencoder:
+    state_cfg = AugmentedStateConfig(output_memory=2, input_memory=0)
+    dataset = build_augmented_state_dataset(
+        _toy_trajectories().query("topic_split == 'train'"), state_cfg
+    )
+    config = DeepAugmentedKoopmanConfig(
+        latent_dim=3,
+        hidden_dim=8,
+        num_layers=1,
+        num_epochs=2,
+        batch_size=4,
+        random_state=3,
+        device="cpu",
+        **{"training_mode": "joint", **config_overrides},
+    )
+    return DeepAugmentedKoopmanAutoencoder(
+        state_dim=dataset.state_dim,
+        target_dim=dataset.target_dim,
+        output_dim=dataset.output_dim,
+        config=config,
+    )
+
+
+def test_eval_loss_includes_the_weighted_multi_step_term_when_sequences_are_given() -> None:
+    # The reason `multi_step_sequences_val` exists: with lambda_multi > 0 the
+    # training steps descend a multi-step rollout term, so a stopping signal
+    # that omits it selects `best_state` for one-step accuracy while the run
+    # is judged on rollout_mse.
+    pytest.importorskip("torch")
+    import torch.nn as nn
+
+    state_cfg = AugmentedStateConfig(output_memory=2, input_memory=0)
+    frame = _toy_trajectories().query("topic_split == 'train'")
+    dataset = build_augmented_state_dataset(frame, state_cfg)
+    sequences = build_augmented_state_sequences(frame, state_cfg)
+    assert sequences, "toy trajectories must be long enough to form rollout sequences"
+
+    model = _multi_step_model(lambda_multi=0.5, multi_step_horizon=2)
+    z = model._tensor(dataset.Z_t.astype("float32"))
+    r = model._tensor(dataset.R.astype("float32"))
+    z_next = model._tensor(dataset.Z_next.astype("float32"))
+    mse = nn.MSELoss()
+
+    without = model._eval_loss(z, r, z_next, mse)
+    with_multi = model._eval_loss(z, r, z_next, mse, sequences)
+    multi = float(model._multi_step_loss(sequences, mse).detach().cpu().item())
+
+    assert with_multi != without
+    assert with_multi == pytest.approx(without + 0.5 * multi, rel=1e-6)
+
+
+def test_eval_loss_ignores_sequences_when_the_multi_step_term_is_off() -> None:
+    # Guard for every run recorded before this parameter existed: they used
+    # lambda_multi=0 (or reconstruction_then_ridge), where the training steps
+    # have no multi-step term either, so the stopping signal must not change.
+    pytest.importorskip("torch")
+    import torch.nn as nn
+
+    state_cfg = AugmentedStateConfig(output_memory=2, input_memory=0)
+    frame = _toy_trajectories().query("topic_split == 'train'")
+    dataset = build_augmented_state_dataset(frame, state_cfg)
+    sequences = build_augmented_state_sequences(frame, state_cfg)
+    mse = nn.MSELoss()
+
+    for overrides in (
+        {"lambda_multi": 0.0},  # joint, the mode that HAS a multi-step branch
+        {"training_mode": "reconstruction_then_ridge", "lambda_multi": 0.5},
+    ):
+        model = _multi_step_model(**overrides)
+        z = model._tensor(dataset.Z_t.astype("float32"))
+        r = model._tensor(dataset.R.astype("float32"))
+        z_next = model._tensor(dataset.Z_next.astype("float32"))
+        assert model._eval_loss(z, r, z_next, mse, sequences) == model._eval_loss(
+            z, r, z_next, mse
+        )
+
+
+def test_fit_rejects_validation_sequences_without_a_validation_split() -> None:
+    pytest.importorskip("torch")
+    state_cfg = AugmentedStateConfig(output_memory=2, input_memory=0)
+    frame = _toy_trajectories().query("topic_split == 'train'")
+    dataset = build_augmented_state_dataset(frame, state_cfg)
+    sequences = build_augmented_state_sequences(frame, state_cfg)
+    model = _multi_step_model(lambda_multi=0.5, multi_step_horizon=2)
+    with pytest.raises(ValueError, match="multi_step_sequences_val"):
+        model.fit(
+            dataset.Z_t,
+            dataset.R,
+            dataset.Z_next,
+            multi_step_sequences_val=sequences,
+        )
+
+
+def test_training_history_logs_the_weighted_multi_step_loss() -> None:
+    # The logged number used to be the raw multi_loss while the gradient used
+    # lambda_multi * multi_loss, making training_history_ a third quantity
+    # comparable to neither the objective nor the validation curve.
+    pytest.importorskip("torch")
+    import torch.nn as nn
+
+    state_cfg = AugmentedStateConfig(output_memory=2, input_memory=0)
+    frame = _toy_trajectories().query("topic_split == 'train'")
+    dataset = build_augmented_state_dataset(frame, state_cfg)
+    sequences = build_augmented_state_sequences(frame, state_cfg)
+    mse = nn.MSELoss()
+
+    lam = 0.5
+    small = _multi_step_model(lambda_multi=lam, multi_step_horizon=2)
+    small.fit(dataset.Z_t, dataset.R, dataset.Z_next, multi_step_sequences=sequences)
+    logged = small.training_history_[-1]["loss"]
+
+    # n_batches counts the per-batch steps plus the one multi-step step, so a
+    # weighted contribution must scale with lambda_multi; an unweighted one
+    # would not.
+    big = _multi_step_model(lambda_multi=lam * 4, multi_step_horizon=2)
+    big.fit(dataset.Z_t, dataset.R, dataset.Z_next, multi_step_sequences=sequences)
+    assert big.training_history_[-1]["loss"] > logged

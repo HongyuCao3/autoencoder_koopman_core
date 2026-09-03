@@ -22,7 +22,7 @@ Autoencoder–Koopman 任务**（`sentence_length_t10` 句子长度控制，以�
 | 2 | AE 非线性提升 vs 直接线性 Koopman baseline | `DeepAugmentedKoopmanAutoencoder` 的非线性 encoder/decoder 相对 `AugmentedKoopmanModel`（仓库里已有但从未接入 CLI 的纯仿射 baseline）是否有增益——对应"为什么要用 Koopman"的核心论点 | **已完成，见下** |
 | 3 | 训练方式（joint vs reconstruction_then_ridge） | 把 `CODE_DESIGN.md` 里的定性判断换成数据 | **已完成，见下** |
 | 4a | `latent_dim` 扫描（8/16/32） | 是否存在明显更优的容量 | **已完成，见下** |
-| 4b | loss 权重（`lambda_latent`、`lambda_multi`）、joint + 多步 rollout loss 组合 | 调参类问题，优先级最低，尚未做 | 待做 |
+| 4b | loss 权重（`lambda_latent`、`lambda_multi`）、joint + 多步 rollout loss 组合 | **不只是调参**：第三阶段判 `joint` 更差时 `lambda_multi=0`，等于关掉了 joint 的卖点再比 rollout——这是「AE 无增益」这个总结论目前最大的未封口处 | 待做（前置条件见文末） |
 
 其他 7 个标量/向量任务（`character_length_t5` 等）优先级低于 `sentence_length_t10`——它是文档里
 唯一被称为"主要长时域标量实验"的任务，其余几个要么是 smoke 规模、要么受 scorer/readout 质量限制
@@ -436,6 +436,22 @@ seed 实际训练到的轮数范围，对照组固定为 200）
 - **第四阶段（b）**：`lambda_latent`、`lambda_multi` 消融；以及把 `joint` 训练方式和
   `multi_step_horizon>0` 的多步 rollout loss 一起打开，重新对比 `joint` vs
   `reconstruction_then_ridge`（第三阶段的结论目前只在 `lambda_multi=0` 下成立）。
+  **开跑前的两个前置条件（2026-09-03 已处理其一）**：
+  1. *（已修）* 早停的验证信号原先不含多步项，而训练步含——会让 `best_state` 按单步精度挑，
+     再用 `rollout_mse` 去判，机械地偏向 `reconstruction_then_ridge`。现在
+     `_eval_loss` 接受验证集 sequences 并按 `lambda_multi` 加权计入，`scripts/train.py`
+     在同样的 `joint and lambda_multi>0` 守卫下建验证 sequences 传进去；`training_history_`
+     记录的也从未加权的 `multi_loss` 改成加权值。`lambda_multi=0` 与
+     `reconstruction_then_ridge` 两条路径逐位不变（`sentence_length_t10` seed0 复跑
+     test rollout_mse 0.00094586、早停 epoch 222，对照本文件记录的 0.0009444±0.0000062 与
+     198–263）。
+  2. *（未处理，跑之前要决定）* **`lambda_multi` 的实际强度被数据规模混淆**：多步项是每个
+     epoch 一次独立的 optimizer step，和 per-batch 的三项 loss 交替进行，所以它只占
+     `1/(n_batches+1)` 的步数，而 `n_batches = ceil(N_train/batch_size)`。
+     `sentence_length_t10` 是 1008 条训练转移 / `batch_size=64` = 16 个 batch，多步项占
+     17 步里的 1 步（5.9%）；样本量小得多的 T5 任务上同一个 `lambda_multi` 会强得多。
+     跨任务扫 `lambda_multi` 前要么同步调 `batch_size`、要么把这一步折进 batch 循环，
+     否则扫出来的是"数据规模 × lambda_multi"的混合效应。
 - 第五/八阶段结论目前只在 `latent_dim=16`、`reconstruction_then_ridge`、`state=memory,lag=3`
   下验证；`average_word_length_t5`、`sentiment_t5` 这两个效应量最大的任务值得优先补更多种子
   （当前只有 AE 侧 3 个种子，线性侧本就无随机性）以确认早停后的新效应量不是噪声。

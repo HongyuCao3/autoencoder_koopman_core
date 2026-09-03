@@ -248,11 +248,8 @@ def main(cfg: DictConfig) -> None:
     if train_frame.empty:
         raise ValueError("dataset has no rows with topic_split='train'")
     train_dataset = build_augmented_state_dataset(train_frame, state)
-    sequences = (
-        build_augmented_state_sequences(train_frame, state)
-        if model_cfg.training_mode == "joint" and model_cfg.lambda_multi > 0
-        else None
-    )
+    multi_step_requested = model_cfg.training_mode == "joint" and model_cfg.lambda_multi > 0
+    sequences = build_augmented_state_sequences(train_frame, state) if multi_step_requested else None
 
     validation_frame = _split(frame, "validation")
     early_stopping_requested = trainer_cfg.early_stopping_patience is not None
@@ -264,6 +261,16 @@ def main(cfg: DictConfig) -> None:
     validation_dataset = (
         build_augmented_state_dataset(validation_frame, state)
         if early_stopping_requested
+        else None
+    )
+    # The validation-split counterpart of `sequences`, under the same guard:
+    # with `lambda_multi > 0` the stopping signal has to include the
+    # multi-step rollout term the training steps include, or `best_state` is
+    # chosen for one-step accuracy while the run is scored on rollout_mse.
+    # See DeepAugmentedKoopmanAutoencoder._eval_loss.
+    validation_sequences = (
+        build_augmented_state_sequences(validation_frame, state)
+        if multi_step_requested and validation_dataset is not None
         else None
     )
 
@@ -360,6 +367,7 @@ def main(cfg: DictConfig) -> None:
             Z_val=validation_dataset.Z_t if validation_dataset is not None else None,
             R_val=validation_dataset.R if validation_dataset is not None else None,
             Z_next_val=validation_dataset.Z_next if validation_dataset is not None else None,
+            multi_step_sequences_val=validation_sequences,
         )
     except InterruptedError as exc:
         latest = _latest_checkpoint(checkpoint_dir)

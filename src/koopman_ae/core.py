@@ -520,10 +520,37 @@ class DeepAugmentedKoopmanAutoencoder:
         r: torch.Tensor,
         z_next: torch.Tensor,
         mse: nn.Module,
+        multi_step_sequences: list[tuple[np.ndarray, np.ndarray]] | None = None,
     ) -> float:
-        """Same loss formula `fit()` optimizes (reconstruction-only for
-        `reconstruction_then_ridge`, full joint loss otherwise), evaluated
-        without gradients -- used for early-stopping's validation signal."""
+        """Every weighted term `fit()` descends, evaluated without gradients
+        on the validation split -- the signal early stopping selects
+        `best_state` by.
+
+        `reconstruction_then_ridge` descends `lambda_rec * rec` only (the
+        ridge solve for K/B/c happens once after training, outside any
+        epoch loss), so that is all this returns in that mode.
+
+        `joint` descends `lambda_rec * rec + lambda_pred * pred +
+        lambda_latent * latent`, plus -- when `lambda_multi > 0` and multi-step
+        sequences are available -- `lambda_multi * multi`, which is included
+        here IF `multi_step_sequences` (the validation-side ones) are passed.
+        Passing them matters because the multi-step term is the one that
+        trades single-step accuracy for rollout stability: without it, early
+        stopping restores the epoch that was best at one-step prediction
+        while training was descending a one-step + multi-step objective, and
+        the metric these runs are ultimately judged on (`rollout_mse`) is the
+        multi-step one. Selecting on a signal that omits it biases the
+        comparison against `joint` for a purely procedural reason -- the same
+        class of training-procedure artifact ABLATION_STUDY.md phase 8 found
+        behind two of its flagship effect sizes. Callers that leave this
+        `None` keep the one-step-only signal.
+
+        NOTE this mirrors the weighted SUM, while `fit()` actually descends
+        the parts in an alternating schedule (one optimizer step per batch on
+        the three-term loss, then one separate step per epoch on
+        `lambda_multi * multi`). No single scalar is literally "the training
+        loss" in that mode; the weighted sum is the objective those steps
+        jointly descend, and is what a stopping criterion should track."""
 
         with torch.no_grad():
             xi = self.encoder(z)
@@ -540,6 +567,10 @@ class DeepAugmentedKoopmanAutoencoder:
                     + self.config.lambda_pred * loss_pred
                     + self.config.lambda_latent * loss_latent
                 )
+                if self.config.lambda_multi > 0 and multi_step_sequences:
+                    loss = loss + self.config.lambda_multi * self._multi_step_loss(
+                        multi_step_sequences, mse
+                    )
             else:
                 loss = self.config.lambda_rec * loss_rec
         return float(loss.detach().cpu().item())
@@ -708,13 +739,24 @@ class DeepAugmentedKoopmanAutoencoder:
         Z_val: np.ndarray | None = None,
         R_val: np.ndarray | None = None,
         Z_next_val: np.ndarray | None = None,
+        multi_step_sequences_val: list[tuple[np.ndarray, np.ndarray]] | None = None,
     ) -> "DeepAugmentedKoopmanAutoencoder":
         """`Z_val`/`R_val`/`Z_next_val` (all-or-nothing): a held-out split used
-        only to decide when to stop, evaluated every epoch with the same loss
-        formula as training (never used for gradients). Early stopping only
-        activates when both `config.early_stopping_patience` is set AND this
-        validation split is provided -- omit either to keep the old
-        run-exactly-`num_epochs` behavior unchanged."""
+        only to decide when to stop, scored every epoch by `_eval_loss` on the
+        weighted terms this call descends (never used for gradients). Early
+        stopping only activates when both `config.early_stopping_patience` is
+        set AND this validation split is provided -- omit either to keep the
+        old run-exactly-`num_epochs` behavior unchanged.
+
+        `multi_step_sequences_val` is the validation-split counterpart of
+        `multi_step_sequences`, and only does anything under `joint` with
+        `lambda_multi > 0`. Supply it whenever you supply both a validation
+        split and training sequences: without it the stopping signal omits
+        the multi-step rollout term that the training steps include, so
+        `best_state` gets selected for one-step accuracy while the run is
+        judged on `rollout_mse` (see `_eval_loss`). It is optional rather
+        than required so that pre-existing callers -- none of which ever ran
+        `lambda_multi > 0` -- keep their exact behavior."""
 
         Z_t = _as_2d(Z_t).astype("float32")
         R = _as_2d(R).astype("float32")
@@ -722,6 +764,11 @@ class DeepAugmentedKoopmanAutoencoder:
         has_val = Z_val is not None or R_val is not None or Z_next_val is not None
         if has_val and (Z_val is None or R_val is None or Z_next_val is None):
             raise ValueError("Z_val/R_val/Z_next_val must be given together or not at all")
+        if multi_step_sequences_val and not has_val:
+            raise ValueError(
+                "multi_step_sequences_val was given without Z_val/R_val/Z_next_val; "
+                "it is only used to score the validation split for early stopping"
+            )
         Z_val_t = R_val_t = Z_next_val_t = None
         if has_val:
             Z_val_t = self._tensor(_as_2d(Z_val).astype("float32"))
@@ -822,17 +869,35 @@ class DeepAugmentedKoopmanAutoencoder:
                     and multi_step_sequences
                 ):
                     optimizer.zero_grad()
-                    multi_loss = self._multi_step_loss(multi_step_sequences, mse)
-                    (self.config.lambda_multi * multi_loss).backward()
+                    # One extra optimizer step per epoch, separate from the
+                    # per-batch steps above -- so `lambda_multi` is not the
+                    # only knob setting this term's influence: it gets
+                    # 1/(n_batches+1) of the epoch's steps, and n_batches is
+                    # ceil(len(dataset)/batch_size). The same `lambda_multi`
+                    # therefore means different things on datasets of
+                    # different size, which a cross-task sweep has to account
+                    # for (ABLATION_STUDY.md phase 4b).
+                    weighted_multi_loss = self.config.lambda_multi * self._multi_step_loss(
+                        multi_step_sequences, mse
+                    )
+                    weighted_multi_loss.backward()
                     optimizer.step()
-                    total += float(multi_loss.detach().cpu().item())
+                    # Accumulate the WEIGHTED value, matching both the
+                    # gradient just taken and `_eval_loss`'s validation
+                    # number. Logging the raw multi_loss here (as this did
+                    # before) made training_history_ a third quantity, equal
+                    # to neither, and left the train and val curves
+                    # incomparable in exactly the mode where they matter.
+                    total += float(weighted_multi_loss.detach().cpu().item())
                     n_batches += 1
                 epoch_completed = epoch + 1
                 self.training_history_ = [
                     {"epoch": float(epoch_completed), "loss": total / max(n_batches, 1)}
                 ]
                 if early_stopping_enabled:
-                    val_loss = self._eval_loss(Z_val_t, R_val_t, Z_next_val_t, mse)
+                    val_loss = self._eval_loss(
+                        Z_val_t, R_val_t, Z_next_val_t, mse, multi_step_sequences_val
+                    )
                     self.training_history_[-1]["val_loss"] = val_loss
                     if val_loss < best_val_loss - self.config.early_stopping_min_delta:
                         best_val_loss = val_loss
