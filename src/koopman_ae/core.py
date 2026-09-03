@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import os
 import pathlib
 import random
@@ -369,10 +370,14 @@ class DeepAugmentedKoopmanConfig:
     dynamics_alpha: float = 1e-4
     random_state: int = 0
     device: str | None = None
+    early_stopping_patience: int | None = None
+    early_stopping_min_delta: float = 1e-6
 
     def __post_init__(self) -> None:
         if self.training_mode not in {"joint", "reconstruction_then_ridge"}:
             raise ValueError(f"unsupported training_mode: {self.training_mode}")
+        if self.early_stopping_patience is not None and self.early_stopping_patience < 1:
+            raise ValueError("early_stopping_patience must be >= 1 when set")
 
 
 def _activation(name: str) -> type[nn.Module]:
@@ -474,6 +479,36 @@ class DeepAugmentedKoopmanAutoencoder:
     def _latent_step_tensor(self, xi: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
         return xi @ self.K.T + r @ self.B.T + self.c
 
+    def _eval_loss(
+        self,
+        z: torch.Tensor,
+        r: torch.Tensor,
+        z_next: torch.Tensor,
+        mse: nn.Module,
+    ) -> float:
+        """Same loss formula `fit()` optimizes (reconstruction-only for
+        `reconstruction_then_ridge`, full joint loss otherwise), evaluated
+        without gradients -- used for early-stopping's validation signal."""
+
+        with torch.no_grad():
+            xi = self.encoder(z)
+            z_rec = self.decoder(xi)
+            loss_rec = mse(z_rec, z)
+            if self.config.training_mode == "joint":
+                xi_next_pred = self._latent_step_tensor(xi, r)
+                z_next_pred = self.decoder(xi_next_pred)
+                xi_next_true = self.encoder(z_next)
+                loss_pred = mse(z_next_pred, z_next)
+                loss_latent = mse(xi_next_pred, xi_next_true)
+                loss = (
+                    self.config.lambda_rec * loss_rec
+                    + self.config.lambda_pred * loss_pred
+                    + self.config.lambda_latent * loss_latent
+                )
+            else:
+                loss = self.config.lambda_rec * loss_rec
+        return float(loss.detach().cpu().item())
+
     @staticmethod
     def _checkpoint_epoch(path: pathlib.Path) -> int:
         try:
@@ -507,6 +542,7 @@ class DeepAugmentedKoopmanAutoencoder:
         optimizer: torch.optim.Optimizer,
         loader_generator: torch.Generator,
         epoch_completed: int,
+        early_stop_state: dict[str, Any] | None = None,
     ) -> pathlib.Path:
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
         final_dir = checkpoint_dir / f"checkpoint-{epoch_completed:06d}"
@@ -543,6 +579,7 @@ class DeepAugmentedKoopmanAutoencoder:
             "training_history": self.training_history_,
             "training_mode": self.config.training_mode,
             "config": asdict(self.config),
+            "early_stop": early_stop_state,
         }
         torch.save(payload, temporary_dir / "state.pt")
         (temporary_dir / "_COMPLETE").write_text("complete\n")
@@ -554,7 +591,7 @@ class DeepAugmentedKoopmanAutoencoder:
         checkpoint_path: pathlib.Path,
         optimizer: torch.optim.Optimizer,
         loader_generator: torch.Generator,
-    ) -> int:
+    ) -> tuple[int, dict[str, Any] | None]:
         payload = torch.load(
             checkpoint_path / "state.pt",
             map_location=self.device,
@@ -604,7 +641,7 @@ class DeepAugmentedKoopmanAutoencoder:
         random.setstate(payload["python_rng_state"])
         loader_generator.set_state(payload["loader_generator_state"].cpu())
         self.training_history_ = list(payload.get("training_history", []))
-        return int(payload["epoch_completed"])
+        return int(payload["epoch_completed"]), payload.get("early_stop")
 
     def _fit_latent_ridge(self, Z_t: np.ndarray, R: np.ndarray, Z_next: np.ndarray) -> None:
         z_t = self.encode(Z_t)
@@ -633,10 +670,29 @@ class DeepAugmentedKoopmanAutoencoder:
         checkpoint_dir: str | pathlib.Path | None = None,
         checkpoint_every_epochs: int = 20,
         resume: bool = True,
+        Z_val: np.ndarray | None = None,
+        R_val: np.ndarray | None = None,
+        Z_next_val: np.ndarray | None = None,
     ) -> "DeepAugmentedKoopmanAutoencoder":
+        """`Z_val`/`R_val`/`Z_next_val` (all-or-nothing): a held-out split used
+        only to decide when to stop, evaluated every epoch with the same loss
+        formula as training (never used for gradients). Early stopping only
+        activates when both `config.early_stopping_patience` is set AND this
+        validation split is provided -- omit either to keep the old
+        run-exactly-`num_epochs` behavior unchanged."""
+
         Z_t = _as_2d(Z_t).astype("float32")
         R = _as_2d(R).astype("float32")
         Z_next = _as_2d(Z_next).astype("float32")
+        has_val = Z_val is not None or R_val is not None or Z_next_val is not None
+        if has_val and (Z_val is None or R_val is None or Z_next_val is None):
+            raise ValueError("Z_val/R_val/Z_next_val must be given together or not at all")
+        Z_val_t = R_val_t = Z_next_val_t = None
+        if has_val:
+            Z_val_t = self._tensor(_as_2d(Z_val).astype("float32"))
+            R_val_t = self._tensor(_as_2d(R_val).astype("float32"))
+            Z_next_val_t = self._tensor(_as_2d(Z_next_val).astype("float32"))
+        early_stopping_enabled = self.config.early_stopping_patience is not None and has_val
         dataset = TensorDataset(
             torch.from_numpy(Z_t),
             torch.from_numpy(R),
@@ -664,17 +720,27 @@ class DeepAugmentedKoopmanAutoencoder:
         if resolved_checkpoint_dir is not None and checkpoint_every_epochs < 1:
             raise ValueError("checkpoint_every_epochs must be >= 1 when checkpointing is enabled")
         start_epoch = 0
+        best_val_loss = float("inf")
+        best_epoch = 0
+        epochs_without_improvement = 0
+        best_state: dict[str, Any] | None = None
         if resolved_checkpoint_dir is not None and resume:
             latest = self._latest_complete_checkpoint(resolved_checkpoint_dir)
             if latest is not None:
-                start_epoch = self._load_training_checkpoint(
+                start_epoch, loaded_early_stop = self._load_training_checkpoint(
                     latest,
                     optimizer,
                     loader_generator,
                 )
+                if early_stopping_enabled and loaded_early_stop is not None:
+                    best_val_loss = loaded_early_stop["best_val_loss"]
+                    best_epoch = loaded_early_stop["best_epoch"]
+                    epochs_without_improvement = loaded_early_stop["epochs_without_improvement"]
+                    best_state = loaded_early_stop["best_state"]
                 print(f"[resume] deep augmented Koopman from {latest} at epoch {start_epoch}")
 
         stop_requested = False
+        early_stopped = False
 
         def request_stop(_signum, _frame) -> None:
             nonlocal stop_requested
@@ -730,6 +796,32 @@ class DeepAugmentedKoopmanAutoencoder:
                 self.training_history_ = [
                     {"epoch": float(epoch_completed), "loss": total / max(n_batches, 1)}
                 ]
+                if early_stopping_enabled:
+                    val_loss = self._eval_loss(Z_val_t, R_val_t, Z_next_val_t, mse)
+                    self.training_history_[-1]["val_loss"] = val_loss
+                    if val_loss < best_val_loss - self.config.early_stopping_min_delta:
+                        best_val_loss = val_loss
+                        best_epoch = epoch_completed
+                        epochs_without_improvement = 0
+                        best_state = {
+                            "encoder": copy.deepcopy(self.encoder.state_dict()),
+                            "decoder": copy.deepcopy(self.decoder.state_dict()),
+                            "K": self.K.detach().cpu().clone(),
+                            "B": self.B.detach().cpu().clone(),
+                            "c": self.c.detach().cpu().clone(),
+                        }
+                    else:
+                        epochs_without_improvement += 1
+                early_stop_state = (
+                    {
+                        "best_val_loss": best_val_loss,
+                        "best_epoch": best_epoch,
+                        "epochs_without_improvement": epochs_without_improvement,
+                        "best_state": best_state,
+                    }
+                    if early_stopping_enabled
+                    else None
+                )
                 should_checkpoint = resolved_checkpoint_dir is not None and (
                     epoch_completed % checkpoint_every_epochs == 0
                     or epoch_completed == self.config.num_epochs
@@ -741,15 +833,37 @@ class DeepAugmentedKoopmanAutoencoder:
                         optimizer,
                         loader_generator,
                         epoch_completed,
+                        early_stop_state=early_stop_state,
                     )
                     print(f"[checkpoint] {saved}")
                 if stop_requested:
                     raise InterruptedError(
                         f"training interrupted after exact checkpoint at epoch {epoch_completed}"
                     )
+                if (
+                    early_stopping_enabled
+                    and epochs_without_improvement >= self.config.early_stopping_patience
+                ):
+                    print(
+                        f"[early-stop] no val improvement for {epochs_without_improvement} "
+                        f"epochs (best val_loss={best_val_loss:.6g} at epoch {best_epoch}); "
+                        f"stopping at epoch {epoch_completed}/{self.config.num_epochs}"
+                    )
+                    early_stopped = True
+                    break
         finally:
             for sig, handler in previous_handlers.items():
                 signal.signal(sig, handler)
+        if early_stopping_enabled and best_state is not None:
+            self.encoder.load_state_dict(best_state["encoder"])
+            self.decoder.load_state_dict(best_state["decoder"])
+            with torch.no_grad():
+                self.K.copy_(best_state["K"].to(self.device))
+                self.B.copy_(best_state["B"].to(self.device))
+                self.c.copy_(best_state["c"].to(self.device))
+            self.training_history_[-1]["restored_best_epoch"] = best_epoch
+            self.training_history_[-1]["restored_best_val_loss"] = best_val_loss
+            self.training_history_[-1]["early_stopped"] = early_stopped
         if self.config.training_mode == "reconstruction_then_ridge":
             self._fit_latent_ridge(Z_t, R, Z_next)
             self.training_history_ = [

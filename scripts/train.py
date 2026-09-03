@@ -232,6 +232,19 @@ def main(cfg: DictConfig) -> None:
         else None
     )
 
+    validation_frame = _split(frame, "validation")
+    early_stopping_requested = trainer_cfg.early_stopping_patience is not None
+    if early_stopping_requested and validation_frame.empty:
+        raise ValueError(
+            "trainer.early_stopping_patience is set but the dataset has no "
+            "topic_split='validation' rows to early-stop against"
+        )
+    validation_dataset = (
+        build_augmented_state_dataset(validation_frame, state)
+        if early_stopping_requested
+        else None
+    )
+
     run_name = _safe_name(
         trainer_cfg.run_name
         or (
@@ -296,6 +309,8 @@ def main(cfg: DictConfig) -> None:
         dynamics_alpha=model_cfg.dynamics_alpha,
         random_state=trainer_cfg.seed,
         device=trainer_cfg.device,
+        early_stopping_patience=trainer_cfg.early_stopping_patience,
+        early_stopping_min_delta=trainer_cfg.early_stopping_min_delta,
     )
     model = DeepAugmentedKoopmanAutoencoder(
         state_dim=train_dataset.state_dim,
@@ -320,6 +335,9 @@ def main(cfg: DictConfig) -> None:
             checkpoint_dir=checkpoint_dir,
             checkpoint_every_epochs=trainer_cfg.checkpoint_every_epochs,
             resume=not trainer_cfg.no_resume,
+            Z_val=validation_dataset.Z_t if validation_dataset is not None else None,
+            R_val=validation_dataset.R if validation_dataset is not None else None,
+            Z_next_val=validation_dataset.Z_next if validation_dataset is not None else None,
         )
     except InterruptedError as exc:
         latest = _latest_checkpoint(checkpoint_dir)

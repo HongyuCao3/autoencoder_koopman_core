@@ -20,6 +20,7 @@ so this model satisfies `modeling.evaluate.Predictor` directly and can reuse
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 
 import numpy as np
@@ -38,6 +39,12 @@ class AEKoopmanConfig:
     num_epochs: int = 300
     dynamics_alpha: float = 1e-4
     random_state: int = 0
+    early_stopping_patience: int | None = None
+    early_stopping_min_delta: float = 1e-6
+
+    def __post_init__(self) -> None:
+        if self.early_stopping_patience is not None and self.early_stopping_patience < 1:
+            raise ValueError("early_stopping_patience must be >= 1 when set")
 
 
 def _activation(name: str) -> type[nn.Module]:
@@ -115,24 +122,44 @@ class AEKoopmanSurrogate:
         out = z.numpy()
         return out[0] if xi_arr.ndim == 1 else out
 
-    def fit(self, dataset: dict[str, np.ndarray]) -> "AEKoopmanSurrogate":
+    def fit(
+        self,
+        dataset: dict[str, np.ndarray],
+        val_dataset: dict[str, np.ndarray] | None = None,
+    ) -> "AEKoopmanSurrogate":
         """`dataset`: output of `modeling.dataset.build_identification_dataset`
         (same shape `KoopmanSurrogate.fit` takes). Stage 1 trains encoder/decoder
         on reconstruction loss alone (`core.py`'s `training_mode=
-        "reconstruction_then_ridge"`, fixed `num_epochs`, no early stopping --
-        that mode never early-stops in `core.py` either); stage 2 fits `K`/`B`/`c`
-        by closed-form ridge in the frozen latent space (`core.py::_fit_latent_ridge`,
+        "reconstruction_then_ridge"`); stage 2 fits `K`/`B`/`c` by closed-form
+        ridge in the frozen latent space (`core.py::_fit_latent_ridge`,
         reimplemented here for the same independent-installability reason as
-        `modeling.koopman.controllability_diagnostics`)."""
+        `modeling.koopman.controllability_diagnostics`).
+
+        `val_dataset` (same shape as `dataset`, a held-out split): when given
+        together with `config.early_stopping_patience`, stage 1 stops as soon
+        as `val_dataset`'s reconstruction loss stops improving for that many
+        epochs (restoring the best-seen encoder/decoder), instead of always
+        running the full fixed `num_epochs` -- avoids having to hand-pick an
+        epoch count that may stop the network before it has actually
+        converged (see docs/experiments/ae_baseline_plan.md's "明确的局限").
+        Without `val_dataset`, behavior is unchanged: exactly `num_epochs`."""
 
         Z, V, Z_next = dataset["Z"], dataset["V"], dataset["Z_next"]
         if Z.shape[0] == 0:
             raise ValueError("empty identification dataset")
 
         Z_t = self._tensor(Z)
+        early_stopping_enabled = self.config.early_stopping_patience is not None and val_dataset is not None
+        Z_val_t = self._tensor(val_dataset["Z"]) if early_stopping_enabled else None
+        best_val_loss = float("inf")
+        best_epoch = 0
+        epochs_without_improvement = 0
+        best_state: dict[str, dict] | None = None
+
         params = [*self.encoder.parameters(), *self.decoder.parameters()]
         optimizer = torch.optim.AdamW(params, lr=self.config.learning_rate, weight_decay=self.config.weight_decay)
         mse = nn.MSELoss()
+        epoch_completed = 0
         for epoch in range(self.config.num_epochs):
             xi = self.encoder(Z_t)
             z_rec = self.decoder(xi)
@@ -140,7 +167,35 @@ class AEKoopmanSurrogate:
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            self.training_history_.append({"epoch": float(epoch + 1), "reconstruction_loss": float(loss.item())})
+            epoch_completed = epoch + 1
+            history_entry = {"epoch": float(epoch_completed), "reconstruction_loss": float(loss.item())}
+            if early_stopping_enabled:
+                with torch.no_grad():
+                    val_loss = float(mse(self.decoder(self.encoder(Z_val_t)), Z_val_t).item())
+                history_entry["val_reconstruction_loss"] = val_loss
+                if val_loss < best_val_loss - self.config.early_stopping_min_delta:
+                    best_val_loss = val_loss
+                    best_epoch = epoch_completed
+                    epochs_without_improvement = 0
+                    best_state = {
+                        "encoder": copy.deepcopy(self.encoder.state_dict()),
+                        "decoder": copy.deepcopy(self.decoder.state_dict()),
+                    }
+                else:
+                    epochs_without_improvement += 1
+            self.training_history_.append(history_entry)
+            if early_stopping_enabled and epochs_without_improvement >= self.config.early_stopping_patience:
+                self.training_history_[-1]["early_stopped"] = True
+                self.training_history_[-1]["restored_best_epoch"] = best_epoch
+                self.training_history_[-1]["restored_best_val_loss"] = best_val_loss
+                break
+        if early_stopping_enabled and best_state is not None:
+            self.encoder.load_state_dict(best_state["encoder"])
+            self.decoder.load_state_dict(best_state["decoder"])
+            if not self.training_history_[-1].get("early_stopped"):
+                self.training_history_[-1]["early_stopped"] = False
+                self.training_history_[-1]["restored_best_epoch"] = best_epoch
+                self.training_history_[-1]["restored_best_val_loss"] = best_val_loss
 
         xi_t = self.encode(Z)
         xi_next = self.encode(Z_next)

@@ -2,8 +2,10 @@
 learning_rate: 1.0e-3
 weight_decay: 1.0e-5
 batch_size: 64
-epochs: 200
+epochs: 200  # hard cap; with early_stopping_patience set, training usually stops earlier
 seed: 0
+early_stopping_patience: null  # null = disabled (train exactly `epochs`, old behavior); int = stop after this many epochs with no validation-loss improvement
+early_stopping_min_delta: 1.0e-6
 device: null  # null = auto-select (cuda if available else cpu); or "cpu"/"cuda"/"cuda:0"
 common_seed_turns: null  # null = fall back to dataset.common_seed_turns, then the minimum required history
 
