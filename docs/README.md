@@ -39,6 +39,16 @@
 
 ## 可行性分析（`feasibility/`）
 
+- [feasibility/SAFETY_SPEC_DECOMPOSITION_FEASIBILITY.md](feasibility/SAFETY_SPEC_DECOMPOSITION_FEASIBILITY.md) —
+  用户 2026-09-03 提出的想法：对抗防御线的通道 A 现在是"一次性把整条安全规范加进去"，
+  改成让 Koopman 决定**注入规范的哪一部分**（把动作空间从时间轴扩到内容轴）。结论：
+  **方向对**——Phase J 的自适应臂之所以只重现了 `fixed_t4`，就是因为 5 轮 × 二值的决策空间
+  太小；而且这样 `B` 才第一次是真正的多列矩阵，`ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md`
+  第 3 节承诺的 Gramian/可防御性分析才非平凡；全量注入臂逐字等于现有臂，历史数据全部可比。
+  **但四道闸门必须先过**：Gate 0 Phase J 10.7 的"扩样本前不加变体"；Gate 1 子句级可辨识性
+  （按现有 300 行辨识数据估算，只能分辨"差异 > 全量效应 40%"的子句对）；Gate 2 `y_safety`
+  65% 饱和在 1.0、只有 5 个取值，连续读出从"顺带确认"升级成前置刚需；Gate 3 静态话题匹配
+  路由这个平凡基线必须先排除，否则又是 `fixed_t4` 重演。**仅分析，未实现、未跑实验。**
 - **[feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md](feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md) —
   ★ sycophancy 这条线在投入 GPU 前的前置条件核对：它能否像 core 任务那样建 Koopman 模型、
   能否像防御线那样闭环、需不需要 AE。**结论：AE 不需要**（经验证据三条同向；且离散立场状态下
