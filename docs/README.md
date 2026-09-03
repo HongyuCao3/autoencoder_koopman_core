@@ -40,6 +40,10 @@
   通道 C 执行器 + 连续约束 readout）
 - [feasibility/LLM_LATENT_STATE_FEASIBILITY.md](feasibility/LLM_LATENT_STATE_FEASIBILITY.md) — 用内部隐状态替代/增广
   Koopman 状态 z_t 的可行性分析（备选方向，暂不默认采用）
+- [feasibility/PROMPT_EMBEDDING_STATE_FEASIBILITY.md](feasibility/PROMPT_EMBEDDING_STATE_FEASIBILITY.md) — 用独立文本
+  embedding 模型编码 prompt（或 safety_prompt+prompt）替换/增广 z_t 的简记（`ae_baseline_plan.md`
+  讨论后提出，和上面的内部隐状态提案、`koopman_detection_design.md` 方案 4 的 TF-IDF 相似度特征
+  都相关但不同。**未开始实现，用户表示还需要再考虑。**）
 - [feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md](feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md) — 用预生成脚本
   替代活的 user-simulator LLM 的可行性分析（尝试后放弃，见 `experiments/drift_confirmation_pilot.md`）
 - [feasibility/ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md](feasibility/ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md) —
@@ -149,11 +153,19 @@
   结构上无法在 turn1 抢跑，这是控制器架构选择问题，不是能靠修 Koopman 模型解决的。状态：
   **调查线完整收尾**。
 - [experiments/lstm_baseline_plan.md](experiments/lstm_baseline_plan.md) — 补齐 `BASELINES.md`
-  ③层"LSTM 一步-多步预测模型"这个 ablation 缺口的实现计划（只有 ARX vs `richer_abs_sign`
+  ③层"LSTM 一步-多步预测模型"这个 ablation 缺口的计划与实现（只有 ARX vs `richer_abs_sign`
   两个同结构线性模型对比过,还没有真正的非线性/长记忆模型跑过对比）。记录了两种设计取舍
-  （固定窗口 vs 隐状态跨轮次持续演化，推荐后者）、`Predictor` 接口怎么接、训练/评测口径怎么
-  和现有 Koopman 两件套对齐、参数量/数据规模两个混杂因素怎么处理。**状态：仅有计划，尚未开始
-  实现。**
+  （固定窗口 vs 隐状态跨轮次持续演化，采用后者）、`Predictor` 接口怎么接、训练/评测口径怎么
+  和现有 Koopman 两件套对齐、参数量/数据规模两个混杂因素怎么处理。**状态：已执行完毕，负结果——
+  LSTM 在全部测试隐层大小上都明显差于 `richer_abs_sign`。**
+- [experiments/ae_baseline_plan.md](experiments/ae_baseline_plan.md) — 补齐 `BASELINES.md`
+  ③层另一个 ablation 缺口：对照根目录 `src/koopman_ae/core.py` 里
+  `DeepAugmentedKoopmanAutoencoder` 的 encoder-decoder 架构（非线性 encoder/decoder + 隐空间
+  线性动力学，`reconstruction_then_ridge` 训练方式），迁移到对抗防御任务的 `z_t/v_t/y_t` schema
+  上。和 LSTM 不同，这个模型的 `step`/`readout` 仍在原始 `z` 空间定义，直接复用了
+  `modeling/evaluate.py` 而不需要另写评测代码。**状态：已执行完毕，打平——held-out rollout MSE
+  和 `richer_abs_sign`/`arx` 基本相等（0.0675±0.007 vs 0.068，3 seed），不同于 LSTM 的明确
+  更差；train one-step MSE 上明显更差，但诊断为训练目标不可比,不是拟合能力问题。**
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) — ★
   正在做：`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**新开一次对话

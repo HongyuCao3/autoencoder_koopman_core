@@ -59,8 +59,16 @@ import**——它只有十几行纯 numpy、不依赖任何 pandas 列约定，�
   `nu=1, mu=2`，held-out rollout MSE 0.043，详见 `../experiments/koopman_defense_pilot.md`），
   证明了这套代码在真实数据上是可用的；人格漂移领域仍要等 screening 过关、正式数据采出来后
   才能做同样的事。
-- **LSTM baseline 还没实现**：`docs/BASELINES.md` 第③层要求的另一个 ablation。`Predictor` 协议
-  已经为它留好了扩展点（实现 `step`/`readout` 即可复用 `evaluate.py`），但训练循环本身
-  （nonlinear，需要 torch 优化器）还没写，属于范围内明确推迟的部分，不是遗漏。
+- **LSTM baseline 已实现并跑完**（负结果：held-out rollout MSE 全部测试隐层大小上明显差于
+  `richer_abs_sign`）。因为 LSTM 的状态是 `(h, c)` 隐状态，形状和 `ReducedStateConfig` 的
+  `z_t` 不同，实际没有复用 `Predictor` 协议/`evaluate.py`，而是单独写了
+  `modeling/lstm_baseline.py` 里的 `teacher_forced_predictions`/`rollout_predictions`。见
+  [`../experiments/lstm_baseline_plan.md`](../experiments/lstm_baseline_plan.md)。
+- **AE（encoder-decoder）baseline 已实现并跑完**（打平：held-out rollout MSE 和
+  `richer_abs_sign`/`arx` 基本相等）。`modeling/ae_baseline.py::AEKoopmanSurrogate` 对照
+  `src/koopman_ae/core.py::DeepAugmentedKoopmanAutoencoder` 的架构（非线性 encoder/decoder +
+  隐空间线性动力学），但 `step`/`readout` 仍在原始 `z` 空间上定义，**确实**复用了
+  `Predictor` 协议和 `evaluate.py`，不需要另写评测代码——`Predictor` 协议当初留的这个扩展点
+  在这里验证成立。见 [`../experiments/ae_baseline_plan.md`](../experiments/ae_baseline_plan.md)。
 - **可达集/可控集与黑盒数据的对照**（PDF 第 8 节验证协议后两项）需要真实数据和黑盒采样对比，
   现在拿不到，`GenCtrl` 的对接（见 `docs/BASELINES.md`）也还没做。
