@@ -1,5 +1,8 @@
 # @package state
-# Augmented-L state: memory state plus control history u_t = r - y_t.
+# Augmented-L state: memory state plus control history u_t = r - y_t, i.e.
+# z_t = [y_t..y_(t-lag), u_t..u_(t-lag)] -- 2*(lag+1) terms, so this default is
+# 8-dimensional for a scalar task, not 6. See configs/state/memory.yaml and
+# scripts/train.py::_state_config for the lag-depth-vs-term-count convention.
 family: augmented
 lag: 3
 control_mode: error

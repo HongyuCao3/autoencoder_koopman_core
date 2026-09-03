@@ -71,7 +71,25 @@ class ReducedStateConfig:
     at `u_(t-1)`. `control.py::KoopmanMPCController._current_state` mirrors
     this shift so a controller built on a `contemporaneous_v=True` surrogate
     evaluates its candidate action in the same slot the surrogate was fit
-    on."""
+    on.
+
+    NAMING vs the root repo -- `nu`/`mu` here and `state.lag` in
+    autoencoder_koopman_core are the same idea under different conventions,
+    and the numbers are NOT interchangeable:
+
+        this repo   nu = past outputs INCLUDING the current turn
+                    mu = past inputs EXCLUDING the current turn
+        root repo   state.lag = a lag DEPTH; scripts/train.py::_state_config
+                    turns it into output_memory = lag+1 term slots
+                    (input_memory = lag+1 too, for family `augmented`)
+
+    So this repo's fitted `nu=1, mu=2` is a one-term y block, and the root
+    repo's default `state.lag=3` is a FOUR-term y block -- i.e. `nu=4` in
+    these names, not `nu=3`. Anyone porting a configuration between the two
+    (e.g. re-running an ABLATION_STUDY.md comparison on defense data, or
+    reading the AE baseline against the core-task numbers) has to convert
+    rather than copy the integer. See AugmentedStateConfig's docstring in
+    src/koopman_ae/core.py for the other direction of this note."""
 
     nu: int = 1
     mu: int = 1

@@ -1,6 +1,10 @@
 # @package state
 # Markov state: z_t = [y_t]. `lag` and `control_mode` are accepted for schema
-# consistency with the other state families but have no effect here.
+# consistency with the other state families but have no effect here --
+# scripts/train.py::_state_config pins (output_memory, input_memory) = (1, 0)
+# for this family without reading `lag`, so `lag: 0` below is documentation,
+# not a setting. (Note it is NOT the +1 convention the other families use:
+# there, lag=0 would still mean a one-term state, which happens to coincide.)
 family: markov
 lag: 0
 control_mode: error

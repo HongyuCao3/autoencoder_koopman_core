@@ -1,6 +1,9 @@
 # @package state
 # Augmented-L state with the error_abs_sign control feature triple
-# [error, |error|, sign(error)] instead of plain error.
+# [error, |error|, sign(error)] instead of plain error. Each of the lag+1
+# input terms becomes three, so a scalar task gets (lag+1) + 3*(lag+1) = 16
+# dimensions at the default lag=3 -- see configs/state/memory.yaml for the
+# lag-depth-vs-term-count convention.
 family: augmented
 lag: 3
 control_mode: error_abs_sign

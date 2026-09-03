@@ -102,6 +102,28 @@ def _state_config(
     output_columns: tuple[str, ...],
     target_columns: tuple[str, ...],
 ) -> AugmentedStateConfig:
+    """The ONE place `state.lag` becomes `output_memory`/`input_memory`.
+
+    `lag` is a lag DEPTH (how many turns back to reach); the dataclass fields
+    are TERM COUNTS (how many entries land in z). They differ by one, so
+    `lag=3` -- the repo default in configs/state/memory.yaml -- means a
+    four-term embedding `z_t = [y_t, y_(t-1), y_(t-2), y_(t-3)]`, not three.
+    Every run name, results/ directory and run.json records the `lag` number
+    (`-lag3-`), while the model and every error message report the term
+    counts, so the two conventions are both visible in one run's artifacts
+    and are off by one from each other on purpose. Keep the +1 here rather
+    than pushing it into AugmentedStateConfig: changing which of the two a
+    given number means would silently re-point every existing results/
+    directory name at a different state definition.
+
+    `markov` pins (1, 0) and ignores `lag` entirely -- configs/state/markov.yaml
+    sets `lag: 0` only so the three families share one schema.
+
+    Raising `lag` costs rollout horizon: build/rollout both need
+    `max(output_memory, input_memory)` seed turns, so on a T=5 dataset
+    `lag=3` leaves exactly one rollout step (ABLATION_STUDY.md phase 6).
+    """
+
     if lag < 0:
         raise ValueError("state.lag must be non-negative")
     if family == "markov":

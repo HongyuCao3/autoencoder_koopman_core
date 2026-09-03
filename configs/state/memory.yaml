@@ -1,6 +1,14 @@
 # @package state
 # Memory-L state: z_t = [y_t, y_(t-1), ..., y_(t-lag)]. `control_mode` has no
 # effect for this family (input_memory is always 0).
+#
+# `lag` is a lag DEPTH, so this default is a FOUR-term embedding (lag+1), i.e.
+# a 4-dimensional z for a scalar task -- scripts/train.py::_state_config does
+# the +1 and its docstring explains why the two conventions are kept apart.
+# lag=3 is the setting every AE-vs-linear comparison in ABLATION_STUDY.md
+# (phases 2/3/4a/5/7/8) was run under; changing it here silently moves that
+# whole body of results' baseline, and on T=5 datasets it also changes the
+# available rollout horizon (lag+1 turns are consumed as seed state).
 family: memory
 lag: 3
 control_mode: error

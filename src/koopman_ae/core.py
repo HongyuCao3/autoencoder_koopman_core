@@ -76,7 +76,42 @@ def controllability_diagnostics(A: np.ndarray, B: np.ndarray, horizon: int) -> d
 
 @dataclass(frozen=True)
 class AugmentedStateConfig:
-    """Configuration for Model III augmented output-state construction."""
+    """Configuration for Model III augmented output-state construction.
+
+    NAMING -- `output_memory`/`input_memory` are COUNTS OF TERMS, not lag
+    depths, and they are NOT the `state.lag` the CLI takes. `_state_at_turn`
+    builds
+
+        z_t = [y_t, y_(t-1), ..., y_(t-(output_memory-1)),
+               u_t, u_(t-1), ..., u_(t-(input_memory-1))]
+
+    so `output_memory=4` reaches 3 turns back, and `output_memory=1` is the
+    memoryless Markov state. `scripts/train.py::_state_config` is the only
+    place that converts the config-file `lag` into these fields, and it adds
+    one: `lag=L` -> `output_memory = L+1` (family `memory`, `input_memory=0`)
+    or `output_memory = input_memory = L+1` (family `augmented`). Family
+    `markov` ignores `lag` entirely and pins (1, 0). Hence the repo default
+    `state.lag: 3` is a FOUR-term delay embedding -- a 4-dimensional z for a
+    scalar task, which is the "4 维延迟嵌入状态" ABLATION_STUDY.md refers to.
+
+    Two consequences worth knowing before changing either name:
+
+    * `build_augmented_state_dataset`/`_sequences` need
+      `max(output_memory, input_memory)` real turns before the first usable
+      z_t, and `rollout_augmented_from_trajectories` seeds from the same
+      count. So raising `lag` shortens the rollout horizon available in a
+      fixed-length dataset -- with `lag=3` a T=5 task has exactly one
+      rollout step left, which is the confound ABLATION_STUDY.md phase 6
+      had to work around by dropping to `lag=1`.
+    * `persona_drift_control` models the same kind of delay-embedded state
+      under DIFFERENT names and a DIFFERENT off-by-one convention: its
+      `ReducedStateConfig(nu, mu)` counts `nu` past outputs INCLUDING the
+      current turn (so `nu` == `output_memory`, and this repo's `lag=3` is
+      that repo's `nu=4`) and `mu` past inputs EXCLUDING the current one
+      (`mu` == `input_memory - 1` when both include their current term).
+      The two repos' numbers are not interchangeable; see that dataclass's
+      docstring for the other direction of this note.
+    """
 
     output_memory: int = 2
     input_memory: int = 2
