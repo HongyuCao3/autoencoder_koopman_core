@@ -59,7 +59,7 @@ curl -s "https://raw.githubusercontent.com/JiseungHong/SYCON-Bench/master/false-
 `safemtdata_attack_600.json` contains multi-turn jailbreak attack query sequences (600 rows,
 6 harm categories, each targeting an underlying harmful goal via 4-5 escalating in-context
 questions about a real/fictional "actor" connected to that goal) used as **fixed, pre-generated
-attacker input** for `docs/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md`'s defense-screening task --
+attacker input** for `docs/task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md`'s defense-screening task --
 loaded by `attack_bank.py`. This is a published academic red-teaming benchmark (same one NBF-LLM
 and other cited defense papers evaluate against); it is used here only to measure and defend an
 open-weight model's own responses, not to develop new attacks.

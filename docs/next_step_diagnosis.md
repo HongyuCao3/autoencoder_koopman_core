@@ -1,3 +1,19 @@
+> **这是什么**：用户在 2026-09-02 提供的一份**外部独立诊断文档**（不是本项目自己写的实验
+> 记录），针对"periodic 打平 koopman_mpc、消融不达预期"给出根因假设与三步建议。原文件名
+> 是 `next step.md`（带空格），2026-09-03 重命名为 `next_step_diagnosis.md` 并把正文里的
+> 本机 `computer:///E:/...` 链接改成仓库相对路径，内容未改。
+>
+> **怎么读**（三节建议各自的下文，都在别的文档里，本文件不再更新）：
+> - 第一节（控制输入时序错位）**已执行并证实**——见下方执行状态，以及
+>   `experiments/koopman_case_study_design.md` 的 "Phase I：v 对齐修正与再验证"。
+> - 第二节（把评测设定改成预算约束/binding 代价）**已被采纳，正在执行**——见
+>   `experiments/budget_constrained_defense_plan.md`（Phase J）。该文档把这里建议的 k=2
+>   改成了 k=1，理由是核对已有轨迹后发现 k=2 在这批数据上不 binding。
+> - 第三节（seed 扩到 5+、主指标改成效应量+bootstrap 而非 pass/fail）**尚未执行**，
+>   Phase J 明确把它排除在本阶段之外，仍是开放建议。
+>
+> 引用的历史数字以各实验文档为准。
+
 **执行状态（2026-09-02）：这份文档的诊断已验证并修正，完整过程和结果见
 [koopman_case_study_design.md](experiments/koopman_case_study_design.md) 的"Phase I：v
 对齐修正与再验证"一节。** 简要结论：第一节的时序错位诊断成立（`B` 符号翻正、交互项方向
@@ -65,8 +81,8 @@ $a$ 是自回归系数，$b_0$ 是被当成"控制通道 $B$"的那个系数，$
 如果第一步的预测不成立，再考虑"其他操作"——那时问题会落在执行器或 judge 上，需要换 readout（例如连续的 logit 级安全分）或换执行器，而不是继续在控制器架构上做消融。就论文定位而言，即使控制器最终只是打平 periodic，"用 Koopman/线性代理模型量化防御成本、可辨识性和输入时序对齐"这类结构性结论仍然是 GenCtrl 没有的 delta，值得作为主线保留。
 
 Sources:
-- [koopman_defense_pilot.md](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/docs/experiments/koopman_defense_pilot.md)
-- [koopman_case_study_design.md](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/docs/experiments/koopman_case_study_design.md)
-- [attack_trajectory.py](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/persona_drift_control/src/persona_drift/attack_trajectory.py)
-- [modeling/dataset.py](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/persona_drift_control/src/persona_drift/modeling/dataset.py)
-- [control.py](computer:///E:/Kunpeng%20Liu/ICLR2027/autoencoder_koopman_core/persona_drift_control/src/persona_drift/control.py)
+- [koopman_defense_pilot.md](experiments/koopman_defense_pilot.md)
+- [koopman_case_study_design.md](experiments/koopman_case_study_design.md)
+- [attack_trajectory.py](../persona_drift_control/src/persona_drift/attack_trajectory.py)
+- [modeling/dataset.py](../persona_drift_control/src/persona_drift/modeling/dataset.py)
+- [control.py](../persona_drift_control/src/persona_drift/control.py)

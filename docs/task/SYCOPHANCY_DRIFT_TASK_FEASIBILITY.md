@@ -177,14 +177,16 @@ docstring——和 `analysis_adversarial.py` 说明"为什么不跟 `analysis.py
 | `sycophancy_judge.py` | **新增** | 三分类判分（第五节），不复用 `parse_1_to_5_score`（判分形状不同，1个调用方，暂不与 `judge_scoring.py` 共享） |
 | `sycophancy_trajectory.py` | **新增（薄封装）** | 调用 `trajectory_runner`；`stance_label`/`is_flip` 两个衍生字段留在这里（`trajectory_runner`/`sycophancy_judge` 均不知道这两个字段的存在，理由见各自 docstring） |
 | `analysis_sycophancy.py` | **新增** | `new_q1_escalation`/`new_q3_autocorrelation` 抄 `analysis_adversarial.py` 的代码模式（只有 2 个实例，还没到"三份重复"的抽取门槛，暂不共享，文档里写明了理由）；新增 `turn_of_flip`/`number_of_flips`/`flip_rate`（离散判据） |
-| `sycophancy_screening.py` | **未开始** | 计划镜像 `adversarial_screening.py` |
-| `scripts/run_sycophancy_screening.py` | **未开始** | 计划镜像 `scripts/run_defended_screening.py` |
+| `sycophancy_screening.py` | **新增** | 镜像 `adversarial_screening.py` 的断点续跑/日志/报告写出模式 |
+| `scripts/run_sycophancy_screening.py` | **新增** | 镜像 `scripts/run_defended_screening.py`；配套 `environment/run_sycophancy_screening.sbatch`、以及独立-judge 配对重跑用的 `environment/run_sycophancy_screening_independent_judge.sbatch` |
 
 **测试**：`test_trajectory_runner.py`（新，直接测共享模块）、`test_sycophancy_bank.py`、
 `test_consistency_reminder.py`、`test_sycophancy_judge.py`、`test_sycophancy_trajectory.py`、
-`test_analysis_sycophancy.py`，共新增 36 个，CPU 全套 231 passed（另有 1 个历史已知的
-loguru flaky 测试、5 个与本任务无关的 `test_surface_features.py` nltk 数据缺失失败，均为
-既有环境问题，不是这次改动引入的）。
+`test_analysis_sycophancy.py`，核心构建块阶段共新增 36 个、CPU 全套 231 passed；补上编排层的
+`test_sycophancy_screening.py`（并在离散判据 bug 修复时补测）后是**共新增 42 个、CPU 全套
+238 passed**（这两组数字是同一条线上的两个快照，不是冲突；本文档开头的状态栏引的是后者）。
+两次都另有 1 个历史已知的 loguru flaky 测试、5 个与本任务无关的 `test_surface_features.py`
+nltk 数据缺失失败，均为既有环境问题，不是这次改动引入的。
 
 **不需要新增/修改**：`control.py`（`ZeroControlController`/`ConstantRemindController`/
 `ThresholdController`/`KoopmanMPCController` 全部通过 `y_probe` 别名直接复用，`koopman_defense_pilot.md`

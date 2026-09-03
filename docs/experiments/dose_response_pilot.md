@@ -60,7 +60,7 @@ p=0.4535，天花板问题解决了（这次真的有响应空间），但响应
   的断点续跑/日志/报告写出模式，按 `query_id` 记录期望行数（固定等于 α 网格长度）。
 - `scripts/calibrate_safety_direction.py` + `environment/run_calibrate_safety_direction.sbatch`：
   校准 CLI 和提交脚本，默认 `--num-attacks 40 --rng-seed 100 --layer 18`（Qwen3-4B
-  `num_hidden_layers=36` 的一半，见 `docs/LLM_LATENT_STATE_FEASIBILITY.md`，是一个记录在案
+  `num_hidden_layers=36` 的一半，见 `LLM_LATENT_STATE_FEASIBILITY.md`，是一个记录在案
   的起点选择，不是扫描过的最优层），`--time 00:30:00`（只做 40 次前向，无生成，比任何一个
   screening 作业都便宜）。
 - `scripts/run_dose_response_screening.py` + `environment/run_dose_response_screening.sbatch`：

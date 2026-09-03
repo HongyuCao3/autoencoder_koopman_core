@@ -85,7 +85,7 @@ cat persona_drift_control/outputs/drift_confirmation_pilot/screening_report.md  
 
 ## 历史：scripted-user 方案，尝试后放弃
 
-`docs/SCRIPTED_USER_TURNS_FEASIBILITY.md`（分析文档，2026-08-30）提出用离线预生成的用户轮次
+`SCRIPTED_USER_TURNS_FEASIBILITY.md`（分析文档，2026-08-30）提出用离线预生成的用户轮次
 脚本替代每轮实时调用的 `user_sim`，边际收益约 17%（每轮生成次数 6→5）外加省掉加载第二个模型
 的开销。按该文档第 5 节的验证顺序实施：
 

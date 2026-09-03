@@ -100,7 +100,7 @@ u_steer 直接改残差流，绕过了"模型对 system prompt 注意力不够"�
    就是为此设的，必须保留。**零 GPU 预检**：现有 40 条轨迹（drift_confirmation_pilot）上做
    跨轮记忆分析——控制 prompt 固定效应后，y_t（num_tokens、y_probe）对 y_{t+1} 的偏自相关
    是否显著非零。这直接回答"这个 plant 究竟有没有 A"，比任何新采集都便宜，和
-   `surface_features_backfill.py` 同一类型的回填分析。
+   `backfill_surface_features.py`（见 `../experiments/surface_features_backfill.md`） 同一类型的回填分析。
 2. **单轮向量在长上下文中的有效性**：论文的向量在短单轮输入上算得；16 轮、数千 token 的
    对话中同层同向量是否仍有同样方向的效应，需要小规模 dose-response pilot（单轮内 α 扫描，
    看 num_sents 是否单调）先行验证。

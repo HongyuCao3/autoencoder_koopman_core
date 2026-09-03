@@ -7,7 +7,7 @@ LSTM 在全部测试的隐层大小上都明显差于 `richer_abs_sign`,不是�
 
 ## 目的：现在这个 claim 站不住脚，需要它来补
 
-`docs/BASELINES.md` ③层把"线性 ARX / LSTM 一步-多步预测模型"列为
+`BASELINES.md` ③层把"线性 ARX / LSTM 一步-多步预测模型"列为
 `Control_of_Foundational_Model_revised.pdf` 第 8 节要求的 ablation，角色写的是"证明 Koopman
 代理相对任意非线性/记忆模型的增益不是平凡的"。现状是：`fit_koopman_defense_model.py` 已经对比过
 `no_extra_features`（纯 ARX）和 `abs_sign_extra_features`（`richer_abs_sign`）——这两者都是
@@ -133,6 +133,14 @@ Phase B 只有 30 个攻击 × 2 seed = 60 条轨迹、每条 4-6 轮，identifi
 ---
 
 ## 执行结果（2026-09-01）
+
+> **⚠️ 口径提示（2026-09-02 补记）**：本节所有数字都是在 **`modeling/dataset.py` 的"v 对齐"
+> 时序错位 bug 修复之前**跑的（bug 与修复见 `koopman_case_study_design.md` 的 "Phase I：v
+> 对齐修正与再验证"）。因此这里的 `richer_abs_sign` 对照值是 **0.0430**，而 v-aligned 之后
+> 的同一基线是 **0.0684**（见 `ae_baseline_plan.md`）——跨文档比较 held-out rollout MSE 时
+> 不要把这两套数字混着用。**LSTM 侧尚未在修正后的对齐下重跑**；"LSTM 明显更差"这个结论的
+> 方向大概率不变（差距接近 2 倍，远大于对齐修正带来的量级变化），但严格说它仍是一个
+> **待复核**的结论，不是已在 v-aligned 数据上验证过的。
 
 按方案 B 实现：新增 `src/persona_drift/modeling/lstm_baseline.py`
 （`LSTMSurrogate` + `teacher_forced_predictions`/`rollout_predictions`/

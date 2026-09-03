@@ -6,8 +6,9 @@
 ## 这是什么，为什么做
 
 `drift_confirmation_pilot.md`（10-prompt 功效放大 pilot）确认了人格漂移任务在当前设计下测不到
-信号（Q1 t=0.0166, p=0.99；Q2/Q3 全平）。`docs/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md`（2026-08-31
-讨论确定，★ 当前最高优先级）提出转向：把"良性 self-chat 有无自发漂移"换成"面对多轮 jailbreak
+信号（Q1 t=0.0166, p=0.99；Q2/Q3 全平）。`ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md`（2026-08-31
+讨论确定，当时的最高优先级；**该线已于 2026-09-02 随 Phase A→I 收尾，优先级让位给
+`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md`**）提出转向：把"良性 self-chat 有无自发漂移"换成"面对多轮 jailbreak
 攻击时安全性是否逐轮被侵蚀"——这次演化由攻击者主动制造，先验上应该比自发漂移更容易测到。
 
 按该文档第 7 节的验证顺序，**这是步骤 1**：零/小 GPU screening（~20 条攻击轨迹，无防御控制），
@@ -18,6 +19,11 @@
 **job 15399715 跑完，judge 打分抽查合理，new-Q1/new-Q3 都通过（强信号，见下方"结果"）。
 按 `ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md` 第 7 节验证顺序，步骤 1 通过，正在进入步骤 2
 （单轮剂量-响应：安全方向 steering 的 α 扫描）。**
+
+**后续（2026-09-02 补记）**：步骤 2 的 channel C 剂量-响应两次都没过（见
+`dose_response_pilot.md`），用户决定不再追加 channel C 实验，改走 channel A（提醒注入），
+即 `koopman_defense_pilot.md` 的 Phase A→I；那条线也已于 2026-09-02 收尾。本文档记录的
+步骤 1 结论（渐进侵蚀 + 惯性都成立）没有变，仍是后续所有对抗防御实验的前提。
 
 ## 代码
 

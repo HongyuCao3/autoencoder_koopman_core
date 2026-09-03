@@ -71,7 +71,7 @@ def parse_args() -> argparse.Namespace:
         "--pad-short-history",
         action="store_true",
         help="KoopmanMPCController.pad_short_history -- zero-pad the mu lag window instead of defaulting to 0 "
-        "when there's real y but not yet mu real actions (see control.py docstring, docs/next step.md 2026-09-02).",
+        "when there's real y but not yet mu real actions (see control.py docstring, docs/next_step_diagnosis.md 2026-09-02).",
     )
     parser.add_argument(
         "--replay-path",

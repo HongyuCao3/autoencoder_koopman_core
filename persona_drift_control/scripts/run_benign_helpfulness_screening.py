@@ -59,7 +59,7 @@ def parse_args() -> argparse.Namespace:
         "--koopman-contemporaneous-v",
         action="store_true",
         help="the saved koopman_mpc/koopman_mpc_interaction model was fit with ReducedStateConfig.contemporaneous_v=True "
-        "(the corrected v-alignment, docs/next step.md 2026-09-02) -- must match how --koopman-model-path/"
+        "(the corrected v-alignment, docs/next_step_diagnosis.md 2026-09-02) -- must match how --koopman-model-path/"
         "--koopman-interaction-model-path was actually fit, or decisions silently use the wrong action slot again.",
     )
     parser.add_argument(

@@ -351,7 +351,8 @@ roleplay 题目本身对这个 judge 的固有特征，不是这个控制器造�
 
 ## Phase I：v 对齐修正与再验证（2026-09-02）
 
-用户提供了一份独立分析文档 `docs/next step.md`（内容见文末 Sources），诊断认为 Phase H 的
+用户提供了一份独立分析文档 `docs/next_step_diagnosis.md`（原名 `next step.md`；内容见文末
+Sources），诊断认为 Phase H 的
 "方向反直觉"根因不是标定或数据量，而是 `modeling/dataset.py::build_reduced_state_pairs` 的
 训练对配对方式和 `attack_trajectory.py` 的真实执行时序不匹配：
 
@@ -597,4 +598,4 @@ turn1 结构上就是"看起来一切正常"的一轮。要在 new-Q1 这个特�
 状态构造修补的架构选择问题。**
 
 Sources（本节额外引用）：
-- `docs/next step.md`（用户提供的独立诊断文档，2026-09-02）
+- `docs/next_step_diagnosis.md`（用户提供的独立诊断文档，2026-09-02；原名 `next step.md`）

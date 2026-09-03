@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""docs/next step.md 第一步（零 GPU）：验证"v 槽位错位"诊断的两条可证伪预测。
+"""docs/next_step_diagnosis.md 第一步（零 GPU）：验证"v 槽位错位"诊断的两条可证伪预测。
 
 背景：`ReducedStateConfig.contemporaneous_v`（新增于 dataset.py）把训练对里的
 `v` 从"和 z_t 同一个 t"（旧约定，度量的是提醒文本留在历史里对下一轮的残留效应）
 改成"z_next 的 y 分量的直接成因"（v=u_(t+1)，匹配 attack_trajectory.py 里
 "本轮提醒 -> 本轮回复 -> 本轮打分"这个真实同轮因果链）。见该 dataclass 的
 docstring 和 docs/experiments/koopman_defense_pilot.md 的错位分析
-（2026-09-02，"docs/next step.md"）。
+（2026-09-02，"docs/next_step_diagnosis.md"）。
 
-这个脚本做三件事，对照 docs/next step.md 第一节的两条可证伪预测：
+这个脚本做三件事，对照 docs/next_step_diagnosis.md 第一节的两条可证伪预测：
 
 1. 用 Phase B 数据分别拟合旧对齐（contemporaneous_v=False，复现历史上的
    B=-0.059）和新对齐（True）下的 nu=1,mu=1 ARX 模型 -- 预测：新 B 应为正，

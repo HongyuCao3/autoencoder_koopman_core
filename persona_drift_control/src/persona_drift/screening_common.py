@@ -129,7 +129,7 @@ def run_trajectories_loop(
                     trajectory_id=trajectory_id,
                     config=trajectory_config,
                     # entry_id (not just seed): the fix for the RandomExciteController
-                    # collision bug found while executing docs/next step.md
+                    # collision bug found while executing docs/next_step_diagnosis.md
                     # (2026-09-02) -- see controller_cli.py::_excitation_seed.
                     controller=controller_factory(seed, id_fn(entry)),
                 )

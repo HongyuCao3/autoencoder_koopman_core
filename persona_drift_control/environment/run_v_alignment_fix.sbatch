@@ -5,7 +5,7 @@
 #SBATCH --time 00:15:00
 #SBATCH --output /home/hcao2/autoencoder_koopman_core/persona_drift_control/environment/slurm_logs/v-align-fix-%j.out
 
-# docs/next step.md 第一步（零 GPU）: 验证 "v 槽位错位" 诊断
+# docs/next_step_diagnosis.md 第一步（零 GPU）: 验证 "v 槽位错位" 诊断
 # (docs/experiments/koopman_defense_pilot.md, 2026-09-02 追加分析) 的两条
 # 可证伪预测。CPU-only -- 只是没有直接在写代码的沙箱里跑 python 的能力
 # (RUNNING_ON_PALMETTO.md 记录过这个沙箱限制), 所以借用现成的 sbatch 通道。

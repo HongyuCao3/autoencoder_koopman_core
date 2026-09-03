@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Quantifies how severe the Phase B RandomExciteController seeding bug is
-(found while executing docs/next step.md's step 1, 2026-09-02).
+(found while executing docs/next_step_diagnosis.md's step 1, 2026-09-02).
 
 `RandomExciteController.__post_init__` does `random.Random(self.seed)`, and
 `screening_common.py::run_trajectories_loop` calls

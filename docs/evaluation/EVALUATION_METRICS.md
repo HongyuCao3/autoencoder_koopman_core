@@ -1,5 +1,20 @@
 # 人格漂移闭环控制：评价指标设计（草案 v0.1，2026-08-28）
 
+> **⚠️ 状态（2026-09-03 补记）：这份草案是为人格漂移这条线写的，没有随后来的任务转向更新，
+> 不是现行判据清单。** 项目在 2026-08-31 转向对抗防御、2026-09-02 再转向 sycophancy drift；
+> 实际在用的判据（new-Q1 渐进侵蚀 / new-Q3 惯性 / 离散翻转事件率与趋势）定义在
+> `../task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md`、
+> `../task/SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 与各 `../experiments/*_pilot.md` 里，本文件
+> **完全没有提到它们**。相应地，下面那句"指标定义若与代码实现（`persona_drift/analysis.py`）
+> 冲突，以本文件为准并更新代码"**已不适用**——现在的分析代码是
+> `analysis_adversarial.py`/`analysis_sycophancy.py`/`analysis_helpfulness.py`，以它们和上面
+> 那些任务文档为准。
+>
+> 本文件仍然有用的部分：第 1 层"测量本身的有效性"（readout SNR、判分器噪声下界）这套方法论、
+> 三层指标（测量/建模/控制）的分层框架、以及四篇论文各自评价设计的出处与短板分析——这些在
+> 新任务上依然适用，也确实被沿用了（例如"连续 rubric 打分噪声接近 bin 宽度时控制是假象"这条
+> 直接导致 sycophancy 线改用三分类判据）。
+
 本文件是 `DATA_COLLECTION_PROTOCOL.md`（采集协议）、`KV_INJECTION_MONITORING.md`（通道 D）与 `LLM_LATENT_STATE_FEASIBILITY.md`（状态增广可行性）之外的第四份草案，回答"实验做完之后用什么数来判断成败"。它是一份**后续参考与迭代**的文件：每个指标标明来源（哪篇论文的哪种做法）、现阶段的决定、以及尚未确定的地方。指标定义若与代码实现（`persona_drift/analysis.py`）冲突，以本文件为准并更新代码。
 
 依据的文献为 Zotero「Koopman」分类中的四篇：Li et al. 2024（persona drift / split-softmax）、Stolfo et al. 2025（activation steering）、Alhafni et al. 2024（fine-grained linguistic control）、Wang et al. 2026（TMPC）。

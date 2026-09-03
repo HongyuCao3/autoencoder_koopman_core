@@ -1,5 +1,15 @@
 # 人格/指令漂移闭环控制：激励数据采集协议（草案 v0.1，2026-08-27）
 
+> **状态（2026-09-03 补记）：本文件仍是活文档，但要分两部分读。** 项目已两次转向任务
+> （2026-08-31 → 对抗防御，2026-09-02 → sycophancy drift）。
+> **仍然有效、被后续所有任务线沿用的**：通道 A–D 的定义与执行器语义、readout/`y_probe` 的
+> 列约定、以及第 7 节"采集前 screening gate 先于建模"这条流程原则（对抗防御线的
+> `adversarial_screening_pilot.md`、sycophancy 线的 `sycophancy_screening_pilot.md` 都是它的
+> 直接产物）。
+> **只属于人格漂移那条已放弃的线、不要照搬的**：具体采集规模（T=16 self-chat、40 prompt ×
+> 2 通道 × 4 seed）与被控对象设定——那条线的 screening 三问全挂、10-prompt 放大后仍是空结果
+> （见 `../experiments/signal_screening_pilot.md`、`../experiments/drift_confirmation_pilot.md`）。
+
 本文件描述的采集与同事原始数据的方法不同，代码实现见本仓库 `persona_drift_control/`（`autoencoder_koopman_core` 是我 fork 之后的仓库，不是需要与同事分开维护的共享仓库，因此不再单独建仓库）。目标是采集一份**带自由输入 u_t 的轨迹数据**，使得 Koopman/线性 surrogate 中的输入矩阵 B 可辨识，并为 MPC 闭环验证提供训练集。与同事数据的根本区别：同事数据里的输入是由误差模板决定的（闭环、常目标），本协议里的输入每轮独立随机抽取（开环激励）。
 
 ## 1. 被控对象（plant）

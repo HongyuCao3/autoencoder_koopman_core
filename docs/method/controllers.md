@@ -3,7 +3,7 @@
 `src/persona_drift/control.py` 把"这一轮 u_remind 取什么值"从生成/测量逻辑
 （`selfchat.py::run_trajectory`）里抽出来，做成一个可插拔的接口。这是 2026-08-29 为了让
 Koopman-MPC 未来能和其他 baseline 控制器公平对比而做的重构（背景见
-`../BASELINES.md`）——重构前 `u_remind` 的取值是写死在 `run_trajectory` 内部的 if/else。
+`BASELINES.md`）——重构前 `u_remind` 的取值是写死在 `run_trajectory` 内部的 if/else。
 
 ## 接口
 
@@ -39,6 +39,6 @@ class Controller(Protocol):
   （等正式 320 条轨迹采集完成后训练），不需要改控制器代码本身。
 - **`u_gain`（split-softmax）/ `u_steer`（激活转向）通道**：目前 `next_u_remind` 只覆盖
   channel A。这两个通道需要 hook 模型内部（注意力权重 / 残差流），不是简单的取值选择问题，
-  暂不适合塞进同一个接口，留作后续扩展时再设计（见 `../BASELINES.md` 第②档）。
+  暂不适合塞进同一个接口，留作后续扩展时再设计（见 `BASELINES.md` 第②档）。
 - **`screening.py::_make_controller`** 是目前唯一的 controller 工厂；给新 baseline 接一条
   跑数据的路径时，照它的模式加一个分支或独立的编排函数即可。

@@ -22,6 +22,8 @@ Two optimization modes share the same architecture:
 - `joint` optimizes reconstruction, decoded one-step prediction, latent linearity, and optional recursive multi-step losses together.
 - `reconstruction_then_ridge` optimizes only AE reconstruction and then fits `K`, `B`, and `c` by ridge regression with an unregularized intercept.
 
+Both modes train for exactly `trainer.epochs` by default. Setting `trainer.early_stopping_patience` (together with `trainer.early_stopping_min_delta`) instead stops the gradient stage once the held-out `topic_split="validation"` loss stops improving, restores the best-scoring weights, and turns `trainer.epochs` into a safety-net cap. Leaving the patience at `null` reproduces the pre-2026-09-03 behaviour exactly. `ABLATION_STUDY.md` Stage 8 documents why this matters: the previously fixed `epochs=200` under-trained at least two of the eight canonical tasks badly enough to invert their AE-vs-linear conclusions.
+
 ## Repository Structure
 
 - `src/koopman_ae/core.py`: state construction, affine baseline, deep AE--Koopman model, training, exact-resume checkpoints, rollout, and diagnostics.
@@ -55,7 +57,7 @@ The default control is `u_t = r[:d_y] - y_t`. Additional target/context dimensio
 
 Custom AdamW training checkpoints contain model tensors, optimizer state, all relevant RNG states, DataLoader generator state, completed epoch, training history, dimensions, mode, and configuration. There is no learning-rate scheduler or AMP scaler in this implementation, so neither has runtime state to save.
 
-Checkpoint directories are written through a temporary directory and atomically renamed only after `state.pt` and `_COMPLETE` exist. Resume scans only complete checkpoints, reports incomplete ones, validates dimensions/mode/configuration, and permits only `num_epochs` and `device` to differ. `scripts/train.py` additionally pins the dataset SHA-256 and state definition in `run_spec.json`.
+Checkpoint directories are written through a temporary directory and atomically renamed only after `state.pt` and `_COMPLETE` exist. Resume scans only complete checkpoints, reports incomplete ones, validates dimensions/mode/configuration, and permits only `num_epochs` and `device` to differ. Early-stopping bookkeeping (best validation loss, best epoch, epochs-without-improvement, and the best weights) is part of the checkpoint payload, so an interrupted early-stopping run resumes with its patience counter intact. `scripts/train.py` additionally pins the dataset SHA-256 and state definition in `run_spec.json`.
 
 `SIGTERM` and `SIGINT` request a checkpoint after the current epoch. The CLI reports the latest resumable checkpoint and exits with status 130.
 
@@ -85,13 +87,13 @@ Every trajectory table must contain:
 
 Turns should be consecutive and start at 1. State construction skips transitions whose complete history is unavailable. The common observed seed must be at least `max(output_memory, input_memory)` and smaller than the maximum turn.
 
-Canonical scalar datasets use `normalized_output` and `effective_norm`. Vector Stage 1 uses two count outputs/targets; Stage 2 uses three. Exact mappings are in `configs/datasets.json`.
+Canonical scalar datasets use `normalized_output` and `effective_norm`. Vector Stage 1 uses two count outputs/targets; Stage 2 uses three. Exact mappings live in `configs/dataset/<name>.yaml`, one file per registered dataset. (The former `configs/datasets.json` registry was removed on 2026-08-27; see Recent Changes.)
 
 ## Configuration and Runtime Assumptions
 
 Source, documentation, manifests, raw datasets, and compact JSON results live in the repository checkout itself so the directory can be published as one Git repository. This repository-local dataset placement is an explicit portability exception to the normal scratch-storage policy. Checkpoints default to `/scratch/$USER/checkpoints/autoencoder_koopman_core` (`trainer.checkpoint_root`, derived from `$USER`) and are excluded from Git. Slurm submission scripts for Palmetto 2 live in `slurm/`.
 
-The package requires Python 3.10+, NumPy, pandas, and PyTorch. CPU is supported. CUDA is selected automatically when available unless `--device` is specified.
+The package requires Python 3.10+, NumPy, pandas, and PyTorch. CPU is supported. CUDA is selected automatically when available unless `trainer.device` is set explicitly.
 
 ## Commands and Workflows
 
@@ -130,6 +132,7 @@ The collected files are byte-identical to their source trajectory artifacts; `DA
 - Raw latent eigenvectors are basis-dependent because the autoencoder representation is not unique.
 - Full controllability rank does not imply a well-conditioned controllability Gramian.
 - T=5 datasets provide only one forecast turn under the default four-turn common prefix.
+- A fixed epoch budget is not a safe default across tasks. `ABLATION_STUDY.md` Stage 8 found the long-standing `epochs=200` left `sentiment_t5` and `average_word_length_t5` far from convergence, which by itself flipped their AE-vs-linear comparisons. Prefer early stopping, or confirm the loss curve has plateaued, before reading anything into a model comparison.
 - The even/odd scalar encoding is a categorical interface/negative control, not strong operator evidence.
 - Sentiment and formality conclusions remain limited by scorer/readout quality.
 - The two-stage checkpoint stores the resumable AE optimization state before the deterministic final ridge solve; invoking the same completed command reloads the AE state and recomputes `K/B/c`.
@@ -145,6 +148,7 @@ The collected files are byte-identical to their source trajectory artifacts; `DA
 
 ## Recent Changes
 
+- 2026-09-03: Added validation-based early stopping to the gradient stage of `DeepAugmentedKoopmanAutoencoder.fit` (`DeepAugmentedKoopmanConfig.early_stopping_patience` / `early_stopping_min_delta`, both off by default) and wired `scripts/train.py` to pass the `topic_split="validation"` frames in as the early-stopping signal. Early-stopping state is checkpointed alongside the optimizer so exact resume still holds. Backward compatible: with the patience unset, training is the old fixed-epoch loop. Motivation and the eight-task rerun are in `ABLATION_STUDY.md` Stage 8.
 - 2026-08-27: Replaced the argparse CLI and `configs/datasets.json` registry with a Hydra-composed config layer (`configs/{dataset,state,model,trainer}/*.yaml` + `configs/config.yaml`). `core.py`'s public API and the custom exact-resume training loop are unchanged; this only reorganizes how `scripts/train.py` reads its parameters.
 - 2026-08-26: Replaced the scratch-backed dataset symlink with repository-local data copies and added GitHub publication guidance. All current files remain below GitHub's regular-Git warning threshold.
 - 2026-08-26: Extracted the current Model III AE--Koopman core, added a single runnable CLI, organized eight canonical raw datasets, and strengthened exact-resume validation for checkpoint completeness, configuration, and dataset identity.

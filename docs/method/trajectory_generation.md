@@ -20,7 +20,7 @@
 4. **agent 回复**：agent 模型根据自己的对话历史（含刚插入的提醒）生成回复，写入主线对话。
 5. **探针分叉**：把 agent 当前对话历史（含刚生成的这轮回复）加上一个探针问题单独拿出去问，
    **不进入主线对话**，避免探针污染后续轮次的漂移过程（ContextEcho 做法，出处及其公开的长
-   会话数据见 `../OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md` 2.1 节）。
+   会话数据见 `OPEN_DATASETS_AND_TRAJECTORY_ACCELERATION.md` 2.1 节）。
 6. **打分记录**：在分叉上重复问 `probe_repeats`（screening 阶段 4）次，每次用该 entry 自带的
    确定性 Python 打分函数评分，取均值 `y_probe` 和标准差 `y_probe_sd`（后者用于估计测量噪声），
    连同这一轮的所有字段打包成一行，累加进这条轨迹的行列表。

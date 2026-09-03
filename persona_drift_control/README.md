@@ -11,25 +11,42 @@
 以 [`../docs/README.md`](../docs/README.md)
 为索引入口，本目录不重复存放，以那边为准。
 
-当前只实现了协议第 7 节要求的**采集前 1 小时信号探针**——这是正式采集
-（40 prompt × 2 通道 × 4 seed）之前的强制关卡：三个问题任一不过，都要先改协议
-再采数据，而不是先跑几千次生成再发现设计有问题。
+## 现在做到哪一步了
+
+**最初只有协议第 7 节要求的"采集前 1 小时信号探针"（`signal_screening`），后来在同一套
+`Controller`/`modeling` 骨架上长出了四条实验线。** 各线的状态、job id、结论一律以
+`../docs/README.md` 的索引为准，本文件不重复：
+
+| 实验线 | 入口脚本 | 状态 |
+|---|---|---|
+| ① 人格漂移 screening（最初的 gate） | `run_signal_screening.py` | 三问全挂；10-prompt 放大后仍是空结果；渐进施压版（`run_pressure_screening.py`）中间态 |
+| ② 对抗防御 Koopman-MPC（主线） | `run_adversarial_screening.py` / `run_defended_screening.py` | Phase A→I 完整闭环并已收尾：`koopman_mpc` 打赢 `zero_control`/`threshold`，但未打赢同代价的 `periodic` |
+| ③ Koopman 显式检测支线 | `evaluate_koopman_detector.py` | 方案 1/3/4 跑完，修完"v 对齐"bug 后方案 1/3 由负结果转为正向 |
+| ④ sycophancy drift screening | `run_sycophancy_screening.py` | 两次 GPU 跑完（自评 judge + 独立 judge 配对重跑），欠功效的空结果 |
+
+代理建模层另有 ARX / `richer_abs_sign` / LSTM / AE 四个 baseline 的对照（`fit_koopman_*.py`）。
 
 ## 目录结构
 
 ```text
 persona_drift_control/
-├── resources/                    # 第三方探针题库的离线缓存（见 PROVENANCE.md）
+├── resources/                 # 第三方题库的离线缓存（探针题库、MT-Bench、SYCON-Bench；见 PROVENANCE.md）
+├── conf/                      # Hydra 配置层（screening / fit_koopman / task / experiment / generation）
 ├── src/persona_drift/
-│   ├── prompt_bank.py             # 加载探针题库，选 character_traits / language_constraints 两类
-│   ├── reminder.py                 # 通道 A（u_remind）文本构造，探针阶段只用 0/1 两档
-│   ├── chat_model.py                # transformers 封装：加载模型、按 seed 生成
-│   ├── selfchat.py                   # 单条轨迹：模拟用户+agent 自聊，逐轮探针分叉打分
-│   ├── analysis.py                    # 协议第7节三个问题的判定
-│   └── screening.py                    # 串起以上模块，写 trajectories.jsonl + report
-├── scripts/run_signal_screening.py       # CLI 入口
-├── environment/setup_env.sh               # conda 环境搭建（在真实交互 shell 里跑，不是这里）
-└── tests/                                  # 离线单元测试，不需要模型/GPU
+│   ├── chat_model.py           # transformers 封装：加载模型、按 seed 生成
+│   ├── control.py              # Controller 协议 + 全部控制器（zero/constant/threshold/periodic/koopman_mpc…）
+│   ├── trajectory_runner.py    # 三条领域线共享的"逐轮提醒-生成-判分"循环骨架
+│   ├── selfchat.py             # ① 人格漂移：模拟用户+agent 自聊，逐轮探针分叉打分
+│   ├── attack_trajectory.py    # ② 对抗防御：攻击序列回放（trajectory_runner 的薄封装）
+│   ├── benign_trajectory.py    # ② 良性 helpfulness 代价对照（同上）
+│   ├── sycophancy_trajectory.py# ④ sycophancy：SYCON-Bench 反驳回放（同上）
+│   ├── *_bank.py / *_reminder.py / *_judge.py   # 各线的题库、提醒文本、LLM-judge 判分
+│   ├── analysis*.py            # 各线的判据（new-Q1/new-Q3、离散翻转、helpfulness、剂量-响应…）
+│   ├── *_screening.py          # 各线的编排层：断点续跑 + 写 trajectories.jsonl + report
+│   └── modeling/               # koopman.py / dataset.py / evaluate.py + lstm_baseline / ae_baseline / interaction_lift
+├── scripts/                   # 36 个 CLI 入口（run_* 跑实验，fit_* 拟合模型，analyze_* 离线分析）
+├── environment/               # setup_env.sh + 每个实验一份的 *.sbatch，日志在 slurm_logs/
+└── tests/                     # 45 个离线单测文件，不需要模型/GPU
 ```
 
 ## 探针题库到协议分类的映射（需要确认）
@@ -75,6 +92,20 @@ python scripts/run_signal_screening.py \
   --output-dir outputs/signal_screening
 ```
 
+上面是实验线 ① 的入口。**其余三条线各有自己的 CLI 和 sbatch**，参数、job id 和判定口径写在
+对应的实验文档里（`../docs/experiments/`），不在这里重复：
+
+| 线 | CLI | sbatch |
+|---|---|---|
+| ② 对抗防御 screening / 带防御重跑 | `run_adversarial_screening.py`、`run_defended_screening.py`、`run_benign_helpfulness_screening.py` | `environment/run_adversarial_screening.sbatch`、`run_koopman_defense_phase*.sbatch` |
+| ③ 检测支线 | `evaluate_koopman_detector.py` | 离线 CPU，无 sbatch |
+| ④ sycophancy screening | `run_sycophancy_screening.py` | `environment/run_sycophancy_screening.sbatch`、`run_sycophancy_screening_independent_judge.sbatch` |
+| 代理模型拟合/对照 | `fit_koopman_defense_model.py`、`fit_koopman_lstm_baseline.py`、`fit_koopman_ae_baseline.py` | 多为 CPU 直跑 |
+
+集群上一律用对应的 `environment/*.sbatch` 提交，而不是手敲上面的裸命令——sbatch 里固定了
+`HF_HOME`/`NLTK_DATA`/环境激活和资源参数。部分脚本另有 Hydra 版本（`*_hydra.py` + `conf/`），
+用于需要按 task/experiment 切配置、且不能让两次跑互相覆盖输出目录的场合。
+
 模型权重和 HF 缓存目录默认在 `/scratch/hcao2/hf_cache`（`chat_model.py` 里
 兜底设置了 `HF_HOME`，忘记 export 也不会落到 home 目录）。结果写到
 `outputs/signal_screening/`：`trajectories.jsonl`（逐轮原始记录，字段与
@@ -87,5 +118,8 @@ python scripts/run_signal_screening.py \
 pytest -q
 ```
 
-只测 `prompt_bank` / `reminder` / `analysis` 的纯逻辑，不需要 GPU 或联网
-（探针题库已离线缓存在 `resources/`，见 `resources/PROVENANCE.md`）。
+45 个测试文件，覆盖各线的题库加载、提醒文本构造、判分解析、轨迹循环、判据统计、控制器决策
+与 `modeling/` 的拟合/评测，全部是纯逻辑，不需要 GPU 或联网（第三方题库已离线缓存在
+`resources/`，见 `resources/PROVENANCE.md`）。已知的既有环境问题：1 个 loguru flaky 测试、
+`test_surface_features.py` 因缺 `nltk vader_lexicon` 数据报 5 个错——都与具体改动无关，
+排查时先排除这两项。

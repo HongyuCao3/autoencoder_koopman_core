@@ -33,7 +33,7 @@ autoencoder_koopman_core/datasets/
 - `topic`、`raw_generation`、prompt、反馈与解析/评分状态等原始收集字段。
 
 标量任务使用 `normalized_output` 作为观测 `y_t`，使用 `effective_norm` 作为目标 `r`。Stage 1 使用
-`[word_count_norm, avg_word_length_norm]`，Stage 2 再加入 `comma_count_norm`；对应目标列在注册表中逐项列出。
+`[word_count_norm, avg_word_length_norm]`，Stage 2 再加入 `comma_count_norm`；对应目标列在各自的 `configs/dataset/<name>.yaml` 里逐项列出。
 
 训练脚本只读取建模所需列，但保留原始文件中的文本与评分字段，便于后续重新做数据质量检查。
 
@@ -49,13 +49,24 @@ sha256sum -c <(awk -F, 'NR>1 {print $10 "  datasets/" $2}' DATASET_MANIFEST.csv)
 
 ## 使用外部数据副本
 
-仓库已包含数据；如果希望改用其他位置的副本，可覆盖数据根目录：
+仓库已包含数据；如果希望改用其他位置的副本，可覆盖数据根目录。CLI 自 2026-08-27 起由 Hydra 驱动
+（`group=option` / `group.field=value`），下面这些不是旧的 argparse 长选项：
 
 ```bash
 python scripts/train.py \
-  --dataset-key sentence_length_t10 \
-  --data-root /absolute/path/to/autoencoder_koopman_core_data \
-  --state-family memory --lag 3
+  dataset=sentence_length_t10 \
+  trainer.data_root=/absolute/path/to/autoencoder_koopman_core_data \
+  state=memory state.lag=3
 ```
 
-也可用 `--dataset /absolute/path/to/trajectories.jsonl` 直接训练自定义文件，并通过 `--output-columns` 与 `--target-columns` 指定列。
+也可直接训练任意自定义文件，并指定观测列/目标列：
+
+```bash
+python scripts/train.py \
+  dataset=custom dataset.path=/absolute/path/to/trajectories.jsonl \
+  dataset.output_columns=[y1,y2] dataset.target_columns=[r1,r2] \
+  state=memory state.lag=3
+```
+
+`configs/dataset/custom.yaml` 是这个用法的模板，完整的自定义数据要求见 `README.md` 的
+"自定义数据"一节。

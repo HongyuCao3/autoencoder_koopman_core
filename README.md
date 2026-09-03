@@ -22,17 +22,26 @@ autoencoder_koopman_core/
 ├── results/                     # 轻量 metrics/Koopman 诊断
 ├── slurm/                       # Palmetto 2 (Slurm) 提交脚本：单次训练、job array 扫描
 ├── CODE_DESIGN.md               # 代码级设计文档
-├── docs/                        # 人格漂移闭环控制的协议/方法/baseline 文档，外部论文 PDF 缓存
-└── persona_drift_control/       # 上述文档描述的实现：采集前信号探针 pilot（独立 git 历史已并入本仓库）
+├── ABLATION_STUDY.md            # 本核心任务的消融记录（状态定义/AE-vs-线性/训练方式/latent_dim/早停）
+├── docs/                        # 子项目的任务选型/可行性/协议/方法/baseline/实验文档，外部论文 PDF 缓存
+└── persona_drift_control/       # 上述文档描述的实现（独立 git 历史已并入本仓库）
 ```
 
-`docs/` 和 `persona_drift_control/` 是同一个子项目：前者是协议/方法文档（索引见
-`docs/README.md`），后者是代码。这个仓库本身是我 fork 之后的仓库，不是需要与同事分开维护的
+本核心 Autoencoder--Koopman 任务自己的消融结果全部记录在
+[`ABLATION_STUDY.md`](ABLATION_STUDY.md)（八个阶段：状态定义、AE vs 纯线性 baseline、训练方式、
+`latent_dim`、8 任务铺开、rollout horizon 探针、数据规模/lag 探针、早停复现）。下面"快速运行"
+的示例配置与该文档结论有出入的地方，已在示例里就地标注。
+
+`docs/` 和 `persona_drift_control/` 是同一个子项目：前者是任务选型/协议/方法/实验文档（索引见
+`docs/README.md`），后者是代码。该子项目已经跑过四条实验线（人格漂移 screening → 对抗防御
+Koopman-MPC Phase A→I → 检测支线 → sycophancy drift screening），现状以 `docs/README.md`
+索引为准。这个仓库本身是我 fork 之后的仓库，不是需要与同事分开维护的
 共享仓库，所以子项目直接放在这里，不必再单独建仓库。
 
 ## 上传到 GitHub
 
-当前目录约 71 MB，最大单文件约 31.7 MiB，可以直接使用普通 Git，无需 Git LFS。GitHub 网页上传的单文件上限为 25 MiB，因此不要使用网页拖拽；请使用命令行。GitHub 对超过 50 MiB 的普通 Git 文件发出警告，并阻止超过 100 MiB 的文件；以后若加入更大的数据，应改用 Git LFS。
+`datasets/` 约 71 MB（整个工作目录含 `persona_drift_control/`、`results/` 与 `.git` 后约
+140 MB），最大单文件约 31.7 MiB，可以直接使用普通 Git，无需 Git LFS。GitHub 网页上传的单文件上限为 25 MiB，因此不要使用网页拖拽；请使用命令行。GitHub 对超过 50 MiB 的普通 Git 文件发出警告，并阻止超过 100 MiB 的文件；以后若加入更大的数据，应改用 Git LFS。
 
 建议先创建一个 **Private** 空仓库，因为 JSONL 中保留了原始 prompt、模型生成文本和评分字段。创建仓库时不要预先添加 README、License 或 `.gitignore`，然后执行：
 
@@ -91,7 +100,7 @@ L = lambda_rec * L_rec
   + lambda_multi * L_multi
 ```
 
-`reconstruction_then_ridge` 先只训练 AE 重构；固定 encoder 后，用带非正则化截距的 ridge 闭式拟合 `K`、`B`、`c`。当前实验中它通常是更稳健的默认基线，但不保证对所有任务都优于 joint。
+`reconstruction_then_ridge` 先只训练 AE 重构；固定 encoder 后，用带非正则化截距的 ridge 闭式拟合 `K`、`B`、`c`。当前实验中它通常是更稳健的默认基线，但不保证对所有任务都优于 joint（`ABLATION_STUDY.md` 第三阶段给了具体数据：在 `sentence_length_t10` + `lambda_multi=0` 下 `joint` 的 rollout MSE 高约 46%、种子间标准差高约 4 倍；但 `joint` 配合 `lambda_multi>0` 直接优化多步 rollout loss 的那种用法还没测过）。
 
 ## 环境安装
 
@@ -122,13 +131,28 @@ python scripts/train.py \
   state=memory state.lag=3 \
   model.training_mode=reconstruction_then_ridge \
   model.latent_dim=16 \
-  trainer.epochs=200 \
+  trainer.epochs=3000 \
+  trainer.early_stopping_patience=30 trainer.early_stopping_min_delta=1e-6 \
   trainer.device=cpu
 ```
 
 这里 `state.lag=3` 表示状态保存 4 个观测：`[y_t, y_(t-1), y_(t-2), y_(t-3)]`。
 
+**为什么用早停，而不是固定 `trainer.epochs=200`**：`epochs=200` 是这份 README 早先的推荐值，
+但从未验证过它对各任务是否足够收敛。`ABLATION_STUDY.md` 第八阶段证明它对至少 2/8 个任务不成立
+（`sentiment_t5`、`average_word_length_t5` 的重建 loss 差 67–100 倍，两个任务的 AE-vs-线性
+效应量因此被完全改写）。**新增任务或新的模型对照请默认打开早停**（此时 `epochs` 只是安全网
+上限），或至少检查 `results/<run-name>/run.json` 里的训练/验证 loss 是否已平台化。早停用
+`topic_split="validation"` 作验证集；`trainer.early_stopping_patience=null`（默认）时行为与
+旧版逐位一致，历史结果不受影响。
+
 ### 2. Joint Augmented-L3
+
+**这个示例是用法演示，不是推荐默认。** `ABLATION_STUDY.md` 第一阶段在 `sentence_length_t10`
+上实测 `state=augmented`（加控制误差历史）的 rollout MSE 比 `state=memory` 差约 26%、种子间
+方差大一个数量级；第三阶段实测 `joint`（在 `lambda_multi=0` 下）比 `reconstruction_then_ridge`
+的 rollout MSE 差约 46%。这里保留 `augmented`+`joint` 是为了演示该状态族和多步 rollout loss
+怎么配；更稳的起点是上面的示例 1。
 
 ```bash
 python scripts/train.py \

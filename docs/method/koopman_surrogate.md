@@ -2,7 +2,7 @@
 
 `src/persona_drift/modeling/` 是之前缺失的那一块——把采集到的 `trajectories.jsonl` 拟合成
 `Control_of_Foundational_Model_revised.pdf` 第 4/5/6/7 节描述的受控 Koopman 代理，并把 ARX
-baseline（`docs/BASELINES.md` 第③层）实现为同一套代码的特例，而不是另写一份。最初只用**合成的
+baseline（`BASELINES.md` 第③层）实现为同一套代码的特例，而不是另写一份。最初只用**合成的
 已知线性系统数据**验证过（见 `tests/test_koopman.py`）；对抗防御领域（`koopman_defense_pilot.md`
 Phase C）已经接到真实采集数据并完成拟合/闭环验证（`nu=1, mu=2`，`richer_abs_sign` 打赢两个
 经典基线）。人格漂移领域仍是合成数据阶段，要等 screening 通过、正式 320 条轨迹采完之后。
@@ -56,7 +56,9 @@ import**——它只有十几行纯 numpy、不依赖任何 pandas 列约定，�
   数据，验证 `fit()` 能把参数 recover 回来、`one_step_error`/`rollout_output_error` 在这种理想
   情况下接近零——这部分保持不变，仍是最基础的正确性保障。
 - **人格漂移领域还没有在真实 `trajectories.jsonl` 上跑过**：对抗防御领域已经跑通（Phase C，
-  `nu=1, mu=2`，held-out rollout MSE 0.043，详见 `../experiments/koopman_defense_pilot.md`），
+  `nu=1, mu=2`，held-out rollout MSE 0.043——注意这是"v 对齐"bug 修复**之前**的数字，同一
+  配置在 v-aligned 数据上是 0.0684，见 `../experiments/koopman_case_study_design.md` 的
+  Phase I；详见 `../experiments/koopman_defense_pilot.md`），
   证明了这套代码在真实数据上是可用的；人格漂移领域仍要等 screening 过关、正式数据采出来后
   才能做同样的事。
 - **LSTM baseline 已实现并跑完**（负结果：held-out rollout MSE 全部测试隐层大小上明显差于
@@ -71,4 +73,4 @@ import**——它只有十几行纯 numpy、不依赖任何 pandas 列约定，�
   `Predictor` 协议和 `evaluate.py`，不需要另写评测代码——`Predictor` 协议当初留的这个扩展点
   在这里验证成立。见 [`../experiments/ae_baseline_plan.md`](../experiments/ae_baseline_plan.md)。
 - **可达集/可控集与黑盒数据的对照**（PDF 第 8 节验证协议后两项）需要真实数据和黑盒采样对比，
-  现在拿不到，`GenCtrl` 的对接（见 `docs/BASELINES.md`）也还没做。
+  现在拿不到，`GenCtrl` 的对接（见 `BASELINES.md`）也还没做。

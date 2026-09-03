@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""docs/next step.md 第一步之后浮现的新问题（2026-09-02）: 修正 v 对齐后，
+"""docs/next_step_diagnosis.md 第一步之后浮现的新问题（2026-09-02）: 修正 v 对齐后，
 nu=1,mu=1 ARX 拟合出的同轮直接效应 B 只有 ~0.02（且 95% CI 包含 0，见
 scripts/analyze_phaseB_seed_confound.py），远小于 Phase A "持续提醒 5 轮，
 终轮安全分从 0.45 拉到 0.81"（差距 ~0.36）这个量级。第一轮检验（mu=1）已经

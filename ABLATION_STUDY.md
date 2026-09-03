@@ -181,9 +181,13 @@ python scripts/train.py dataset=<task> state=memory state.lag=3 \
 python scripts/ablation_linear_baseline_all_tasks.py
 ```
 
-### 结果（test split，y 空间 rollout_mse，AE 为 3 seed 均值 ± 总体标准差；`test n` 是该任务 test
-split 的样本数，标注是因为几个 T5 任务的 test 集只有个位数到几十行，`CODE_DESIGN.md`
-"Known Limitations" 已自陈这类任务受数据规模限制，此处结果置信度相应更低）
+### 结果（test split，y 空间 rollout_mse，AE 为 3 seed 均值 ± 总体标准差；`test n` 是该任务的
+**rollout 评测点数**，即 test 轨迹数 × 每条可 rollout 的轮数，**不是** test split 的行数、
+也不是轨迹数。例如 `sentiment_t5` 的 test split 是 10 条轨迹/50 行，T=5 且
+`common_seed_turns=4` 只剩 1 轮可 rollout，所以 `test n`=10；`sentence_length_t10` 是
+42 条轨迹 × 6 轮=252。标注它是因为几个 T5 任务的评测点只有个位数到几十个，`CODE_DESIGN.md`
+"Known Limitations" 已自陈这类任务受数据规模限制，此处结果置信度相应更低。下面结论 4 讨论
+"数据规模"时用的就是这一列，读作评测点数而不是轨迹数）
 
 | 任务 | test n | AE rollout_mse | 纯线性 rollout_mse | 胜者 | 差距（相对 AE） |
 |---|---:|---:|---:|---|---:|
@@ -201,9 +205,11 @@ split 的样本数，标注是因为几个 T5 任务的 test 集只有个位数�
 **不是"线性普遍优于 AE"，而是结果按任务分裂，没有一致方向**——这纠正了只看
 `sentence_length_t10` 一个任务时容易得出的过度概括：
 
-1. **两个任务上 AE 明确更好**：`average_word_length_t5`（差距达 12 倍种子标准差，是本次 8 个
-   任务里最大的效应量）、`sentiment_t5` 之外的另一个方向性明确案例。`character_length_t5`、
-   `formality_t5` 上 AE 也占优但效应量较弱（1.2–2.5 倍 sd）。
+1. **一个任务上 AE 明确更好**：`average_word_length_t5`（差距达 12 倍种子标准差，是本次 8 个
+   任务里最大的效应量，也是除下面 `sentiment_t5` 之外唯一一个方向性明确的案例）。
+   `character_length_t5`、`formality_t5` 上 AE 也占优但效应量较弱（1.2–2.5 倍 sd）。
+   （**第八阶段修正**：`average_word_length_t5` 这个效应量在打开早停后反转成打平，见第八阶段——
+   本条现在只剩"弱/中等的 AE 占优"，一个明确案例都不剩。）
 2. **`sentiment_t5` 上线性明显更好**（AE 误差高 78%，是本次除 `average_word_length_t5` 外效应
    量最大的一项），叠加 `sentence_length_t10`、两个 `vector_count` 任务上线性的弱/中等优势，
    "线性 baseline 有竞争力"这个第二阶段的结论在多任务上依然基本成立，但优势幅度普遍从
@@ -400,7 +406,8 @@ seed 实际训练到的轮数范围，对照组固定为 200）
 
 ### 结论
 
-1. **"任务相关、无统一方向"这个第五阶段的总体结论没有被推翻**——6/8 个任务方向不变。但**全篇
+1. **"任务相关、无统一方向"这个第五阶段的总体结论没有被推翻**——8 个任务里 7 个方向不变
+   （其中 `even_odd_t5` 本就退化、无信息量，所以在有信息的 7 个任务里是 6 个不变）。但**全篇
    两个效应量最大的"旗舰案例"都被显著削弱或直接推翻**：`sentiment_t5` 的线性优势从 78.1% 收窄
    到 8.1%（欠拟合假设成立，此前第七阶段排除的"数据规模"/"lag"都不是真正原因，真正原因是
    训练轮数本身）；`average_word_length_t5` 的"AE 赢 44.6%"直接反转成打平（AE 反而略输

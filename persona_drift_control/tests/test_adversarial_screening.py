@@ -165,7 +165,7 @@ def test_controller_factory_is_called_fresh_per_trajectory_with_its_own_seed(tmp
 
 
 def test_random_excite_controller_is_independently_seeded_per_trajectory(tmp_path, monkeypatch):
-    # Regression guard for the bug found while executing docs/next step.md
+    # Regression guard for the bug found while executing docs/next_step_diagnosis.md
     # (2026-09-02): the real `make_controller_factory("random_excite", ...)`
     # used to build `RandomExciteController(seed=seed)` from the
     # trajectory-level `seed` (just 0/1 from `--seeds`) alone -- since it's

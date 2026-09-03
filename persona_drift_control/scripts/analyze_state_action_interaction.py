@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
         help="fit under the corrected v-alignment (ReducedStateConfig.contemporaneous_v -- v is the SAME turn's "
         "action as z_next's y, matching attack_trajectory.py's real same-turn causal timing) instead of the "
         "original 'v contemporaneous with z_t' convention this script originally shipped with, which measures "
-        "only the reminder's residual/carryover effect one turn later -- see docs/next step.md (2026-09-02).",
+        "only the reminder's residual/carryover effect one turn later -- see docs/next_step_diagnosis.md (2026-09-02).",
     )
     parser.add_argument("--ridge", type=float, default=1e-6)
     parser.add_argument("--held-out-frac", type=float, default=0.25)
