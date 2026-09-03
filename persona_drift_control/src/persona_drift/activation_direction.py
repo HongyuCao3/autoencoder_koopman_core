@@ -1,7 +1,7 @@
 """Diff-in-means safety/refusal direction calibration (Arditi et al.,
 "Refusal in Language Models Is Mediated by a Single Direction", arXiv
 2406.11717), for the adversarial-defense screening task's channel C
-(docs/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md section 7 step 2). This is the
+(docs/task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md section 7 step 2). This is the
 "顺带确认 refusal 方向投影" component step 1 deliberately deferred -- see
 docs/experiments/adversarial_screening_pilot.md's "有意跳过的部分" -- now
 needed because step 2's steering channel requires it directly, not just as

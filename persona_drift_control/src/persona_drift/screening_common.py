@@ -1,9 +1,11 @@
-"""Shared pieces between adversarial_screening.run_adversarial_screening and
-benign_screening.run_benign_screening: the two screening loops (fixed attack
-sequences vs fixed benign sessions) are otherwise structurally identical --
-resumability bookkeeping, agent/judge lazy-loading order, per-trajectory
-logging/writing -- so this module holds the parts that carry no behavioral
-difference between them. Agent/judge construction still goes through a
+"""Shared pieces between the three fixed-sequence screening loops:
+adversarial_screening.run_adversarial_screening (attack sequences),
+benign_screening.run_benign_screening (benign sessions) and
+sycophancy_screening.run_sycophancy_screening (SYCON-Bench pushback
+sequences). They are otherwise structurally identical -- resumability
+bookkeeping, agent/judge lazy-loading order, per-trajectory logging/writing
+-- so this module holds the parts that carry no behavioral difference
+between them. Agent/judge construction still goes through a
 caller-supplied `chat_model_cls` (rather than importing ChatModel here)
 so each caller's own module-level `ChatModel` name stays the one tests
 monkeypatch.

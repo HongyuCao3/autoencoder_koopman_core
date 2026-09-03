@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """One-time offline generation of the scripted-user-turn library
-(docs/SCRIPTED_USER_TURNS_FEASIBILITY.md section 3): for each topic in
+(docs/feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md section 3): for each topic in
 selfchat.TOPICS, run one throwaway live self-chat against a neutral
 reference agent to get a plausible 16-turn agent-reply scaffold, then
 generate `--seeds`-many diverse user-turn scripts conditioned on that same

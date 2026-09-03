@@ -52,7 +52,7 @@ class TrajectoryConfig:
     probe_gen: GenerationConfig = field(default_factory=lambda: GenerationConfig(max_new_tokens=256))
     # "live" (default): user_sim.generate() every turn, matching every run so
     # far. "scripted": read a pre-generated turn from user_scripts.py instead
-    # -- see docs/SCRIPTED_USER_TURNS_FEASIBILITY.md; must not become the
+    # -- see docs/feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md; must not become the
     # default until its section 5 live-vs-scripted consistency check passes.
     # "pressure": read a fixed, hand-authored escalating-pressure turn from
     # pressure_scripts.py, keyed by entry.prompt_category (not topic/seed) --

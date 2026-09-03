@@ -18,7 +18,7 @@ cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
 
 nvidia-smi -L || true
 
-# docs/SCRIPTED_USER_TURNS_FEASIBILITY.md section 5 step 1: same 3 prompts x
+# docs/feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md section 5 step 1: same 3 prompts x
 # 2 seeds x 2 conditions (12 trajectories), run once with a live user-sim and
 # once with the scripted library, same prompt-rng-seed so both pick the same
 # prompts/topics -- compare y_probe trajectories afterwards.

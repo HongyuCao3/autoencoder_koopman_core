@@ -1,6 +1,6 @@
 """Free, no-extra-LLM-call surface features computed from already-generated
 text -- a lightweight subset of the ~50-dim feature set from Alhafni et al.
-2024 (docs/ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md), using only what the
+2024 (docs/feasibility/ALHAFNI_LINGUISTIC_CONTROL_FEASIBILITY.md), using only what the
 pilot conda env already has installed (nltk's POS tagger + VADER lexicon,
 per environment/setup_env.sh's nltk.downloader step) -- no spaCy, no
 rstfinder. This is a deliberately small subset (structural counts + four

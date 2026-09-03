@@ -9,7 +9,7 @@ Implements the first two checks of
 Control_of_Foundational_Model_revised.pdf section 8's validation protocol:
 one-step prediction and multi-step rollout. Reachable-set / controllable-set
 agreement need real collected data to compare against and are not
-implemented yet (see docs/BASELINES.md's GenCtrl entry for the intended
+implemented yet (see docs/evaluation/BASELINES.md's GenCtrl entry for the intended
 black-box counterpart).
 """
 

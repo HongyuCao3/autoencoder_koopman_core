@@ -215,7 +215,7 @@
   /seed/预算集中在 `phaseJ_base.yaml`）和 `persona_drift.run_config_guard`（同一 `output_dir`
   换了配置就拒绝续跑——screening 循环天生可续跑，指错目录不会报错，只会安静地把两个控制器的
   轨迹混进同一份报告）。状态（2026-09-03）：代码/配置/离线预检完成、CPU 283 测试通过，
-  **7 个 GPU 臂的 sbatch 已就绪但尚未提交**。
+  **7 个 GPU 臂已全部提交（job 15503457–15503463），结果待收**。
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) — ★
   正在做：`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**新开一次对话

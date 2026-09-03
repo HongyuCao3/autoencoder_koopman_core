@@ -6,7 +6,7 @@
 #SBATCH --gpus a100:1
 #SBATCH --output /home/hcao2/autoencoder_koopman_core/persona_drift_control/environment/slurm_logs/koopman-phaseG-periodic-%j.out
 
-# Phase G, periodic arm (docs/BASELINES.md's "周期性/事件触发重提醒" candidate,
+# Phase G, periodic arm (docs/evaluation/BASELINES.md's "周期性/事件触发重提醒" candidate,
 # implemented as control.py::PeriodicController -- fixed-schedule reminder
 # every --periodic-period turns, no feedback signal at all). period=2 chosen
 # to land close to koopman_mpc's empirical Phase E insertion rate (32/80 =

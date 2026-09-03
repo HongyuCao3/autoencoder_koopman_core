@@ -9,7 +9,7 @@
 # Step 2 prerequisite (ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md section 7):
 # 40 forward passes (no generation) to compute the diff-in-means safety
 # direction at layer 18 (half of Qwen3-4B's 36 hidden layers -- see
-# docs/LLM_LATENT_STATE_FEASIBILITY.md for the architecture numbers; not a
+# docs/feasibility/LLM_LATENT_STATE_FEASIBILITY.md for the architecture numbers; not a
 # swept choice yet, a documented starting point). Much cheaper than either
 # screening job: no generation at all, just encodes 40 short prompts.
 # Not resumable (single short job, not worth the bookkeeping) -- if killed,

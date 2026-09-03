@@ -1,7 +1,7 @@
 """Loads the vendored ActorAttack multi-turn jailbreak sequences (SafeMTData
 Attack_600, see resources/PROVENANCE.md) used as fixed, pre-generated
 attacker input for the adversarial-defense screening task
-(docs/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md section 7 step 1). Mirrors
+(docs/task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md section 7 step 1). Mirrors
 prompt_bank.py's load/select shape so screening.py-style orchestration code
 looks familiar.
 """

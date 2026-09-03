@@ -3,7 +3,7 @@ confirmation pilot (docs/experiments/drift_confirmation_pilot.md, "下一步的�
 实验建议"). Unlike user_scripts.py (topic-tied, LLM-generated, one script per
 (topic, seed) -- tried and abandoned as a live-user_sim replacement because
 long unsupervised self-chat degenerates, see
-docs/SCRIPTED_USER_TURNS_FEASIBILITY.md), these scripts are:
+docs/feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md), these scripts are:
 
 - keyed by `prompt_category` only ("character_traits" | "language_constraints"),
   not by topic or seed: the same fixed sequence is replayed for every prompt in

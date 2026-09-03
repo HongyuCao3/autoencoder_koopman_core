@@ -9,7 +9,7 @@ Used for:
 - Phase A (executor authority check): --controller constant_remind
 - Phase B (open-loop excitation for Koopman identification): --controller random_excite
 - Phase E (closed-loop validation classical baseline): --controller threshold
-- Phase G (fixed-schedule baseline, docs/BASELINES.md's "周期性/事件触发重提醒"
+- Phase G (fixed-schedule baseline, docs/evaluation/BASELINES.md's "周期性/事件触发重提醒"
   candidate): --controller periodic --periodic-period 2
 
 Must be run where torch/transformers are installed and a GPU (or patient

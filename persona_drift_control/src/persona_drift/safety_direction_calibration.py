@@ -2,7 +2,7 @@
 sample harmful/harmless calibration texts from the attack bank, run the
 forward passes (activation_direction.compute_safety_direction), save the
 direction vector + stats. Step 2's prerequisite in
-docs/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md section 7.
+docs/task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md section 7.
 """
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 """Loads the offline-generated scripted-user-turn library (see
-docs/SCRIPTED_USER_TURNS_FEASIBILITY.md and scripts/generate_user_scripts.py)
+docs/feasibility/SCRIPTED_USER_TURNS_FEASIBILITY.md and scripts/generate_user_scripts.py)
 for `TrajectoryConfig.user_mode == "scripted"`. Analysis-only until this
 module existed -- see the feasibility doc's "结论摘要" for why this isn't the
 default and needs a live-vs-scripted consistency check before being trusted.
