@@ -158,10 +158,152 @@ python scripts/train.py dataset=sentence_length_t10 state=memory state.lag=3 \
 的结果（纯线性、也就是"`latent_dim` 等价于原始 4 维状态、没有非线性 lift"反而更好），这进一步
 削弱了"更大的隐空间维度能带来增益"这个假设。
 
+## 第五阶段：其余 7 个任务上重复"AE vs 纯线性"对照（已完成）
+
+### 设计
+
+第二阶段的"线性 baseline 反而略优"只在 `sentence_length_t10` 一个任务上验证过。本阶段把同一套
+对照方法（`state=memory, lag=3`，`latent_dim=16`，`reconstruction_then_ridge`，AE 侧 3 个种子
+`seed=0,1,2`，线性侧 `AugmentedKoopmanModel` 闭式岭回归、无随机性）铺到其余 7 个已注册任务
+（`average_word_length_t5`、`character_length_t5`、`even_odd_t5`、`formality_t5`、
+`sentiment_t5`、`vector_count_stage1_t10`、`vector_count_stage2_t10`），检验"线性优于 AE"是
+`sentence_length_t10` 特有还是普遍现象。
+
+新增独立脚本 `scripts/ablation_linear_baseline_all_tasks.py`（`ablation_linear_baseline.py` 的
+参数化版本，从 `configs/dataset/*.yaml` 读路径/列名，不改动原脚本），AE 侧复用
+`scripts/train.py` 与第一/二阶段完全相同的调用方式，只切换 `dataset=<task>`：
+
+```bash
+python scripts/train.py dataset=<task> state=memory state.lag=3 \
+  model.training_mode=reconstruction_then_ridge model.latent_dim=16 \
+  trainer.epochs=200 trainer.device=cpu trainer.seed=<0|1|2> \
+  trainer.checkpoint_root=/scratch/hcao2/checkpoints/autoencoder_koopman_core_ablation
+python scripts/ablation_linear_baseline_all_tasks.py
+```
+
+### 结果（test split，y 空间 rollout_mse，AE 为 3 seed 均值 ± 总体标准差；`test n` 是该任务 test
+split 的样本数，标注是因为几个 T5 任务的 test 集只有个位数到几十行，`CODE_DESIGN.md`
+"Known Limitations" 已自陈这类任务受数据规模限制，此处结果置信度相应更低）
+
+| 任务 | test n | AE rollout_mse | 纯线性 rollout_mse | 胜者 | 差距（相对 AE） |
+|---|---:|---:|---:|---|---:|
+| average_word_length_t5 | 14 | 0.002138 ± 0.000081 | 0.003092 | **AE**（~12 倍 sd，明确） | 线性差 44.6% |
+| character_length_t5 | 60 | 0.002682 ± 0.000376 | 0.003135 | AE（~1.2 倍 sd，弱） | 线性差 16.9% |
+| even_odd_t5 | 4 | ~0.000000 ± 0.000000 | ~0.000000 | 平局（任务退化，两者近乎零误差，无信息量） | — |
+| formality_t5 | 42 | 0.006543 ± 0.000128 | 0.006863 | AE（~2.5 倍 sd，中等） | 线性差 4.9% |
+| sentiment_t5 | 10 | 0.009925 ± 0.000561 | 0.005572 | **线性**（~7.8 倍 sd，明确） | AE 差 78.1% |
+| vector_count_stage1_t10 | 288 | 0.006207 ± 0.000300 | 0.005743 | 线性（~1.5 倍 sd，弱） | AE 差 8.1% |
+| vector_count_stage2_t10 | 540 | 0.006783 ± 0.000066 | 0.006685 | 线性（~1.5 倍 sd，但 sd 很小、方向一致） | AE 差 1.5% |
+| （参照）sentence_length_t10（第二阶段） | 大 | 0.000941 ± 0.000021 | 0.000880 | 线性（~2.9 倍 sd） | AE 差 6.5% |
+
+### 结论
+
+**不是"线性普遍优于 AE"，而是结果按任务分裂，没有一致方向**——这纠正了只看
+`sentence_length_t10` 一个任务时容易得出的过度概括：
+
+1. **两个任务上 AE 明确更好**：`average_word_length_t5`（差距达 12 倍种子标准差，是本次 8 个
+   任务里最大的效应量）、`sentiment_t5` 之外的另一个方向性明确案例。`character_length_t5`、
+   `formality_t5` 上 AE 也占优但效应量较弱（1.2–2.5 倍 sd）。
+2. **`sentiment_t5` 上线性明显更好**（AE 误差高 78%，是本次除 `average_word_length_t5` 外效应
+   量最大的一项），叠加 `sentence_length_t10`、两个 `vector_count` 任务上线性的弱/中等优势，
+   "线性 baseline 有竞争力"这个第二阶段的结论在多任务上依然基本成立，但优势幅度普遍从
+   sentence_length_t10 的 6.5% 稀释到 1.5–8%，且不再是唯一模式。
+3. `even_odd_t5` 完全退化（两个模型 test rollout_mse 都约等于 0，test n 仅 4 行），对"AE vs 线性"
+   这个问题没有提供任何信息，不计入上面的方向统计。
+4. **数据规模是明显的混杂变量**：test n 越小（`even_odd_t5`=4、`sentiment_t5`=10、
+   `average_word_length_t5`=14）方向和效应量看起来越极端，n 较大的两个 vector 任务
+   （288、540）反而效应量最小且最一致——这与"小样本 T5 任务结果噪声大"的既有认知
+   （`CODE_DESIGN.md`）吻合，`sentiment_t5`、`average_word_length_t5` 这两个最大效应量的结果
+   需要更多数据或更多种子才能确认不是采样噪声，不能直接当作任务本身的稳定属性。
+5. 综合本阶段与第二阶段：**"encoder-decoder 的非线性 lift 是否值得"这个问题目前没有跨任务
+   通用答案，是任务相关的**（task-dependent），且现有证据的置信度受限于几个任务的小样本量。
+
+## 第六阶段：检验"rollout horizon 长度决定 AE-vs-线性胜负"这个假设（已完成，假设未被支持）
+
+### 动机
+
+第五阶段的原始读法很诱人："T=5 的任务（`common_seed_turns=4` 时只剩 1 步可 rollout）里 AE 多数
+赢，T=10 的三个任务（6 步真·多步 rollout）里线性全赢"，看起来像是 rollout 步数越长、AE 隐空间
+线性动力学 `K` 的复合误差就越吃亏。但 T=5 vs T=10 这个划分和"task 是哪个任务"是完全绑定的混杂
+变量——光看第五阶段的数据，无法把"horizon 长"和"这就是 sentiment_t5/vector_count 这些任务本身
+的特性"区分开。本阶段设计了两个探针实验，**固定任务和 state 定义不变，只改 rollout horizon**，
+直接检验这个假设，而不是停留在相关性猜测上。
+
+### 探针 A：`average_word_length_t5` + `state=memory,lag=1`（新增脚本 `ablation_horizon_probe.py`）
+
+第五阶段用的是 `lag=3`，但 `lag=3` 要求至少 4 个观测轮次做种子状态，T=5 的数据只剩 1 轮可 rollout
+（`common_seed_turns` 没法小于 4），结构上无法在 `lag=3` 下把 horizon 拉长。退而求其次，把 lag
+降到 1（种子轮次最小可到 2），这样能在同一个任务、同一个 T=5 数据集上比较 `common_seed_turns=4`
+（horizon=1）vs `common_seed_turns=2`（horizon=3）：
+
+| horizon | seed_turns | AE rollout_mse（3 seed） | 线性 rollout_mse | 胜者 | 差距 |
+|---:|---:|---:|---:|---|---:|
+| 1 | 4 | 0.001867 ± 0.000010 | 0.001902 | AE | 线性差 1.9% |
+| 3 | 2 | 0.003566 ± 0.000018 | 0.003703 | AE | 线性差 3.8% |
+
+horizon 从 1 拉到 3，AE 的优势不但没有收窄反而略微扩大——**方向和第五阶段"horizon 越长线性
+越占优"的直觉相反**。但要注意这里换成了 `lag=1`（state 维度从 4 降到 2），AE 的优势幅度本身也从
+第五阶段 `lag=3` 时的 44.6% 骤降到不到 4%——说明 `lag` 本身对这个任务的 AE-vs-线性差距影响
+可能比 horizon 更大，这个探针没能把 lag 和 horizon 完全解耦。
+
+### 探针 B：`sentence_length_t10` + `state=memory,lag=3`（新增脚本 `ablation_horizon_sweep_t10.py`）
+
+T=10 的数据允许 `common_seed_turns` 在 4–9 之间取值，而不用换 lag，这样能在**和第二阶段完全
+一致的 `lag=3` state 定义**下扫 horizon，是比探针 A 更干净的对照（任务、state 定义都不变，
+只变 horizon）：
+
+| horizon | seed_turns | AE rollout_mse（3 seed） | 线性 rollout_mse | test n | 胜者 | 差距（线性 vs AE） |
+|---:|---:|---:|---:|---:|---|---:|
+| 1 | 9 | 0.000418 ± 0.000009 | 0.000429 | 42 | AE | −2.8% |
+| 2 | 8 | 0.000689 ± 0.000015 | 0.000642 | 84 | 线性 | +6.8% |
+| 4 | 6 | 0.000629 ± 0.000015 | 0.000637 | 168 | AE | −1.2% |
+| 6 | 4 | 0.000941 ± 0.000021 | 0.000880 | 252 | 线性（第二阶段原始结果） | +6.5% |
+
+四个 horizon 上胜负交替（AE、线性、AE、线性），**不是随 horizon 单调变化的趋势**——如果
+"horizon 越长线性越占优"成立，应该看到差距随 horizon 增大单调地从负变正，但实际是 1→2 从
+−2.8%跳到+6.8%，2→4 又从+6.8%回落到−1.2%，4→6 再跳回+6.5%。差距量级本身也不大（1–7%），
+数量级和第五阶段其余弱信号（`character_length_t5`、`vector_count_stage1/2_t10` 等）相当，
+不像第五阶段最强的两个信号（`average_word_length_t5` 的 44.6%、`sentiment_t5` 的 78.1%）。
+
+（注：`rollout_mse` 在这里是"种子轮次之后所有轮次"的平均误差，不是"horizon 处那一个点"的
+误差，所以 horizon=6 的指标里其实混入了 horizon=1..6 每一步的误差，会稀释纯粹的"远端复合误差"
+信号——这是这个指标定义本身的局限，也是交替模式的一个可能来源，但不构成"horizon 有单调
+影响、只是被指标平均掉了"的证据，因为如果真有强烈的单调复合误差，稀释后至少应该看到微弱但
+一致的方向，而不是正负交替。）
+
+### 结论
+
+**"rollout horizon 长度决定 AE 是否更好"这个假设没有被两个探针支持，予以否定**。第五阶段
+"T=5 任务多数 AE 赢、T=10 任务全部线性赢"这个表面模式，更可能是任务本身的特性（读出函数的
+性质、数据规模等）恰好和 T=5/T=10 这个任务分组相关，而不是 rollout 步数本身的因果效应——这
+纠正了看到第五阶段结果后最直觉的一个解释。真正驱动 AE-vs-线性差距的因素目前仍不确定，候选
+（未经因果验证，只是描述性观察，见下）包括：
+
+1. **state 维度/`lag` 选择**：探针 A 换成 `lag=1` 后 AE 的优势幅度骤降，暗示"延迟嵌入状态里塞
+   进多少历史"本身可能比 horizon 更影响 AE 能不能找到线性模型抓不到的非线性组合。
+2. **读出函数的性质**：`average_word_length_t5`（AE 赢最多，44.6%）的读出是
+   `总字符数/词数`，是对底层生成文本的一个真正非线性（比值型）函数；`character_length_t5`、
+   `sentence_length_t10` 的读出是接近直接计数的量，AE 优势小或线性反赢。`formality_t5`、
+   `sentiment_t5` 的读出来自外部 NLP 分类器打分，`formality_t5`（252 条轨迹）AE 中等幅度赢，
+   `sentiment_t5`（60 条轨迹，本次样本量最小的几个任务之一）AE 输得最多（78.1%）——不排除是
+   AE 在小样本、噪声更大的分类器打分上过拟合（`hidden_dim=64` 两层 MLP encoder+decoder 参数量
+   级约 1.1 万，远超线性模型的几十个参数）。
+3. 这两条目前都只是**描述性关联，不是像本阶段这样做过因果探针的结论**——如果要验证，需要专门
+   的后续实验（例如：固定 lag、只对 `sentiment_t5` 做数据量下采样 vs 不下采样对照；或者构造
+   一个"读出是直接计数 vs 读出是比值"的最小任务对照）。
+
 ## 后续阶段（未执行，计划）
 
 - **第四阶段（b）**：`lambda_latent`、`lambda_multi` 消融；以及把 `joint` 训练方式和
   `multi_step_horizon>0` 的多步 rollout loss 一起打开，重新对比 `joint` vs
   `reconstruction_then_ridge`（第三阶段的结论目前只在 `lambda_multi=0` 下成立）。
-- 其余 7 个标量/向量任务（`character_length_t5` 等）上重复第一、二阶段的消融，确认
-  "memory 优于 augmented"、"线性优于 AE"是否是 `sentence_length_t10` 特有还是普遍现象。
+- 第五阶段结论目前只在 `latent_dim=16`、`reconstruction_then_ridge`、`state=memory,lag=3` 下
+  验证；`average_word_length_t5`、`sentiment_t5` 这两个效应量最大的任务值得优先补更多种子
+  （当前只有 AE 侧 3 个种子，线性侧本就无随机性）以确认效应量不是噪声。
+- 第一阶段（状态定义：markov/memory/augmented）目前也只在 `sentence_length_t10` 上验证过，
+  尚未像本阶段这样铺开到其余 7 个任务。
+- **第七阶段（候选，未执行）**：验证第六阶段末尾提出的两个候选因子——(a) `lag`/state 维度对
+  AE-vs-线性差距的影响，在多个任务上扫 `lag∈{1,2,3}`（探针 A 只做了 `average_word_length_t5`
+  一个任务的 `lag=1 vs 3`）；(b) 数据规模是否让 AE 在噪声较大的外部分类器读出任务
+  （`formality_t5`/`sentiment_t5`）上过拟合，可对 `formality_t5` 下采样到接近 `sentiment_t5`
+  的轨迹数（60 条）重跑，看 AE 的优势是否也随之消失/反转。
