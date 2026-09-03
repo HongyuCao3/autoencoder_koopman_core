@@ -157,8 +157,12 @@
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) — ★
   正在做：`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**新开一次对话
-  想知道"这个 screening 现在跑到哪一步了"，看这份文档。** 状态：job 15483493 已提交
-  （2026-09-02，20 items × 2 seeds），正在跑。
+  想知道"这个 screening 现在跑到哪一步了"，看这份文档。** 状态：job 15483493 跑完
+  （2026-09-02，20 items × 2 seeds）。人工审计发现并修好了离散判据的统计设计 bug（原检验对
+  任意非零翻转数都几乎必然"通过"）；修复后是干净空结果——连续/离散两套判据都不显著，
+  只有 2/40 条轨迹出现过翻转。也发现了自评偏差的一个具体案例（agent 和 judge 是同一模型，
+  对有争议 ground truth 无法互相纠错），已加诊断但未根治。下一步待定：扩样本/换独立
+  judge/换更强施压设计三选一。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；
