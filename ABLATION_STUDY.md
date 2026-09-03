@@ -346,23 +346,104 @@ train/validation/test 轨迹数（40/10/10，共 60 条，用固定随机种子 
 "信号非线性程度"或"信号噪声结构"、并证明它能预测 AE-vs-线性胜负的方法；这需要专门设计一个
 可跨任务比较的"任务非线性度"指标才能验证，超出了当前"改配置重新跑"这类消融能覆盖的范围。
 
+## 第八阶段：早停复现，排除"训练预算不足"作为混杂变量（已完成）
+
+### 动机
+
+第七阶段排除了 horizon/数据规模/`lag` 之后，`sentiment_t5`（线性赢 78.1%，第五阶段效应量
+最大的"线性赢"案例）和 `average_word_length_t5`（AE 赢 44.6%，效应量最大的"AE 赢"案例，也是
+第六阶段"比值型 readout 需要非线性"这个假说的核心证据）仍然没有解释。这两个任务恰好都是
+`ABLATION_STUDY.md` 全篇效应量最大的两个异常点，但此前所有阶段都固定用 README 起点配置的
+`trainer.epochs=200`（一个人工选定的数字，从未验证是否足够训练收敛）——"AE 的 encoder/decoder
+是否单纯没有训练到收敛"这个最基础的可能性，一直没有被直接检验过。
+
+### 设计
+
+给 `core.py::DeepAugmentedKoopmanAutoencoder.fit`（`reconstruction_then_ridge` 阶段一）新增基于
+验证集重建 loss 的早停（`DeepAugmentedKoopmanConfig.early_stopping_patience`/
+`early_stopping_min_delta`，默认 `None`/不生效，向后兼容），`scripts/train.py` 相应接入
+`topic_split="validation"` 切分作为早停验证集。`patience=30`、`min_delta=1e-6`、
+`trainer.epochs=3000`（新的硬上限，只是安全网，不是目标训练轮数）。其余配置（`state=memory,
+lag=3`、`latent_dim=16`、`reconstruction_then_ridge`、`seed∈{0,1,2}`）与第二/五阶段完全一致，
+只改训练时长的决定方式，保持和已有结果的可比性。8 个任务全部重跑：
+
+```bash
+python scripts/train.py dataset=<task> state=memory state.lag=3 \
+  model.training_mode=reconstruction_then_ridge model.latent_dim=16 \
+  trainer.epochs=3000 trainer.device=cpu trainer.seed=<0|1|2> \
+  trainer.early_stopping_patience=30 trainer.early_stopping_min_delta=1e-6 \
+  trainer.checkpoint_root=/scratch/hcao2/checkpoints/autoencoder_koopman_core_ablation
+```
+
+### 结果（test split，y 空间 rollout_mse，早停侧 3 seed 均值±总体标准差；"早停 epoch" 是 3 个
+seed 实际训练到的轮数范围，对照组固定为 200）
+
+| 任务 | 旧（固定200ep） | 新（早停） | 线性 baseline | 早停 epoch 范围 | 方向变化 |
+|---|---:|---:|---:|---:|---|
+| average_word_length_t5 | 0.002138±0.000081（AE 赢 44.6%） | 0.0031053±0.0000065（AE 反输 0.4%） | 0.003092 | 615–853 | **反转** |
+| character_length_t5 | 0.002682±0.000376（AE 赢 16.9%） | 0.002627±0.000351（AE 赢 19.3%） | 0.003135 | 381–619 | 不变 |
+| even_odd_t5 | ≈0（退化） | ≈0（退化） | ≈0 | 118–151 | 不变，仍无信息量 |
+| formality_t5 | 0.006543±0.000128（AE 赢 4.9%） | 0.006518±0.000112（AE 赢 5.3%） | 0.006863 | 267–289 | 不变 |
+| sentence_length_t10 | 0.000941±0.000021（线性赢 6.5%） | 0.0009444±0.0000062（线性赢 6.8%） | 0.000880 | 198–263 | 不变 |
+| sentiment_t5 | 0.009925±0.000561（线性赢 78.1%） | 0.006061±0.000077（线性赢 8.1%） | 0.005572 | 705–859 | 不变，**差距锐减 78%→8%** |
+| vector_count_stage1_t10 | 0.006207±0.000300（线性赢 8.1%） | 0.0059637±0.0000324（线性赢 3.7%） | 0.005743 | 189–204 | 不变，差距略缩小 |
+| vector_count_stage2_t10 | 0.006783±0.000066（线性赢 1.5%） | 0.0068648±0.0000065（线性赢 2.6%） | 0.006685 | 158–184 | 不变 |
+
+重建 loss（阶段一训练目标，seed=0）佐证了"训练不足"确实是部分任务的真实瓶颈：`sentiment_t5`
+从 2.41×10⁻³ 降到 2.38×10⁻⁵（约 100 倍），`average_word_length_t5` 从 5.01×10⁻⁴ 降到
+7.43×10⁻⁶（约 67 倍）；相比之下 `formality_t5`、`sentence_length_t10`（原本重建 loss 就已经
+是 1–2×10⁻⁵ 量级）早停后只小幅改善或几乎不变，`vector_count_stage1/2_t10` 甚至略高于旧值
+（3×10⁻⁵ vs 2×10⁻⁵，噪声量级，因为验证集早停判定的停止点和固定 200 epoch 不严格是同一个点）
+——这与它们的 rollout_mse 结果方向"6/8 个任务不变"完全对应：只有 `sentiment_t5` 和
+`average_word_length_t5` 原本就明显没训到收敛，其余任务在固定 200 epoch 时就已经接近收敛，
+早停对它们只是锦上添花或不起作用。
+
+### 结论
+
+1. **"任务相关、无统一方向"这个第五阶段的总体结论没有被推翻**——6/8 个任务方向不变。但**全篇
+   两个效应量最大的"旗舰案例"都被显著削弱或直接推翻**：`sentiment_t5` 的线性优势从 78.1% 收窄
+   到 8.1%（欠拟合假设成立，此前第七阶段排除的"数据规模"/"lag"都不是真正原因，真正原因是
+   训练轮数本身）；`average_word_length_t5` 的"AE 赢 44.6%"直接反转成打平（AE 反而略输
+   0.4%）——这是全篇除 `sentiment_t5` 外效应量最大的一项，此前从未被怀疑是训练不足的产物。
+2. **第六阶段"比值型 readout（如 average_word_length_t5 的字符数/词数）需要非线性提升"这个
+   假说，核心证据现在站不住了**：它唯一的支撑就是 `average_word_length_t5` 44.6% 的效应量，
+   而这个效应量本身被证明主要是训练预算不足、不是任务的真实非线性需求。"读出信号性质决定
+   AE-vs-线性胜负"这条第七阶段末尾留下的、唯一没被证伪的候选解释，其证据基础比看起来的更弱。
+3. **训练预算（是否收敛）此前从未被当作一个需要控制的混杂变量**——第一到第七阶段的每一次
+   对照都固定用同一个人工选定的 `epochs=200`，隐含假设"200 轮足够所有任务收敛"，这个假设本身
+   从未被验证过，而这次证明它对至少 2/8 个任务不成立。这提示：*任何*后续新增任务或新的
+   AE-vs-线性对照，都应该默认打开早停（或至少检查训练/验证 loss 曲线是否已经平台化），不能
+   再默认沿用 `epochs=200` 这个未经验证的固定值。
+4. **`persona_drift_control` 的对抗防御 AE baseline（`docs/experiments/ae_baseline_plan.md`）
+   做了同样的早停改造，但没有看到同样的改善**（结果记录见该文档）：那个任务训练数据只有
+   22 条训练攻击（44 条轨迹），切验证集后进一步压到 18 条，早停判定信号本身噪声很大（同一
+   `latent_dim` 不同 seed 实际训练轮数从 200 多到 5000 都有），这提示"欠拟合"假设的适用性
+   依赖数据规模本身要足够支撑一个独立的验证切分，不是所有 AE 实验都能靠早停"免费"改善。
+
+产物：`results/<task>-memory-lag3-reconstruction_then_ridge-k16-earlystop-seed<N>/`（8 任务
+× 3 seed = 24 个新增结果目录），`src/koopman_ae/core.py`/`scripts/train.py`/
+`configs/trainer/default.yaml` 的早停相关改动。
+
 ## 后续阶段（未执行，计划）
 
 - **第四阶段（b）**：`lambda_latent`、`lambda_multi` 消融；以及把 `joint` 训练方式和
   `multi_step_horizon>0` 的多步 rollout loss 一起打开，重新对比 `joint` vs
   `reconstruction_then_ridge`（第三阶段的结论目前只在 `lambda_multi=0` 下成立）。
-- 第五阶段结论目前只在 `latent_dim=16`、`reconstruction_then_ridge`、`state=memory,lag=3` 下
-  验证；`average_word_length_t5`、`sentiment_t5` 这两个效应量最大的任务值得优先补更多种子
-  （当前只有 AE 侧 3 个种子，线性侧本就无随机性）以确认效应量不是噪声。
+- 第五/八阶段结论目前只在 `latent_dim=16`、`reconstruction_then_ridge`、`state=memory,lag=3`
+  下验证；`average_word_length_t5`、`sentiment_t5` 这两个效应量最大的任务值得优先补更多种子
+  （当前只有 AE 侧 3 个种子，线性侧本就无随机性）以确认早停后的新效应量不是噪声。
 - 第一阶段（状态定义：markov/memory/augmented）目前也只在 `sentence_length_t10` 上验证过，
-  尚未像本阶段这样铺开到其余 7 个任务。
-- **第八阶段（候选，未执行）**：第七阶段排除了 horizon/数据规模/`lag` 之后，唯一还站得住的
-  方向是"读出信号本身的非线性/噪声结构"——需要先设计一个可跨任务计算的量化指标（例如：
-  控制输入 `r` 到输出 `y` 之间残差非线性度的某种度量，或信号的高阶矩/间断性统计量），再检验
-  它是否能预测第五阶段 8 个任务里 AE 是否赢，而不是像本阶段这样一次只能改一个配置维度、
-  逐任务重新跑来碰运气。
-- **第七阶段（候选，未执行）**：验证第六阶段末尾提出的两个候选因子——(a) `lag`/state 维度对
-  AE-vs-线性差距的影响，在多个任务上扫 `lag∈{1,2,3}`（探针 A 只做了 `average_word_length_t5`
-  一个任务的 `lag=1 vs 3`）；(b) 数据规模是否让 AE 在噪声较大的外部分类器读出任务
-  （`formality_t5`/`sentiment_t5`）上过拟合，可对 `formality_t5` 下采样到接近 `sentiment_t5`
-  的轨迹数（60 条）重跑，看 AE 的优势是否也随之消失/反转。
+  尚未像本阶段这样铺开到其余 7 个任务；且第一阶段本身也是用固定 `epochs=200` 跑的，第八阶段
+  的发现同样适用——"markov 明显更差"这个结论也应该在早停下复核一次。
+- **第九阶段（候选，未执行，原第八阶段候选，因编号冲突后移）**：第七阶段排除了
+  horizon/数据规模/`lag` 之后，唯一还站得住的方向是"读出信号本身的非线性/噪声结构"——需要先
+  设计一个可跨任务计算的量化指标（例如：控制输入 `r` 到输出 `y` 之间残差非线性度的某种度量，
+  或信号的高阶矩/间断性统计量），再检验它是否能预测第五/八阶段任务里 AE 是否赢。**第八阶段的
+  发现削弱了这个方向的优先级**：它最初的动机主要来自 `average_word_length_t5` 的比值型
+  readout 假说，而那个假说的核心证据已经被第八阶段推翻，这个方向现在需要先在早停结果上
+  重新确认还有没有值得解释的效应量,再决定是否投入设计新指标。
+- **第十阶段（候选，未执行，原第七阶段候选，因编号冲突后移）**：验证第六阶段末尾提出的
+  `lag`/state 维度对 AE-vs-线性差距的影响，在多个任务上扫 `lag∈{1,2,3}`（探针 A 只做了
+  `average_word_length_t5` 一个任务的 `lag=1 vs 3`，且是在早停之前做的，`average_word_length_t5`
+  本身的基线结论已经变了，这个探针的解读也需要在早停下重新做）。（数据规模那一支已经在正式
+  第七阶段做过，不再重复列出。）

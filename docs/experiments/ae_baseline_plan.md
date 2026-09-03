@@ -217,3 +217,58 @@ LSTM 明显赢，补一次…消融"同一条审慎原则,这次触发条件是"
   区分"打平是真的打平"还是"AE 还没训好、有更大潜力"时的下一步。
 - 只在 `hidden_dim=4, num_layers=1` 这一档 MLP 容量下测过，没有像 `latent_dim` 一样做容量扫描——
   和 LSTM baseline 当年"不追求完全公平，把混杂因素摆在台面上"是同一个取舍。
+
+## 追加实验（2026-09-03）：加入早停，检验上面"重建 loss 没收敛"是不是训练不足
+
+`ABLATION_STUDY.md` 第八阶段在 core 任务上验证了"固定 `epochs=200` 可能对部分任务训练不足"
+这个假设（`sentiment_t5`、`average_word_length_t5` 的 AE-vs-线性效应量在早停后大幅改变），
+动机之一就是本文档上面这条"明确的局限"——固定 300 epoch 下重建 loss 卡在 0.09–0.17。这次给
+`AEKoopmanSurrogate.fit` 加了同款早停（`AEKoopmanConfig.early_stopping_patience`/
+`early_stopping_min_delta`，默认关闭），`scripts/fit_koopman_ae_baseline.py` 新增
+`--early-stopping-patience`/`--val-frac` 等参数，在**原有 22 个训练攻击里再切出一部分做验证集**
+（`--val-frac 0.15`，按 `attack_id` 切，测试集的 8 个 held-out 攻击不变）：
+
+```bash
+python scripts/fit_koopman_ae_baseline.py \
+  --early-stopping-patience 30 --early-stopping-min-delta 1e-6 --num-epochs 5000 \
+  --val-frac 0.15 --train-seed <0|1|2> \
+  --out-path outputs/koopman_ae_baseline/ae_fit_report_earlystop_seed<N>.json
+```
+
+### 结果
+
+切出验证集后训练攻击从 22 个降到 18 个（`n_train_attacks=18`，验证集约 4 个攻击）。3 个
+`train_seed` 下实际早停的训练轮数波动极大（`latent_dim=1`：497/1166/4996；`latent_dim=2`：
+875/3653/555；`latent_dim=4`：5000/207/1980——同一 `latent_dim` 不同 seed 相差可以到 10 倍以上），
+说明验证集只有 4 个攻击时，"早停该在哪一轮停"这个判定信号本身噪声很大。
+
+| latent_dim | 旧（固定300ep，3 seed 均值） | 新（早停，3 seed 均值±总体标准差） |
+|---:|---:|---:|
+| 1 | 0.0675 | 0.0756±0.0105 |
+| 2 | 0.0675 | 0.0711±0.0031 |
+| 4 | 0.0675 | 0.0679±0.0037 |
+
+对照 `richer_abs_sign`/`arx`（0.0684/0.0683，无随机性）：早停后 `latent_dim=1` 从"打平"变成
+明确更差（高于对照且超出一个标准差），`latent_dim=2` 仍略差但方差缩小，`latent_dim=4` 基本
+维持打平——**没有看到 core 任务那种"早停后明显改善"的效果，`latent_dim=1` 反而变差了**。
+
+### 结论
+
+1. **这次没能验证"重建 loss 没收敛=训练不足"这个假设在这个任务上成立**——重建 loss 确实随
+   早停延长了训练（部分种子跑到 2000–5000 epoch），但 held-out rollout MSE 没有像 core 任务
+   那样系统性改善，`latent_dim=1` 反而更差。最可能的原因：core 任务的验证集来自几百上千条
+   已有的独立 `topic_split="validation"` 轨迹，而这里为了做早停，把本来就只有 22 个训练攻击的
+   数据又切掉了约 4 个做验证——**验证信号本身的样本量小到不足以可靠地告诉训练"什么时候该停"**，
+   这解释了早停轮数在种子间的巨大波动（10 倍量级），也解释了为什么早停反而带来了更差/更不稳定
+   的结果，而不是像 core 任务一样带来改善。
+2. **这不能反过来证明"AE 在这个任务上已经训好了、打平就是真的打平"**——上面第 1 点的解释是
+   "验证集太小导致早停失效"，不是"训练本来就够了"；如果要真正回答"重建没收敛是不是训练不足"
+   这个问题，需要更多开环激励数据（让训练/验证都有足够样本），而不是在现有 44 条轨迹里再切一刀。
+   `ABLATION_STUDY.md` 第八阶段末尾的判断（"这提示欠拟合假设的适用性依赖数据规模本身要足够
+   支撑一个独立的验证切分"）在这里得到了具体印证。
+3. 因此上面"明确的局限"里"重建 loss 没收敛,是否会改变 rollout 结论没有验证过"这条,**依然没有
+   被这次实验解决**，只是把"为什么没解决"从"没试过早停"变成了"试了早停但数据规模不支持"——
+   真正的下一步不是调早停的超参数（`patience`/`val_frac`），而是等有更大规模的 Phase B 数据后
+   重新检验。
+
+产物：`outputs/koopman_ae_baseline/ae_fit_report_earlystop_seed{0,1,2}.json`。
