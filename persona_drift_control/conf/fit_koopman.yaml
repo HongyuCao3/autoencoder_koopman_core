@@ -1,0 +1,26 @@
+# Hydra config for scripts/fit_koopman_hydra.py -- ARX / richer_abs_sign
+# ridge fit, task-scoped via the `task` group (conf/task/*.yaml) so
+# overriding one task's nu/mu/ridge/... can never bleed into another's
+# (see the analysis in docs/experiments/koopman_defense_pilot.md's r/E
+# discussion for why this exists).
+#
+# Usage:
+#   python scripts/fit_koopman_hydra.py                              # task=defense (default)
+#   python scripts/fit_koopman_hydra.py task=defense task.fit.mu=1
+#   python scripts/fit_koopman_hydra.py task=persona_drift task.fit.rows_path=outputs/foo/trajectories.jsonl
+#
+# hydra.run.dir below stamps every run's output directory with the task
+# name, so a persona_drift fit and a defense fit can never silently share
+# (and overwrite) an output directory even if someone forgets an explicit
+# override.
+defaults:
+  - task: defense
+  - _self_
+
+output_root: outputs/koopman_fits
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: ${output_root}/${task.name}/fit_koopman/${now:%Y%m%d_%H%M%S}

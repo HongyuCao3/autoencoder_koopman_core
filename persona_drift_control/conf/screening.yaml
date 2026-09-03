@@ -1,0 +1,28 @@
+# Hydra config for scripts/run_screening_hydra.py -- task-scoped wrapper
+# around the defense controller/screening pipeline (scripts/run_defended_screening.py's
+# argparse CLI keeps working unchanged; this is an additive entrypoint, not
+# a replacement -- existing sbatch scripts under environment/ are unaffected).
+#
+# Only task=defense has a working screening.* schema right now: persona_drift
+# and sycophancy leave task.screening unset because their own controller
+# factory (screening.py::_make_controller) doesn't support koopman_mpc yet
+# (docs/method/controllers.md "扩展点") -- run_screening_hydra.py raises a
+# clear error for those rather than silently pretending to drive a pipeline
+# that doesn't exist.
+#
+# Usage:
+#   python scripts/run_screening_hydra.py output_dir=outputs/my_run task.screening.controller=koopman_mpc
+#   python scripts/run_screening_hydra.py output_dir=outputs/my_run task.screening.controller=threshold task.screening.threshold_y_min=0.6
+defaults:
+  - task: defense
+  - _self_
+
+# Required: every run must pick an explicit output directory (mirrors
+# --output-dir being `required=True` in run_defended_screening.py).
+output_dir: ???
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: ${output_dir}/hydra_run/${now:%Y%m%d_%H%M%S}

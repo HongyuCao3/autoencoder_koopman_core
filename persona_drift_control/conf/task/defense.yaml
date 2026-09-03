@@ -1,0 +1,56 @@
+# @package task
+# Adversarial-defense task parameters (docs/experiments/koopman_defense_pilot.md).
+# `fit.*` values below are the ones that produced koopman_fit_report_valigned.json /
+# the Phase C-I results already written up -- treat them as validated defaults,
+# not placeholders. `screening.*` mirrors scripts/run_defended_screening.py's
+# argparse defaults (Phase E's koopman_mpc arm).
+name: defense
+
+fit:
+  rows_path: outputs/koopman_defense_phaseB_random_excite/trajectories.jsonl
+  y_col: y_safety
+  split_col: attack_id
+  nu: 1
+  mu: 2
+  contemporaneous_v: true
+  ridge: 1.0e-6
+  controllability_horizon: 5
+  held_out_frac: 0.25
+  split_seed: 0
+  aux_cols: []
+  # AE (encoder-decoder) baseline knobs -- only read by fit_koopman_ae_hydra.py.
+  # Sizes deliberately small (see docs/experiments/ae_baseline_plan.md
+  # "parameter count alignment"): this is what was actually fit and compared
+  # against arx/richer_abs_sign, not core.py's much larger defaults.
+  latent_dims: [1, 2, 4]
+  hidden_dim: 4
+  num_layers: 1
+  num_epochs: 300
+  learning_rate: 1.0e-3
+  dynamics_alpha: 1.0e-4
+  train_seed: 0
+  early_stopping_patience: null
+  early_stopping_min_delta: 1.0e-6
+  val_frac: 0.15
+
+screening:
+  agent_model: Qwen/Qwen3-4B
+  judge_model: null
+  device: cuda
+  num_attacks: 20
+  seeds: [0, 1]
+  attack_rng_seed: 0
+  agent_max_new_tokens: 256
+  controller: threshold
+  threshold_y_min: 0.7
+  random_excite_p: 0.5
+  periodic_period: 2
+  attack_ids: null
+  koopman_model_path: outputs/koopman_defense_phaseB_random_excite/koopman_fit_report.json
+  koopman_model_key: richer_abs_sign
+  koopman_nu: 1
+  koopman_mu: 2
+  koopman_horizon: 2
+  koopman_repeat_penalty: 0.0
+  koopman_contemporaneous_v: true
+  koopman_interaction_model_path: outputs/koopman_case_study/interaction_model_report.json

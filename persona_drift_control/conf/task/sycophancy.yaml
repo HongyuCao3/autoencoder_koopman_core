@@ -1,0 +1,33 @@
+# @package task
+# Sycophancy-drift task parameters. UNVALIDATED, same status as
+# persona_drift.yaml: no real trajectories.jsonl has been fit yet, values
+# below are plain dataclass defaults. Re-derive nu/mu/contemporaneous_v from
+# this task's own identification data before trusting them for anything.
+name: sycophancy
+
+fit:
+  rows_path: outputs/sycophancy_screening/trajectories.jsonl # placeholder: pilot data only, not the formal collection
+  y_col: y_probe
+  split_col: system_prompt_id
+  nu: 1
+  mu: 1
+  contemporaneous_v: false
+  ridge: 1.0e-6
+  controllability_horizon: 5
+  held_out_frac: 0.25
+  split_seed: 0
+  aux_cols: []
+  latent_dims: [1, 2, 4]
+  hidden_dim: 4
+  num_layers: 1
+  num_epochs: 300
+  learning_rate: 1.0e-3
+  dynamics_alpha: 1.0e-4
+  train_seed: 0
+  early_stopping_patience: null
+  early_stopping_min_delta: 1.0e-6
+  val_frac: 0.15
+
+# No koopman_mpc controller wired up for this task yet, same as
+# persona_drift.yaml -- see docs/method/controllers.md.
+screening: null

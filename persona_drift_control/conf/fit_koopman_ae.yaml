@@ -1,0 +1,18 @@
+# Hydra config for scripts/fit_koopman_ae_hydra.py -- AE (encoder-decoder)
+# Koopman baseline, task-scoped the same way conf/fit_koopman.yaml is.
+#
+# Usage:
+#   python scripts/fit_koopman_ae_hydra.py                                   # task=defense (default)
+#   python scripts/fit_koopman_ae_hydra.py task.fit.learning_rate=5e-4 task.fit.latent_dims=[2,4,8]
+#   python scripts/fit_koopman_ae_hydra.py task=persona_drift task.fit.rows_path=outputs/foo/trajectories.jsonl
+defaults:
+  - task: defense
+  - _self_
+
+output_root: outputs/koopman_fits
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: ${output_root}/${task.name}/fit_koopman_ae/${now:%Y%m%d_%H%M%S}

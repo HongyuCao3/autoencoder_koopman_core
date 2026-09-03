@@ -1,0 +1,39 @@
+# @package task
+# Persona-drift task parameters. UNVALIDATED: no real trajectories.jsonl has
+# been fit yet (docs/method/koopman_surrogate.md "已知缺口") -- the values
+# below are ReducedStateConfig/KoopmanSurrogate/AEKoopmanConfig's own
+# dataclass defaults, not numbers tuned for this task the way defense.yaml's
+# are. Do not copy defense.yaml's nu/mu/contemporaneous_v here "to be safe";
+# re-derive them from this task's own Phase-B-equivalent identification data
+# once the formal 320-trajectory collection lands, the same way
+# koopman_defense_pilot.md Phase C did for the defense task.
+name: persona_drift
+
+fit:
+  rows_path: outputs/signal_screening/trajectories.jsonl # placeholder: pilot data only, not the formal collection
+  y_col: y_probe
+  split_col: system_prompt_id
+  nu: 1
+  mu: 1
+  contemporaneous_v: false
+  ridge: 1.0e-6
+  controllability_horizon: 5
+  held_out_frac: 0.25
+  split_seed: 0
+  aux_cols: []
+  latent_dims: [1, 2, 4]
+  hidden_dim: 4
+  num_layers: 1
+  num_epochs: 300
+  learning_rate: 1.0e-3
+  dynamics_alpha: 1.0e-4
+  train_seed: 0
+  early_stopping_patience: null
+  early_stopping_min_delta: 1.0e-6
+  val_frac: 0.15
+
+# screening.py::_make_controller does not support koopman_mpc yet
+# (docs/method/controllers.md "扩展点") -- intentionally left unset rather
+# than guessing at a schema scripts/run_screening_hydra.py can't actually
+# drive. Fill this in when that controller gets wired up.
+screening: null
