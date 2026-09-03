@@ -35,6 +35,14 @@
 
 ## 可行性分析（`feasibility/`）
 
+- **[feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md](feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md) —
+  ★ sycophancy 这条线在投入 GPU 前的前置条件核对：它能否像 core 任务那样建 Koopman 模型、
+  能否像防御线那样闭环、需不需要 AE。**结论：AE 不需要**（经验证据三条同向；且离散立场状态下
+  有限状态空间的 Koopman 算子就是转移矩阵本身，精确线性、无需提升，AE 的存在理由不成立）；
+  五个前置条件里只有"惯性"已满足，**执行器权威完全没测**（真正的第一道门）、读出只有 3 个
+  取值且 84.5% 取在上限（辨识性问题）、horizon 被 T=5 硬卡死只剩 1 步 rollout。建议顺序：
+  先零成本把 judge 硬标签换成 token 概率拿到连续读出 → 执行器权威检查 + 准备 benign 对照臂
+  （否则"永不改变立场"是平凡最优解）→ 扩样本 → 先线性建模 → AE 放最后且预期打平。**
 - [feasibility/STOLFO_ACTIVATION_STEERING_FEASIBILITY.md](feasibility/STOLFO_ACTIVATION_STEERING_FEASIBILITY.md) —
   Stolfo et al. ICLR 2025 激活转向论文的任务适配性分析（任务不照搬、要素可移植：
   通道 C 执行器 + 连续约束 readout）

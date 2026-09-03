@@ -281,7 +281,13 @@ grep '"turn": 1' persona_drift_control/outputs/sycophancy_screening/trajectories
 4. ~~换独立 judge 模型重跑（原候选 (b)）~~ **已完成（job 15487325，见"追加分析"一节）**——
    自评偏差被证实是单向漏检、把效应量压掉 4 倍，但判定结论不变。**`--judge-model` 从此
    是默认跑法，不再当作可选项**。
-5. **下一步（优先级已被上一条改写）**：独立 judge 的结果把"施压/数据太弱"和"现象本身就弱"
+5. **建模/闭环方向的前置条件核对：见
+   [`../feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md`](../feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md)**
+   （2026-09-03）——这条线能否像 core 任务那样建 Koopman 模型、能否像防御线那样闭环、
+   需不需要 AE。下面 (a)–(e) 是 screening 本身的下一步，那份文档是"screening 之后往哪走"
+   的前置条件清单，两者互补：它把"把 judge 硬标签换成 token 概率拿到连续读出"排在最前
+   （零 GPU 成本，可能同时解决这里的欠功效问题），把"执行器权威检查"列为闭环的第一道门。
+6. **下一步（优先级已被第 4 条改写）**：独立 judge 的结果把"施压/数据太弱"和"现象本身就弱"
    这个二选一变成了第三种诊断——**功效不足**（方向一致为负、效应量 4 倍于自评、只是
    n=20 items 推不过显著线）。因此：
    (a) **扩样本（现在是最高优先级，不再是"最便宜的那个"）**：提高 `--num-items`，配
