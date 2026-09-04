@@ -20,8 +20,20 @@ flip -- plus two the sycophancy comparison had no reason to ask:
   erosion-signal SNR that docs/experiments/koopman_defense_pilot.md section
   五 reports as 1.63 for the judge vs 4.20 for the activation projection)?
 
+`per_item_slope_test` and `inertia` also live here even though they
+originated in scripts/compare_judge_runs.py (the sycophancy line's new-Q1/
+new-Q3 estimators): docs/experiments/continuous_readout_plan.md's S4 needed
+them a third time (once more per estimator, on the continuous readout
+instead of the hard label), which is this repo's own rule-of-three for
+promoting a script-local helper into the shared module. Both took a
+`score_key` parameter here rather than staying hardcoded to
+`"y_consistency"`, with that string as the default so every existing caller
+is unaffected byte-for-byte.
+
 Everything here is pure functions over row dicts; the file/CLI half lives in
-scripts/compare_safety_judge_runs.py.
+scripts/compare_safety_judge_runs.py (defense line) and
+scripts/compare_judge_runs.py / scripts/analyze_continuous_readout.py
+(sycophancy line).
 """
 
 from __future__ import annotations
@@ -31,6 +43,8 @@ from typing import Any, Iterable
 
 import numpy as np
 from scipy import stats
+
+DEFAULT_TURNS = (1, 2, 3, 4, 5)
 
 
 def _key(row: dict[str, Any]) -> tuple[str, int]:
@@ -233,3 +247,83 @@ def readout_quality(rows: list[dict[str, Any]], value_key: str = "y_safety") -> 
         "pooled_within_turn_sd": pooled_within_sd,
         "erosion_snr": float(snr),
     }
+
+
+def per_item_slope_test(
+    rows: dict[tuple[str, int], dict[str, Any]],
+    trajectory_ids: list[str],
+    turns: tuple[int, ...],
+    score_key: str = "y_consistency",
+) -> dict[str, Any]:
+    """new_q1_escalation's estimator: per-item slope of `score_key` against
+    turn (the same item's multiple seeds pooled into one regression), then a
+    one-sample t-test on the per-item slopes against zero. Same aggregation
+    level as analysis_sycophancy.py, but lets the caller restrict which
+    trajectories and turns enter the regression -- moved here from
+    scripts/compare_judge_runs.py unchanged apart from the `score_key`
+    parameter (default preserves the original y_consistency behavior
+    byte-for-byte)."""
+
+    by_item: dict[str, list[tuple[int, float]]] = collections.defaultdict(list)
+    for tid in trajectory_ids:
+        item_id = rows[(tid, 1)]["item_id"]
+        for turn in turns:
+            by_item[item_id].append((turn, float(rows[(tid, turn)][score_key])))
+
+    slopes = {}
+    for item_id, pairs in by_item.items():
+        xs = [x for x, _ in pairs]
+        ys = [y for _, y in pairs]
+        # A fully constant series has no variation at all; linregress would
+        # give nan, but that item's slope is honestly 0.
+        slopes[item_id] = 0.0 if len(set(ys)) == 1 else float(stats.linregress(xs, ys).slope)
+
+    values = np.array([slopes[k] for k in sorted(slopes)])
+    test = stats.ttest_1samp(values, 0.0)
+    return {
+        "n_items": len(values),
+        "mean_slope": float(values.mean()),
+        "t": float(test.statistic),
+        "p_value": float(test.pvalue),
+        "per_item_slopes": {k: slopes[k] for k in sorted(slopes)},
+    }
+
+
+def inertia(
+    rows: dict[tuple[str, int], dict[str, Any]],
+    trajectory_ids: list[str],
+    turns: tuple[int, ...] = DEFAULT_TURNS,
+    score_key: str = "y_consistency",
+) -> dict[str, Any]:
+    """new_q3_autocorrelation's estimator: OLS of `score_key` at turn t+1 on
+    turn t, pooled across `trajectory_ids` and consecutive turn pairs within
+    `turns`. Moved here from scripts/compare_judge_runs.py unchanged apart
+    from the `score_key`/`turns` parameters (both default to the original
+    hardcoded values, so the sycophancy comparison's existing call sites are
+    unaffected)."""
+
+    xs, ys = [], []
+    for tid in trajectory_ids:
+        for turn in turns[:-1]:
+            xs.append(float(rows[(tid, turn)][score_key]))
+            ys.append(float(rows[(tid, turn + 1)][score_key]))
+    fit = stats.linregress(xs, ys)
+    return {"n_pairs": len(xs), "slope": float(fit.slope), "r": float(fit.rvalue), "p_value": float(fit.pvalue)}
+
+
+def histogram_counts(values: Iterable[float], bins: int = 40, lo: float = 0.0, hi: float = 1.0) -> list[int]:
+    """Fixed-range bin counts for `values`, as a plain list -- the ASCII/JSON
+    rendering stays in the script layer (no plotting library is available in
+    the run environment, see continuous_readout_plan.md 2.7). Values outside
+    [lo, hi] are clipped into the edge bins rather than dropped, so the
+    counts always sum to len(values)."""
+
+    array = np.asarray(list(values), dtype=float)
+    edges = np.linspace(lo, hi, bins + 1)
+    clipped = np.clip(array, lo, hi)
+    counts = np.zeros(bins, dtype=int)
+    for value in clipped:
+        idx = int(np.searchsorted(edges, value, side="right") - 1)
+        idx = min(max(idx, 0), bins - 1)
+        counts[idx] += 1
+    return counts.tolist()

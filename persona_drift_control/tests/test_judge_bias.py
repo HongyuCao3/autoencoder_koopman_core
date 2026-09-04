@@ -1,6 +1,6 @@
 import math
 
-from persona_drift.judge_bias import analyze_judge_bias, pair_rows, readout_quality
+from persona_drift.judge_bias import analyze_judge_bias, histogram_counts, inertia, pair_rows, per_item_slope_test, readout_quality
 
 
 def row(tid, turn, y, *, agent_message=None, u_remind=0, attack_id="a1", judge_model="self", seed=0):
@@ -129,3 +129,78 @@ def test_readout_quality_on_a_fully_saturated_readout_has_no_snr():
     assert q["ceiling_share"] == 1.0
     assert q["n_distinct_levels"] == 1
     assert q["erosion_snr"] != q["erosion_snr"] or q["erosion_snr"] == 0.0
+
+
+def test_readout_quality_uses_the_given_value_key():
+    rows = [
+        {"turn": 1, "y_consistency": 1.0, "y_consistency_continuous": 0.9},
+        {"turn": 1, "y_consistency": 1.0, "y_consistency_continuous": 0.8},
+        {"turn": 2, "y_consistency": 0.5, "y_consistency_continuous": 0.4},
+        {"turn": 2, "y_consistency": 0.5, "y_consistency_continuous": 0.3},
+    ]
+    q = readout_quality(rows, value_key="y_consistency_continuous")
+    assert q["n_distinct_levels"] == 4
+    assert readout_quality(rows, value_key="y_consistency")["n_distinct_levels"] == 2
+
+
+# --- per_item_slope_test / inertia (moved here from
+# scripts/compare_judge_runs.py, continuous-readout plan S4) --------------
+
+
+def _item_rows(item_id, tid, ys, score_key="y_consistency"):
+    return {(tid, turn): {"item_id": item_id, score_key: y} for turn, y in zip((1, 2, 3, 4, 5), ys)}
+
+
+def test_per_item_slope_test_default_score_key_matches_original_behavior():
+    rows = {}
+    rows.update(_item_rows("i1", "t1", [1.0, 1.0, 0.5, 0.5, 0.0]))
+    rows.update(_item_rows("i2", "t2", [1.0, 1.0, 1.0, 1.0, 1.0]))
+    result = per_item_slope_test(rows, ["t1", "t2"], (1, 2, 3, 4, 5))
+    assert result["n_items"] == 2
+    assert result["per_item_slopes"]["i2"] == 0.0  # constant series -> slope 0, not nan
+    assert result["per_item_slopes"]["i1"] < 0
+
+
+def test_per_item_slope_test_reads_the_given_score_key():
+    rows = {}
+    rows.update(_item_rows("i1", "t1", [0.0, 0.0, 0.0, 0.0, 0.0]))
+    rows.update(_item_rows("i2", "t2", [0.0, 0.0, 0.0, 0.0, 0.0]))
+    for k in rows.values():
+        k["y_consistency_continuous"] = 1.0  # flat but nonzero under the other key
+    result = per_item_slope_test(rows, ["t1", "t2"], (1, 2, 3, 4, 5), score_key="y_consistency_continuous")
+    assert result["per_item_slopes"]["i1"] == 0.0
+    assert result["per_item_slopes"]["i2"] == 0.0
+
+
+def test_inertia_default_turns_and_score_key_match_original_behavior():
+    rows = {}
+    rows.update(_item_rows("i1", "t1", [1.0, 0.75, 0.5, 0.25, 0.0]))
+    result = inertia(rows, ["t1"])
+    assert result["n_pairs"] == 4
+    assert result["slope"] == 1.0  # perfectly linear decay
+
+
+def test_inertia_reads_the_given_score_key():
+    rows = {
+        ("t1", 1): {"y_consistency": 1.0, "y_alt": 0.0},
+        ("t1", 2): {"y_consistency": 0.5, "y_alt": 1.0},
+        ("t2", 1): {"y_consistency": 0.0, "y_alt": 1.0},
+        ("t2", 2): {"y_consistency": 0.5, "y_alt": 0.0},
+    }
+    result = inertia(rows, ["t1", "t2"], turns=(1, 2), score_key="y_alt")
+    assert result["n_pairs"] == 2
+    assert result["slope"] == -1.0  # y_alt: 0->1 and 1->0, perfect anti-correlation
+
+
+def test_histogram_counts_sums_to_input_length_and_respects_bin_edges():
+    counts = histogram_counts([0.0, 0.05, 0.5, 0.95, 1.0], bins=10, lo=0.0, hi=1.0)
+    assert sum(counts) == 5
+    assert counts[0] >= 1  # 0.0 and 0.05 both land in [0, 0.1)
+    assert counts[-1] >= 1  # 1.0 clipped into the last bin
+
+
+def test_histogram_counts_clips_out_of_range_values_into_edge_bins():
+    counts = histogram_counts([-1.0, 2.0], bins=4, lo=0.0, hi=1.0)
+    assert sum(counts) == 2
+    assert counts[0] == 1
+    assert counts[-1] == 1

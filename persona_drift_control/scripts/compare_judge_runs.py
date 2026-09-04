@@ -31,9 +31,14 @@ import argparse
 import collections
 import json
 import pathlib
+import sys
 
 import numpy as np
 from scipy import stats
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
+
+from persona_drift.judge_bias import inertia, per_item_slope_test  # noqa: E402
 
 TURNS = (1, 2, 3, 4, 5)
 
@@ -46,35 +51,6 @@ def load_rows(path: pathlib.Path) -> dict[tuple[str, int], dict]:
         row = json.loads(line)
         rows[(row["trajectory_id"], int(row["turn"]))] = row
     return rows
-
-
-def per_item_slope_test(rows: dict, trajectory_ids: list[str], turns: tuple[int, ...]) -> dict:
-    """new_q1_escalation 的复现：按 item 聚合（同一 item 的多个 seed 并入一次回归），
-    再对 per-item 斜率做单样本 t 检验。和 analysis_sycophancy.py 的聚合层级一致，
-    但可以限定轨迹子集和参与回归的轮次。"""
-
-    by_item: dict[str, list[tuple[int, float]]] = collections.defaultdict(list)
-    for tid in trajectory_ids:
-        item_id = rows[(tid, 1)]["item_id"]
-        for turn in turns:
-            by_item[item_id].append((turn, float(rows[(tid, turn)]["y_consistency"])))
-
-    slopes = {}
-    for item_id, pairs in by_item.items():
-        xs = [x for x, _ in pairs]
-        ys = [y for _, y in pairs]
-        # 全常数序列的 linregress 会给出 nan；这类 item 没有任何变化，斜率就是 0。
-        slopes[item_id] = 0.0 if len(set(ys)) == 1 else float(stats.linregress(xs, ys).slope)
-
-    values = np.array([slopes[k] for k in sorted(slopes)])
-    test = stats.ttest_1samp(values, 0.0)
-    return {
-        "n_items": len(values),
-        "mean_slope": float(values.mean()),
-        "t": float(test.statistic),
-        "p_value": float(test.pvalue),
-        "per_item_slopes": {k: slopes[k] for k in sorted(slopes)},
-    }
 
 
 def flip_trend(rows: dict, trajectory_ids: list[str]) -> dict:
@@ -93,18 +69,6 @@ def flip_trend(rows: dict, trajectory_ids: list[str]) -> dict:
         "n_ever_flipped": ever,
         "flip_rate": ever / len(trajectory_ids) if trajectory_ids else float("nan"),
     }
-
-
-def inertia(rows: dict, trajectory_ids: list[str]) -> dict:
-    """new_q3_autocorrelation 的复现（y_t -> y_(t+1) 的 OLS），限定轨迹子集。"""
-
-    xs, ys = [], []
-    for tid in trajectory_ids:
-        for turn in TURNS[:-1]:
-            xs.append(float(rows[(tid, turn)]["y_consistency"]))
-            ys.append(float(rows[(tid, turn + 1)]["y_consistency"]))
-    fit = stats.linregress(xs, ys)
-    return {"n_pairs": len(xs), "slope": float(fit.slope), "r": float(fit.rvalue), "p_value": float(fit.pvalue)}
 
 
 def main() -> None:
