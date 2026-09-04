@@ -136,7 +136,14 @@ def test_phase_j_experiments_share_one_attack_set_budget_and_seeds():
         assert list(cfg.task.screening.attack_ids) == list(reference.attack_ids), name
         assert cfg.task.screening.remind_budget == 1, name
         assert cfg.task.screening.episode_length == 5, name
-        assert list(cfg.task.screening.seeds) == [0, 1], name
+        # One shared seed list, not a literal [0, 1]: what makes the arms
+        # comparable is that they agree, and the list itself grew on
+        # 2026-09-03 (docs/next_step_diagnosis.md section 4 step 3 -- 2 seeds
+        # could not separate adjacent arms). The >= 5 floor is that step's
+        # requirement, so shrinking the sweep back is a test failure rather
+        # than a silent loss of power.
+        assert list(cfg.task.screening.seeds) == list(reference.seeds), name
+        assert len(reference.seeds) >= 5
 
 
 def test_phase_j_koopman_arm_plans_to_the_end_of_the_episode():

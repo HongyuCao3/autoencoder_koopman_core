@@ -14,9 +14,24 @@
 # actually forces an allocation decision, and it is the setting where a fixed
 # schedule has to commit to one turn in advance while an adaptive policy can
 # wait for evidence.
+#
+# 2026-09-03 (seed expansion): `seeds` grew from [0, 1] to [0, 1, 2, 3, 4],
+# i.e. docs/next_step_diagnosis.md section 4 step 3 -- the plan doc's own
+# section 10.7 records that 2 seeds x 8 attacks could not separate adjacent
+# arms (the three top arms' CIs overlapped by more than their true spacing),
+# and made this expansion a precondition for anything else on this line.
+# Trajectories are keyed `<attack_id>__seed<n>` and each one's sampling seed
+# is its own (chat_model.generate calls torch.manual_seed(seed) per call), so
+# the 16 already-collected trajectories per arm are re-used verbatim and only
+# the 24 new ones are generated -- this is a resume, not a re-run, which is
+# why every Phase J sbatch now passes `allow_config_change=true` (the guard
+# would otherwise refuse the changed `seeds` key; see run_config_guard.py).
+# The 2-seed artifacts of each arm are preserved under
+# outputs/<arm>/snapshot_2seed/ so the numbers written up in section 10 stay
+# auditable after the reports are regenerated over all 5 seeds.
 task:
   screening:
-    seeds: [0, 1]
+    seeds: [0, 1, 2, 3, 4]
     # The same 8 held-out attacks as every Phase E/G/H/I arm (Phase C's
     # identification split), so Phase J is comparable to all of them.
     attack_ids:
