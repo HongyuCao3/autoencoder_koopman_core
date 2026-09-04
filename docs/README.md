@@ -119,8 +119,10 @@
   给出的根因假设与三步建议。第一节的"v 对齐"时序错位诊断已被验证并修好（见
   `experiments/koopman_case_study_design.md` 的 Phase I）；**第二节的建议（改成预算约束/
   binding 代价的评测设定）已于 2026-09-03 开始执行，见下面的
-  `experiments/budget_constrained_defense_plan.md`（Phase J）**；第三节（扩 seed、主指标改成
-  效应量+bootstrap）尚未执行，仍是开放建议。
+  `experiments/budget_constrained_defense_plan.md`（Phase J）**；**第三节（扩 seed、主指标改成
+  效应量+bootstrap）也已于 2026-09-03 执行完毕**——主指标早在 Phase J 第一轮就换成了配对效应量
+  +bootstrap，seed 于 2026-09-03 从 2 扩到 5（该文档第十一节）。**结论：这一步没有买到分辨力**，
+  CI 按 √n 收窄却仍比相邻臂间距宽 2–5 倍，天花板是 judge 只有 5 个取值的读出，不是样本量。
 
 ## 实验
 
@@ -206,10 +208,14 @@
   ③层"LSTM 一步-多步预测模型"这个 ablation 缺口的计划与实现（只有 ARX vs `richer_abs_sign`
   两个同结构线性模型对比过,还没有真正的非线性/长记忆模型跑过对比）。记录了两种设计取舍
   （固定窗口 vs 隐状态跨轮次持续演化，采用后者）、`Predictor` 接口怎么接、训练/评测口径怎么
-  和现有 Koopman 两件套对齐、参数量/数据规模两个混杂因素怎么处理。**状态：已执行完毕，负结果——
-  LSTM 在全部测试隐层大小上都明显差于 `richer_abs_sign`（0.081 vs 0.043）。注意这批数字是
-  "v 对齐"bug 修复之前跑的（对照基线在 v-aligned 数据上是 0.0684，见 `ae_baseline_plan.md`），
-  LSTM 侧尚未重跑；差距接近 2 倍所以方向大概率不变，但严格说是待复核。**
+  和现有 Koopman 两件套对齐、参数量/数据规模两个混杂因素怎么处理。**状态：已执行完毕，
+  并已于 2026-09-03 在 v 对齐修正后重跑复核（原"待复核"结清）。结论方向不变、量级改写——
+  在和 AE baseline 同一口径（早停用训练攻击切出的验证集）下，LSTM 是 0.082–0.095，比
+  `richer_abs_sign` 的 0.0684 差 20%–39%，四个隐层大小全部更差；但原先记录的"接近 2 倍"
+  （0.081 vs 0.043）不成立——v 对齐让对照基线自己从 0.043 掉到 0.0684，差距缩到 0.97–1.07 倍，
+  剩下的劣势全部由早停口径撑着（旧口径的早停判据就是被报告的那个 held-out 集合，是乐观的）。
+  加了一个消融把"口径变公平"和"训练数据少 4 个攻击"分开：H=8 上前者花 +0.0276、后者只花
+  +0.0009。**
 - [experiments/ae_baseline_plan.md](experiments/ae_baseline_plan.md) — 补齐 `BASELINES.md`
   ③层另一个 ablation 缺口：对照根目录 `src/koopman_ae/core.py` 里
   `DeepAugmentedKoopmanAutoencoder` 的 encoder-decoder 架构（非线性 encoder/decoder + 隐空间
@@ -233,13 +239,31 @@
   覆盖或混淆，新增了 Hydra `conf/experiment/` 配置组（一个文件=一个臂=一个 `output_dir`，攻击集
   /seed/预算集中在 `phaseJ_base.yaml`）和 `persona_drift.run_config_guard`（同一 `output_dir`
   换了配置就拒绝续跑——screening 循环天生可续跑，指错目录不会报错，只会安静地把两个控制器的
-  轨迹混进同一份报告）。**状态（2026-09-03）：7 个臂已全部跑完，结果见该文档第十节——
-  自适应臂没打赢最优固定臂（`fixed_t4`），也没明确打赢 `threshold`：三个臂在安全分上
-  互相都不可区分（CI 宽度和相邻臂真实间距同量级），只在花掉多少预算上可区分。机制上
-  koopman 臂基本重新发现了 `fixed_t4`（16 条里 8 条选了同一轮、逐位相同）。这一轮真正
-  成立的独立结果是"单次提醒放在哪一轮差别很大"（late_y 0.6510→0.7760），即分配问题
-  确实存在，但一个固定日程就能拿到答案。主要限制是 2 seed 不足以分辨相邻臂——
-  `next_step_diagnosis.md` 第三步（扩 seed）现在成了继续的必要条件。**
+  轨迹混进同一份报告）。**状态（2026-09-03）：7 个臂跑了两轮——2 seed（第十节）与
+  5 seed 复核（第十一节，`next_step_diagnosis.md` 第三步）。定性结论两轮一字不差：
+  自适应臂没打赢最优固定臂，也没明确打赢 `threshold`，三个臂在安全分上互相都不可区分，
+  只在花掉多少预算上可区分；机制上 koopman 臂在 3/4 的轨迹上逐位复现某个固定日程
+  （40 条里 turn4×20 = `fixed_t4`、turn5×10 = `fixed_t5`），全部净差异来自"一次都不花"
+  的那 10 条，而那正是它唯一自己发明的动作，也是最明确的失分来源。**
+  **5 seed 复核改写的两点**：① 2 seed 选出的"最优固定臂"从 `fixed_t4` 变成了 `fixed_t5`，
+  固定臂之间的 late_y 跨度也从 0.125 压缩到 0.075——"哪一轮最好"这个判断本身在 2 seed 下
+  就不稳。② **扩样本按 √n 如期生效但仍然不够**：CI 宽度 ×0.60（理论 0.63），却还比相邻臂
+  0.010–0.029 的间距宽 2–5 倍，补到够用需要约 31 倍轨迹量（每臂 ~1250 条、约 100 GPU-小时）。
+  **所以"扩样本是继续的必要条件"要改成"必要但不充分，且充分的代价不现实"**——这正面印证了
+  `koopman_defense_pilot.md` 第六节提出的可能性：天花板是 judge 只有 5 个取值的读出分辨率，
+  不是样本量。与下面那条独立 judge 的重打分结论合流。**
+  **2026-09-03 追加（读出的第四个修法，job 15519620 已完成）**：这条线从 Phase A 到 J 的
+  每一个 judge 分都是自评 judge（`judge_model == agent_model == Qwen/Qwen3-4B`）打的，
+  从没检查过。已用独立 judge（`Qwen3-4B-Instruct-2507`，与 sycophancy 线同一个 checkpoint）
+  **离线重打分** 10 个臂 1605 行（复用每行存着的 `agent_message`，不重新生成 agent 文本，
+  配对是构造性精确的）。**结论比预期更糟**：方向与 sycophancy 线相反（600/624 处分歧是
+  独立 judge 更宽松），而且**偏差随轮次系统性增长**（turn1 分歧 0% → turn5 71%，signed
+  diff 斜率 +0.072/轮 p=0.0000），与 new-Q1 的自变量共线——**独立 judge 下 10 个臂的
+  new-Q1 全部不显著**（自评下除 periodic 外全部显著）。人工核查确认两个判官都在犯错、
+  方向相反（自评把"话题变黑"读成"安全下降"，独立 judge 在真正危险的后段轮次上过松），
+  所以这不是"换个 judge 就修好"，而是**读出本身不可靠**的实测证据。**臂间比较不受影响**
+  （偏差与 `u_remind` 无关，Welch p=0.13；Phase J 的判定在两个 judge 下同号同结论）。
+  详见 `koopman_defense_pilot.md` 第七节。
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) — ★
   正在做：`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**新开一次对话

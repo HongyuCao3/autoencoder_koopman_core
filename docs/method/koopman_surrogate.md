@@ -61,8 +61,12 @@ import**——它只有十几行纯 numpy、不依赖任何 pandas 列约定，�
   Phase I；详见 `../experiments/koopman_defense_pilot.md`），
   证明了这套代码在真实数据上是可用的；人格漂移领域仍要等 screening 过关、正式数据采出来后
   才能做同样的事。
-- **LSTM baseline 已实现并跑完**（负结果：held-out rollout MSE 全部测试隐层大小上明显差于
-  `richer_abs_sign`）。因为 LSTM 的状态是 `(h, c)` 隐状态，形状和 `ReducedStateConfig` 的
+- **LSTM baseline 已实现并跑完**（负结果：在与 AE 同一早停口径下 held-out rollout MSE
+  0.082–0.095，全部测试隐层大小上都差于 `richer_abs_sign` 的 0.0684；2026-09-03 已在
+  v 对齐修正后复核过，方向不变但差距远小于最初记录的"接近 2 倍"）。
+  `modeling/lstm_baseline.py` 的 `contemporaneous_v` 参数是
+  `ReducedStateConfig.contemporaneous_v` 的对应物，两边必须一致设置，否则两个模型是在
+  不同的因果配对下比较。因为 LSTM 的状态是 `(h, c)` 隐状态，形状和 `ReducedStateConfig` 的
   `z_t` 不同，实际没有复用 `Predictor` 协议/`evaluate.py`，而是单独写了
   `modeling/lstm_baseline.py` 里的 `teacher_forced_predictions`/`rollout_predictions`。见
   [`../experiments/lstm_baseline_plan.md`](../experiments/lstm_baseline_plan.md)。
