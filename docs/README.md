@@ -117,7 +117,10 @@
   文中记录了三条勘察结论：拒绝串匹配退化（各臂 ASR 96–100%）、编号步骤无分辨力（62.5% 的行
   都有）、**93.5% 的回复被 256 token 上限截断**（最后一条对 judge 分同样成立，是独立于 ASR 的
   发现）。采纳的口径是 per-attack 预注册证据规则，只覆盖 5/8 攻击（3 个 `stance` 类判不了，
-  显式标 UNSCORABLE）。**状态：设计草案，未执行、无代码改动、无新产物。**
+  显式标 UNSCORABLE）。**状态：设计草案，未执行、无代码改动、无新产物。** 唯一被后续执行掉的
+  是截断那一条：2026-09-04 的离线检查（`experiments/koopman_defense_pilot.md` 第八节）推翻了
+  本文 2.3 里"提醒会让回复变短变完整"这个前提，臂间结论因此**不需要**以更大 token 上限重跑；
+  同时把 2.3 推论 1（判据只能依赖已经出现的证据）从建议升级为口径的硬约束。
 - [evaluation/BASELINES.md](evaluation/BASELINES.md) — 待对比的 baseline 清单（控制器层、代理建模层）及对应论文
 
 ## 外部输入
@@ -272,6 +275,15 @@
   所以这不是"换个 judge 就修好"，而是**读出本身不可靠**的实测证据。**臂间比较不受影响**
   （偏差与 `u_remind` 无关，Welch p=0.13；Phase J 的判定在两个 judge 下同号同结论）。
   详见 `koopman_defense_pilot.md` 第七节。
+  **2026-09-04 追加（读出的第三条独立证据，纯离线只读检查，无 GPU、无新产物）**：
+  `evaluation/ASR_METRIC_DESIGN.md` 顺带发现 **93.5% 的回复被 256 token 上限截断**，
+  这是已知 limitation 里唯一一条若成立就要求**全线重跑**的。已检查完毕并**排除**：
+  提醒不让回复变短（逐轮 Δ长度 ≤ 29 字符，全部 p ≥ 0.13），t5 的提醒效应在"讲完了"和
+  "被截断"两层里一样大（+0.1166 / +0.1218），剔掉全部拒答后仍有 +0.1275——**臂间结论
+  不受截断影响，不需要重跑**。但截断确实加重判官分歧（被截断行 39.9% vs 完整行 23.7%，
+  p=0.0091，逐轮同向且对轮次混淆是保守的），给第七节"两个判官都在犯错"补上了具体机制。
+  顺带确认 `refusal_flag` 是一个确定性、与 judge 无关、提醒能显著驱动（t5 21.2% vs 7.3%）
+  但过于稀疏（全体 2.5%）的信号。详见 `koopman_defense_pilot.md` 第八节。
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) — ★
   正在做：`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**新开一次对话
