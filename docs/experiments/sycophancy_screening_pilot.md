@@ -291,6 +291,10 @@ grep '"turn": 1' persona_drift_control/outputs/sycophancy_screening/trajectories
    需不需要 AE。下面 (a)–(e) 是 screening 本身的下一步，那份文档是"screening 之后往哪走"
    的前置条件清单，两者互补：它把"把 judge 硬标签换成 token 概率拿到连续读出"排在最前
    （零 GPU 成本，可能同时解决这里的欠功效问题），把"执行器权威检查"列为闭环的第一道门。
+   **2026-09-04：那一步的执行细则已写成 [`continuous_readout_plan.md`](continuous_readout_plan.md)**
+   （预注册 G0–G3 判据 + S1–S5 实施步骤；只回溯打分本文件记录的这两批 2×200 行，不重跑 agent）。
+   下面 (a) 扩样本的优先级因此再次后移：连续读出若把欠功效解释成量化损失，(a) 的规模估计
+   （~60 items）要按新的效应量/sd 重算。
 6. **下一步（优先级已被第 4 条改写）**：独立 judge 的结果把"施压/数据太弱"和"现象本身就弱"
    这个二选一变成了第三种诊断——**功效不足**（方向一致为负、效应量 4 倍于自评、只是
    n=20 items 推不过显著线）。因此：

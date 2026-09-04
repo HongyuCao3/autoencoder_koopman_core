@@ -296,6 +296,17 @@
   惯性结构（new-Q3 r 0.43→0.61）；**判定结论不变（仍不显著），但性质从"无现象"改写为
   "欠功效"**，下一步优先级相应改为扩样本 + 基线门槛（斜率只在 turn 2–5 拟合，避免文档里
   记录的天花板选择偏差陷阱）+ ground truth 审计。`--judge-model` 独立 judge 从此是默认。
+- **[experiments/continuous_readout_plan.md](experiments/continuous_readout_plan.md) —
+  ★ 下一步的执行说明书（2026-09-04）：把 sycophancy judge 的三分类硬标签换成同一 prompt 下
+  next-token 分布在三个标签 token 上的归一化概率，得到 y∈[0,1] 的连续读出。它同时是两条线的
+  前置条件——`SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 第 5 节把它排在 sycophancy 线最前
+  （零 GPU 成本、可能同时解决欠功效），`budget_constrained_defense_plan.md` 11.6 把同一件事
+  （Gate 2）升级为整条防御线的前置条件。本次**只回溯打分已有的 2×200 行、不重跑 agent、
+  不动防御线**（防御线换读出要作废 2492 行已记录数字，先用 400 行的 sycophancy 数据验方法）。
+  文档内容是执行细则而非设计讨论：已核实事实表（含"环境里没有 matplotlib"这类会让人踩空的
+  约束）、**跑之前冻结的 G0–G3 预注册判据**（标签 token 可分 / 保真度 / 非退化 / 功效，
+  每档都写明 PASS 与 FAIL 各自的下一步）、S1–S5 逐步的文件+函数签名+单测+commit 切分、
+  八条"会走偏的地方"。**状态：计划，未执行、无代码改动、无新产物。**
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；
