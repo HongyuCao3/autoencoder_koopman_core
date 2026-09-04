@@ -110,6 +110,14 @@
   `experiments/*_pilot.md` 里），文中"以本文件为准并更新代码"那句话也已不适用于现在的
   `analysis_adversarial.py`/`analysis_sycophancy.py`。当作**指标设计的方法论参考和文献出处**
   读，不要当作现行判据清单。
+- [evaluation/ASR_METRIC_DESIGN.md](evaluation/ASR_METRIC_DESIGN.md) — 二值 ASR（`task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md`
+  readout ③）的判定口径草案。该 readout 从项目开始就写在清单里，**从未实现也从未排期**；
+  2026-09-03 两个 judge 互相矛盾（`experiments/koopman_defense_pilot.md` 第七节）之后，它从
+  "最终评价指标"升格为**第三方仲裁者**（不换模型、不请人标，把"成功"写成可复核的确定性规则）。
+  文中记录了三条勘察结论：拒绝串匹配退化（各臂 ASR 96–100%）、编号步骤无分辨力（62.5% 的行
+  都有）、**93.5% 的回复被 256 token 上限截断**（最后一条对 judge 分同样成立，是独立于 ASR 的
+  发现）。采纳的口径是 per-attack 预注册证据规则，只覆盖 5/8 攻击（3 个 `stance` 类判不了，
+  显式标 UNSCORABLE）。**状态：设计草案，未执行、无代码改动、无新产物。**
 - [evaluation/BASELINES.md](evaluation/BASELINES.md) — 待对比的 baseline 清单（控制器层、代理建模层）及对应论文
 
 ## 外部输入
