@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import torch
 
 from persona_drift.modeling.lstm_baseline import (
@@ -56,6 +57,61 @@ def test_teacher_forced_and_rollout_predictions_shapes():
         assert isinstance(y_pred, float)
 
 
+def test_contemporaneous_v_feeds_the_next_turns_action():
+    """The v-alignment fix (docs/experiments/lstm_baseline_plan.md, mirroring
+    dataset.ReducedStateConfig.contemporaneous_v): predicting y_(t+1) must
+    read v_(t+1) -- the reminder inserted before that reply -- not v_t. Both
+    modes are checked against an explicit hand-rolled reference so a silent
+    off-by-one in either direction fails here."""
+
+    model = LSTMSurrogate(hidden_size=2)
+    ys = torch.tensor([1.0, 0.75, 0.5, 0.25], dtype=torch.float32)
+    vs = torch.tensor([0.0, 1.0, 0.0, 1.0], dtype=torch.float32)
+
+    @torch.no_grad()
+    def reference(v_indices: list[int]) -> list[float]:
+        h = torch.zeros(1, 2)
+        c = torch.zeros(1, 2)
+        out = [float(model.readout_layer(h).reshape(()))]
+        for t, vi in enumerate(v_indices):
+            h, c = model.cell(torch.stack([ys[t], vs[vi]]).reshape(1, 2), (h, c))
+            out.append(float(model.readout_layer(h).reshape(())))
+        return out
+
+    with torch.no_grad():
+        unaligned = model.forward_trajectory(ys, vs).numpy().tolist()
+        aligned = model.forward_trajectory(ys, vs, contemporaneous_v=True).numpy().tolist()
+
+    assert unaligned == pytest.approx(reference([0, 1, 2]))
+    assert aligned == pytest.approx(reference([1, 2, 3]))
+    # vs alternates, so the two pairings genuinely differ on this trajectory
+    # (they would coincide for a constant v and prove nothing).
+    assert unaligned != pytest.approx(aligned)
+
+
+def test_rollout_predictions_shift_matches_forward_trajectory_shift():
+    """`rollout_predictions` feeds the same v slot as `forward_trajectory`;
+    if only one of the two were shifted, training and held-out scoring would
+    silently disagree about which action caused which turn."""
+
+    model = LSTMSurrogate(hidden_size=2)
+    rows = [
+        {"trajectory_id": "t0", "turn": t + 1, "y_safety": y, "u_remind": v}
+        for t, (y, v) in enumerate([(1.0, 0), (0.75, 1), (0.5, 0), (0.25, 1)])
+    ]
+    vs = [float(row["u_remind"]) for row in rows]
+
+    aligned = [pred for _, _, pred in rollout_predictions(model, rows, y_col="y_safety", contemporaneous_v=True)]
+
+    z = model.init_state()
+    expected = [model.readout(z)]
+    for t in range(len(rows) - 1):
+        z = model.step(z, np.array([vs[t + 1]]))
+        expected.append(model.readout(z))
+
+    assert aligned == pytest.approx(expected)
+
+
 def test_mse_from_predictions_respects_min_turn_index():
     predictions_by_traj = [[(0, 1.0, 0.0), (1, 1.0, 1.0), (2, 1.0, 0.5)]]
     full = mse_from_predictions(predictions_by_traj, min_turn_index=0)
@@ -76,7 +132,7 @@ def test_train_lstm_surrogate_reduces_train_loss_on_easy_synthetic_data():
     model, info = train_lstm_surrogate(
         hidden_size=4,
         train_rows_by_traj=train_rows,
-        held_out_rows_by_traj=held_out_rows,
+        early_stop_rows_by_traj=held_out_rows,
         y_col="y_safety",
         epochs=60,
         lr=5e-2,
