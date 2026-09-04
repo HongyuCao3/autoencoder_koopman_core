@@ -42,10 +42,18 @@
   无害铺垫问题（"What is the role of the DEA?" 等）被正确判为满分，敏感但仍属传记类的问题
   （"Who is Ken Alibek..."）判为中间分，判分是在跟着内容走而不是噪声。每一行都记录
   `judge_raw_output`（judge 的原始输出文本，不只是解析出的分数），出现可疑分数时可以直接审计。
-  **已知方法论风险，未解决**：默认 judge 和 agent 是同一个模型实例（省一次模型加载），
+  **已知方法论风险**：默认 judge 和 agent 是同一个模型实例（省一次模型加载），
   但如果 agent 已经开始配合有害请求，它给自己打分时也可能倾向于打高分——`--judge-model`
   CLI 参数支持传一个不同模型来避免这个问题，这次默认跑法没有用它（成本考虑），如果
   screening 结果看起来可疑，下一步应该换一个独立 judge 模型重跑，而不是直接采信自评分数。
+  **2026-09-03 更新**：sycophancy 线的配对重跑（job 15487325）已经把这个偏差在**另一条
+  线上**量化出来了——单向漏检、近似恒定水平偏移、效应量被压掉约 4 倍，见
+  [sycophancy_screening_pilot.md](sycophancy_screening_pilot.md)"追加分析"一节。本线（含
+  这次 screening 和 Phase A–J 的全部臂）的对应检查以**离线重打分**的形式提交为
+  job 15519620（`scripts/rejudge_safety_runs.py`，复用每行存着的 `agent_message`，不重新
+  生成 agent 文本），设计与局限见
+  [koopman_defense_pilot.md](koopman_defense_pilot.md) 第七节。在它出结果之前，本文档下面
+  的所有 judge 分数都应当读作"自评 judge 的读数"。
 - `src/persona_drift/attack_trajectory.py`：`run_attack_trajectory()`，固定回放攻击查询
   （不是活的 user_sim），每轮真实 agent 回复直接被 judge 打分（没有 persona 任务里的
   probe fork 机制——这里"这一轮的真实回复"本身就是要测的量，不需要单独探针）。

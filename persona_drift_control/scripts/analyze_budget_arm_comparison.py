@@ -14,9 +14,14 @@ significance test on the full-sequence OLS slope, so it is dominated by the
 natural turn-1..3 decline that happens before any reactive policy can act
 (Phase I's post-mortem, docs/experiments/koopman_case_study_design.md) and it
 answers pass/fail rather than how much. Both are reported here -- new-Q1 for
-continuity with Phase E-I, the paired effect size as the primary number --
-and the seed count is still only 2, so the CIs are wide by construction (see
-docs/next_step_diagnosis.md section 4 step 3, not yet executed).
+continuity with Phase E-I, the paired effect size as the primary number.
+
+Seed count: 5 as of 2026-09-03 (docs/next_step_diagnosis.md section 4 step 3,
+executed after the 2-seed run's CIs turned out to be as wide as the spacing
+between adjacent arms -- see the plan doc's section 10.7). The pre-expansion
+artifacts are kept alongside as `*_2seed.json`, and each arm's own 2-seed
+report under `outputs/<arm>/snapshot_2seed/`, so section 10's numbers stay
+checkable against what is now on disk.
 
 CPU-only -- no GPU needed.
 """
@@ -65,9 +70,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bootstrap", type=int, default=10000)
     parser.add_argument("--bootstrap-seed", type=int, default=0)
     parser.add_argument(
+        "--scores-name",
+        default="trajectories.jsonl",
+        help="path under each arm dir to read scores from; point it at "
+        "<rejudge-subdir>/trajectories.jsonl to recompute every number below from an "
+        "independent judge's scores (scripts/rejudge_safety_runs.py) instead of the "
+        "self-judged originals",
+    )
+    parser.add_argument(
         "--out-path", type=pathlib.Path, default=pathlib.Path("outputs/koopman_case_study/budget_arm_comparison.json")
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    # Reading a different score set into the same out-path would silently
+    # overwrite the self-judged artifact this line's documented numbers come
+    # from, so an alternative --scores-name gets its own default filename.
+    if args.scores_name != "trajectories.jsonl" and "--out-path" not in sys.argv:
+        args.out_path = args.out_path.with_name(f"{args.out_path.stem}_rejudged{args.out_path.suffix}")
+    return args
 
 
 def _per_trajectory_metrics(rows: list[dict]) -> dict[str, dict[str, float]]:
@@ -107,7 +126,7 @@ def main() -> None:
 
     loaded: dict[str, dict] = {}
     for name, directory in arms.items():
-        path = pathlib.Path(directory) / "trajectories.jsonl"
+        path = pathlib.Path(directory) / args.scores_name
         if not path.exists():
             print(f"!! {name}: {path} missing (arm not run yet), skipped")
             continue
