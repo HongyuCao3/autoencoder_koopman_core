@@ -65,6 +65,25 @@ class GenerationConfig:
 _THINK_END_TAG = "</think>"
 
 
+def _build_prompt_text(tokenizer, messages: list[dict[str, str]], enable_thinking: bool) -> str:
+    """Renders `messages` into the exact prompt string `.generate()` and
+    `next_token_logits()` both feed the tokenizer -- factored out so the two
+    call sites cannot drift apart. That sameness is not cosmetic: it is the
+    entire basis for `next_token_logits`'s validity as a stand-in for what
+    `.generate()` would have sampled as the first token (see
+    continuous_readout_plan.md's G1 gate). Falls back to the
+    thinking-mode-unaware call for tokenizers whose chat template doesn't
+    accept `enable_thinking=` (same TypeError fallback `generate()` used
+    before this was factored out)."""
+
+    try:
+        return tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True, enable_thinking=enable_thinking
+        )
+    except TypeError:
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+
 def _split_at_think_end(token_ids: list[int], think_end_id: int | None) -> tuple[list[int], list[int]]:
     """Splits generated token ids into (thinking_ids, content_ids) at the
     first </think> token (inclusive). Returns ([], token_ids) when
@@ -135,18 +154,7 @@ class ChatModel:
 
         config = config or GenerationConfig()
         effective_enable_thinking = self.enable_thinking if enable_thinking is None else enable_thinking
-        try:
-            prompt_text = self.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-                enable_thinking=effective_enable_thinking,
-            )
-        except TypeError:
-            # Older tokenizers / non-Qwen3 chat templates without thinking-mode support.
-            prompt_text = self.tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
+        prompt_text = _build_prompt_text(self.tokenizer, messages, effective_enable_thinking)
 
         inputs = self.tokenizer(prompt_text, return_tensors="pt", add_special_tokens=False).to(self.device)
 
@@ -183,6 +191,27 @@ class ChatModel:
         thinking_text = self.tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
         return content_text, thinking_text
 
+    def next_token_logits(self, messages: list[dict[str, str]], enable_thinking: bool | None = None) -> np.ndarray:
+        """One forward pass, no generation: the next-token logits at the
+        generation position, shape (vocab_size,), float32.
+
+        This is the deterministic-forward counterpart to `.generate()`'s
+        first sampled/greedy token -- used by sycophancy_judge.py to turn the
+        judge's greedy label into a full label-token distribution without
+        regenerating anything. Unlike `generate()`, there is no RNG to seed
+        here: a single forward pass over a fixed prompt is a pure function of
+        the weights and the input, so (deliberately, unlike generate()'s
+        per-call `torch.manual_seed`) this takes no `seed` argument and there
+        is nothing to reseed."""
+
+        effective_enable_thinking = self.enable_thinking if enable_thinking is None else enable_thinking
+        prompt_text = _build_prompt_text(self.tokenizer, messages, effective_enable_thinking)
+        inputs = self.tokenizer(prompt_text, return_tensors="pt", add_special_tokens=False).to(self.device)
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+        # bf16 tensors can't go straight to numpy; cast to float32 first.
+        return outputs.logits[0, -1, :].float().cpu().numpy()
+
     def hidden_state_at_layer(self, messages: list[dict[str, str]], layer: int) -> np.ndarray:
         """One forward pass, no generation: returns the last-token residual
         stream activation at `layer` (transformers' `output_hidden_states=True`
@@ -193,12 +222,7 @@ class ChatModel:
         a hook composes with `.generate()`'s incremental decoding while a
         single forward pass here does not."""
 
-        try:
-            prompt_text = self.tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True, enable_thinking=self.enable_thinking
-            )
-        except TypeError:
-            prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        prompt_text = _build_prompt_text(self.tokenizer, messages, self.enable_thinking)
 
         inputs = self.tokenizer(prompt_text, return_tensors="pt", add_special_tokens=False).to(self.device)
         with torch.no_grad():

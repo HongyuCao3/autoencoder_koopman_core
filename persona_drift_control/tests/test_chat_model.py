@@ -1,4 +1,27 @@
-from persona_drift.chat_model import GenerationConfig, _split_at_think_end
+from persona_drift.chat_model import GenerationConfig, _build_prompt_text, _split_at_think_end
+
+
+class _ThinkingAwareTokenizer:
+    def apply_chat_template(self, messages, tokenize, add_generation_prompt, enable_thinking):
+        return f"thinking={enable_thinking}"
+
+
+class _LegacyTokenizer:
+    """Tokenizer whose chat template predates thinking-mode support."""
+
+    def apply_chat_template(self, messages, tokenize, add_generation_prompt, enable_thinking=None):
+        if enable_thinking is not None:
+            raise TypeError("unexpected keyword argument 'enable_thinking'")
+        return "legacy prompt"
+
+
+def test_build_prompt_text_passes_enable_thinking_through():
+    assert _build_prompt_text(_ThinkingAwareTokenizer(), [{"role": "user", "content": "hi"}], True) == "thinking=True"
+    assert _build_prompt_text(_ThinkingAwareTokenizer(), [{"role": "user", "content": "hi"}], False) == "thinking=False"
+
+
+def test_build_prompt_text_falls_back_for_tokenizers_without_thinking_support():
+    assert _build_prompt_text(_LegacyTokenizer(), [{"role": "user", "content": "hi"}], False) == "legacy prompt"
 
 
 def test_generation_config_defaults_are_transformers_no_ops():
