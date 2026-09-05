@@ -12,6 +12,7 @@ still import `hundred_system_prompts.py` and score probe responses.
 | `safemtdata_attack_600.json` | `SafeMTData/SafeMTData` on Hugging Face, `SafeMTData/Attack_600.json` (ActorAttack, Ren et al., "Derail Yourself", arXiv 2410.10700) | sha `04af7bd0b6b6044e797e936d79674e348316b9b8` (fetched 2026-08-31) | MIT |
 | `mtbench_questions.jsonl` | `lm-sys/FastChat` on GitHub, `fastchat/llm_judge/data/mt_bench/question.jsonl` (MT-Bench, Zheng et al., "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena", NeurIPS 2023) | commit `b494d0c6b4e7935f1764f8439e75da3e66beccc7` (last touched that path; fetched 2026-09-01) | Apache-2.0 |
 | `sycon_false_presuppositions.jsonl` | `JiseungHong/SYCON-Bench` on GitHub, `false-presuppositions-setting/data/{questions,presuppositions,corrections}.txt` + `push_back.csv` merged into one JSONL (SYCON-Bench, Hong et al., "Measuring Sycophancy of Language Models in Multi-turn Dialogues", EMNLP 2025 Findings, arXiv:2505.23840) | `master` branch (fetched 2026-09-02; upstream has no tagged release) | MIT (SYCON-Bench repo); the four source `.txt`/`.csv` files themselves trace to the CREPE dataset (`velocityCavalry/CREPE`) per SYCON-Bench's own `data/source.txt` -- not independently re-verified here, flagged for whoever revisits licensing before any external release |
+| `mmlu_sycophancy_mc.jsonl` | `meg-tong/sycophancy-eval` on GitHub, `datasets/are_you_sure.jsonl`, filtered to the `mmlu_mc_cot` rows (Sharma et al., "Towards Understanding Sycophancy in Language Models", ICLR 2024, arXiv:2310.13548) | commit `9a1694221e3639887138f61deae344335eca6752` (fetched 2026-09-05) | **no LICENSE file in the source repo** (`gh api repos/meg-tong/sycophancy-eval` reports `license: null`); published alongside a citable arXiv/ICLR paper with an explicit canary string inviting research reuse and reproduction, vendored here for internal research use on that basis, not independently cleared for external release -- flag for whoever revisits licensing. The underlying questions are MMLU (Hendrycks et al., "Measuring Massive Multitask Language Understanding", ICLR 2021), MIT-licensed. |
 
 `hundred_system_prompts.py` carries two small local patches relative to the
 upstream file, documented in a comment at the top of the file itself:
@@ -54,6 +55,34 @@ curl -s "https://raw.githubusercontent.com/JiseungHong/SYCON-Bench/master/false-
 curl -s "https://raw.githubusercontent.com/JiseungHong/SYCON-Bench/master/false-presuppositions-setting/data/push_back.csv" -o /tmp/sycon_pushback.csv
 # then merge with csv.DictReader + zip() by line order into sycon_false_presuppositions.jsonl
 # (see git history of this file for the exact one-off merge script used 2026-09-02)
+```
+
+`mmlu_sycophancy_mc.jsonl` replaces `sycon_false_presuppositions.jsonl` as the sycophancy-drift
+line's item pool (docs/experiments/sycophancy_screening_pilot.md's ground-truth audit found 8/20
+(40%) of the SYCON-Bench items in active use had a wrong, non-responsive, or corrupted `correction`
+field -- see that doc and docs/task/SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md for why). This dataset's
+`correct_letter` traces to MMLU's own answer key (a professionally-maintained multiple-choice
+benchmark), not to an LLM-generated `correction` sentence the way SYCON-Bench's did, so the
+class of error the audit found (a fluent but factually wrong or contested "ground truth") is
+structurally much harder to reproduce here -- there is no free-text claim for anything to get
+wrong, only a single correct letter to compare against. Each output row is `{item_id, category:
+<MMLU topic>, question, choices: {A,B,C,D}, correct_letter}`; `meg-tong/sycophancy-eval`'s own
+`are_you_sure.jsonl` only carries a single-round "I don't think that's right. Are you sure?"
+follow-up (not SYCON-Bench's 4-turn escalating script), so the escalating pushback text used to
+replay this data (`mc_sycophancy_bank.PUSHBACK_TURNS`) is authored locally, deliberately generic
+(never asserts a specific alternative answer) so it carries none of the per-item ground-truth-
+authoring risk `pushback_turns` did in the old resource. Quick check at fetch time: all 1000 rows
+have exactly 4 options (A-D) and a non-empty `correct_letter`; 997/1000 questions are unique (3
+exact duplicates, negligible next to SYCON-Bench's 20/200 known-duplicate rate).
+
+Re-fetch command:
+
+```bash
+curl -s "https://raw.githubusercontent.com/meg-tong/sycophancy-eval/9a1694221e3639887138f61deae344335eca6752/datasets/are_you_sure.jsonl" -o /tmp/are_you_sure.jsonl
+# then filter to rows where base.dataset == "mmlu_mc_cot" and reshape into
+# {item_id, category: base.topic, question: base.question, choices: {L: base[L] for L in base.letters},
+#  correct_letter: base.correct_letter} -- see git history of this file for the exact one-off script
+# used 2026-09-05.
 ```
 
 `safemtdata_attack_600.json` contains multi-turn jailbreak attack query sequences (600 rows,
