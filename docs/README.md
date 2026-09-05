@@ -289,10 +289,13 @@
   p=0.0091，逐轮同向且对轮次混淆是保守的），给第七节"两个判官都在犯错"补上了具体机制。
   顺带确认 `refusal_flag` 是一个确定性、与 judge 无关、提醒能显著驱动（t5 21.2% vs 7.3%）
   但过于稀疏（全体 2.5%）的信号。详见 `koopman_defense_pilot.md` 第八节。
-- [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) — ★
-  正在做：`SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
-  False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**新开一次对话
-  想知道"这个 screening 现在跑到哪一步了"，看这份文档。** 状态：job 15483493 跑完
+- [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) —
+  `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
+  False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**2026-09-05 起
+  不再是这条线往前走的数据源**（见下面文末追加）——**新开一次对话想知道"这条线现在跑到哪一步了"，
+  看 [mc_sycophancy_screening_pilot.md](experiments/mc_sycophancy_screening_pilot.md)**，本文档
+  保留作历史记录（screening 方法论/judge 自评偏差/ground truth 审计的教训仍然适用）。状态：
+  job 15483493 跑完
   （2026-09-02，20 items × 2 seeds）。人工审计发现并修好了离散判据的统计设计 bug（原检验对
   任意非零翻转数都几乎必然"通过"）；修复后是干净空结果——连续/离散两套判据都不显著，
   只有 2/40 条轨迹出现过翻转。**2026-09-03 追加：独立 judge 配对重跑（job 15487325，只换
@@ -314,8 +317,21 @@
   15567175 constant_remind,用审计筛出的 11 条干净 item）：11 items 配对检验不显著（p=0.74，
   方向为负,被一个和提醒无关的基线缺陷 item 拖低）；排除该 item 后方向转正但仍不显著
   （p=0.096，n=10）。**既未确认也未排除执行器权威，卡在样本量**（粗估要 ~23 个干净 item
-  才够功效），和 new-Q1/new-Q3 是同一个瓶颈。
-- [experiments/continuous_readout_plan.md](experiments/continuous_readout_plan.md) —
+  才够功效），和 new-Q1/new-Q3 是同一个瓶颈。**2026-09-05 追加：ground truth 问题排查到根因后
+  换了数据源，见 `mc_sycophancy_screening_pilot.md`。**
+- **[experiments/mc_sycophancy_screening_pilot.md](experiments/mc_sycophancy_screening_pilot.md) —
+  ★ 正在做（sycophancy 线的数据源替换续作）：`sycophancy_screening_pilot.md` 的 ground truth
+  审计把 SYCON-Bench 数据的问题追到根因——问题来自同行评审的 CREPE，但`presupposition`/
+  `correction`/`pushback_turns` 是 SYCON-Bench 自己用 GPT-4o 重新生成的，没有证据核验。换成
+  Sharma et al. 2023（ICLR 2024）"Are You Sure?" 的 MMLU 子集（1000 items，57 学科），正确答案
+  来自 MMLU 自己的答案表，不是任何人现编的一句话；judge 也从"事实仲裁"降级成"抽取回复选了哪个
+  字母"（92.5% 正则直接命中，零模型调用；只有 7.5% 退到一次简短 LLM 抽取，不判断对错）。**首次
+  验证跑（job 15567606，20 items × 2 seeds）：new-Q3（跨轮惯性）r=0.72（原始）/0.42（加 turn-1
+  基线门槛后），p<0.0001——比 SYCON-Bench 清洗到底的最好结果（r≈0.19）强一个数量级以上，是这条
+  线第一次有干净数据支持"惯性"这个前置条件。new-Q1（渐进翻转）仍不显著，但这次不是欠功效——
+  逐轮均值显示的是"有粘性但可逆"的动力学（翻转后常在最后一轮反驳时恢复），不是单调恶化，也不是
+  `SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 第 2 节假设的绝对吸收态。**下一步：扩样本到 ~60
+  items、在这份更干净的数据上重做执行器权威检查（Phase A）。
   把 sycophancy judge 的三分类硬标签换成同一 prompt 下 next-token 分布在三个标签 token 上的
   归一化概率，得到 y∈[0,1] 的连续读出，只回溯打分已有的 2×200 行、不重跑 agent、不动防御线。
   它同时是两条线的前置条件——`SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 第 5 节把它排在

@@ -3,6 +3,13 @@
 和 [adversarial_screening_pilot.md](adversarial_screening_pilot.md) 同一类"供跨会话接续"的
 记录。**新开一次对话想知道"这个 screening 现在跑到哪一步了"，看这份文档。**
 
+**2026-09-05 起，本文档记录的 SYCON-Bench 数据不再是这条线往前走的数据源**：本文档的 ground truth
+审计发现 40% 的 item 有问题，根因排查后换到了 MMLU 版数据（Sharma et al. 2023 "Are You Sure?"），
+新进展记录在 **[mc_sycophancy_screening_pilot.md](mc_sycophancy_screening_pilot.md)**——首次验证跑
+（20 items）就在惯性判据上给出了比这份文档任何一次结果都强一个数量级的干净信号（r=0.42 vs 这里
+清洗到底的 r=0.19）。本文档保留作历史记录（screening 方法论、judge 自评偏差、ground truth 审计
+这几节的教训仍然适用/被新文档引用），不再是"现在跑到哪一步"的答案。
+
 ## 这是什么，为什么做
 
 `../task/SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md`（2026-09-02，★ 当前最高优先级）把对抗防御线
