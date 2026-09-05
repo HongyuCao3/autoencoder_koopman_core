@@ -32,7 +32,7 @@
 | # | 前置条件 | 状态 | 证据 |
 |---|---|---|---|
 | 1 | 惯性（跨轮记忆） | **部分满足，证据强度需收窄（2026-09-05 更新）** | 独立 judge 下 new-Q3 slope=0.6314 / r=0.6072；但 ground truth 审计（`../experiments/sycophancy_screening_pilot.md` "追加分析"一节）发现这个 r 里相当一部分来自 3 个 ground truth 有问题的 item（含 `sycon_fp_0091` 本身）制造的常数/吸收态序列——去掉这 3 条后 r 掉到 0.19（p=0.026，仍显著但弱一个数量级），再去掉 5 条存疑 item 后**不再显著**（p=0.105）。方向仍是正的，但不能再当作"干净地已满足" |
-| 2 | 执行器权威 | **完全没测——真正的第一道门** | 200 行全部 `u_remind=0, excitation_design="zero_control"`；`run_sycophancy_screening.py` 的 CLI 没有任何 excitation/controller 开关 |
+| 2 | 执行器权威 | **检查中（2026-09-05 已开工）** | CLI 开关已补上（`scripts/run_sycophancy_defended_screening.py`），job 15567174（zero_control）/15567175（constant_remind）已提交，跑在 ground truth 审计筛出的 11 条干净 item 上，见 `../experiments/sycophancy_screening_pilot.md` "Phase A" 一节 |
 | 3 | 读出可辨识性 | **不满足，目前最致命** | 独立 judge：mean=0.8550，84.5% 的行取在上限 1.0（169/200），只有 3 个取值；自评 judge 更极端：mean=0.9750，97.5% 取上限 |
 | 4 | rollout horizon | **被数据结构硬卡死** | SYCON-Bench 每条固定 4 轮反驳 → T=5；按 core 的 `lag=3` 需 4 轮做种子状态，**只剩 1 步 rollout** |
 | 5 | 数据量 | 不足但可扩 | 40 条轨迹 / 144 个转移 / 6 次真实翻转（独立 judge，有基线的 36 条） |
@@ -134,16 +134,21 @@ y ∈ [0,1] 的连续读出。
   分布直方图就能判断。另外它测的是"judge 的置信度"，和"agent 立场强度"不完全是一回事，
   这个语义差别要在实验记录里写明，不能当成同一个量。
 
-### 第 2 步（小 GPU）：执行器权威检查（Phase A 的直接类比）
+### 第 2 步（小 GPU）：执行器权威检查（Phase A 的直接类比）**——2026-09-05 已开工**
 
 `u_remind` 全开 vs 全关，同一批 items。**没有这一步，后面所有 MPC 都没有意义**——防御线正是
 先做 Phase A 确认"恒定提醒有真实权威"才去拟合模型的。
 
 改动很小：`src/persona_drift/control.py` 里的 `ConstantRemindController`/`RandomExciteController`/
 `ZeroControlController` 都是通用的（只操作 `u_remind`），`sycophancy_trajectory.py` 的
-`run_sycophancy_trajectory(..., controller=...)` 参数也已经接好——**缺的只是
-`run_sycophancy_screening.py` / `sycophancy_screening.py` 那一层的 CLI 开关和编排**，
-照抄 `adversarial_screening.py` 的对应部分即可，不需要碰核心建模代码。
+`run_sycophancy_trajectory(..., controller=...)` 参数也已经接好——~~缺的只是
+`run_sycophancy_screening.py` / `sycophancy_screening.py` 那一层的 CLI 开关和编排~~，
+**已补上**：新增 `scripts/run_sycophancy_defended_screening.py`（照抄
+`run_defended_screening.py` 对应部分，复用 `controller_cli.make_controller_factory`,不需要碰
+核心建模代码）。job 15567174（zero_control）/15567175（constant_remind）已提交，
+跑在第 6 节第 5 点 ground truth 审计筛出的 11 条干净 item 上（避免"没权威"这个结论被脏数据
+污染），判官用独立 judge。结果见
+`../experiments/sycophancy_screening_pilot.md` "Phase A" 一节。
 
 同一步里准备第 4 节说的 benign 对照条目。
 

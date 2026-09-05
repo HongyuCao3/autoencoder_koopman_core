@@ -14,6 +14,12 @@
 `flip_rate`）是否比连续斜率给出更强的信号——这三个问题里 (c) 是这次分析新提出、还没验证的
 假设，不是预设结论。
 
+## 状态（最新：2026-09-05，见下面"Phase A"一节）
+
+**Phase A（执行器权威检查）进行中：job 15567174（zero_control）+ job 15567175
+（constant_remind）,2026-09-05 提交。** 下面从"状态（2026-09-03）"往下是这一步之前的历史记录
+（原始 20-item screening + ground truth 审计），按时间顺序保留。
+
 ## 状态（2026-09-03）
 
 **两次 GPU 跑都已完成：job 15483493（自评 judge）+ job 15487325（独立 judge 重跑）。**
@@ -367,6 +373,36 @@ analyze_sycophancy_screening()` 加了两个默认关闭、向后兼容的参数
 4. **本次结果不需要重跑 GPU**：两份原始 `trajectories.jsonl` 未改动，`sycophancy_screening_report.
    {json,md}` 里的"结论不显著"没变；变的是"惯性已满足"这条前置条件评估的置信度，不是本文件已归档
    的 screening 判定。
+
+## Phase A：执行器权威检查（进行中，job 15567174/15567175，提交于 2026-09-05）
+
+`SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 第 5 节步骤 2、五个前置条件里"完全没测、真正的第一道门"
+那一条：`consistency_reminder.py` 的提醒对持续反驳到底有没有可测的效力？200 行数据里
+`u_remind` 一直是 0（`excitation_design="zero_control"`），这件事之前从未验证过。
+
+库层代码本来就已经通用（`run_sycophancy_screening()` 早就接受 `controller_factory`/`item_ids`，
+`ConstantRemindController`/`ZeroControlController` 只操作 `u_remind`，和防御线共用同一套，
+`test_sycophancy_screening.py` 也已经在测），缺的只是 CLI 开关，照抄
+`scripts/run_defended_screening.py` 补上：新增 `scripts/run_sycophancy_defended_screening.py`
+（暴露 `--controller {zero_control,constant_remind}`，复用 `controller_cli.
+make_controller_factory`，其余参数和 `run_sycophancy_screening.py` 一致）。
+
+**用这次 ground truth 审计筛出的 11 条干净 item**（不用原来 20 条里含问题的那 9 条），
+避免"没效果"这个结论被脏数据污染；判官用独立 judge（`Qwen/Qwen3-4B-Instruct-2507`，
+此项目对任何要汇报的结果的默认设置）。两个 sbatch：
+
+- `environment/run_sycophancy_phaseA_zero_control.sbatch` → job 15567174 →
+  `outputs/sycophancy_phaseA_zero_control/`
+- `environment/run_sycophancy_phaseA_constant_remind.sbatch` → job 15567175 →
+  `outputs/sycophancy_phaseA_constant_remind/`
+
+两个作业都在跑（`squeue -j 15567174,15567175`）。**跑完后该看什么**：对比两份
+`sycophancy_screening_report.md` 的 `y_consistency_by_turn`（提醒是否让均值系统性升高，
+尤其是 turn 2 及以后）,以及 `new_q1_escalation`/`new_q3_autocorrelation`/`discrete_flip_events`
+是否有可测差异——这一步只问"有没有权威"，不问"权威够不够建 MPC"，所以哪怕差异不大也不代表
+死路，但如果完全没有方向一致的差异，说明这条 channel A 通道对"立场一致性"没有抓手，
+后面的建模/闭环工作在这个执行器上就没有意义,需要考虑换执行器设计（比如更直接地要求引用来源、
+或者提高提醒的说服力）而不是继续往同一个提醒文案上堆功能。
 
 ## 下一步
 

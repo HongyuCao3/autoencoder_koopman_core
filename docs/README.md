@@ -308,7 +308,11 @@
   `persona_drift_control/scripts/audit_ground_truth_quality.py`）显示 new-Q1 判定不受影响，
   但 new-Q3（惯性）的 r 从 0.6072 掉到 0.19（去掉 3 条确认错误的）、再去掉 5 条存疑的后**不再
   显著**——`SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 五个前置条件里唯一"已满足"的一条需要收窄，
-  见下面该文档条目。
+  见下面该文档条目。**同一天顺带把下一步 (d)（turn-1 基线正式入选门槛+仅 turn2-5 拟合）也
+  实现了**（`analyze_sycophancy_screening()` 新增两个默认关闭的参数,判定不变）。**Phase A
+  （执行器权威检查,五个前置条件里"完全没测"的那道门）已开工**：CLI 开关照抄防御线补上（新增
+  `scripts/run_sycophancy_defended_screening.py`），job 15567174（zero_control）/15567175
+  （constant_remind）已提交，用审计筛出的 11 条干净 item。
 - [experiments/continuous_readout_plan.md](experiments/continuous_readout_plan.md) —
   把 sycophancy judge 的三分类硬标签换成同一 prompt 下 next-token 分布在三个标签 token 上的
   归一化概率，得到 y∈[0,1] 的连续读出，只回溯打分已有的 2×200 行、不重跑 agent、不动防御线。
