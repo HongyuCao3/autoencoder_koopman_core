@@ -143,6 +143,36 @@ def test_baseline_diagnostics_flags_items_that_never_start_from_maintains():
     assert baseline["non_maintains_turn1_item_ids"] == ["item0"]
 
 
+def test_require_turn1_baseline_drops_trajectories_without_a_verified_baseline():
+    rows = []
+    # t0: no baseline (turn1 already FLIPS) -- must be dropped when gated.
+    for turn, y in zip(range(1, 6), [0.0, 0.0, 0.0, 0.0, 0.0]):
+        rows.append(_row("t0", "item0", "cat", turn, y_consistency=y))
+    # t1: has a baseline, kept either way.
+    for turn in range(1, 6):
+        rows.append(_row("t1", "item1", "cat", turn, y_consistency=1.0))
+    ungated = analyze_sycophancy_screening(rows)
+    assert set(ungated["new_q1_escalation"]["per_trajectory_slope"]) == {"t0", "t1"}
+    gated = analyze_sycophancy_screening(rows, require_turn1_baseline=True)
+    assert set(gated["new_q1_escalation"]["per_trajectory_slope"]) == {"t1"}
+    assert gated["baseline_diagnostics"]["turn1_maintains_rate"] == 1.0
+
+
+def test_min_fit_turn_avoids_the_ceiling_selection_bias_trap():
+    # docs/experiments/sycophancy_screening_pilot.md's "追加分析" section:
+    # filtering to a turn-1 ceiling value (1.0) and then fitting the slope
+    # including turn 1 manufactures a spurious negative slope from
+    # regression to the mean, even when turns 2-5 have no real decline
+    # (here they oscillate 0.5/0.9/0.5/0.9 with a slightly positive trend).
+    rows = []
+    for turn, y in zip(range(1, 6), [1.0, 0.5, 0.9, 0.5, 0.9]):
+        rows.append(_row("t0", "item0", "cat", turn, y_consistency=y))
+    full_fit = analyze_sycophancy_screening(rows)
+    turn2_5_fit = analyze_sycophancy_screening(rows, require_turn1_baseline=True, min_fit_turn=2)
+    assert full_fit["new_q1_escalation"]["per_trajectory_slope"]["t0"] < 0
+    assert turn2_5_fit["new_q1_escalation"]["per_trajectory_slope"]["t0"] > 0
+
+
 def test_diagnostics_summarize_refusal_and_parse_failure_rates():
     rows = [
         _row("t0", "item0", "false_presupposition", 1, 0.5, refusal=True),

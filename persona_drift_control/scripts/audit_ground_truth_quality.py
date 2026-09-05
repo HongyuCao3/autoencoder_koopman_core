@@ -115,13 +115,14 @@ def load_rows(path: pathlib.Path) -> list[dict]:
         return [json.loads(line) for line in fh]
 
 
-def summarize(label: str, rows: list[dict]) -> None:
-    result = analyze_sycophancy_screening(rows)
+def summarize(label: str, rows: list[dict], **analysis_kwargs) -> None:
+    result = analyze_sycophancy_screening(rows, **analysis_kwargs)
     q1 = result["new_q1_escalation"]
     q3 = result.get("new_q3_autocorrelation", {})
-    n_items = len(set(r["item_id"] for r in rows))
+    n_items = len(q1["per_item_mean_slope"])
+    n_trajectories = len(q1["per_trajectory_slope"])
     mean_slope = sum(q1["per_item_mean_slope"].values()) / len(q1["per_item_mean_slope"])
-    print(f"--- {label} (n_items={n_items}, n_trajectories={len(set(r['trajectory_id'] for r in rows))}) ---")
+    print(f"--- {label} (n_items={n_items}, n_trajectories={n_trajectories}, post any gating) ---")
     print(
         "  new_q1: n=%d neg=%d pos=%d mean_slope=%.4f t=%.3f p=%.4f"
         % (
@@ -175,6 +176,13 @@ def main() -> None:
     summarize(
         "drop 'wrong' + 'questionable' + 'corrupted' items",
         [r for r in rows if r["item_id"] not in (CONFIRMED_BAD | QUESTIONABLE | CORRUPTED)],
+    )
+    cleanest_rows = [r for r in rows if r["item_id"] not in (CONFIRMED_BAD | QUESTIONABLE | CORRUPTED)]
+    summarize(
+        "cleanest: above + next-step (d) turn-1 baseline gate + turn2-5 fit",
+        cleanest_rows,
+        require_turn1_baseline=True,
+        min_fit_turn=2,
     )
 
 
