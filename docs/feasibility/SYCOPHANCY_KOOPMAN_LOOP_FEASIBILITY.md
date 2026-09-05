@@ -32,7 +32,7 @@
 | # | 前置条件 | 状态 | 证据 |
 |---|---|---|---|
 | 1 | 惯性（跨轮记忆） | **部分满足，证据强度需收窄（2026-09-05 更新）** | 独立 judge 下 new-Q3 slope=0.6314 / r=0.6072；但 ground truth 审计（`../experiments/sycophancy_screening_pilot.md` "追加分析"一节）发现这个 r 里相当一部分来自 3 个 ground truth 有问题的 item（含 `sycon_fp_0091` 本身）制造的常数/吸收态序列——去掉这 3 条后 r 掉到 0.19（p=0.026，仍显著但弱一个数量级），再去掉 5 条存疑 item 后**不再显著**（p=0.105）。方向仍是正的，但不能再当作"干净地已满足" |
-| 2 | 执行器权威 | **检查中（2026-09-05 已开工）** | CLI 开关已补上（`scripts/run_sycophancy_defended_screening.py`），job 15567174（zero_control）/15567175（constant_remind）已提交，跑在 ground truth 审计筛出的 11 条干净 item 上，见 `../experiments/sycophancy_screening_pilot.md` "Phase A" 一节 |
+| 2 | 执行器权威 | **测了，但卡在样本量，既未确认也未排除（2026-09-05）** | job 15567174/15567175：11 items 配对检验方向为负/不显著（p=0.74，被一个和提醒无关的基线缺陷 item 污染）；排除该 item 后方向转正但仍不显著（p=0.096，n=10）。粗估要 ~23 个干净 item 才够功效，见 `../experiments/sycophancy_screening_pilot.md` "Phase A" 一节 |
 | 3 | 读出可辨识性 | **不满足，目前最致命** | 独立 judge：mean=0.8550，84.5% 的行取在上限 1.0（169/200），只有 3 个取值；自评 judge 更极端：mean=0.9750，97.5% 取上限 |
 | 4 | rollout horizon | **被数据结构硬卡死** | SYCON-Bench 每条固定 4 轮反驳 → T=5；按 core 的 `lag=3` 需 4 轮做种子状态，**只剩 1 步 rollout** |
 | 5 | 数据量 | 不足但可扩 | 40 条轨迹 / 144 个转移 / 6 次真实翻转（独立 judge，有基线的 36 条） |
@@ -134,7 +134,7 @@ y ∈ [0,1] 的连续读出。
   分布直方图就能判断。另外它测的是"judge 的置信度"，和"agent 立场强度"不完全是一回事，
   这个语义差别要在实验记录里写明，不能当成同一个量。
 
-### 第 2 步（小 GPU）：执行器权威检查（Phase A 的直接类比）**——2026-09-05 已开工**
+### 第 2 步（小 GPU）：执行器权威检查（Phase A 的直接类比）**——2026-09-05 已执行，结果欠功效**
 
 `u_remind` 全开 vs 全关，同一批 items。**没有这一步，后面所有 MPC 都没有意义**——防御线正是
 先做 Phase A 确认"恒定提醒有真实权威"才去拟合模型的。
@@ -147,8 +147,12 @@ y ∈ [0,1] 的连续读出。
 `run_defended_screening.py` 对应部分，复用 `controller_cli.make_controller_factory`,不需要碰
 核心建模代码）。job 15567174（zero_control）/15567175（constant_remind）已提交，
 跑在第 6 节第 5 点 ground truth 审计筛出的 11 条干净 item 上（避免"没权威"这个结论被脏数据
-污染），判官用独立 judge。结果见
-`../experiments/sycophancy_screening_pilot.md` "Phase A" 一节。
+污染），判官用独立 judge。**结果：11 items 配对检验方向为负/不显著（p=0.74）——但被
+`sycon_fp_0107` 一个和提醒完全无关的基线缺陷（模型本身不知道那条医学冷知识,两个 seed 在
+constant_remind 臂的 turn 1 就已经错）单方面拖低；排除它之后（n=10）方向转为预期方向
+（提醒后 y_consistency 更高）但仍不显著（p=0.096）**，粗估要 ~23 个干净 item 才够 80% 功效。
+**既没有确认权威也没有排除权威**——这道"第一道门"本身也被样本量卡住了,和 new-Q1/new-Q3
+是同一个瓶颈。详见 `../experiments/sycophancy_screening_pilot.md` "Phase A" 一节。
 
 同一步里准备第 4 节说的 benign 对照条目。
 
