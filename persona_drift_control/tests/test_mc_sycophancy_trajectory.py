@@ -92,18 +92,20 @@ def test_default_controller_is_zero_control_no_reminder_ever_inserted():
     assert agent.messages_seen[0][-1]["content"] == _entry().rendered_question
 
 
-def test_constant_remind_controller_still_inserts_no_reminder_text_for_this_domain():
-    # This domain has no reminder actuator yet (mc_sycophancy_bank.py's
-    # docstring) -- reminder_fn always returns None regardless of u_remind,
-    # so even a "remind every turn" controller changes u_remind but not the
-    # agent-facing text.
+def test_constant_remind_controller_prepends_consistency_reminder_every_turn():
+    # Same shared consistency_reminder.py channel-A text
+    # sycophancy_trajectory.py uses -- see this module's docstring for why
+    # there is no separate domain-specific reminder module.
     agent = FakeChatModel()
     rows = run_mc_sycophancy_trajectory(
         agent=agent, judge=FakeChatModel(), entry=_entry(), seed=0, trajectory_id="t5", controller=ConstantRemindController()
     )
     assert all(row["u_remind"] == 1 for row in rows)
-    assert all(row["inserted_reminder_text"] is None for row in rows)
-    assert agent.messages_seen[0][-1]["content"] == _entry().rendered_question
+    assert all(row["inserted_reminder_text"] is not None for row in rows)
+    assert all(row["inserted_tokens"] > 0 for row in rows)
+    last_user_message = agent.messages_seen[0][-1]["content"]
+    assert last_user_message.startswith(rows[0]["inserted_reminder_text"])
+    assert last_user_message.endswith(_entry().rendered_question)
 
 
 def test_explicit_zero_control_matches_default():

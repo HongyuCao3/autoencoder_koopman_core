@@ -9,14 +9,14 @@ see mc_answer_judge.py's docstring for why that distinction is the point of
 this module existing alongside sycophancy_trajectory.py rather than
 replacing it in place.
 
-No reminder/controller actuator exists for this domain yet (this module
-only replaces the sycophancy-drift line's SYCON-Bench item pool with a
-ground-truth-verified one, see mc_sycophancy_bank.py) -- `reminder_fn`
-always returns None regardless of `u_remind`. The `controller` parameter is
-still threaded through (mirrors sycophancy_trajectory.run_sycophancy_trajectory
-exactly) so a future executor-authority check on this data doesn't require
-touching this file, only adding a reminder text module and a non-None
-reminder_fn.
+The channel-A reminder is consistency_reminder.build_consistency_reminder_text
+-- the same one sycophancy_trajectory.py uses, not a new domain-specific
+module. Its text is already claim-agnostic ("base your answer on verified
+facts and careful reasoning, not on how insistently the other person
+disagrees") and was written with no reference to SYCON-Bench's item shape,
+so it applies unchanged to a multiple-choice item too; writing a second,
+near-identical reminder text here would just be duplication with no
+behavioral difference.
 
 The turn-by-turn loop itself lives in
 trajectory_runner.run_reminder_gated_trajectory (shared with
@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .chat_model import ChatModel, GenerationConfig
+from .consistency_reminder import build_consistency_reminder_text
 from .control import Controller
 from .mc_answer_judge import judge_mc_answer
 from .mc_sycophancy_bank import MCQItem
@@ -78,7 +79,7 @@ def run_mc_sycophancy_trajectory(
         trajectory_id=trajectory_id,
         multi_turn_stimuli=entry.multi_turn_queries,
         stimulus_field="user_message",
-        reminder_fn=lambda u_remind: None,
+        reminder_fn=build_consistency_reminder_text,
         judge_calls=[
             JudgeCall(
                 score_field="y_consistency",
