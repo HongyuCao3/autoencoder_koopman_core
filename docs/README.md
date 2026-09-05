@@ -53,10 +53,15 @@
   ★ sycophancy 这条线在投入 GPU 前的前置条件核对：它能否像 core 任务那样建 Koopman 模型、
   能否像防御线那样闭环、需不需要 AE。**结论：AE 不需要**（经验证据三条同向；且离散立场状态下
   有限状态空间的 Koopman 算子就是转移矩阵本身，精确线性、无需提升，AE 的存在理由不成立）；
-  五个前置条件里只有"惯性"已满足，**执行器权威完全没测**（真正的第一道门）、读出只有 3 个
-  取值且 84.5% 取在上限（辨识性问题）、horizon 被 T=5 硬卡死只剩 1 步 rollout。建议顺序：
-  先零成本把 judge 硬标签换成 token 概率拿到连续读出 → 执行器权威检查 + 准备 benign 对照臂
-  （否则"永不改变立场"是平凡最优解）→ 扩样本 → 先线性建模 → AE 放最后且预期打平。**
+  五个前置条件里**执行器权威完全没测**（真正的第一道门）、读出只有 3 个取值且 84.5% 取在
+  上限（辨识性问题，2026-09-04 已确认换 token 概率修不好，见下面 `continuous_readout_plan.md`）、
+  horizon 被 T=5 硬卡死只剩 1 步 rollout。**"惯性"这条 2026-09-05 更新为"部分满足，证据强度
+  需收窄"**——ground truth 审计（见下面 `sycophancy_screening_pilot.md` "追加分析"一节）发现
+  支撑它的 new-Q3 信号里有相当一部分来自几个 ground truth 有问题的 item 制造的吸收态序列，
+  去混淆后信号强度掉了一个数量级、去掉存疑项后不再显著。建议顺序：~~先零成本把 judge 硬标签
+  换成 token 概率拿到连续读出~~（已排除，见 `continuous_readout_plan.md`）→ 执行器权威检查 +
+  准备 benign 对照臂（否则"永不改变立场"是平凡最优解）→ 扩样本前先审计新增 item 的 ground
+  truth → 先线性建模 → AE 放最后且预期打平。**
 - [feasibility/STOLFO_ACTIVATION_STEERING_FEASIBILITY.md](feasibility/STOLFO_ACTIVATION_STEERING_FEASIBILITY.md) —
   Stolfo et al. ICLR 2025 激活转向论文的任务适配性分析（任务不照搬、要素可移植：
   通道 C 执行器 + 连续约束 readout）
@@ -296,6 +301,14 @@
   惯性结构（new-Q3 r 0.43→0.61）；**判定结论不变（仍不显著），但性质从"无现象"改写为
   "欠功效"**，下一步优先级相应改为扩样本 + 基线门槛（斜率只在 turn 2–5 拟合，避免文档里
   记录的天花板选择偏差陷阱）+ ground truth 审计。`--judge-model` 独立 judge 从此是默认。
+  **2026-09-05 追加（ground truth 审计，下一步 (e) 已执行）**：对实际用到的 20 个 item 逐条
+  核实 `correction` 字段，**8/20（40%）有问题**（3 条确认错误，含新发现的 `sycon_fp_0091`
+  "手机电量不受旅行影响"——现实相反；5 条答非所问/过度概括；1 条字段疑似合并错位）,比此前
+  只知道 2 条可疑严重得多。敏感性分析（CPU-only 重算，脚本见
+  `persona_drift_control/scripts/audit_ground_truth_quality.py`）显示 new-Q1 判定不受影响，
+  但 new-Q3（惯性）的 r 从 0.6072 掉到 0.19（去掉 3 条确认错误的）、再去掉 5 条存疑的后**不再
+  显著**——`SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 五个前置条件里唯一"已满足"的一条需要收窄，
+  见下面该文档条目。
 - [experiments/continuous_readout_plan.md](experiments/continuous_readout_plan.md) —
   把 sycophancy judge 的三分类硬标签换成同一 prompt 下 next-token 分布在三个标签 token 上的
   归一化概率，得到 y∈[0,1] 的连续读出，只回溯打分已有的 2×200 行、不重跑 agent、不动防御线。

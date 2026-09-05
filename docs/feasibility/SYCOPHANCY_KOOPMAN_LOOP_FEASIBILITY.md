@@ -31,7 +31,7 @@
 
 | # | 前置条件 | 状态 | 证据 |
 |---|---|---|---|
-| 1 | 惯性（跨轮记忆） | **已满足** | 独立 judge 下 new-Q3 slope=0.6314 / r=0.6072（自评下只有 0.4808/0.4314）；`sycon_fp_0091` 两个 seed 都是 turn 2 翻转后一路保持到 turn 5 |
+| 1 | 惯性（跨轮记忆） | **部分满足，证据强度需收窄（2026-09-05 更新）** | 独立 judge 下 new-Q3 slope=0.6314 / r=0.6072；但 ground truth 审计（`../experiments/sycophancy_screening_pilot.md` "追加分析"一节）发现这个 r 里相当一部分来自 3 个 ground truth 有问题的 item（含 `sycon_fp_0091` 本身）制造的常数/吸收态序列——去掉这 3 条后 r 掉到 0.19（p=0.026，仍显著但弱一个数量级），再去掉 5 条存疑 item 后**不再显著**（p=0.105）。方向仍是正的，但不能再当作"干净地已满足" |
 | 2 | 执行器权威 | **完全没测——真正的第一道门** | 200 行全部 `u_remind=0, excitation_design="zero_control"`；`run_sycophancy_screening.py` 的 CLI 没有任何 excitation/controller 开关 |
 | 3 | 读出可辨识性 | **不满足，目前最致命** | 独立 judge：mean=0.8550，84.5% 的行取在上限 1.0（169/200），只有 3 个取值；自评 judge 更极端：mean=0.9750，97.5% 取上限 |
 | 4 | rollout horizon | **被数据结构硬卡死** | SYCON-Bench 每条固定 4 轮反驳 → T=5；按 core 的 `lag=3` 需 4 轮做种子状态，**只剩 1 步 rollout** |
@@ -39,9 +39,14 @@
 
 逐条展开值得记的几点：
 
-**条件 1（惯性）** 是唯一已被证据支持的一条，而且它在 `KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md`
+**条件 1（惯性）** 是五条里唯一有正向证据的一条，而且它在 `KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md`
 里正是防御线上 Koopman work 的第一机制。注意这个结论**依赖独立 judge**：自评 judge 会把
-"持续性倒戈"打成随机闪烁，把惯性抹掉（screening pilot 文档"最值得记下的一条"）。
+"持续性倒戈"打成随机闪烁，把惯性抹掉（screening pilot 文档"最值得记下的一条"）。**2026-09-05
+更新**：ground truth 审计发现支撑这条结论的 r=0.6072 里有很大一部分来自少数 ground truth 本身
+有问题的 item（`sycon_fp_0035`/`sycon_fp_0091`/`sycon_fp_0129`）造出的常数/吸收态序列——这类
+序列停在同一个值，可能只是因为模型的回答其实更接近真相而 ground truth 站不住脚，不是"倒戈后
+不肯改回来"的记忆证据。去混淆后信号仍为正但弱了一个数量级（r=0.19），去掉存疑 item 后不再显著。
+详见 `../experiments/sycophancy_screening_pilot.md` "追加分析：ground truth 审计"一节。
 
 **条件 3（可辨识性）** 不是"精度不够"而是**辨识性问题**：在一个 84.5% 取同一个值、只有 3 个
 取值的信号上做延迟嵌入 + ridge，A 矩阵会退化成恒等映射，rollout MSE 由基础率而不是动力学
@@ -165,5 +170,12 @@ turn 2–5 上拟合**，避免 screening pilot 文档记录的天花板选择�
 4. **现象本身是否足够强**：独立 judge 下方向一致为负（turn 2–5 斜率 −0.018）但 p=0.135。
    `pressure_screening_pilot.md` 当年扩样本 3 倍后 p 只从 0.29 降到 0.18 —— **这条线有过
    "扩样本没救回来"的先例，第 3 步不保证成功**。
-5. **ground truth 质量**：`sycon_fp_0129`/`sycon_fp_0035` 的 `correction` 已确认可疑，
-   扩样本前应先人工审计 20 条，否则噪声按比例一起放大。
+5. ~~**ground truth 质量**：`sycon_fp_0129`/`sycon_fp_0035` 的 `correction` 已确认可疑，
+   扩样本前应先人工审计 20 条，否则噪声按比例一起放大。~~ **2026-09-05 已审计（20/20 条全审），
+   结果比预想更严重**：8/20（40%）有问题（3 条确认错误——含新发现的 `sycon_fp_0091`——5 条
+   答非所问/过度概括、1 条字段疑似合并错位），不是"个别两条"。敏感性分析显示这不只是噪声：
+   条件 1（惯性）的 new-Q3 信号里很大一部分来自这几条有问题的 item 制造的常数序列，去混淆后
+   信号强度掉了一个数量级、去掉存疑项后不再显著——**这条假设从"待验证"变成"部分证伪"，条件 1
+   的状态需要收窄，见上面第 1 节表格**。详见
+   `../experiments/sycophancy_screening_pilot.md` "追加分析：ground truth 审计"一节和
+   `persona_drift_control/scripts/audit_ground_truth_quality.py`。
