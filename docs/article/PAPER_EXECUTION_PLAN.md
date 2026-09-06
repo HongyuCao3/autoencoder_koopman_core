@@ -510,17 +510,17 @@ I1/I2/I3/I4 全程可并行，I1+I2 需在 Step 5 之前就位
 
 | Step | 内容 | 状态 | 负责模型 |
 |---|---|---|---|
-| 0 | 安装 skill | ☐ | — |
+| 0 | 安装 skill | ◐ 2026-09-06 软链已建，待新会话验证 skill 列表 | — |
 | 1 | 主线锁定 | ☑ 2026-09-06 | Opus 5 |
-| 2a | 证据抽取 | ☐ | Sonnet 5 ×N |
+| 2a | 证据抽取 | ◐ 2026-09-06 六条证据线并行抽取中 | Sonnet 5 ×N |
 | 2b | 作废判定 | ☐ | Opus 5 |
-| 3 | 方程定稿 | ☐ | Sonnet 5 → Opus 5 |
+| 3 | 方程定稿 | ◐ 2026-09-06 Sonnet 半段（伪代码抽取）进行中 | Sonnet 5 → Opus 5 |
 | 4 | Tier 1 契约 | ☐ | Opus 5 |
 | 4' | Tier 1 冷审 | ☐ | Opus 5（新会话） |
 | 5 | Tier 2/3 逐节 | ☐ | Opus 5 / Fable 5.1 |
 | 6 | 审计与分流 | ☐ | Opus 5 为主 |
 | 7 | pipeline 托管 | ☐ | Opus 5 |
-| I1 | LaTeX 编译链 | ☐ | Sonnet 5 |
-| I2 | main.tex 骨架 | ☐ | Sonnet 5 |
-| I3 | main.bib | ☐ | Sonnet 5 → Opus 5 |
+| I1 | LaTeX 编译链 | ☐ 待拍板：本地 conda texlive vs. Overleaf | Sonnet 5 |
+| I2 | main.tex 骨架 | ☑ 2026-09-06 占位 `\documentclass`，待 I1 定案后替换 | Sonnet 5 |
+| I3 | main.bib | ◐ 2026-09-06 Sonnet 半段（条目抽取）已完成，Opus 真伪核查（D5）待办 | Sonnet 5 → Opus 5 |
 | I4 | 图 | ☐ | Sonnet 5 |

@@ -1,0 +1,216 @@
+% Step I3 (docs/article/PAPER_EXECUTION_PLAN.md): candidate bib entries,
+% mechanically extracted from docs/task/CONTROL_THEORETIC_LLM_RELATED_WORK.md
+% and docs/evaluation/BASELINES.md. This is Sonnet's extraction half only —
+% NONE of these entries have been authenticity-checked yet (that is the D5
+% audit in Step 6, an Opus job: verify author lists, exact venue, that the
+% arXiv id actually resolves to this title). Author lists marked TODO below
+% are missing from both source docs and must not be invented.
+%
+% Entries are grouped to match BASELINES.md's three layers plus the
+% related-work survey's turn/layer/token-axis table.
+
+% ---- Related-work survey: layer-axis control-theoretic LLM steering ----
+
+@misc{skifstad2026alqr,
+  title        = {Local Linearity of LLMs Enables Activation Steering via Model-Based Linear Optimal Control},
+  author       = {Skifstad and Yang and Chou},
+  year         = {2026},
+  eprint       = {2604.19018},
+  archivePrefix = {arXiv},
+  note         = {Submission under review as of source doc date; author given names not in source docs -- TODO verify full author list}
+}
+
+@inproceedings{nguyen2026pidsteering,
+  title        = {Activation Steering with a Feedback Controller},
+  author       = {Nguyen and Vu and Pham and Zhang and Nguyen},
+  booktitle    = {ICLR},
+  year         = {2026},
+  eprint       = {2510.04309},
+  archivePrefix = {arXiv},
+  note         = {TODO verify full author given names}
+}
+
+% ---- Related-work survey: token-axis ----
+
+@misc{cheng2024liseco,
+  title        = {Linearly Controlled Language Generation with Performative Guarantees},
+  author       = {Cheng and Baroni and {Amo Alonso}},
+  year         = {2024},
+  eprint       = {2405.15454},
+  archivePrefix = {arXiv},
+  note         = {LiSeCo; TODO verify full author given names and exact year (source doc gives arXiv id only)}
+}
+
+@misc{miyaoka2024cbfllm,
+  title        = {CBF-LLM: Safe Control for LLM Alignment},
+  author       = {Miyaoka and Inoue},
+  year         = {2024},
+  eprint       = {2408.15625},
+  archivePrefix = {arXiv},
+  note         = {TODO verify full author given names}
+}
+
+@misc{miyaoka2025cbfllm2,
+  title        = {Control Barrier Function for Aligning Large Language Models},
+  author       = {Miyaoka and Inoue},
+  year         = {2025},
+  eprint       = {2511.03121},
+  archivePrefix = {arXiv},
+  note         = {Follow-up to miyaoka2024cbfllm per source doc; TODO verify full author given names}
+}
+
+@misc{tran2026barriersteer,
+  title        = {BarrierSteer: LLM Safety via Learning Barrier Steering},
+  author       = {Tran and Verma and Wong and Low and Rus and Xiao},
+  year         = {2026},
+  eprint       = {2602.20102},
+  archivePrefix = {arXiv},
+  note         = {NUS+MIT per source doc; TODO verify full author given names}
+}
+
+@misc{bharadwaj2025pidreasoning,
+  title        = {Adaptive Activation Steering for Efficient LLM Reasoning via Closed-Loop PID Control},
+  author       = {Bharadwaj},
+  year         = {2025},
+  eprint       = {2506.18831},
+  archivePrefix = {arXiv},
+  note         = {TODO verify full author given name(s)}
+}
+
+@misc{fan2026steerable,
+  title        = {When is Your LLM Steerable?},
+  author       = {Fan and Cheng and Li and Feizi and Zhou},
+  year         = {2026},
+  eprint       = {2606.11599},
+  archivePrefix = {arXiv},
+  note         = {UMD per source doc; TODO verify full author given names}
+}
+
+@misc{bhargava2023magicword,
+  title        = {What's the Magic Word? A Control Theory of LLM Prompting},
+  author       = {Bhargava and Witkowski and Shah and Thomson},
+  year         = {2023},
+  eprint       = {2310.04444},
+  archivePrefix = {arXiv},
+  note         = {Foundational token-axis reachability-theory paper per source doc; TODO verify full author given names and exact year}
+}
+
+% ---- Related-work survey: turn-axis (direct competitors/comparators) ----
+
+@inproceedings{hu2025nbfllm,
+  title        = {Steering Dialogue Dynamics for Robustness against Multi-turn Jailbreaking Attacks},
+  author       = {Hu and Robey and Liu},
+  booktitle    = {ICML},
+  year         = {2025},
+  eprint       = {2503.00187},
+  archivePrefix = {arXiv},
+  note         = {NBF-LLM; CMU. Code: github.com/HanjiangHu/NBF-LLM. TODO verify full author given names}
+}
+
+@misc{dongre2025driftnomore,
+  title        = {Drift No More? Context Equilibria in Multi-Turn LLM Interactions},
+  author       = {Dongre and Rossi and Lai and Yoon and Hakkani-T{\"u}r and Bui},
+  year         = {2025},
+  eprint       = {2510.07777},
+  archivePrefix = {arXiv},
+  note         = {UIUC+Adobe per source doc; TODO verify full author given names}
+}
+
+@misc{cheng2026genctrl,
+  title        = {GenCtrl: A Formal Controllability Toolkit for Generative Models},
+  author       = {Cheng and {Amo Alonso} and others},
+  booktitle    = {ICLR},
+  year         = {2026},
+  eprint       = {2601.05637},
+  archivePrefix = {arXiv},
+  note         = {Apple. Code: github.com/apple/ml-genctrl. Author list incomplete in both source docs ("Cheng, Amo Alonso 等" / "等") -- TODO full author list}
+}
+
+% ---- BASELINES.md layer 2: controller-design baselines ----
+
+@inproceedings{unknown2024splitsoftmax,
+  title        = {Measuring and Controlling Instruction (In)Stability in Language Model Dialogs},
+  author       = {TODO},
+  booktitle    = {COLM},
+  year         = {2024},
+  eprint       = {2402.10962},
+  archivePrefix = {arXiv},
+  note         = {Split-softmax baseline. Code: github.com/likenneth/persona_drift. Author list NOT given in source doc BASELINES.md -- must not invent, needs lookup}
+}
+
+@misc{unknown2024activationtraits,
+  title        = {Identifying and Manipulating Personality Traits in LLMs Through Activation Engineering},
+  author       = {TODO},
+  year         = {2024},
+  eprint       = {2412.10427},
+  archivePrefix = {arXiv},
+  note         = {Author list NOT given in source doc -- must not invent, needs lookup}
+}
+
+@misc{unknown2025lfsteering,
+  title        = {LF-Steering: Latent Feature Activation Steering for Enhancing Semantic Consistency in LLMs},
+  author       = {TODO},
+  year         = {2025},
+  eprint       = {2501.11036},
+  archivePrefix = {arXiv},
+  note         = {Author list NOT given in source doc -- must not invent, needs lookup}
+}
+
+@misc{unknown2026unisteer,
+  title        = {UniSteer: Text-Guided Flow Matching in Activation Space for Versatile LLM Steering},
+  author       = {TODO},
+  year         = {2026},
+  eprint       = {2605.30076},
+  archivePrefix = {arXiv},
+  note         = {Author list NOT given in source doc -- must not invent, needs lookup}
+}
+
+@misc{unknown2026nautiluscompass,
+  title        = {Nautilus Compass: Black-box Persona Drift Detection for Production LLM Agents},
+  author       = {TODO},
+  year         = {2026},
+  eprint       = {2605.09863},
+  archivePrefix = {arXiv},
+  note         = {"behavioral invariant checklist + re-anchor"; periodic/event-triggered reminder baseline design reference. Author list NOT given in source doc -- must not invent, needs lookup}
+}
+
+% ---- BASELINES.md layer 3: surrogate-modeling / controllability-analysis baselines ----
+
+@misc{unknown2026genctrl_dup,
+  title        = {GenCtrl -- A Formal Controllability Toolkit for Generative Models},
+  author       = {TODO},
+  booktitle    = {ICLR},
+  year         = {2026},
+  eprint       = {2601.05637},
+  archivePrefix = {arXiv},
+  note         = {DUPLICATE of cheng2026genctrl above (same arXiv id, fuller title given in BASELINES.md than in the related-work survey) -- merge the two entries during Step 4, do not cite both}
+}
+
+% ---- Detection/evaluation-design references (non-controller) ----
+
+@misc{unknown2026attractorstates,
+  title        = {Attractor States Emerge in Multi-Turn LLM Conversations},
+  author       = {TODO},
+  year         = {2026},
+  eprint       = {2606.30571},
+  archivePrefix = {arXiv},
+  note         = {Author list NOT given in source doc -- must not invent, needs lookup}
+}
+
+@misc{unknown2026spasm,
+  title        = {SPASM: Stable Persona-driven Agent Simulation for Multi-turn Dialogue Generation},
+  author       = {TODO},
+  year         = {2026},
+  eprint       = {2604.09212},
+  archivePrefix = {arXiv},
+  note         = {Author list NOT given in source doc -- must not invent, needs lookup}
+}
+
+% ---- NOT a bib-citable public source ----
+% docs/references/Control_of_Foundational_Model_revised.pdf is cited throughout
+% this project's own docs (e.g. BASELINES.md section 9, formulas (27)-(28)) but
+% both source docs treat it as an internal/local working reference, not a
+% publicly citable paper with a title/author/venue of its own. Do not fabricate
+% a bib entry for it -- flag to the user during Step 6 (D5) to decide whether
+% it needs a proper citation (if it is itself a published work) or should be
+% cited as an unpublished internal document / dropped from main.bib entirely.

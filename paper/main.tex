@@ -1,0 +1,35 @@
+% Step I2 skeleton (docs/article/PAPER_EXECUTION_PLAN.md).
+% TODO(Step I1): drop the venue style file in alongside this once the LaTeX
+% toolchain decision (local texlive vs. Overleaf) is made, and fix the
+% \documentclass line below to match. Currently a placeholder guess.
+\documentclass{article}
+\usepackage[final]{neurips_2024}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{TODO: paper title (acronym check pending, see contract.yaml meta.acronym)}
+
+\author{%
+  TODO: author list
+}
+
+\begin{document}
+
+\maketitle
+
+\input{sections/abstract.tex}
+\input{sections/01_introduction.tex}
+\input{sections/02_problem_formulation.tex}
+\input{sections/03_method.tex}
+\input{sections/04_experiments.tex}
+\input{sections/05_conclusion.tex}
+\input{sections/06_related_work.tex}
+
+\bibliographystyle{plain}
+\bibliography{main}
+
+\end{document}
