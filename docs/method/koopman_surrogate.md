@@ -1,6 +1,6 @@
 # Koopman 代理与 ARX baseline：实现与公平对比设计
 
-> **状态（2026-09-06）**：部分现行。四层抽象仍在用；其中人格漂移线的部分已作废。
+> **状态（2026-09-06）**：部分现行。四层抽象仍在用；其中已放弃线的部分已作废。
 > 术语基准见 [`NAMING.md`](../NAMING.md)。
 
 `src/persona_drift/modeling/` 是之前缺失的那一块——把采集到的 `trajectories.jsonl` 拟合成

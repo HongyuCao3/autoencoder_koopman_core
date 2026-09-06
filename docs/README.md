@@ -1,5 +1,7 @@
 # LLM 多轮行为闭环控制：文档索引
 
+> 新增文档前先读 [`NAMING.md`](NAMING.md)，任务名以那份为准。
+
 本目录是 Koopman 控制子项目的设计/协议文档集合（代码在 `../persona_drift_control/`），
 覆盖该子项目长出的四条实验线。当前活跃的是**抗攻击**（`defense`）与**抗压力**（`stance`），
 最初的人格漂移线（`persona_drift`）已放弃。术语基准见 [`NAMING.md`](NAMING.md)。信息架构参照

@@ -310,6 +310,9 @@ git clone git@github.com:HongyuCao3/claude-skill.git ~/.claude/skills
    决定本文 claim 的措辞或强度（规则 A6）。每条 WebSearch 来的值标
    `source: websearch:<query>:<top_url>`。
 10. 跑 `references/contract.md` §Validation gates 的全部闸门。
+11. 术语对齐：`design_choice_lattice`/`intro_bullet_keyword`/`why_keyword` 里凡是指代
+    `defense`/`stance`/`benign`/`detect`/`persona_drift` 这几条实验线的措辞，直接用
+    [`docs/NAMING.md`](../NAMING.md) 的英文名列，不要另造一套论文自己的叫法。
 
 **适用智能体**：**Opus 5** 主控。WebSearch 取证可派 Sonnet 5 的 `general-purpose` 子 agent。
 
