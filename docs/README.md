@@ -397,7 +397,11 @@
   p=0.109，方向为负，被基线缺陷 item 拖低——门槛后方向仍为负但趋近 0）——排除了样本量和 ground
   truth 质量这两个此前解释空结果的候选原因后，`consistency_reminder` 式提醒在此设计下的效力
   判定为不成立，不建议靠加样本继续测同一设计，见 `mc_sycophancy_screening_pilot.md` 的
-  "Phase A" 一节。
+  "Phase A" 一节。**2026-09-06 追加：换插入时机重测（job 15590462，提醒只从 turn 2 开始插，
+  复用同 30 items 与 zero_control 直接配对）——门槛后差值恰好为 0（p=1.000），比每轮插版本
+  （p=0.704）更彻底的空。两版提醒设计在同一批 item 上给出一致的空结果，排除了"turn 1 插入
+  提醒"这个具体假设，这条支线的证据强度升级为"当前 channel-A 文案设计下无可测权威"，不建议
+  再换插入时机——下一步该换文案强度/具体性，或转向其他前置条件（benign 对照臂）。**
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；
