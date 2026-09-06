@@ -136,10 +136,12 @@
   以为的空档（`KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md` 第五节）经核实**已被 ERGO 自己填过**
   （已在该文档更正）——贡献点收窄为"用本项目的辨识+可控性方法诊断这个已知有效执行器的动力学
   形状"。建议执行顺序把"最小执行器权威验证"排在文字/代码工作量之前的第一步（这次真正吸取的
-  sycophancy 教训）。**2026-09-06 追加：最小执行器权威验证已实现并提交作业**（job 15602880
-  zero_control / 15602881 reset，20 items × 2 seeds，同一批 item id），进展记录见
-  `experiments/ergo_multiturn_reliability_pilot.md`——跑完之前这里先只记这一句，结果出来后
-  回这条更新。
+  sycophancy 教训）。**2026-09-06 追加：最小执行器权威验证已完成，确认执行器有权威，效应量大**
+  （job 15602880 zero_control / 15602881 reset，20 items × 2 seeds，配对 t-test：最终轮任务
+  成功率 0.275→0.750，t=4.79，p=0.000127）——和 sycophancy 线两次都卡在效应量趋近 0 形成
+  鲜明对比。**但惯性/动力学的性质和 sycophancy 不同，不是"记忆黏滞"而是"信息单调累积"**
+  （揭示的 shard 越多题目客观上越好答，不是模型"记住了之前的立场"），论文措辞需要区分这两种
+  现象。详见 `experiments/ergo_multiturn_reliability_pilot.md`。
 
 ## 数据/通道协议（`protocols/`）
 
@@ -423,7 +425,11 @@
   调用）/独立的重置-vs-追加轨迹循环（不复用 `trajectory_runner.py`——"重置"这个动作的内容
   依赖轮次，塞不进共享循环 `reminder_fn(level)` 的签名）/精简版分析，24 个新 CPU 单测全绿。
   job 15602880（zero_control）/15602881（reset）已提交，20 items × 2 seeds，同一批 item id
-  保证配对可比。**结果尚未归档，见该文档。**
+  保证配对可比。**结果：执行器权威确认，效应量大**（最终轮任务成功率 0.275→0.750，
+  t=4.79，p=0.000127）——和 sycophancy 线两次空结果形成对照；**但惯性性质不同**：这里是
+  "信息单调累积"（shard 越揭示越好答）而不是 sycophancy 那种"同一信息反复施压下的立场
+  漂移"，论文措辞需要分清这两种现象，不能混着引用。下一步：扩样本到 ~60 items（同一任务）
+  再决定要不要为其余五个 ERGO 任务投入评分器工程。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；
