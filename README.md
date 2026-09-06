@@ -38,6 +38,10 @@ Koopman-MPC Phase A→I → 检测支线 → sycophancy drift screening），现
 索引为准。当前活跃的是抗攻击与抗压力两条线，术语基准见 `docs/NAMING.md`。这个仓库本身是我 fork 之后的仓库，不是需要与同事分开维护的
 共享仓库，所以子项目直接放在这里，不必再单独建仓库。
 
+**文档分工**：根目录文档（本文件、`CODE_DESIGN.md`、`ABLATION_STUDY.md`、`DATASETS.md`）= `core`
+任务；`docs/` = 子项目四条线（任务选型/协议/方法/实验）；术语基准 = `docs/NAMING.md`；论文施工图 =
+`docs/article/PAPER_EXECUTION_PLAN.md`。
+
 ## 上传到 GitHub
 
 `datasets/` 约 71 MB（整个工作目录含 `persona_drift_control/`、`results/` 与 `.git` 后约
@@ -209,7 +213,7 @@ python scripts/train.py \
 
 ## 在 Palmetto 2 上运行（Slurm）
 
-集群通用操作（账户/分区查询、`salloc` 调试、监控、连进运行中的节点）见子项目的 [`persona_drift_control/RUNNING_ON_PALMETTO.md`](persona_drift_control/RUNNING_ON_PALMETTO.md)，这里只写本训练代码特有的部分。
+集群通用操作（账户/分区查询、`salloc` 调试、监控、连进运行中的节点）见 [`docs/RUNNING_ON_PALMETTO.md`](docs/RUNNING_ON_PALMETTO.md)，这里只写本训练代码特有的部分。
 
 ### 何时需要 GPU
 

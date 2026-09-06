@@ -23,6 +23,20 @@
   Phase 4（`persona_drift` 包名重命名，164 个文件）**明确不做**——`outputs/` 下 50+ 份冻结的
   `hydra.yaml` 记着旧 `_target_`，改名会让论文 Step 2 要读的历史产物无法重放。执行者：Sonnet 5。
 
+## 仓库级文档（`../`）
+
+根目录的四份文档属于 `core` 任务（`src/koopman_ae/`：8 个标量/多变量轨迹任务的受控 Koopman
+建模），与 `docs/` 描述的 `persona_drift_control` 子项目文档分属两套体系，术语基准见
+[`NAMING.md`](NAMING.md)：
+
+- **[`../README.md`](../README.md)** — 仓库总入口：`core` 任务怎么跑、数据集怎么来，以及
+  本子项目（`docs/` + `persona_drift_control/`）的定位说明。
+- **[`../CODE_DESIGN.md`](../CODE_DESIGN.md)** — `core` 任务的代码级设计文档。
+- **[`../ABLATION_STUDY.md`](../ABLATION_STUDY.md)** — `core` 任务自己的消融记录（状态定义/
+  AE-vs-线性/训练方式/`latent_dim`/早停等八个阶段）。
+- **[`../DATASETS.md`](../DATASETS.md)** — `core` 任务的数据集说明；配套清单见
+  `../DATASET_MANIFEST.csv`。
+
 ## 论文写作（`article/`）
 
 - **[article/PAPER_EXECUTION_PLAN.md](article/PAPER_EXECUTION_PLAN.md) — ★ 论文执行总流程：
