@@ -1,5 +1,7 @@
 # 实验记录：安全方向 steering 剂量-响应 pilot（ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md 第 7 节步骤 2）
 
+> **状态（2026-09-06）**：已收尾，非活跃。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 和 [adversarial_screening_pilot.md](adversarial_screening_pilot.md) 同一类"供跨会话接续"的记录。
 **新开一次对话想知道"步骤 2 现在跑到哪一步了"，看这份文档。**
 

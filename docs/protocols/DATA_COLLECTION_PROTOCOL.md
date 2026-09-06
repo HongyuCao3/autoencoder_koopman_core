@@ -1,7 +1,7 @@
 # 人格/指令漂移闭环控制：激励数据采集协议（草案 v0.1，2026-08-27）
 
-> **状态（2026-09-03 补记）：本文件仍是活文档，但要分两部分读。** 项目已两次转向任务
-> （2026-08-31 → 对抗防御，2026-09-02 → sycophancy drift）。
+> **状态（2026-09-06）**：部分现行，要分两部分读。术语基准见 [`NAMING.md`](../NAMING.md)。
+> 项目已两次转向任务（2026-08-31 → 对抗防御，2026-09-02 → sycophancy drift）。
 > **仍然有效、被后续所有任务线沿用的**：通道 A–D 的定义与执行器语义、readout/`y_probe` 的
 > 列约定、以及第 7 节"采集前 screening gate 先于建模"这条流程原则（对抗防御线的
 > `adversarial_screening_pilot.md`、sycophancy 线的 `sycophancy_screening_pilot.md` 都是它的

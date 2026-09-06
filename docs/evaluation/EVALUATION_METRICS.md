@@ -1,8 +1,12 @@
 # 人格漂移闭环控制：评价指标设计（草案 v0.1，2026-08-28）
 
-> **⚠️ 状态（2026-09-03 补记）：这份草案是为人格漂移这条线写的，没有随后来的任务转向更新，
-> 不是现行判据清单。** 项目在 2026-08-31 转向对抗防御、2026-09-02 再转向 sycophancy drift；
-> 实际在用的判据（new-Q1 渐进侵蚀 / new-Q3 惯性 / 离散翻转事件率与趋势）定义在
+> **状态（2026-09-06）**：已放弃线的历史草案。正文当作指标设计方法论与文献出处读，不是
+> 现行判据清单；现行判据在 `../task/*_FEASIBILITY.md` 与各 `../experiments/*_pilot.md`。
+> 术语基准见 [`NAMING.md`](../NAMING.md)。
+>
+> 这份草案是为人格漂移这条线写的，没有随后来的任务转向更新。项目在 2026-08-31 转向对抗防御、
+> 2026-09-02 再转向 sycophancy drift；实际在用的判据（new-Q1 渐进侵蚀 / new-Q3 惯性 / 离散
+> 翻转事件率与趋势）定义在
 > `../task/ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md`、
 > `../task/SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 与各 `../experiments/*_pilot.md` 里，本文件
 > **完全没有提到它们**。相应地，下面那句"指标定义若与代码实现（`persona_drift/analysis.py`）

@@ -1,5 +1,8 @@
 # 方法总览
 
+> **状态（2026-09-06）**：部分现行。四层抽象仍在用；其中人格漂移线的部分已作废。
+> 术语基准见 [`NAMING.md`](../NAMING.md)。
+
 `persona_drift_control/` 实现的流水线分四层，`DATA_COLLECTION_PROTOCOL.md` 定义的是这条
 流水线要满足的数学规格，本目录下的 `method/` 记录规格具体是怎么落地成代码的。
 
@@ -40,7 +43,7 @@
   `chat_model.py` 的逐层残差流加 `α·v`、`activation_direction.py` 的 diff-in-means 方向标定、
   `dose_response.py` 的 α 扫描，结果见
   [`../experiments/dose_response_pilot.md`](../experiments/dose_response_pilot.md)。
-  没有接进来的是**人格漂移线的 `selfchat.py`**，不是这个通道本身。
+  没有接进来的是**人格漂移线的 `selfchat.py`**，不是这个通道本身。（该线已放弃，此待办作废）
 - MPC 控制器（`control.py::KoopmanMPCController`，用拟合出的 Koopman 代理对 0/1 动作空间做
   短 horizon 穷举求解最优 `u_remind` 序列）**已实现并在对抗防御任务上跑完 Phase A→I**：
   Phase A→E 打赢 zero_control/threshold 两个基线、以更低代价追平 constant_remind，但
@@ -49,8 +52,8 @@
   预算约束设定重做这个对比，见
   [../experiments/budget_constrained_defense_plan.md](../experiments/budget_constrained_defense_plan.md)
   与 [../experiments/koopman_defense_pilot.md](../experiments/koopman_defense_pilot.md)。
-  人格漂移这条线（`screening.py::_make_controller`）尚未接入它，仍是待办。
+  人格漂移这条线（`screening.py::_make_controller`）尚未接入它，仍是待办。（该线已放弃，此待办作废）
 - Koopman/ARX 代理已经接到真实采集数据并验证过（对抗防御领域，`nu=1, mu=2`）；人格漂移领域
-  的数据仍待正式采集。LSTM 与 AE（encoder-decoder）两个 baseline **都已实现并跑完**（分别是
+  的数据仍待正式采集。（该线已放弃，此待办作废）LSTM 与 AE（encoder-decoder）两个 baseline **都已实现并跑完**（分别是
   负结果和打平），详见 [koopman_surrogate.md](koopman_surrogate.md) 的"已知缺口"——那一节是
   这三条的权威版本，本节只做索引，两边不一致时以它为准。

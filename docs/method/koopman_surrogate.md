@@ -1,11 +1,15 @@
 # Koopman 代理与 ARX baseline：实现与公平对比设计
 
+> **状态（2026-09-06）**：部分现行。四层抽象仍在用；其中人格漂移线的部分已作废。
+> 术语基准见 [`NAMING.md`](../NAMING.md)。
+
 `src/persona_drift/modeling/` 是之前缺失的那一块——把采集到的 `trajectories.jsonl` 拟合成
 `Control_of_Foundational_Model_revised.pdf` 第 4/5/6/7 节描述的受控 Koopman 代理，并把 ARX
 baseline（`BASELINES.md` 第③层）实现为同一套代码的特例，而不是另写一份。最初只用**合成的
 已知线性系统数据**验证过（见 `tests/test_koopman.py`）；对抗防御领域（`koopman_defense_pilot.md`
 Phase C）已经接到真实采集数据并完成拟合/闭环验证（`nu=1, mu=2`，`richer_abs_sign` 打赢两个
 经典基线）。人格漂移领域仍是合成数据阶段，要等 screening 通过、正式 320 条轨迹采完之后。
+（该线已放弃，此待办作废）
 
 ## 为什么不直接复用 `src/koopman_ae/core.py`
 
@@ -60,7 +64,7 @@ import**——它只有十几行纯 numpy、不依赖任何 pandas 列约定，�
   配置在 v-aligned 数据上是 0.0684，见 `../experiments/koopman_case_study_design.md` 的
   Phase I；详见 `../experiments/koopman_defense_pilot.md`），
   证明了这套代码在真实数据上是可用的；人格漂移领域仍要等 screening 过关、正式数据采出来后
-  才能做同样的事。
+  才能做同样的事。（该线已放弃，此待办作废）
 - **LSTM baseline 已实现并跑完**（负结果：在与 AE 同一早停口径下 held-out rollout MSE
   0.082–0.095，全部测试隐层大小上都差于 `richer_abs_sign` 的 0.0684；2026-09-03 已在
   v 对齐修正后复核过，方向不变但差距远小于最初记录的"接近 2 倍"）。
