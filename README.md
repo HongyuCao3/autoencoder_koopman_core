@@ -24,7 +24,7 @@ autoencoder_koopman_core/
 ├── CODE_DESIGN.md               # 代码级设计文档
 ├── ABLATION_STUDY.md            # 本核心任务的消融记录（状态定义/AE-vs-线性/训练方式/latent_dim/早停）
 ├── docs/                        # 子项目的任务选型/可行性/协议/方法/baseline/实验文档，外部论文 PDF 缓存
-└── persona_drift_control/       # 上述文档描述的实现（独立 git 历史已并入本仓库）
+└── persona_drift_control/       # 抗攻击/抗压力两条活跃线的实现（独立 git 历史已并入本仓库）
 ```
 
 本核心 Autoencoder--Koopman 任务自己的消融结果全部记录在
@@ -35,7 +35,7 @@ autoencoder_koopman_core/
 `docs/` 和 `persona_drift_control/` 是同一个子项目：前者是任务选型/协议/方法/实验文档（索引见
 `docs/README.md`），后者是代码。该子项目已经跑过四条实验线（人格漂移 screening → 对抗防御
 Koopman-MPC Phase A→I → 检测支线 → sycophancy drift screening），现状以 `docs/README.md`
-索引为准。这个仓库本身是我 fork 之后的仓库，不是需要与同事分开维护的
+索引为准。当前活跃的是抗攻击与抗压力两条线，术语基准见 `docs/NAMING.md`。这个仓库本身是我 fork 之后的仓库，不是需要与同事分开维护的
 共享仓库，所以子项目直接放在这里，不必再单独建仓库。
 
 ## 上传到 GitHub

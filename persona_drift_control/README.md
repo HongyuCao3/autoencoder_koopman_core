@@ -1,4 +1,8 @@
-# Persona Drift Control
+# LLM 多轮行为闭环控制（代码）
+
+目录名 `persona_drift_control` 与包名 `persona_drift` 是最初任务线的历史遗留，
+**代码现在服务于抗攻击/抗压力两条线**；未改名的理由见
+[`../docs/DOC_CLEANUP_PLAN.md`](../docs/DOC_CLEANUP_PLAN.md) §五。
 
 `autoencoder_koopman_core`（这个仓库）是我自己 fork 之后的仓库，不是需要
 和同事分开维护的共享仓库，所以这个子项目就直接放在这里，不再单独建仓库。
@@ -14,15 +18,16 @@
 ## 现在做到哪一步了
 
 **最初只有协议第 7 节要求的"采集前 1 小时信号探针"（`signal_screening`），后来在同一套
-`Controller`/`modeling` 骨架上长出了四条实验线。** 各线的状态、job id、结论一律以
-`../docs/README.md` 的索引为准，本文件不重复：
+`Controller`/`modeling` 骨架上长出了四条实验线：①已放弃，②④现为**抗攻击**/**抗压力**两条
+活跃线（名字对齐 [`../docs/NAMING.md`](../docs/NAMING.md)），③收尾中。** 各线的状态、job id、
+结论一律以 `../docs/README.md` 的索引为准，本文件不重复：
 
 | 实验线 | 入口脚本 | 状态 |
 |---|---|---|
-| ① 人格漂移 screening（最初的 gate） | `run_signal_screening.py` | 三问全挂；10-prompt 放大后仍是空结果；渐进施压版（`run_pressure_screening.py`）中间态 |
-| ② 对抗防御 Koopman-MPC（主线） | `run_adversarial_screening.py` / `run_defended_screening.py` | Phase A→I 完整闭环并已收尾：`koopman_mpc` 打赢 `zero_control`/`threshold`，但未打赢同代价的 `periodic` |
+| ① 人格漂移 screening（最初的 gate） | `run_signal_screening.py` | 三问全挂；10-prompt 放大后仍是空结果；渐进施压版（`run_pressure_screening.py`）中间态（该线已放弃） |
+| ② 抗攻击（对抗防御）Koopman-MPC（主线） | `run_adversarial_screening.py` / `run_defended_screening.py` | Phase A→I 完整闭环并已收尾：`koopman_mpc` 打赢 `zero_control`/`threshold`，但未打赢同代价的 `periodic` |
 | ③ Koopman 显式检测支线 | `evaluate_koopman_detector.py` | 方案 1/3/4 跑完，修完"v 对齐"bug 后方案 1/3 由负结果转为正向 |
-| ④ sycophancy drift screening | `run_sycophancy_screening.py` | 两次 GPU 跑完（自评 judge + 独立 judge 配对重跑），欠功效的空结果 |
+| ④ 抗压力（sycophancy drift）screening | `run_sycophancy_screening.py` | 两次 GPU 跑完（自评 judge + 独立 judge 配对重跑），欠功效的空结果 |
 
 代理建模层另有 ARX / `richer_abs_sign` / LSTM / AE 四个 baseline 的对照（`fit_koopman_*.py`）。
 
@@ -97,9 +102,9 @@ python scripts/run_signal_screening.py \
 
 | 线 | CLI | sbatch |
 |---|---|---|
-| ② 对抗防御 screening / 带防御重跑 | `run_adversarial_screening.py`、`run_defended_screening.py`、`run_benign_helpfulness_screening.py` | `environment/run_adversarial_screening.sbatch`、`run_koopman_defense_phase*.sbatch` |
+| ② 抗攻击（对抗防御）screening / 带防御重跑 | `run_adversarial_screening.py`、`run_defended_screening.py`、`run_benign_helpfulness_screening.py` | `environment/run_adversarial_screening.sbatch`、`run_koopman_defense_phase*.sbatch` |
 | ③ 检测支线 | `evaluate_koopman_detector.py` | 离线 CPU，无 sbatch |
-| ④ sycophancy screening | `run_sycophancy_screening.py` | `environment/run_sycophancy_screening.sbatch`、`run_sycophancy_screening_independent_judge.sbatch` |
+| ④ 抗压力（sycophancy）screening | `run_sycophancy_screening.py` | `environment/run_sycophancy_screening.sbatch`、`run_sycophancy_screening_independent_judge.sbatch` |
 | 代理模型拟合/对照 | `fit_koopman_defense_model.py`、`fit_koopman_lstm_baseline.py`、`fit_koopman_ae_baseline.py` | 多为 CPU 直跑 |
 
 集群上一律用对应的 `environment/*.sbatch` 提交，而不是手敲上面的裸命令——sbatch 里固定了

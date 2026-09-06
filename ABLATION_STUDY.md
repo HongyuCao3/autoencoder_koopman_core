@@ -2,7 +2,7 @@
 
 ## 背景与动机
 
-`persona_drift_control/` 那条线（人格漂移 → 对抗防御）已经做过多轮消融：LSTM 代理模型 baseline
+`persona_drift_control/` 那条线（人格漂移 → 抗攻击 → 抗压力）已经做过多轮消融：LSTM 代理模型 baseline
 （`docs/experiments/lstm_baseline_plan.md`）、周期性提醒 baseline（Phase G）、检测方案 1/3/4 的状态
 特征消融、state-action interaction 消融。相比之下，本仓库最早、也是默认起点的**核心
 Autoencoder–Koopman 任务**（`sentence_length_t10` 句子长度控制，以及另外 7 个标量/向量任务）

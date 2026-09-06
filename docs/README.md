@@ -1,7 +1,8 @@
-# 人格漂移闭环控制：文档索引
+# LLM 多轮行为闭环控制：文档索引
 
-本目录是 persona-drift Koopman 控制子项目的设计/协议文档集合（代码在
-`../persona_drift_control/`）。信息架构参照
+本目录是 Koopman 控制子项目的设计/协议文档集合（代码在 `../persona_drift_control/`），
+覆盖该子项目长出的四条实验线。当前活跃的是**抗攻击**（`defense`）与**抗压力**（`stance`），
+最初的人格漂移线（`persona_drift`）已放弃。术语基准见 [`NAMING.md`](NAMING.md)。信息架构参照
 [Pytorch-lightning-Hydra-Optuna-MLflow-Slurm-Project-Template-for-Scientific-Research](https://github.com/HongyuCao3/Pytorch-lightining-Hydra-Optuna-MLflow-Slurm-Project-Tempate-for-Scientific-Research)
 的文档分类思路（任务定义/方法/实验/文献），用纯 Markdown 实现，不引入 Quarto 等构建工具。
 
