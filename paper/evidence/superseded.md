@@ -254,7 +254,14 @@ Step 2a 六条线并行抽取，同一次测量在不同文档里被分别抽了
    Step 2a/2b，把新臂的数字按 schema 补进 `numbers.yaml`，并重新裁决受影响的条目
    （`n_def_021`–`n_def_032`、`n_def_057`–`n_def_059`、`n_def_124`、`n_def_176`–`n_def_205`
    这几组）。执行文档明确禁止 Sonnet 自行改动 evidence 台账。
-3. **`caveated` 的引用规则需要你确认**：本文件第 1.1 节把它定义为"可引用但必须同句带限定"。
-   如果你希望 Step 4 更保守（`claim_ledger` 只许用 `current`），那么惯性前提（`n_op_065`）、
-   Phase J 全部臂级读数、Phase A 执行器权威（`n_def_001`–`006`）都将无法进正文——需要你
-   在开始 Step 4 之前明确取舍。
+3. ~~**`caveated` 的引用规则需要你确认**~~ → **已确认（2026-09-06，用户拍板采用宽松方案）**：
+   `caveated` 数字**可以**进 `claim_ledger`，但引用它的那条 claim 必须在措辞里带上
+   `supersede_reason` 的限定条件。取舍理由：严格方案（只许 `current`）会同时掏掉惯性前提
+   （`n_op_065`）、Phase J 全部臂级读数、Phase A 执行器权威（`n_def_001`–`006`）——正文
+   剩下的 244 条 `current` 撑不起论文，而掏掉的恰好是最核心的几块。
+   **已把这条规则做成可执行的闸门**：`paper/evidence/check_claim_evidence.py`。它读
+   `contract.yaml` + `numbers.yaml`，对以下三种情况直接失败退出——引用了 `superseded` 数字
+   （并打印该引用哪一条）、引用了不存在的 id（防打字错）、引用了 `caveated` 数字但该 claim 的
+   `notes` 字段为空。它**查不了**的是"prose 里到底有没有真把限定写出来"——那是判断题，留给
+   作者；脚本能做的是把限定条件打印在对应 claim 旁边，让它没法被跳过去不读。Step 4 的机械
+   闸门里已加上这一条。

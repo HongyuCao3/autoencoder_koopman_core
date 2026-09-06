@@ -323,8 +323,12 @@ git clone git@github.com:HongyuCao3/claude-skill.git ~/.claude/skills
 
 **出口闸门（两道）**
 
-- 机械闸门：`contract.md` §Validation gates 全过；`claim_ledger` 里没有引用 `superseded` 数字；
-  引用 `caveated` 数字的 claim，其措辞里必须带上该条 `supersede_reason` 的限定条件。
+- 机械闸门：`contract.md` §Validation gates 全过；**并且
+  `python paper/evidence/check_claim_evidence.py` 退出码为 0**——它查三件事：`claim_ledger`
+  没有引用 `superseded` 数字、没有引用不存在的 id、引用 `caveated` 数字的 claim 其 `notes`
+  字段非空。它会把每条 `caveated` 证据的限定条件打印在对应 claim 旁边；**"措辞里有没有真把
+  限定写出来"是判断题，脚本查不了，由你逐条确认**（规则来源见
+  `paper/evidence/superseded.md` 第 1.1 节与第五节第 3 条，2026-09-06 用户已拍板）。
 - **Tier-1 冷审**：**新开一个 Opus 5 会话**，只给它 `contract.yaml` + `paper/evidence/`，
   按 `references/reviewer.md` §Tier-1 reviewer 出裁决——"这个 lattice 代表一个可发表的论证吗"。
   裁决为否就回来迭代 Phase A，**不许进 Step 5**。
