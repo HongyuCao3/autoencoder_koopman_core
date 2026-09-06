@@ -250,6 +250,11 @@ git clone git@github.com:HongyuCao3/claude-skill.git ~/.claude/skills
 **出口闸门**：`numbers.yaml` 中 `status == unknown` 的条目数为 0；每条 `superseded` 都有
 `superseded_by` 指向一个 `current` 条目。
 
+**执行时对本闸门做了一处修订（2026-09-06）**：`status` 变成三值（`current` / `superseded` /
+`caveated`），`superseded_by` 允许指向 `caveated`（即"非 superseded"）而不只是 `current`。
+理由与影响见 `paper/evidence/superseded.md` 第一节——简言之，存在第三类事实（唯一可得、
+但协议已知被混淆、且从未重跑），两值 schema 只能在"隐瞒"和"违反闸门"之间二选一。
+
 ---
 
 ## Step 3 · 方程定稿
@@ -318,7 +323,8 @@ git clone git@github.com:HongyuCao3/claude-skill.git ~/.claude/skills
 
 **出口闸门（两道）**
 
-- 机械闸门：`contract.md` §Validation gates 全过；`claim_ledger` 里没有引用 `superseded` 数字。
+- 机械闸门：`contract.md` §Validation gates 全过；`claim_ledger` 里没有引用 `superseded` 数字；
+  引用 `caveated` 数字的 claim，其措辞里必须带上该条 `supersede_reason` 的限定条件。
 - **Tier-1 冷审**：**新开一个 Opus 5 会话**，只给它 `contract.yaml` + `paper/evidence/`，
   按 `references/reviewer.md` §Tier-1 reviewer 出裁决——"这个 lattice 代表一个可发表的论证吗"。
   裁决为否就回来迭代 Phase A，**不许进 Step 5**。
@@ -513,7 +519,7 @@ I1/I2/I3/I4 全程可并行，I1+I2 需在 Step 5 之前就位
 | 0 | 安装 skill | ◐ 2026-09-06 软链已建，待新会话验证 skill 列表 | — |
 | 1 | 主线锁定 | ☑ 2026-09-06 | Opus 5 |
 | 2a | 证据抽取 | ☑ 2026-09-06 533 条（core 57/defense 227/operator 73/sycophancy 30/readout 92/baseline 54），10 条抽查全部对得上出处 | Sonnet 5 ×6 |
-| 2b | 作废判定 | ☐ | Opus 5 |
+| 2b | 作废判定 | ☑ 2026-09-06 533 条全部裁决（current 244 / caveated 172 / superseded 117）；十次事件记于 `paper/evidence/superseded.md`（计划点名的 5 次 + 另查出 5 次，其中 E7 为本次新发现）；`status` 改为三值，见该文件第一节 | Opus 5 |
 | 3 | 方程定稿 | ◐ 2026-09-06 Sonnet 半段（`paper/equations_pseudocode.md`，8 项全覆盖）已完成，待 Opus 定稿 `equations.tex` | Sonnet 5 → Opus 5 |
 | 4 | Tier 1 契约 | ☐ | Opus 5 |
 | 4' | Tier 1 冷审 | ☐ | Opus 5（新会话） |
