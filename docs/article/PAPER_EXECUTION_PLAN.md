@@ -512,9 +512,9 @@ I1/I2/I3/I4 全程可并行，I1+I2 需在 Step 5 之前就位
 |---|---|---|---|
 | 0 | 安装 skill | ◐ 2026-09-06 软链已建，待新会话验证 skill 列表 | — |
 | 1 | 主线锁定 | ☑ 2026-09-06 | Opus 5 |
-| 2a | 证据抽取 | ◐ 2026-09-06 六条证据线并行抽取中 | Sonnet 5 ×N |
+| 2a | 证据抽取 | ☑ 2026-09-06 533 条（core 57/defense 227/operator 73/sycophancy 30/readout 92/baseline 54），10 条抽查全部对得上出处 | Sonnet 5 ×6 |
 | 2b | 作废判定 | ☐ | Opus 5 |
-| 3 | 方程定稿 | ◐ 2026-09-06 Sonnet 半段（伪代码抽取）进行中 | Sonnet 5 → Opus 5 |
+| 3 | 方程定稿 | ◐ 2026-09-06 Sonnet 半段（`paper/equations_pseudocode.md`，8 项全覆盖）已完成，待 Opus 定稿 `equations.tex` | Sonnet 5 → Opus 5 |
 | 4 | Tier 1 契约 | ☐ | Opus 5 |
 | 4' | Tier 1 冷审 | ☐ | Opus 5（新会话） |
 | 5 | Tier 2/3 逐节 | ☐ | Opus 5 / Fable 5.1 |
