@@ -104,3 +104,39 @@ content** for the Phase F helpfulness-cost check
 same-category entries into one 6-turn session so the Koopman-MPC controller has enough history
 to act (mirrors how `attack_bank.py`/`safemtdata_attack_600.json` supplies fixed multi-turn
 content for the adversarial-defense line).
+
+`ergo_gsm8k_sharded.jsonl` contains 103 GSM8K math items reshaped from Laban et al. 2025's
+"sharded instruction" multi-turn degradation benchmark (arXiv:2505.06120, Microsoft, MIT
+license), vendored for `docs/feasibility/ERGO_MULTITURN_RELIABILITY_FEASIBILITY.md`'s proposed
+minimal executor-authority check (the "reset" actuator, ERGO arXiv:2510.14077, tested against a
+GSM8K math item instead of ERGO's own entropy signal or the other five tasks -- math has the
+simplest, purely-mechanical evaluator of the six, no execution sandbox needed). Each item's
+original math question is split by the upstream authors into 4-12 "shards" -- clauses that
+together reconstitute the full word problem -- meant to be revealed one per conversation turn
+instead of all at once, the mechanism this benchmark's "sharded" arm uses to induce multi-turn
+degradation. Each output row is `{item_id, gold_answer, shards: [str, ...]}`; `gold_answer` is
+the numeric answer parsed out of the original `answer` field's `<work># finalvalue` format
+(the `####`-delimited suffix upstream's own GSM8K-derived evaluator, `tasks/math/task_math.py`
+in the source repo, keys off of). All 103 rows checked at fetch time to have the `####` marker
+present and parse cleanly; none dropped.
+
+Re-fetch command:
+
+```bash
+git clone --depth 1 https://github.com/microsoft/lost_in_conversation.git
+# then from data/sharded_instructions_600.json, filter rows where
+# task_id.startswith("sharded-GSM8K"), sort each row's shards by shard_id, and reshape into
+# {item_id: task_id with "/" -> "_" and "sharded-" -> "ergo_", gold_answer: answer.split("####")[1].strip(),
+# shards: [s["shard"] for s in sorted_shards]} -- see git history of this file for the exact
+# one-off script used 2026-09-06.
+```
+
+**Known simplification, read before implementing on top of this file**: the upstream benchmark
+reveals shards via a live LLM-simulated user (`simulator_sharded.py`) that decides shard order/
+pacing and classifies each assistant turn as a clarification vs. an answer attempt before
+scoring -- this project's `SCRIPTED_USER_TURNS_FEASIBILITY.md` already found that design (a live
+user-simulator LLM) not worth replicating for this codebase's other lines, so any trajectory
+runner built on this file should reveal shards on this project's usual fixed schedule (shard `i`
+at turn `i`, in the stored order) and score every turn directly, not just the turn a classifier
+flags as an "answer attempt". This is a deliberate scope reduction, not an oversight -- see the
+feasibility doc's section 2.3 for the two design paths this leaves open.

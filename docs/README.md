@@ -136,7 +136,10 @@
   以为的空档（`KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md` 第五节）经核实**已被 ERGO 自己填过**
   （已在该文档更正）——贡献点收窄为"用本项目的辨识+可控性方法诊断这个已知有效执行器的动力学
   形状"。建议执行顺序把"最小执行器权威验证"排在文字/代码工作量之前的第一步（这次真正吸取的
-  sycophancy 教训）。**仅分析，未实现、未跑实验、未提交采集代码。**
+  sycophancy 教训）。**2026-09-06 追加：最小执行器权威验证已实现并提交作业**（job 15602880
+  zero_control / 15602881 reset，20 items × 2 seeds，同一批 item id），进展记录见
+  `experiments/ergo_multiturn_reliability_pilot.md`——跑完之前这里先只记这一句，结果出来后
+  回这条更新。
 
 ## 数据/通道协议（`protocols/`）
 
@@ -413,6 +416,14 @@
   （p=0.704）更彻底的空。两版提醒设计在同一批 item 上给出一致的空结果，排除了"turn 1 插入
   提醒"这个具体假设，这条支线的证据强度升级为"当前 channel-A 文案设计下无可测权威"，不建议
   再换插入时机——下一步该换文案强度/具体性，或转向其他前置条件（benign 对照臂）。**
+- **[experiments/ergo_multiturn_reliability_pilot.md](experiments/ergo_multiturn_reliability_pilot.md) —
+  ★ 正在做：sycophancy 两次执行器权威空结果后评估的下一个候选（`ERGO_MULTITURN_RELIABILITY_
+  FEASIBILITY.md`）的最小执行器权威验证。vendor 了 103 个 GSM8K sharded 数学题
+  （`resources/ergo_gsm8k_sharded.jsonl`，MIT 协议），实现了 bank/判官（纯正则，零 LLM 判官
+  调用）/独立的重置-vs-追加轨迹循环（不复用 `trajectory_runner.py`——"重置"这个动作的内容
+  依赖轮次，塞不进共享循环 `reminder_fn(level)` 的签名）/精简版分析，24 个新 CPU 单测全绿。
+  job 15602880（zero_control）/15602881（reset）已提交，20 items × 2 seeds，同一批 item id
+  保证配对可比。**结果尚未归档，见该文档。**
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；
