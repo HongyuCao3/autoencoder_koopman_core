@@ -7,8 +7,33 @@
 
 子目录：`task/`（任务选型与背景调研）、`feasibility/`（各条备选方向的可行性分析）、
 `protocols/`（数据/通道协议）、`evaluation/`（评价指标与 baseline 清单）、`method/`（实现细节）、
-`experiments/`（实验记录）、`references/`（本地 PDF 缓存，已 gitignore）。跨文档的反引号引用
+`experiments/`（实验记录）、`article/`（论文写作的跨会话施工图）、`references/`（本地 PDF
+缓存，已 gitignore）。跨文档的反引号引用
 （如 `` `BASELINES.md` ``）是文字引用，不是可跳转链接，不随文件搬移而失效。
+
+## 文档整理
+
+- **[DOC_CLEANUP_PLAN.md](DOC_CLEANUP_PLAN.md) — 命名基准 + 残留修正 + 结构归位方案（待执行）。**
+  项目实际任务已从"人格漂移"转向**抗攻击**与**抗压力**两条线，文档里留有旧命名。方案的核心
+  不是批量替换——75 处中文命中里绝大多数是**正确的历史陈述**，改掉就是篡改记录——而是划清
+  "改"与"绝对不改"的边界：Phase 0 建 `NAMING.md` 命名基准表，Phase 1 逐行修正**顶层身份表述**
+  （4 个文件、约 20 行），Phase 2 给过期草案加统一状态横幅并标记 `method/` 下 12 处指向已放弃线的
+  **僵尸待办**，Phase 3 建立根目录 core 文档与 `docs/` 的双向索引（不搬文件），Phase 5 防复发。
+  Phase 4（`persona_drift` 包名重命名，164 个文件）**明确不做**——`outputs/` 下 50+ 份冻结的
+  `hydra.yaml` 记着旧 `_target_`，改名会让论文 Step 2 要读的历史产物无法重放。执行者：Sonnet 5。
+
+## 论文写作（`article/`）
+
+- **[article/PAPER_EXECUTION_PLAN.md](article/PAPER_EXECUTION_PLAN.md) — ★ 论文执行总流程：
+  跨会话的施工图。** 主线已锁定为 positive / `prior_injection`——把 Koopman 这个动力系统-控制论
+  先验作为归纳偏置引入 LLM 多轮行为建模，再用拟合出的算子做控制与安全干预。文档覆盖：论文
+  叙事弧与纳入/排除范围（本仓库两套证据体——核心 AE-Koopman 八阶段消融 + `persona_drift_control`
+  四条实验线——分别担任哪一节）、诚实性红线（"打不赢等代价 periodic"必须进正文）、Step 0–7 与
+  I1–I4 每一步的目标/输入/产物/流程细节/出口闸门、每步适用的智能体分层（判断类用 Opus、正文
+  生成用 Fable、抽取执行用 Sonnet、机械检查用 Haiku/脚本）、依赖与并行度、可直接粘贴的新会话
+  启动语、进度表。**分工到新会话执行某一步时，先让那个会话读本文档的对应 Step。** 写作方法论
+  依赖 `~/.claude/skills` 下的 `neurips-write-tiered`/`neurips-write`/`paper-audit`/`paper-pipeline`
+  （**当前未安装，Step 0 就是装它**）。
 
 ## 任务选型（`task/`）
 
