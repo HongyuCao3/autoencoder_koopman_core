@@ -347,6 +347,15 @@
   文档列的 (c) 更强施压 / (e) ground truth 审计；两份原始 trajectories.jsonl 未被触碰，
   现行判据（`stance_label`/`is_flip`/`y_consistency`）不变。防御线的 Gate 2（同一修法）
   因此也被排除，`budget_constrained_defense_plan.md` 11.6 列出的这条路径不再可行。**
+  **2026-09-05/06 追加：样本扩充（job 15568231，60 items）+ 执行器权威检查重跑（job
+  15570373 zero_control / 15570374 constant_remind）都已完成。**扩样本后 new-Q3 仍强显著但
+  效应量收缩（r 0.42→0.29，门槛后），new-Q1/flip_trend 仍不显著但更接近边界（p 0.167→0.074、
+  0.67→0.071）——20-item 那次的效应量估计有一部分是小样本噪声。**Phase A 重做（配对 t-test，
+  turn-1 基线门槛后 n=22 干净 item）结论是空结果，且这次站得住**：p=0.704（原始 30 items 时
+  p=0.109，方向为负，被基线缺陷 item 拖低——门槛后方向仍为负但趋近 0）——排除了样本量和 ground
+  truth 质量这两个此前解释空结果的候选原因后，`consistency_reminder` 式提醒在此设计下的效力
+  判定为不成立，不建议靠加样本继续测同一设计，见 `mc_sycophancy_screening_pilot.md` 的
+  "Phase A" 一节。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；

@@ -17,6 +17,13 @@ ICLR 2024, arXiv:2310.13548）"Are You Sure?" 这套 sycophancy-eval，题库用
 SYCON-Bench 的 GPT-4o 还是我们自己）现编的一句话，从根上排除审计发现的那类错误，而不是继续在
 同一类数据上打补丁。
 
+## 状态（最新：2026-09-06，见下面"Phase A"一节）
+
+**60-item 样本扩充（job 15568231）和 Phase A 执行器权威重跑（job 15570373/15570374）都已完成。**
+样本扩充确认了 new-Q3（跨轮惯性）在 60 items 上依然强显著、稳定；Phase A 重跑在这批干净数据上
+**仍然是空结果**——不是像 SYCON-Bench 那次卡在样本量不够，而是效应量本身在 gate 掉基线缺陷 item
+后就已经接近 0（p=0.70，n=22）。见下面"Phase A"一节。
+
 ## 代码
 
 - `resources/mmlu_sycophancy_mc.jsonl`：vendor 自 `meg-tong/sycophancy-eval` 的
@@ -66,6 +73,33 @@ min_fit_turn=2)`，剔除上面那 4 个 item 的相关轨迹）：
 | new-Q3 | r=**0.4190**, p=3.1e-7,**仍然强显著**，只是原始 0.72 里有一部分是那 4 个"一开始就不会"的
 item 贡献的虚高 |
 
+## 结果（job 15568231，60 items × 2 seeds = 120 条轨迹，样本扩充）
+
+原始（未加 (d) 门槛）结果：
+
+| 判据 | 结果 |
+|---|---|
+| new-Q1（渐进翻转，连续斜率） | 不显著（t=-0.10, p=0.92），12 负 8 正 |
+| new-Q3（跨轮惯性） | **r=0.5640, p<0.0001，通过**——比 20-item 那次（r=0.72）弱但仍然强显著 |
+| 离散翻转事件 | 42/120 条轨迹翻转过（35.0%），flip_trend 不显著（p=0.88） |
+| turn-1 正确率 | 85.8%（120 条里 17 条 turn 1 就答错，对应 11 个 item） |
+
+加 (d) 门槛（`require_turn1_baseline=True, min_fit_turn=2`，剔除上面 11 个 item 的相关轨迹，
+剩 54 items/103 条轨迹）：
+
+| 判据 | 结果 |
+|---|---:|
+| new-Q1 | mean slope=**+0.026**（方向仍为正），t=1.82, p=0.074，比 20-item 那次（p=0.167）更接近显著但仍未过 |
+| new-Q3 | r=**0.2894**, p=2.4e-9，**仍然强显著**，但比 20-item 门槛后的 r=0.42 明显缩水 |
+| flip_trend | p=0.071，比 20-item 那次（p=0.67）更接近显著，方向为正（翻转概率随轮次上升），但仍未过 0.05 |
+
+**扩样本后 new-Q3 的效应量往下收（0.42→0.29），new-Q1/flip_trend 的 p 值往下降（0.167→0.074,
+0.67→0.071）**——20-item 那次"有粘性但可逆"的定性判断没变（new-Q3 仍强显著,new-Q1 仍不显著),
+但两个新判据都在往"勉强不显著"靠拢,说明 20-item 的效应量估计有一部分是小样本噪声,真实效应量
+比 20-item 那次看到的更接近零/更接近显著边界,不是稳稳地落在哪一边——这条线本身不需要更多样本
+才能验证"有没有惯性"（new-Q3 从来没含糊过),但如果之后要靠 new-Q1/flip_trend 判定"是否存在渐进
+恶化",120 items 这个规模可能还不够一锤定音,应该把这两个判据当"还没有定论"而不是"已经排除"。
+
 ## 解读
 
 1. **惯性/跨轮记忆这个前置条件，在这份数据上第一次有了干净、强的证据**——不像 SYCON-Bench 那样
@@ -88,16 +122,44 @@ item 贡献的虚高 |
    `pressure_screening_pilot.md`/`sycophancy_screening_pilot.md` 里"离散判据可能比连续斜率更有
    功效"这个此前只是猜想的判断,这次是第一次有干净数据支持。
 
+## Phase A：执行器权威检查（已完成，job 15570373/15570374，2026-09-05，结论：空结果，不再受样本量困扰）
+
+`SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 第 5 节步骤 2 的同一道门,这次在 ground-truth-verified
+的 MMLU 数据上重做：`scripts/run_mc_sycophancy_defended_screening.py --controller
+{zero_control,constant_remind}`,30 items × 2 seeds,和 60-item 样本扩充跑（job 15568231）
+用同一个 `--item-rng-seed 1` 但另一批独立抽样的 item（`environment/run_mc_sycophancy_
+phaseA_{zero_control,constant_remind}.sbatch`）：
+
+- job 15570373（zero_control）→ `outputs/mc_sycophancy_phaseA_zero_control/`
+- job 15570374（constant_remind）→ `outputs/mc_sycophancy_phaseA_constant_remind/`
+
+两个作业都已完成（21:11/21:07，均 exit 0:0）。按 `sycophancy_screening_pilot.md` Phase A 一节
+同样的设计做配对比较（`scripts/analyze_mc_phaseA_comparison.py`：每个 item 把 turn 2-5 的
+`y_consistency` 跨 seed 取平均，同一 item 在两臂间配对，paired t-test）：
+
+| | n_items | zero_control 均值 | constant_remind 均值 | 差值（remind-zero） | t | p |
+|---|---:|---:|---:|---:|---:|---:|
+| 原始（30 items 全部） | 30 | 0.8438 | 0.8146 | -0.0292 | -1.65 | 0.109 |
+| turn-1 基线门槛后（剔除 8 个任一臂 turn1 非 MAINTAINS 的 item） | 22 | 0.9688 | 0.9631 | -0.0057 | -0.38 | **0.704** |
+
+**结论：仍然是空结果,但这次不是"卡在样本量",而是效应量本身就接近 0。** 门槛前后对比是关键
+证据：门槛前差值 -0.029（方向甚至和"提醒应该有正面效果"相反）,门槛后差值缩到 -0.006、
+t 从 -1.65 掉到 -0.38——说明门槛前那点非零差值主要是几个基线本身有问题的 item 贡献的,不是
+提醒的真实效力,和 `sycophancy_screening_pilot.md` Phase A 一节里 `sycon_fp_0107` 污染基线的
+情况是同一种问题。干净的 22 items 上,p=0.70 远高于 SYCON-Bench 那次卡住的 p=0.096——**这次
+排除了"样本量不够"和"ground truth 质量拖累"两个此前解释空结果的候选原因之后,空结果本身更
+站得住脚**：`consistency_reminder` 式的 channel-A 提醒,在这个执行链路（agent 自己看到提醒、
+自己决定要不要因此改变作答）上,目前没有看到可测的效力。这不等于"执行器权威完全不存在"——
+只是这一种提醒设计、这个采样规模下测不出来；如果后续要继续追这条线，值得换一种提醒强度/位置
+（比如只在被反驳时插入而不是每轮都插）而不是简单再加样本量。
+
 ## 下一步
 
-1. **值得扩样本到 ~60 items**：不是为了 new-Q3（已经很显著）,而是为了让 new-Q1/离散判据的判定
-   更可信,以及看这次观察到的"有粘性但可逆"动力学形态是不是稳定的（目前只有 20 items,`turn5
-   高于turn1`这类观察可能是小样本噪声）。
-2. **执行器权威检查（Phase A）值得在这份数据上重做一次**：这次的判官几乎不需要外部核验（92.5%
-   正则命中,规则透明),用它来测 `consistency_reminder` 式的提醒有没有效力,结果会比在
-   SYCON-Bench 那批数据上跑的结果（`sycophancy_screening_pilot.md` "Phase A" 一节,p=0.096,
-   n=10,卡在样本量和 ground truth 双重不确定性上）干净得多——这次至少不用担心"权威检查的结论
-   被脏数据污染"这层顾虑。
+1. **样本扩充（job 15568231，60 items）和 Phase A 重跑（job 15570373/15570374）已完成**，见上面
+   对应两节——扩样本确认 new-Q3 稳定但效应量随样本收缩、new-Q1/flip_trend 仍不显著但更接近边界；
+   Phase A 重做后是站得住的空结果（p=0.70，不是欠功效）。
+2. **执行器权威这条支线目前判定为"当前设计下无效"，不建议继续单纯加样本**：下一次要推进的话，
+   应该换提醒的插入方式（如仅反驳后插入、强度分级）而不是重复本次设计再跑一遍。
 3. **SYCON-Bench 数据（`sycon_false_presuppositions.jsonl`/`sycophancy_bank.py`）不删除**：
    它记录的"错误预设"这个更具体的现象类型（不是任意知识问答,而是话里带着一个需要被纠正的错误
    前提）本身有独立价值,`sycophancy_screening_pilot.md` 保留为历史记录,`SYCOPHANCY_DRIFT_TASK_
