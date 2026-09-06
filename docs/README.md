@@ -126,6 +126,17 @@
   Koopman-MPC 结合的可行性分三层评估：重新包装本项目自己的模型迭代历史（零成本可做）、
   可控性作为检测信号（成本不高值得试）、真正对应"随训练演化"的设置（需要微调 LLM 或换
   隐藏状态表征，方向性决策，不可行/待定）。
+- **[feasibility/ERGO_MULTITURN_RELIABILITY_FEASIBILITY.md](feasibility/ERGO_MULTITURN_RELIABILITY_FEASIBILITY.md) —
+  sycophancy 线两次执行器权威空结果后（`mc_sycophancy_screening_pilot.md` "Phase A"一节）评估
+  的下一个候选：Laban et al. 2025 的 sharded-instruction 多轮退化基准（arXiv:2505.06120，
+  CC BY 4.0，`microsoft/lost_in_conversation` 已开源）+ ERGO 的 entropy-guided resetting
+  （arXiv:2510.14077）。**执行器权威已被外部论文证实**（相对无干预基线 +56.6% 平均性能，
+  5 个模型/6 个任务），比 sycophancy 依赖的"跨执行器类推"更强的证据起点；但**读出结构和本项目
+  管线不匹配**（任务分数只在对话结束判一次，不是逐轮 `y_t`）,且"周期性 vs 自适应对比"这个原本
+  以为的空档（`KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md` 第五节）经核实**已被 ERGO 自己填过**
+  （已在该文档更正）——贡献点收窄为"用本项目的辨识+可控性方法诊断这个已知有效执行器的动力学
+  形状"。建议执行顺序把"最小执行器权威验证"排在文字/代码工作量之前的第一步（这次真正吸取的
+  sycophancy 教训）。**仅分析，未实现、未跑实验、未提交采集代码。**
 
 ## 数据/通道协议（`protocols/`）
 

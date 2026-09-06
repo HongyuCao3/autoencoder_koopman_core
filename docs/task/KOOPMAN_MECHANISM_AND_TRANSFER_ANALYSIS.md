@@ -107,8 +107,13 @@ held-out 攻击 + 完全对齐的插入次数/token 代价下比较：
   检查在雪崩式错误上可能不够"。
 - **同一现象、不同执行器**：《LLMs Get Lost In Multi-Turn Conversation》(arXiv:2505.06120)
   发现多轮退化主要来自"不可靠性"上升（+112%）而非能力下降；ERGO (arXiv:2510.14077) 的
-  "entropy-guided resetting"本质上就是本项目分类里的 `ThresholdController`。ERGO 目前只跟
-  无干预基线比,还没跟"固定周期重置"比过——正是本项目 Phase G 已经走过的路。
+  "entropy-guided resetting"本质上就是本项目分类里的 `ThresholdController`。**2026-09-06
+  更正**：下面这句判断已过时——`ERGO_MULTITURN_RELIABILITY_FEASIBILITY.md` 抓取 ERGO 全文后
+  确认论文自己就有 random reset / 固定间隔（每 5 shard）reset 两个基线,"还没跟固定周期重置
+  比过"这个空档已经被原作者填过了,不是可以直接贡献新知识的地方；该候选任务如果要推进,贡献点
+  收窄为"用本项目的辨识+可控性方法诊断这个已知有效执行器的动力学形状"，不是"发现新对比"，
+  详见该文档第 2 节。~~ERGO 目前只跟无干预基线比,还没跟"固定周期重置"比过——正是本项目
+  Phase G 已经走过的路。~~
 - **方法论直接先例**：Redman,《Interpreting Reinforcement Learning Model Behavior via
   Koopman with Control》(arXiv:2603.19968) 把 Koopman-with-control 拟合出的稳定性/可控性
   指标用作 RL 训练过程的可解释性工具而非控制——详细分析见第七节。
