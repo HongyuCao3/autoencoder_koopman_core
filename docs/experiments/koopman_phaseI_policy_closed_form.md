@@ -165,8 +165,22 @@ $y^*$ **夹在两个开环稳态之间**。所以闭环不存在停在某一侧�
 ## 5. 局限（写页子时别越界）
 
 1. **这是模型内部的自洽刻画，不是"这条阈值规则是对的"**。$y^*$ 是拟合出来的 $A,B_1,B_2,b,C$
-   自己蕴含的零点；模型本身的 held-out rollout MSE 是 0.0703，还**劣于**同报告里的参照
-   ARX（0.0510）和 `richer_abs_sign`（0.0430）。方向学对了不等于预测更准。
+   自己蕴含的零点；模型本身的 held-out rollout MSE 是 0.0703，**略劣于**同口径的参照
+   ARX（0.0683）和 `richer_abs_sign`（0.0684）——差约 3%。方向学对了不等于预测更准。
+
+   > **2026-09-06 修正（原句用错了对照值）**：本条原先写的是"还**劣于**同报告里的参照
+   > ARX（0.0510）和 `richer_abs_sign`（0.0430）"，那是一次**混对齐比较**。
+   > `interaction_model_report_valigned.json` 里的 `reference_arx_held_out_rollout_mse` /
+   > `reference_richer_abs_sign_held_out_rollout_mse` 是 `analyze_state_action_interaction.py`
+   > 从 `--koopman-fit-report` 指向的文件里**原样抄出来、不重算**的，而那次运行传的是旧的
+   > `koopman_fit_report.json`（该产物 `config` 里 `contemporaneous_v: True`，但
+   > `koopman_fit_report: outputs/koopman_defense_phaseB_random_excite/koopman_fit_report.json`）
+   > ——于是一个 v-aligned 的交互模型配上了两个旧对齐的对照值。同对齐的真值取自
+   > `koopman_fit_report_valigned.json`：`arx` 0.06835、`richer_abs_sign` 0.06844。
+   > **结论方向不变（交互模型确实更差），但差距从 38%/64% 改写为约 3%**，是同一量级内的
+   > 略差，不能再讲成"明显更差"。修正后 `analyze_state_action_interaction.py` 在
+   > `--contemporaneous-v` 打开时会拒绝接受旧对齐的 fit report，防止复发。发现于论文
+   > Step 2b 的作废判定（`paper/evidence/superseded.md` 事件 E7）。
 2. **两个稳态 0.7908 / 0.7677 差 0.023，比判官网格的一格（0.25）小一个数量级**，落在模型
    自身误差里。"插提醒的稳态更差"这句话**不要**当成结论讲，它只是解释抖动机制时的中间量。
 3. $y^*$ 落在 0.75 和 1.0 之间的空档里，离两个网格点都不近（0.038 / 0.212）。这说明阈值判
@@ -188,4 +202,4 @@ $A,B_1,B_2,b,C$ 和三条定义：
 判据：复算出的 margin 必须与 `decision_replay.records` 里对应 $z$ 的值逐位相同（本次成立），
 否则说明口径对错了。
 
-**执行状态：纯离线分析，无新产物、无代码改动、无新增测试。**
+**执行状态：纯离线分析，无新产物、无新增测试。**（2026-09-06 追加：修正了局限第 1 条的对照值，并给 `analyze_state_action_interaction.py` 加了一道 fit-report 对齐一致性检查 + 单测，见该条的引述块。）

@@ -239,13 +239,21 @@ Step 2a 六条线并行抽取，同一次测量在不同文档里被分别抽了
 
 ## 五、升给用户的事项（`data` 类，Step 2b 不自行处理）
 
-1. **E7 需要回改源文档**：`koopman_phaseI_policy_closed_form.md` 第 168–169 行的对照值
-   （0.0510 / 0.0430）应改成 v-aligned 的 0.0683 / 0.0684，并把"劣于"的措辞从"明显更差"
-   降到"略差约 3%"。另建议给 `analyze_state_action_interaction.py` 加一道断言：
-   `--contemporaneous-v` 打开时，`--koopman-fit-report` 必须指向 `*_valigned.json`。
-2. **E3 没有逐臂重打分表**。如果论文要给出以独立 judge 为准的臂级结论，固定臂可以直接从
-   现有重打分产物算，反应式臂（`threshold`/`koopman_mpc*`）必须带 `--judge-model` 真跑一次
-   ——它们的**决策**是在自评分数上做出的，离线改不了。这是一次 GPU 重跑的决定，请你拍板。
+1. ~~**E7 需要回改源文档**~~ → **已处理（2026-09-06）**：
+   `koopman_phaseI_policy_closed_form.md` 局限第 1 条的对照值已改成同对齐的 0.0683 / 0.0684，
+   措辞从"劣于"降为"略劣于……差约 3%"，并附了一段说明这次混对齐是怎么发生的引述块。
+   `analyze_state_action_interaction.py` 新增 `_assert_reference_alignment_matches()`：
+   拿 fit report 里记的 `config.contemporaneous_v`（缺字段视为旧对齐）与本次运行的
+   `--contemporaneous-v` 比对，不一致直接拒绝运行，顺带校验 `nu`/`mu` 一致。
+   新增 `tests/test_state_action_interaction_guard.py`（6 个用例，含复现 E7 那次真实配对
+   的回归用例），CPU-only，全绿。`n_op_013/014/015` 的裁决不变。
+2. **E3 没有逐臂重打分表** → **已拍板并写成执行计划（2026-09-06）**：
+   `docs/experiments/independent_judge_reactive_rerun_plan.md`，Sonnet 5 在独立会话执行，
+   5 个反应式臂、约 1.5 GPU-小时。固定臂不重跑（日程与 judge 分无关，离线重打分等价于重跑）。
+   **在那次重跑归档之前，本文件里 E3 相关的 77 条 `caveated` 裁决不变**；跑完之后需要回到
+   Step 2a/2b，把新臂的数字按 schema 补进 `numbers.yaml`，并重新裁决受影响的条目
+   （`n_def_021`–`n_def_032`、`n_def_057`–`n_def_059`、`n_def_124`、`n_def_176`–`n_def_205`
+   这几组）。执行文档明确禁止 Sonnet 自行改动 evidence 台账。
 3. **`caveated` 的引用规则需要你确认**：本文件第 1.1 节把它定义为"可引用但必须同句带限定"。
    如果你希望 Step 4 更保守（`claim_ledger` 只许用 `current`），那么惯性前提（`n_op_065`）、
    Phase J 全部臂级读数、Phase A 执行器权威（`n_def_001`–`006`）都将无法进正文——需要你

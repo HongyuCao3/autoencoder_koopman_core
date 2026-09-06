@@ -82,6 +82,43 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+
+def _assert_reference_alignment_matches(baseline: dict, args) -> None:
+    """Refuse to report reference MSEs fitted under a different v-alignment.
+
+    The arx/richer_abs_sign comparison values below are copied straight out of
+    `--koopman-fit-report`, never recomputed here. That is fine only while that
+    report was fitted under the SAME `contemporaneous_v` as the interaction model
+    this run fits. It was not, once: the 2026-09-02 v-aligned run was pointed at
+    the pre-fix `koopman_fit_report.json`, so
+    `interaction_model_report_valigned.json` ended up pairing a v-aligned model
+    (0.0703) with old-alignment references (0.0510 / 0.0430) instead of the
+    matched 0.0683 / 0.0684, and `koopman_phaseI_policy_closed_form.md` read the
+    gap as 38%/64% rather than about 3%. Caught in the paper's Step 2b evidence
+    audit (paper/evidence/superseded.md, event E7); this guard exists so the
+    mismatch cannot silently recur.
+    """
+    config = baseline.get("config", {})
+    # absent means the report predates the flag, i.e. the old alignment
+    reference_alignment = bool(config.get("contemporaneous_v", False))
+    if reference_alignment != bool(args.contemporaneous_v):
+        raise SystemExit(
+            f"refusing to run: --contemporaneous-v={bool(args.contemporaneous_v)} but "
+            f"{args.koopman_fit_report} was fitted with contemporaneous_v="
+            f"{reference_alignment}. Its arx/richer_abs_sign held-out MSEs are copied "
+            "verbatim into this run's report, so mixing alignments silently produces an "
+            "unusable comparison (see paper/evidence/superseded.md, event E7). Pass the "
+            "fit report that matches this run's alignment."
+        )
+    for key in ("nu", "mu"):
+        if key in config and config[key] != getattr(args, key):
+            raise SystemExit(
+                f"refusing to run: --{key}={getattr(args, key)} but "
+                f"{args.koopman_fit_report} was fitted with {key}={config[key]}; the "
+                "reference MSEs would not be a like-for-like comparison."
+            )
+
+
 def main() -> None:
     args = parse_args()
     rows = load_trajectories(args.rows_path)
@@ -101,6 +138,7 @@ def main() -> None:
     held_out_rollout_mse = rollout_output_error(wrapped, held_out_rows, config, y_col="y_safety")
 
     baseline = json.loads(args.koopman_fit_report.read_text())
+    _assert_reference_alignment_matches(baseline, args)
     arx_mse = baseline["arx"]["held_out_rollout_mse"]
     richer_mse = baseline["richer_abs_sign"]["held_out_rollout_mse"]
 

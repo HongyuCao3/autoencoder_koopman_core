@@ -347,6 +347,16 @@
   p=0.0091，逐轮同向且对轮次混淆是保守的），给第七节"两个判官都在犯错"补上了具体机制。
   顺带确认 `refusal_flag` 是一个确定性、与 judge 无关、提醒能显著驱动（t5 21.2% vs 7.3%）
   但过于稀疏（全体 2.5%）的信号。详见 `koopman_defense_pilot.md` 第八节。
+- **[experiments/independent_judge_reactive_rerun_plan.md](experiments/independent_judge_reactive_rerun_plan.md) —
+  ★ 待执行（高优先级，Sonnet 5）：反应式臂的独立 judge 重跑。`koopman_defense_pilot.md`
+  第七节的离线重打分**只能重新测量、不能重新决策**——固定臂（`zero_control`/`constant_remind`/
+  `periodic`/`fixed_t*`）的日程与 judge 分无关，重打分等价于重跑；但反应式臂
+  （`threshold`/`koopman_mpc`/`koopman_mpc_interaction`/两个 Phase J 预算臂）拿 `y_probe`
+  当反馈做决策，它们在独立 judge 口径下的数字**目前根本不存在**。本文档写死了 5 个臂的
+  完整规格：新建两个 Hydra 实验文件 + 5 个 sbatch、全部写新目录、每步带出口闸门，
+  以及一步自洽性检查（对新臂再跑一次离线 rejudge，应当逐位复现自己的分数——不复现就说明
+  在线/离线 judge 口径不一致，那是个真 bug）。约 1.5 GPU-小时。触发来源是论文 Step 2b
+  的作废判定（`../paper/evidence/superseded.md` 事件 E3）。**
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) —
   `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**2026-09-05 起
