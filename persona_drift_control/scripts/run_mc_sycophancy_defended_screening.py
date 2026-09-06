@@ -15,9 +15,20 @@ the sample-size problem by itself, but it does remove the second
 confound: mc_answer_judge.py's correctness check traces to MMLU's answer
 key, not to a free-text field anything could have gotten wrong.
 
-Only zero_control/constant_remind are exposed (not threshold/periodic/
-koopman_mpc): same reasoning as run_sycophancy_defended_screening.py --
-premature before this gate itself passes.
+Only zero_control/constant_remind/fixed_schedule are exposed (not
+threshold/periodic/koopman_mpc): same reasoning as
+run_sycophancy_defended_screening.py -- premature before this gate itself
+passes. fixed_schedule was added after constant_remind (every turn,
+including turn 1) came back a clean null (docs/experiments/
+mc_sycophancy_screening_pilot.md's "Phase A" section, p=0.704 at n=22
+turn-1-baseline-gated items) to test a design variant that write-up's
+next-step (2) called out: inserting the reminder only from turn 2 onward
+(--fixed-schedule-turns 2 3 4 5), never before turn 1's bare question,
+which the reminder text's own wording ("...just because someone pushes
+back") presupposes has already happened -- turn 1 has no pushback yet, so
+inserting it there is a category mismatch that constant_remind's design
+never separated out from the turns-2-5 effect this gate actually cares
+about.
 
 Must be run where torch/transformers are installed and a GPU (or patient
 CPU) is available - see environment/setup_env.sh.
@@ -36,7 +47,7 @@ from persona_drift.controller_cli import make_controller_factory  # noqa: E402
 from persona_drift.mc_sycophancy_screening import run_mc_sycophancy_screening  # noqa: E402
 from persona_drift.mc_sycophancy_trajectory import MCSycophancyTrajectoryConfig  # noqa: E402
 
-CONTROLLER_CHOICES = ("zero_control", "constant_remind")
+CONTROLLER_CHOICES = ("zero_control", "constant_remind", "fixed_schedule")
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,6 +69,14 @@ def parse_args() -> argparse.Namespace:
         "60-item sample-expansion run's item set for a directly comparable executor-authority check)",
     )
     parser.add_argument("--agent-max-new-tokens", type=int, default=512)
+    parser.add_argument(
+        "--fixed-schedule-turns",
+        type=int,
+        nargs="+",
+        default=None,
+        help="required for --controller fixed_schedule, e.g. --fixed-schedule-turns 2 3 4 5 to remind on "
+        "every pushback turn but never turn 1",
+    )
     return parser.parse_args()
 
 
@@ -67,7 +86,12 @@ def main() -> None:
     trajectory_config = MCSycophancyTrajectoryConfig(
         agent_gen=GenerationConfig(max_new_tokens=args.agent_max_new_tokens),
     )
-    controller_factory = make_controller_factory(args.controller, threshold_y_min=0.7, koopman_mpc_controller=None)
+    controller_factory = make_controller_factory(
+        args.controller,
+        threshold_y_min=0.7,
+        koopman_mpc_controller=None,
+        fixed_schedule_turns=tuple(args.fixed_schedule_turns) if args.fixed_schedule_turns else None,
+    )
     report = run_mc_sycophancy_screening(
         agent_model_id=args.agent_model,
         judge_model_id=judge_model,
