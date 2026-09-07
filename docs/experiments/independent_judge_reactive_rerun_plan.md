@@ -355,3 +355,64 @@ python scripts/analyze_budget_arm_comparison.py \
 - 独立 judge 口径下 Phase J 的臂间对比表；
 - 与自评口径的定性对照一句话（同号？同判定？）；
 - 遇到的任何偏离本文档的地方，逐条列出并说明为什么。
+
+---
+
+## 七、执行结果（2026-09-06）
+
+### Job id / 行数 / judge_model
+
+| 臂 | job id | State | Elapsed | ExitCode | 行数 | judge_model 计数 | parse_failure |
+|---|---|---|---:|---|---:|---|---:|
+| A1 Phase J koopman | 15603666 | COMPLETED | 00:28:24 | 0:0 | 200 | Qwen/Qwen3-4B-Instruct-2507 ×200 | 0 |
+| A2 Phase J threshold | 15603644 | COMPLETED | 00:27:39 | 0:0 | 200 | Qwen/Qwen3-4B-Instruct-2507 ×200 | 0 |
+| A3 Phase E threshold | 15603645 | COMPLETED | 00:11:43 | 0:0 | 80 | Qwen/Qwen3-4B-Instruct-2507 ×80 | 0 |
+| A4 Phase E koopman_mpc | 15603646 | COMPLETED | 00:11:58 | 0:0 | 80 | Qwen/Qwen3-4B-Instruct-2507 ×80 | 0 |
+| A5 Phase I v-aligned | 15603647 | COMPLETED | 00:11:43 | 0:0 | 80 | Qwen/Qwen3-4B-Instruct-2507 ×80 | 0 |
+
+A1 最初一次提交失败重试后以 job 15603666 成功跑完（其余四臂一次通过）。全部 `ExitCode 0:0`，行数与二、3 节的预期（200/200/80/80/80）一致，`judge_model` 无一行退回自评。
+
+### Step 4 自洽性检查
+
+用 `scripts/rejudge_safety_runs.py --arm-dir <5个新目录> --manifest-path outputs/koopman_case_study/rejudge_manifest_indepjudge.json` 跑了 job 15611981（`environment/run_indepjudge_rejudge_selfconsistency.sbatch`），`COMPLETED 00:01:56 0:0`。
+
+逐行比对 5 个臂的 `trajectories.jsonl` 与 `rejudge_qwen3_4b_instruct_2507/trajectories.jsonl` 的 `y_safety`：**640 行全部 100% 一致，0 处不一致**（A1/A2 各 200 行、A3/A4/A5 各 80 行）。说明在线 judge 调用与离线 rejudge 的 seed/prompt 口径一致，第七节那批离线重打分数字不需要复核。
+
+### 独立 judge 口径下 Phase J 的臂间对比
+
+`scripts/analyze_budget_arm_comparison.py --scores-name rejudge_qwen3_4b_instruct_2507/trajectories.jsonl`，输出写入 `outputs/koopman_case_study/budget_arm_comparison_indepjudge_rerun.json`：
+
+| arm | n_traj | reminders | terminal_y | late_y(3-5) | mean_y | new-Q1 p | q1_pass |
+|---|---:|---:|---:|---:|---:|---:|---|
+| koopman_budget1 | 40 | 6 | 0.8625 | 0.9292 | 0.9563 | 0.0980 | False |
+| threshold_budget1 | 40 | 3 | 0.8688 | 0.9313 | 0.9575 | 0.1129 | False |
+| fixed_t1_budget1 | 40 | 40 | 0.9062 | 0.9042 | 0.9387 | 0.1233 | False |
+| fixed_t2_budget1 | 40 | 40 | 0.8375 | 0.8979 | 0.9387 | 0.0822 | False |
+| fixed_t3_budget1 | 40 | 40 | 0.8938 | 0.9375 | 0.9613 | 0.1024 | False |
+| fixed_t4_budget1 | 38 | 38 | 0.9145 | 0.9408 | 0.9632 | 0.0860 | False |
+| fixed_t5_budget1 | 35 | 35 | 0.9357 | 0.9595 | 0.9743 | 0.1033 | False |
+
+最优固定臂（按 `late_mean_y`）：`fixed_t5_budget1`。
+
+`koopman_budget1` vs `fixed_t5_budget1`（配对 bootstrap，n=35）：
+- `terminal_y`：mean_diff=-0.0929，95% CI [-0.1929, -0.0143]
+- `late_mean_y`：mean_diff=-0.0333，95% CI [-0.0690, -0.0048]
+- `mean_y`：mean_diff=-0.0200，95% CI [-0.0414, -0.0029]
+- `n_reminders`：mean_diff=-0.8571，95% CI [-0.9714, -0.7429]
+
+`koopman_budget1` vs `threshold_budget1`（配对 bootstrap，n=40，脚本原生不产出此项，用同一套 `_paired_bootstrap` 方法补算并写回同一 JSON 的 `comparisons.koopman_budget1_vs_threshold_budget1`）：
+- `terminal_y`：mean_diff=-0.0063，95% CI [-0.0187, +0.0000]
+- `late_mean_y`：mean_diff=-0.0021，95% CI [-0.0062, +0.0000]
+- `mean_y`：mean_diff=-0.0013，95% CI [-0.0038, +0.0000]
+- `n_reminders`：mean_diff=+0.0750，95% CI [+0.0000, +0.1750]
+
+### 与自评口径的定性对照
+
+- **new-Q1（漂移侵蚀）判定翻转**：自评口径下 `koopman_budget1`/`threshold_budget1`/`fixed_t5_budget1` 三者 `new_q1_pass` 全部 `True`（p=0.0073/0.0022/0.0088）；独立 judge 口径下三者全部 `False`（p=0.098/0.1129/0.1033）。**与第七节固定臂上已确认的"自评单向夸大侵蚀"结论方向一致**，本次把同一结论扩展到了此前无法离线验证的反应式臂。
+- **`koopman_budget1` vs 最优固定臂 `fixed_t5_budget1`：判定翻转**。自评口径下二者在 `late_mean_y`/`mean_y` 上差异不显著（CI 均跨零，mean_diff=-0.025/-0.015）；独立 judge 口径下差异**显著为负**（CI 均不跨零：terminal_y/late_y/mean_y 分别 -0.093/-0.033/-0.020，同时 `n_reminders` 显著更省：-0.86，即约省 86% 提醒）。定性结论从"看不出显著差异"变为"独立 judge 下 koopman 在安全分上显著弱于最优固定臂，但用少得多的提醒换来"——**这是本次重跑发现的、需要写进论文限制/讨论的新结果**，不属于本文档第五节"不要做"范围内的 evidence 台账改动，留给 Opus 在 Step 2a/2b 流程里裁决怎么写。
+- **`koopman_budget1` vs `threshold_budget1`：判定同号（均不显著），符号翻转**。自评口径下 mean_diff 均为正（koopman 略优，CI 跨零，n.s.）；独立 judge 口径下 mean_diff 均为负（koopman 略劣，CI 上界贴零，仍为 n.s.）。两个口径下的最终判定都是"两个反应式控制器在统计上不可区分"，符号翻转本身不改变判定，但也说明这个方向上的比较本来就噪声主导，不应作为论文里"koopman 优于 threshold"的证据。
+
+### 偏离本文档之处
+
+1. Step 4 用于跑 rejudge 的 sbatch（`environment/run_indepjudge_rejudge_selfconsistency.sbatch`）是本次新增的，第四节 Step 2 只列了 5 个"跑轨迹"的 sbatch，没有列这一个——因为 `rejudge_safety_runs.py` 需要 GPU（模型前向），登录节点跑不了，必须提交作业；文档本身没写"Step 4 也要建 sbatch"，按第四节 Step 2 的规格（同样的资源申请、只改命令）补建了一个，diff 已在执行中核对（只有 job-name/日志路径/命令参数不同）。
+2. `analyze_budget_arm_comparison.py` 原生只产出"adaptive vs 每个 fixed 臂"的配对比较，不产出"koopman vs threshold"这一项（脚本按 `--fixed-arm-prefix` 过滤，threshold 臂不匹配该前缀）。按第六节"抄出 koopman vs threshold 的均值差与 CI"的要求，用脚本内同一个 `_paired_bootstrap`（相同 seed=0、相同 10000 次重采样）单独算了这一项，写回同一份 `budget_arm_comparison_indepjudge_rerun.json` 的 `comparisons` 字典，没有新建文件。

@@ -1,0 +1,22 @@
+# @package _global_
+# Phase J 自适应臂的独立 judge 重跑（docs/experiments/independent_judge_reactive_rerun_plan.md）。
+# 与 phaseJ_budget1_koopman.yaml 逐字相同，只有两处差异，且两处都是本次实验的自变量：
+#   * judge_model: 从 null（自评，judge==agent）改成独立 checkpoint；
+#   * output_dir: 新目录，绝不覆盖自评那批已记录的产物。
+# 为什么反应式臂必须真跑而不能离线重打分：控制器拿 y_probe 当反馈决定下一步动作，
+# 离线换 judge 只能换分数、换不掉决策。
+defaults:
+  - phaseJ_base
+
+output_dir: outputs/koopman_defense_phaseJ_budget1_koopman_indepjudge
+task:
+  screening:
+    judge_model: Qwen/Qwen3-4B-Instruct-2507
+    controller: koopman_mpc_interaction
+    koopman_interaction_model_path: outputs/koopman_case_study/interaction_model_report_valigned.json
+    koopman_nu: 1
+    koopman_mu: 2
+    koopman_horizon: 5
+    koopman_repeat_penalty: 0.0
+    koopman_contemporaneous_v: true
+    koopman_pad_short_history: true

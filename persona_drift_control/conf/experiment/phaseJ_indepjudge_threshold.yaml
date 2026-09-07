@@ -1,0 +1,12 @@
+# @package _global_
+# Phase J threshold 臂的独立 judge 重跑。与 phaseJ_budget1_threshold.yaml 逐字相同，
+# 只有 judge_model 与 output_dir 两处差异。
+defaults:
+  - phaseJ_base
+
+output_dir: outputs/koopman_defense_phaseJ_budget1_threshold_indepjudge
+task:
+  screening:
+    judge_model: Qwen/Qwen3-4B-Instruct-2507
+    controller: threshold
+    threshold_y_min: 0.7

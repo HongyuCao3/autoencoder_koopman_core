@@ -734,6 +734,10 @@ Welch p=0.1309。也就是说，自评并没有专门给"刚被提醒过之后�
 扩完之后**重跑同一个 sbatch 即可补上新增的行**：`rejudge_file` 的断点续跑按
 `(trajectory_id, turn)` + `agent_message` 判定，不会重复打分，也不会把过期分数留在文件里。
 
+> 上面"下一步（不属本次）"里提到的反应式臂真跑，已在
+> [独立 judge 反应式臂重跑执行计划](independent_judge_reactive_rerun_plan.md) 完成，见该文档
+> 第七节"执行结果"。
+
 ### 八、截断检查：93.5% 的回复没有讲完，但它不是提醒效应的来源（2026-09-04，纯离线只读）
 
 `../evaluation/ASR_METRIC_DESIGN.md` 第 2.3 节在勘察 ASR 口径时顺带发现

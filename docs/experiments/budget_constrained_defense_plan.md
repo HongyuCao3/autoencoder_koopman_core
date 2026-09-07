@@ -423,3 +423,7 @@ koopman 臂 40 条的分配是 **turn4 × 20、turn5 × 10、一次都不花 × 
    对硬标签的浮点复述，没有真实的置信度梯度可用。按预注册规则 G3（功效）未跑。**结论：
    G2 不过，本线不必再试这个修法**——判官 token 概率加权对防御线的 5 取值读出同样帮不上，
    "读出分辨率是判据本身的上限"按第六节的建议写成 limitation 收尾。
+
+   **2026-09-06 追加**：本节反应式臂（`koopman_budget1`/`threshold_budget1`）与自评 judge 存在
+   的另一个问题——决策依赖自评分数、离线换 judge 改不了决策——已通过真跑独立 judge 解决，见
+   [独立 judge 反应式臂重跑执行计划](independent_judge_reactive_rerun_plan.md) 第七节"执行结果"。
