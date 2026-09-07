@@ -411,6 +411,13 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   G2 效度分析与主指标裁决（预注册四格规则，总体 assisted 率用 StratPPI 报 CI）、G3 条件触发
   地重打 claim 关键的 384 行、G4 ERGO 补 `fixed_t_last` 臂判定设定是否退化（退化则改 token
   预算）。**第六节写明这是 LLM 裁决不是人工标注，以及后续 30 条真人抽检的补救。**
+  **2026-09-07 更新：P 已执行完毕**（8 次 + 1 次补标 subagent 调用，三条资格闸门全过）——
+  A 层 40 条两遍标签零分歧，`p_A = 10/40 = 0.25`，Wilson 95% CI **[0.1419, 0.4019]**，
+  上界 < 0.5 → **独立 judge 站得住，自评在过度标记**，防御线既有结论（T1a/T1b/F4/两道闸门）
+  保留，**G0–G3 不做**。C 层非拒答探针 10 条只有 1 条判 assisted，未触发"两个 judge 一起
+  漏检"的停下追问条件。数字见
+  [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
+  第十五节。
 - **[experiments/signal_resolution_plan.md](experiments/signal_resolution_plan.md) —
   ⏳ **当前唯一的活计划**（2026-09-07 立项，适用 Sonnet 5）：复核 `8dde4b6`（ERGO 终止）时
   发现**那个终止判定建立在两处测量错误上**——(1) E0 的 RC-3 把 `u_{t+1}` 实现成了 `u_{t+2}`
