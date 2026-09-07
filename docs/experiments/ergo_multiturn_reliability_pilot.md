@@ -190,21 +190,31 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
 | ARX | 0.0896 | **0.0893** |
 | richer_abs_sign | 0.0896 | 0.1621 |
 
-- **ARX 赢过 richer baseline**（rollout MSE 低 45%）——和防御线 Phase B 的选型方向一致，
-  三维状态 `z=[y_lag, shard_frac, v]`（`aux_cols=["shard_frac"]` + `contemporaneous_v=True`）
-  已经够用，不需要更复杂的特征。
-- **可控性满秩**：`controllability_rank=3`（=`state_dim`），但 `gramian_condition≈4779`——
-  奇异值 `[1.003, 0.097, 0.015]` 相差近两个数量级，`u_reset` 这一维输入对 `y`/`v` 两个状态
-  分量的驱动力强、对 `shard_frac` 分量几乎不驱动（预期之内——`shard_frac` 是外生变量，
-  `u_reset` 不该控制它，`A`/`B` 矩阵里对应行系数确实接近零），不是病态拟合。
-  `A_spectral_radius=0.953`（<1，稳定；比 `1.005` 的 `shard_frac` 自身系数略低，量级上与
-  "分数随信息累积单调上升但终会饱和" 的定性一致）。
-- **判断：值得往下投**——ARX 跑通、held-out rollout 误差不大（约 0.09，对应
-  `y∈[0,1]` 量级下约 30% 的均方根误差）、满秩可控、谱半径 <1，三个前置条件（拟合质量/
-  可控性/稳定性）都过了，没有出现防御线当年"读出没有可反馈状态"那种结构性卡点
-  （`adaptive_vs_fixed_claim_plan.md` T3）。下一步是 `KoopmanMPCController` 而不是回头
-  加更多任务的评分器工程。
-- CPU 全套测试 394 passed（同一批 5 个 NLTK 数据缺失失败，和本次改动无关）。
+- ~~ARX 赢过 richer baseline（rollout MSE 低 45%）~~ **2026-09-07 撤回，vacuous**：
+  `y_task_success ∈ {0,1}`（666 行全部是 0.0/1.0），而 `richer_abs_sign` 的额外特征是
+  `|y|` 与 `sign(y)`——对 0/1 变量恒等于 `y` 本身，与 `y` 精确共线。两模型
+  `train_one_step_mse` 到 15 位有效数字相同（`0.08956779213150870` vs
+  `0.08956779213150866`），`richer` rollout 更差是退化参数化的数值产物，**不构成任何
+  选型证据**（`readout_controllability_gate_plan.md` §0.4(i)）。
+- ~~held-out rollout 误差不大（约 0.09）~~ **2026-09-07 补充对照表，结论反过来了**：
+  同一 45/15 item split 上三个平凡 null 的 held-out MSE——常数 0.1096、train 逐轮均值
+  0.0832、无状态 OLS `[1, shard_frac, u_reset]`（完全不用 `y` 的滞后）0.0792——**ARX
+  的 0.0893 连"零状态、只用外生输入"的回归都没打过**，只比"什么都不建模"的常数基线好一点。
+  拟合出的状态本质上只有 `y_lag` 一维在做事（自持续系数 0.490），`y_{t+1}` 的解释力主要来自
+  `0.819 × shard_frac` 这个确定性轮次斜坡，不是反馈状态。
+- **可控性满秩 + 谱半径 <1（数字不变，但不构成证据）**：`controllability_rank=3`
+  （=`state_dim`）对随机矩阵几乎必然成立；`A_spectral_radius=0.953` 里那一维是外生的
+  `shard_frac`（自系数 `1.005>1`），把外生确定性斜坡算进"被控状态"再谈稳定性是范畴错误。
+  这两条都**不是**"值得往下投"的证据。
+- **2026-09-07 判断：Phase C 在 E0 之前不准开工**——正式的读出可控性闸门（RC-gate，
+  [experiments/readout_controllability_gate_plan.md](readout_controllability_gate_plan.md)
+  §四）跑完，**RC-1（打过平凡 null）和 RC-3（输入增益显著）都不过**，只有 RC-2（去趋势后
+  仍有逐轨迹状态，`lag1_demeaned=0.2578, p=9.69e-10`）过。RC-gate 要求三条全过才能进
+  Phase C，所以**这条线在当前读出（`y_task_success`）下不满足"值得往下投"的条件**——上面
+  "没有出现防御线当年那种结构性卡点"的判断撤回，方向其实相反：和防御线踩的是同一个坑
+  （建控制器之前没先证明读出有可反馈状态）。下一步不是 `KoopmanMPCController`，是 E1
+  （换读出，见该文档§五）。
+- CPU 全套测试 401 passed（同一批 5 个 NLTK 数据缺失失败，和本次改动无关）。
 
 ## 下一步
 
@@ -214,18 +224,19 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
    不需要再纠结"要不要继续试错换执行器设计"这个问题了，可以往下走。
 3. **惯性/动力学定性需要重新表述**，见上面加粗的段落——不是"记忆黏滞"而是"信息累积",这个
    区别要带进任何后续文档/论文措辞，避免和 sycophancy/防御线的"惯性"概念混为一谈。
-4. **数学任务上的 Koopman 建模已跑通（见上面拟合结果小节，2026-09-07）**：ARX 赢过 richer
-   baseline、满秩可控、谱半径 <1，三个前置条件都过了——**判断是值得往下投**，不是"暂不急于
-   铺开"的悬置状态了。下一步是 `KoopmanMPCController`（Phase C），不是先为其余五个 ERGO
-   任务（code/SQL/actions/data2text/summary）投评分器工程。
+4. **2026-09-07 撤回**：数学任务上的 Koopman 建模"值得往下投"这个判断被 E0 闸门推翻
+   （见上面拟合结果小节）——RC-1/RC-3 不过，Phase C 不开工。下一步是 E1（换读出，默认候选
+   token 熵，[experiments/readout_controllability_gate_plan.md](readout_controllability_gate_plan.md)
+   §五），不是 `KoopmanMPCController`，也不是先为其余五个 ERGO 任务
+   （code/SQL/actions/data2text/summary）投评分器工程。
 5. 可行性文档第 4 节的三个未走完项，现在的状态：
-   a) **为更多任务投入路径 B 评分器工程——仍未决定，推迟到 Phase C（闭环 MPC）结果出来之后**；
-   b) **Koopman 状态空间设计——已决定且已验证**（见上面"Koopman 建模，Phase B"一节）：显式
-      加入 `shard_frac`（已揭示 shard 比例）作为 aux 协变量，而不是只用 y 的滞后项，拟合
-      结果证实这个设计是必要的（`shard_frac` 对应的 `A`/`B` 行系数独立于其余状态）；
-   c) **论文叙事定位——仍未决定**，Phase C（`KoopmanMPCController` 闭环）跑完后再判断这条线
-      是"和 sycophancy 对照的正面案例"还是有独立的建模贡献，`docs/article/
-      PAPER_EXECUTION_PLAN.md` §1.4 仍未提这条线。
+   a) **为更多任务投入路径 B 评分器工程——仍未决定，推迟到 E1 结果出来之后**；
+   b) **Koopman 状态空间设计——已决定但已知不够**（见上面"Koopman 建模，Phase B"一节）：
+      `shard_frac` 作为 aux 协变量的拼接方式没问题，但 E0 显示可预测部分几乎全被这个
+      确定性斜坡占掉，`y_task_success` 本身作为读出不满足 RC-gate；
+   c) **论文叙事定位——仍未决定**，等 E1（或它失败后的终止收尾）结果出来后再判断这条线
+      是"和 sycophancy/防御线并列的第三个读出层面结构性负结果"还是有独立的建模贡献，
+      `docs/article/PAPER_EXECUTION_PLAN.md` §1.4 仍未提这条线。
 6. **2026-09-07 追加，Phase C 起步**：`KoopmanMPCController` 硬编码 `y_probe`/`u_remind`
    且不支持 `aux_cols`，不能直接照抄防御线接线——按"不干扰 `control.py`/`controller_cli.py`
    共用代码"的要求，新增了继承子类 `src/persona_drift/ergo_koopman_mpc.py`
@@ -234,3 +245,63 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
    和要不要给 reset 加预算约束，这两个设计问题写进了
    [experiments/ergo_koopman_mpc_opus_design_questions.md](ergo_koopman_mpc_opus_design_questions.md)
    等 Opus 裁决，Sonnet 5 在规格出来之前不会继续往下接 GPU 作业。**
+7. **2026-09-07 追加，E0 已跑完，RC-B 不过**：`scripts/analyze_ergo_readout_state.py`
+   （CPU，秒级）——RC-1 不过（ARX 0.0893 输给两个平凡 null）、RC-2 过
+   （`lag1_demeaned=0.2578, p=9.69e-10`）、RC-3 不过（`u_t` 系数 `p=0.659`，不显著）。
+   `readout_controllability_gate_plan.md` 第 0.4 节的预期（RC-1 不过 → 转 E1）被证实。
+   产物 `outputs/ergo_math_phaseB_random_excite/readout_state_report.json`。第六节记的两个
+   设计问题（真值覆盖 / reset 预算）已经在 `readout_controllability_gate_plan.md` §6.1/6.2
+   有裁决，但**都要等 E1 通过后才用得上**——E0 不过直接堵住了整个 E2（Phase C）分支。
+   下一步是 E1（`scripts/analyze_ergo_entropy_readout.py`，token 熵读出，1 个小 GPU 作业）。
+8. **2026-09-07 追加，E1 已跑完，两个熵读出都不过 RC-B——ERGO 线终止**（见下面独立一节
+   "结论：ERGO 线在当前读出族下终止"）。job `15644575`（`pdc-ergo-entropy-readout`）
+   `COMPLETED 0:0`，Elapsed 00:01:29，666 行，`entropy_answer_span` 缺失率 0.60%（<10% 闸门）。
+   `entropy_mean`：RC-2 过（`lag1_demeaned=0.2193, p=2.27e-07`），**RC-3 不过**
+   （`u_t=-0.0111, se=0.0068, p=0.104`，双侧也不显著）。`entropy_answer_span`：**RC-2 不过**
+   （`lag1_demeaned=0.0204, p=0.635`），RC-3 双侧显著但**方向为负**
+   （`u_t=-0.0201, se=0.0069, p=0.00368`）——reset 之后紧接着答案段的熵**下降**，方向和
+   "读出可控性闸门"给 `y_task_success` 定的">0"字面判据相反（那条判据是为成功率读出校准的，
+   熵读出"变好"的方向本来就是降低，不是升高，这是留给用户/Opus 的一个判断题，见下面独立
+   一节）。产物 `outputs/ergo_math_phaseB_random_excite/entropy_readout.json` +
+   `entropy_readout_state_report.json`。
+
+## 结论：ERGO 线在当前读出族下终止（2026-09-07）
+
+`readout_controllability_gate_plan.md` §五预注册的判定规则：E1 两个熵读出列的 RC-2/RC-3
+"任一不过 → ERGO 这条线在当前读出族下终止"。实测**两个熵读出都不过**：
+
+| 读出 | RC-2（去趋势后 lag-1） | RC-3（含 `u_{t+1}` 的输入增益，字面判据 `u_t>0` 且 `p<0.05`） | RC-B |
+|---|---|---|---|
+| `y_task_success`（E0） | 过（`lag1_demeaned=0.2578, p=9.69e-10`） | 不过（`u_t` p=0.659） | **不过** |
+| `entropy_mean`（E1） | 过（`lag1_demeaned=0.2193, p=2.27e-07`） | 不过（`u_t=-0.0111, p=0.104`，双侧也不显著） | **不过** |
+| `entropy_answer_span`（E1） | 不过（`lag1_demeaned=0.0204, p=0.635`） | 双侧显著但方向为负（`u_t=-0.0201, p=0.00368`） | **不过** |
+
+三个候选读出没有一个同时满足"有超过平凡基线的预测力/去趋势后仍有逐轨迹状态/执行器能推动它"。
+按防御线 T2/Phase J 立下的纪律：**闸门不过就照实记录，不调参重跑、不换读出族继续试**。
+
+**这构成论文里站得住的一条内容**：和防御线（`koopman_defense_pilot.md` 第一/五/六节）、
+`adaptive_vs_fixed_claim_plan.md`（T1b/T3）并列，成为"建闭环控制器之前必须先证明读出有
+可反馈状态"这条方法论教训的**第三个独立案例**——三条完全不同的任务（越狱攻击安全侵蚀、
+持续反驳下的立场维持、sharded 数学题多轮可靠性）用三套不同的读出（LLM judge 安全分/立场分、
+确定性任务成功率+token 熵）全部撞上同一个结构性缺陷，这本身是一个可以写进论文讨论/方法论
+部分的、有一定普遍性的负结果，不是这条线本身的失败。
+
+**执行器权威结论不受影响，仍然站得住**：`reset` 这个动作对 `y_task_success`
+的因果效应本身是真实、显著、稳定的（20-item pilot 与 60-item 扩样本两次确认，见上面
+"结果""样本扩充"两节，本次审计没有触碰这部分数字）——问题始终是**这个动作的效应能不能被
+一个逐轮反馈状态捕捉并用来做自适应决策**，不是"reset 有没有用"。
+
+**留给用户/Opus 的判断题（未裁决）**：
+
+1. `entropy_answer_span` 的 RC-3 双侧显著、方向为负（reset 后答案段熵下降）——这本身是一个
+   有机制含义的发现（"reset 让模型对当前答案更确定"），但**只有 RC-3 一条过、RC-2 不过**
+   （去趋势后没有可反馈的逐轨迹状态），按三条判据必须全过的规则仍然不能进 Phase C。要不要
+   把这一条单独写成一句描述性观察（不是"读出可控"的证据，只是"reset 有即时效应"的又一个
+   佐证），还是完全不提？
+2. 要不要为其余五个 ERGO 任务（code/SQL/actions/data2text/summary）投入路径 B 评分器工程，
+   在"三个读出全灭"之后，这个问题的答案大概率是"不值得"（同一读出族问题很可能在其他任务上
+   重现），但没有正式裁决过。
+3. 论文叙事定位：这条线现在的产出是"执行器权威确认 + 读出可控性结构性负结果"，要不要正式
+   写入 `docs/article/PAPER_EXECUTION_PLAN.md` §1.4，以及以什么篇幅（一段讨论 vs. 独立小节）。
+
+**这个任务不需要任何自动化后续动作**——终止收尾到此为止，除非用户/Opus 就上面三条给出裁决。

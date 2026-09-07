@@ -401,8 +401,11 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   任务：**D1 输入增益规格稳健性（已完成，2026-09-07——RC-A 三条判据不过，T3 就地终止，
   不做 D2，详见 `adaptive_vs_fixed_claim_plan.md` 第十三节）**、D2 = T3 Step 2（因 D1 不过
   而不执行）、D3 文档修正（已完成）、
-  E0 ERGO 读出可控性闸门（CPU，Phase C 准入，⏳ 待执行）、E1 熵读出替换、
-  E2 ERGO Phase C 完整规格。
+  **E0 ERGO 读出可控性闸门（已完成，2026-09-07——RC-B 不过：RC-1 不过/RC-2 过/RC-3 不过）**、
+  **E1 熵读出替换（已完成，2026-09-07——`entropy_mean`/`entropy_answer_span` 两个候选都不过
+  RC-B，ERGO 线在当前读出族下终止）**、E2 ERGO Phase C 完整规格（**不执行**，因 E0/E1
+  都不过——两个设计问题的裁决内容保留存档，供这条线未来换读出族时复用）。完整数字见
+  `experiments/ergo_multiturn_reliability_pilot.md`"结论：ERGO 线在当前读出族下终止"一节。
   **本文档同时是对 `adaptive_vs_fixed_claim_plan.md` 第 11.5 节四条判断题、以及
   `ergo_koopman_mpc_opus_design_questions.md` 两个设计问题的裁决。**
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) —
@@ -493,13 +496,16 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   开始 Koopman 建模（Phase B）**——决定显式加 `shard_frac`（已揭示 shard 比例）作为状态协变量
   （不只用 y 滞后项），`contemporaneous_v=True`（reset 同轮直接影响该轮 y，代码已验证）；新增
   `--controller random_excite` 支持 + `scripts/fit_koopman_ergo_model.py`；开环随机激励采集
-  job 15613799 已提交（60 items × 2 seeds, p=0.5，规模同防御线 Phase B）。**2026-09-07 追加：
-  拟合完成**——job 15613799 `COMPLETED`，`fit_koopman_ergo_model.py` 跑通：ARX 赢过 richer
-  baseline（held-out rollout MSE 0.089 vs 0.162）、可控性满秩（`rank=3=state_dim`）、
-  `A_spectral_radius=0.953`（稳定）。**判断：值得往下投**，三个前置条件（拟合质量/可控性/
-  稳定性）都过，没有出现防御线那种"读出没有可反馈状态"的结构性卡点。下一步是 Phase C
-  （`KoopmanMPCController` 闭环），不是先为其余五个 ERGO 任务投评分器工程。详见
-  `experiments/ergo_multiturn_reliability_pilot.md`"拟合结果"小节。
+  job 15613799 已提交（60 items × 2 seeds, p=0.5，规模同防御线 Phase B）。~~2026-09-07 追加：
+  拟合完成——ARX 赢过 richer baseline、可控性满秩、判断值得往下投~~ **2026-09-07 联合审计撤回**：
+  `richer_abs_sign` 在二值 `y` 下与 `y` 精确共线、是 vacuous 对照；ARX 的 held-out rollout
+  MSE 0.0893 连"零状态外生回归"null（0.0792）都打不过；满秩/谱半径也不构成证据（见
+  `readout_controllability_gate_plan.md` §0.4）。正式闸门 E0（RC-gate）跑完：**RC-1/RC-3 不过，
+  只有 RC-2 过，Phase C 不开工**。转 E1 试了 token 熵读出（`entropy_mean`/`entropy_answer_span`），
+  **两个都不过 RC-B**——**ERGO 线在当前读出族下终止**，与防御线/`adaptive_vs_fixed_claim_plan.md`
+  并列成为"建控制器前必须先证明读出有可反馈状态"这条教训的第三个独立案例。执行器权威结论
+  （上面"结果："段）不受影响，仍然成立。详见
+  `experiments/ergo_multiturn_reliability_pilot.md`"结论：ERGO 线在当前读出族下终止"一节。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；
