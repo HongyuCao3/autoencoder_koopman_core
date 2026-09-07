@@ -30,7 +30,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
 from persona_drift.chat_model import GenerationConfig  # noqa: E402
-from persona_drift.control import RandomScheduleController  # noqa: E402
+from persona_drift.control import FixedScheduleController, RandomScheduleController  # noqa: E402
 from persona_drift.controller_cli import _excitation_seed, make_controller_factory  # noqa: E402
 from persona_drift.ergo_koopman_mpc import load_ergo_koopman_mpc_controller  # noqa: E402
 from persona_drift.ergo_math_bank import load_ergo_math_bank  # noqa: E402
@@ -44,6 +44,7 @@ CONTROLLER_CHOICES = (
     "random_excite",
     "random_schedule",
     "ergo_koopman_mpc",
+    "fixed_last",
 )
 
 
@@ -131,6 +132,18 @@ def main() -> None:
                 turns=tuple(range(1, num_shards + 1)),
                 spend_prob=args.random_schedule_spend_prob,
                 seed=_excitation_seed(seed, entry_id),
+            )
+
+    elif args.controller == "fixed_last":
+        # G4 (docs/experiments/measurement_validity_plan.md section 7.1): the
+        # missing optimal fixed arm -- reset on each item's own last shard
+        # turn, not an absolute turn like fixed_t1..t4.
+        shards_by_item = {item.item_id: len(item.shards) for item in load_ergo_math_bank()}
+
+        def controller_factory(seed: int, entry_id: str = "") -> FixedScheduleController:
+            return FixedScheduleController(
+                turns=(shards_by_item[entry_id],),
+                name="fixed_schedule_t_last",
             )
 
     elif args.controller == "ergo_koopman_mpc":
