@@ -918,8 +918,59 @@ T7（纯文档）── 任何时候都可以写第 6.1 节前两条与第 6.2 �
 256-token截断、n=8攻击×5seeds的功效上限）均未被本次执行推翻或改变，原样适用。
 第 6.3 节"明确不要写的"四条，经 T1a/T1b/T2/T3 Step1 的实测**进一步确认**，无需修改。
 
-### 11.4 遗留的判断题（未裁决，留给用户/Opus）
+### 11.4 T1b 的"饿死"根因：状态变量与 judge 打分未解耦（2026-09-07 复核）
 
-1. T1b 两条判断题（见上，"从不行动"是否写进本节；是否需要换数据集复核该行为的敏感性）；
-2. T3 Step 2 的回归规格（投影量纲/是否标准化/pre或post/是否把 `y_safety` 当第二观测）；
-3. 本节数字如何落进 `paper/`——按开工前必读第4条，本次会话未触碰 `paper/` 下任何文件。
+**用户提出的假设**：Koopman 建模之后应该能模拟动力学而不需要 judge；如果 judge 影响了
+Koopman 的训练数据，"独立 judge 下饿死"这个结论的逻辑就有问题。**追代码确认：假设成立，
+而且比"影响训练数据"更直接——judge 的打分本身就是被建模的状态变量，不是拿判分去筛选或
+加权训练数据这种间接关系。**
+
+**代码级证据**（不是转述文档，是逐行追出来的）：
+- 运行时：`src/persona_drift/trajectory_runner.py:141`
+  `row["y_probe"] = row[primary_score_field]`（`primary_score_field="y_safety"`，
+  见 `src/persona_drift/attack_trajectory.py:87-96`）——控制器（`control.py:173`
+  `ThresholdController`、`control.py:259` `KoopmanMPCController._current_state`）读的
+  `y_probe`，就是本轮 judge 打分的别名，不是另一路探针。
+- 离线拟合：`conf/task/defense.yaml` 的 `fit.y_col: y_safety`；
+  `src/persona_drift/modeling/dataset.py:178` `ys = [row[y_col] for row in traj_rows]`——
+  Koopman/ARX 建模的状态 `x` 就是 `y_safety` 这一列本身。
+- 重打分：`src/persona_drift/rejudge.py:58,85-86`（`_REJUDGED_FIELDS` 含 `y_safety`/
+  `y_probe`；`rejudged["y_safety"] = y_safety; rejudged["y_probe"] = y_safety`）——
+  换 judge 是**原地覆盖同一字段**，不是新增一列供选择；运行时控制器与离线拟合读的是
+  同一个名字，覆盖前后都一样。
+- 代码自带的注释已经点名这个别名关系：`trajectory_runner.py:86-87`
+  （"`primary_score_field` names which judge's score field becomes the `y_probe`
+  alias that every control.py Controller reads"）、`rejudge.py:56-57`
+  （"`y_probe` is the alias control.py's controllers read, kept in sync with
+  y_safety by trajectory_runner"）。
+
+**因果链**（不是拟合出错，是如实拟合了一个退化的信号）：独立 judge 天花板占比 0.91（第
+6.2节）→ 这批数据里 `y_safety` 的方差几乎全部被摁在天花板附近 → 在这种数据上拟合 ARX/
+Koopman，模型正确地学出"`y` 几乎不随 `u_remind`变化" → MPC 预测提醒的收益≈0 →
+T1b Step4 离线回放 0/40 条轨迹触发（第11.1节已记）。**控制器相对它看到的模型是理性的，
+出问题的是模型依赖的状态信号在独立 judge 下没有动态范围可学。**
+
+**这是不是逻辑有误**：是，但要精确定位在哪——不是代码 bug，是**指标泄漏/循环定义**：
+把"用来评价效果好坏的信号"直接当成"被控对象的状态"。第 0.4 节已经把这标成 blocking 级
+方法论缺陷，T3 存在的全部理由就是拆掉这个循环（状态换成 judge-独立的确定性读出，judge
+只留着做事后评价）。T3 Step 1 已证明激活投影是可以被执行器推动的（行C，p=6.0e-6），说明
+"存在一个不依赖 judge、还真有动态范围的状态量"这条路是通的，**但 T3 Step 2（用这个读出
+重新拟合 Koopman、重新跑 MPC）没有做**。
+
+**结论——T1b 的 NO-GO 需要加一个前提限定语**：现在的表述"独立 judge 下模型重拟合后从不
+提醒"是在"状态=judge打分"这个当前架构下成立的，**不能当成对"状态换成 judge-独立读出后"
+场景的预判**。站得住的表述应该是"在状态变量与 judge 打分未解耦的当前架构下，独立 judge
+口径没有给出可学习的动作效应"，而不是"自适应控制在独立 judge 下已确认无效"——前者留了
+T3 Step2 这条活路，后者是判死刑，两种写法在论文里的份量完全不同。
+
+### 11.5 遗留的判断题（未裁决，留给用户/Opus）
+
+1. **（新增，优先级最高）** T1b 的 NO-GO 结论是否要按 11.4 节改写限定语；T3 Step 2
+   是否应该提前到 T1b 的重新裁决之前——如果 Step 2 证明"读出替换后"控制器仍然学不出
+   动作效应，NO-GO 才是站得住的最终结论；如果学出来了，T1b 现在的 NO-GO 记录需要标注
+   "已被 T3 Step2 更新"而不是保留原判；
+2. T1b 另两条判断题（"从不行动"是否写进本节；是否需要换数据集复核该行为的敏感性）——
+   这两条现在应该在裁决第1条之后再看，因为它们问的是"这个结果多稳健"，而第1条问的是
+   "这个结果测的是不是它自称测的那件事"；
+3. T3 Step 2 的回归规格（投影量纲/是否标准化/pre或post/是否把 `y_safety` 当第二观测）；
+4. 本节数字如何落进 `paper/`——按开工前必读第4条，本次会话未触碰 `paper/` 下任何文件。
