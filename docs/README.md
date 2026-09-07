@@ -371,20 +371,33 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   0.150，而 bang-bang 阈值即使推到最敏感的 `y_min=1.0`，独立 judge 下触发率上限也只有
   1.6%–5.0%。引用这条结果时请一并读该计划的第 0.1 节。**
 - **[experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md) —
-  ⏳ 待执行（2026-09-06 立项，适用 Sonnet 5）：把"自适应控制抗侵蚀强于固定基线"这条 claim
-  做成可判定的。上游是 `independent_judge_reactive_rerun_plan.md` 第七节结果的复核。
-  第零节记了四条实测证据（全部离线、零 GPU，可复现）：(1) 上次重跑的"省 86% 提醒"是控制器
-  停摆而非效率；(2) claim 的两道闸门现状——**自评下过"打得过什么都不做"（late_y +0.0937
-  [+0.0208, +0.1927]）、不过"打得过同预算随机分配"（五个对手 CI 全跨零）；独立 judge 下两道
-  都不过**；(3) **读出里没有可反馈的状态**——去轮次后的 lag-1 自相关：独立 judge 0.000、
-  自评 0.347–0.424、激活投影 0.861–0.887，而输入增益方向相反（`y_safety` 上 `u_remind`
-  p=0.054、投影上 p=0.0995/0.363），即"有状态的读出执行器够不到，执行器够得到的读出没有
-  状态"，这是 Phase A–J 从没赢过最优固定日程的结构性原因；(4) `y_probe` 同时是控制器输入与
-  汇报指标（house 规则 V8 的 leaked-metric 缺陷）。四个可并行分派的任务：T0 把第零节诊断
-  固化成 `scripts/analyze_readout_state.py`（CPU，是后面所有任务的对比基线）、T1a threshold
-  臂最敏感阈值重跑、T1b koopman 臂在独立 judge 分上重拟合代理模型后重跑、T2 新增等代价
-  随机分配基线臂（`RandomScheduleController`），T3 检验确定性读出能否当控制器状态量
-  （零 GPU 前置闸门决定是否继续）。第六节是 T1–T3 全部落空时的收尾写法与"明确不要写的"清单。**
+  ✅ T0/T1a/T1b/T2/T3 Step1 已执行完（2026-09-06 立项，2026-09-07 收尾于第十一节）：把
+  "自适应控制抗侵蚀强于固定基线"这条 claim 做成可判定的。上游是
+  `independent_judge_reactive_rerun_plan.md` 第七节结果的复核。**结论：claim 不成立**——
+  自评下过"打得过什么都不做"（late_y +0.0937 [+0.0208, +0.1927]），但不过"打得过等代价
+  随机分配"（T2 的真臂对手 `randsched_p75`，两个口径 CI 均跨零）；独立 judge 下两道都不过，
+  且机制是控制器停摆而非高效（T1a：阈值推到最敏感的 `y_min=1.0`，触发率上限仍只有 6.25%）。
+  第 11.4 节进一步追出根因：**状态变量就是 judge 打分本身**（`y_probe ≡ y_safety`），
+  house 规则 V8 的 leaked-metric 缺陷，T1b 的"模型学出提醒无用"是这个循环的直接后果，
+  所以它的 NO-GO 带一个前提限定语（"在状态与 judge 未解耦的当前架构下"），不是终局判死刑。
+  读出层面的结构性诊断（去轮次 lag-1：独立 judge 0.000 / 自评 0.347–0.424 / 激活投影
+  0.861–0.887）**仍在复核中**——T3 Step 1 在 736 个转移上测到执行器能移动"回复前"投影
+  （`u_remind` +5.538, p=6.04e-6）但移不动"回复后"投影（p=0.782），该增益的规格稳健性与
+  因果可用性由 [experiments/readout_controllability_gate_plan.md](experiments/readout_controllability_gate_plan.md)
+  的 D1 裁定，**在 D1 出结果之前不要把任一方向写成结论**。**
+- **[experiments/readout_controllability_gate_plan.md](experiments/readout_controllability_gate_plan.md) —
+  ⏳ 待执行（2026-09-07 立项，适用 Sonnet 5）：2026-09-07 联合审计的产出，把防御线与 ERGO 线
+  收敛到同一道**读出可控性前置闸门（RC-gate）**——RC-1 打得过平凡 null / RC-2 去趋势后仍有
+  逐轨迹状态 / RC-3 控制混淆项后执行器仍能推动它，**三条全过才准做控制器工作**。
+  第零节记了审计的可复现证据：线 A 的 `proj_pre_reply` 是同轮动作的函数（非因果），且加上
+  `u_{t+1}` 后 `u_t` 增益从 +5.538 降到 +3.912 而 `u_{t+1}` 是 −7.244；线 B 的 ARX Koopman
+  (held-out 0.0893) 打不过"只用轮次均值"(0.0832) 和"零状态外生回归"(0.0792) 两个 null，
+  而它对照的 `richer_abs_sign` 在二值 `y` 下与 `y` 精确共线、是个 vacuous 基线；线 B 的
+  reset 代价是实测的（335 次 reset 平均 121.3 prompt token，turn1 88 → turn12 229）。
+  任务：D1 输入增益规格稳健性（CPU，判定 T3 是否继续）、D2 = T3 Step 2、D3 文档修正（已完成）、
+  E0 ERGO 读出可控性闸门（CPU，Phase C 准入）、E1 熵读出替换、E2 ERGO Phase C 完整规格。
+  **本文档同时是对 `adaptive_vs_fixed_claim_plan.md` 第 11.5 节四条判断题、以及
+  `ergo_koopman_mpc_opus_design_questions.md` 两个设计问题的裁决。**
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) —
   `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**2026-09-05 起

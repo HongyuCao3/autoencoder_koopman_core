@@ -416,3 +416,28 @@ A1 最初一次提交失败重试后以 job 15603666 成功跑完（其余四臂
 
 1. Step 4 用于跑 rejudge 的 sbatch（`environment/run_indepjudge_rejudge_selfconsistency.sbatch`）是本次新增的，第四节 Step 2 只列了 5 个"跑轨迹"的 sbatch，没有列这一个——因为 `rejudge_safety_runs.py` 需要 GPU（模型前向），登录节点跑不了，必须提交作业；文档本身没写"Step 4 也要建 sbatch"，按第四节 Step 2 的规格（同样的资源申请、只改命令）补建了一个，diff 已在执行中核对（只有 job-name/日志路径/命令参数不同）。
 2. `analyze_budget_arm_comparison.py` 原生只产出"adaptive vs 每个 fixed 臂"的配对比较，不产出"koopman vs threshold"这一项（脚本按 `--fixed-arm-prefix` 过滤，threshold 臂不匹配该前缀）。按第六节"抄出 koopman vs threshold 的均值差与 CI"的要求，用脚本内同一个 `_paired_bootstrap`（相同 seed=0、相同 10000 次重采样）单独算了这一项，写回同一份 `budget_arm_comparison_indepjudge_rerun.json` 的 `comparisons` 字典，没有新建文件。
+
+---
+
+## 八、后续复核（2026-09-06，指针）
+
+第七节"与自评口径的定性对照"里那条留给 Opus 裁决的新结果——"koopman 在安全分上显著弱于最优
+固定臂，但用少约 86% 的提醒换来"——已被复核，**结论是那 86% 不是效率而是控制器停摆**：
+反应式控制器的触发信号是 `y_probe`，独立 judge 的天花板占比 0.91，分数掉不到阈值以下，
+提醒/轨迹从自评的 0.750 掉到 0.150（seeds{0,1} 上是 0.062），而 `ThresholdController` 即使把
+`y_min` 推到读出允许的最敏感设置 1.0，独立 judge 下被门控转移的触发率上限也只有 1.6%
+（`zero_control`）/ 5.0%（`fixed_t5`），对照自评在 y_min=0.7 上的 12.5%/13.8%。
+
+复核同时测到：去掉轮次均值后 `y_safety` 的 lag-1 自相关在独立 judge 下精确为 0.000（p=1，
+64 对），自评下是 +0.424——**在状态变量＝judge 打分的当前架构下**（`y_probe ≡ y_safety`，
+代码级证据见 `adaptive_vs_fixed_claim_plan.md` 第 11.4 节），独立 judge 口径没有给出任何
+逐轨迹的、可反馈的信号，所以第七节那个"显著更差"测的不是策略质量。
+**这句话的射程仅限于 `y_safety` 这一个读出**——它不等于"任何闭环控制器都不可能赢开环"：
+状态换成 judge-独立的确定性读出之后是否还成立，是
+[`readout_controllability_gate_plan.md`](readout_controllability_gate_plan.md) D1/D2 的问题，
+在那之前不要把这一条写成普遍结论。
+
+完整证据、四个后续任务（含把这套诊断固化成脚本、阈值重标定重跑、独立 judge 分上重拟合代理模型、
+等代价随机分配基线臂）与收尾写法见
+[`adaptive_vs_fixed_claim_plan.md`](adaptive_vs_fixed_claim_plan.md)。**引用第七节第 (2) 条结果时
+必须一并引用该文档第 0.1 节。**
