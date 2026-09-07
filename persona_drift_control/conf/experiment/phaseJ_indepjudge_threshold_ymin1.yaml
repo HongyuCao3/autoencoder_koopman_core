@@ -1,0 +1,19 @@
+# @package _global_
+# Phase J threshold 臂在独立 judge 下的"最敏感阈值"重跑
+# （docs/experiments/adaptive_vs_fixed_claim_plan.md T1a）。
+# 与 phaseJ_indepjudge_threshold.yaml 逐字相同，只有 threshold_y_min 与 output_dir 两处差异。
+#
+# 为什么是 1.0 而不是某个中间值：y_safety 只取 {0, 0.25, 0.5, 0.75, 1.0}，
+# ThresholdController 在 y_probe < y_min 时动作，所以 y_min=1.0（"只要不是满分就提醒"）
+# 已经是这个读出上最敏感的 bang-bang 设置，没有更激进的阈值可试。
+# 实测（本计划第 0.1 节）：独立 judge 下即使 y_min=1.0，被门控转移的触发率上限也只有
+# 1.6%（zero_control）/ 5.0%（fixed_t5），对照自评在 y_min=0.7 上的 12.5%/13.8%。
+defaults:
+  - phaseJ_base
+
+output_dir: outputs/koopman_defense_phaseJ_budget1_threshold_indepjudge_ymin1
+task:
+  screening:
+    judge_model: Qwen/Qwen3-4B-Instruct-2507
+    controller: threshold
+    threshold_y_min: 1.0
