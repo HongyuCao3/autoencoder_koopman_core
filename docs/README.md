@@ -4,7 +4,11 @@
 
 本目录是 Koopman 控制子项目的设计/协议文档集合（代码在 `../persona_drift_control/`），
 覆盖该子项目长出的四条实验线。当前活跃的是**抗攻击**（`defense`）与**抗压力**（`stance`），
-最初的人格漂移线（`persona_drift`）已放弃。术语基准见 [`NAMING.md`](NAMING.md)。信息架构参照
+最初的人格漂移线（`persona_drift`）已放弃。**2026-09-06 起另有一条正在评估的新候选线——
+ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`，见下面`实验`一节）**，
+是 `stance` 线两次执行器权威空结果之后开的第三条任务线，带独立的真实数据集（vendor 自
+`microsoft/lost_in_conversation` 的 GSM8K sharded 题库），尚未并入 `stance`/`defense`
+两条主线的框架。术语基准见 [`NAMING.md`](NAMING.md)。信息架构参照
 [Pytorch-lightning-Hydra-Optuna-MLflow-Slurm-Project-Template-for-Scientific-Research](https://github.com/HongyuCao3/Pytorch-lightining-Hydra-Optuna-MLflow-Slurm-Project-Tempate-for-Scientific-Research)
 的文档分类思路（任务定义/方法/实验/文献），用纯 Markdown 实现，不引入 Quarto 等构建工具。
 
@@ -139,7 +143,9 @@
   sycophancy 教训）。**2026-09-06 追加：最小执行器权威验证已完成，确认执行器有权威，效应量大**
   （job 15602880 zero_control / 15602881 reset，20 items × 2 seeds，配对 t-test：最终轮任务
   成功率 0.275→0.750，t=4.79，p=0.000127）——和 sycophancy 线两次都卡在效应量趋近 0 形成
-  鲜明对比。**但惯性/动力学的性质和 sycophancy 不同，不是"记忆黏滞"而是"信息单调累积"**
+  鲜明对比。**同日 60-item 扩样本复核（job 15603367/15603368）确认效应量在 3 倍样本下依然稳**
+  （0.367→0.792，t=6.78，p=6.39e-9，显著性更强），排除了 20-item 结果是小样本噪声的可能。
+  **但惯性/动力学的性质和 sycophancy 不同，不是"记忆黏滞"而是"信息单调累积"**
   （揭示的 shard 越多题目客观上越好答，不是模型"记住了之前的立场"），论文措辞需要区分这两种
   现象。详见 `experiments/ergo_multiturn_reliability_pilot.md`。
 
@@ -432,17 +438,25 @@
   提醒"这个具体假设，这条支线的证据强度升级为"当前 channel-A 文案设计下无可测权威"，不建议
   再换插入时机——下一步该换文案强度/具体性，或转向其他前置条件（benign 对照臂）。**
 - **[experiments/ergo_multiturn_reliability_pilot.md](experiments/ergo_multiturn_reliability_pilot.md) —
-  ★ 正在做：sycophancy 两次执行器权威空结果后评估的下一个候选（`ERGO_MULTITURN_RELIABILITY_
-  FEASIBILITY.md`）的最小执行器权威验证。vendor 了 103 个 GSM8K sharded 数学题
+  ★ **新任务线**（sycophancy 两次执行器权威空结果后评估的下一个候选，`ERGO_MULTITURN_
+  RELIABILITY_FEASIBILITY.md`）：一个具体的、带真实开源数据集的新 screening 任务，不是论文
+  写作、也不是抗攻击/抗压力两条既有线的续作。**新开一次对话想知道"ERGO 这条线现在跑到哪一步
+  了"，看这份文档。** vendor 了 103 个 GSM8K sharded 数学题
   （`resources/ergo_gsm8k_sharded.jsonl`，MIT 协议），实现了 bank/判官（纯正则，零 LLM 判官
   调用）/独立的重置-vs-追加轨迹循环（不复用 `trajectory_runner.py`——"重置"这个动作的内容
   依赖轮次，塞不进共享循环 `reminder_fn(level)` 的签名）/精简版分析，24 个新 CPU 单测全绿。
-  job 15602880（zero_control）/15602881（reset）已提交，20 items × 2 seeds，同一批 item id
-  保证配对可比。**结果：执行器权威确认，效应量大**（最终轮任务成功率 0.275→0.750，
-  t=4.79，p=0.000127）——和 sycophancy 线两次空结果形成对照；**但惯性性质不同**：这里是
-  "信息单调累积"（shard 越揭示越好答）而不是 sycophancy 那种"同一信息反复施压下的立场
-  漂移"，论文措辞需要分清这两种现象，不能混着引用。下一步：扩样本到 ~60 items（同一任务）
-  再决定要不要为其余五个 ERGO 任务投入评分器工程。
+  **20-item pilot（job 15602880 zero_control / 15602881 reset）+ 60-item 扩样本（job
+  15603367/15603368）都已完成**，同一批 item id 保证配对可比。**结果：执行器权威确认，效应量
+  大且稳**（最终轮任务成功率：20-item 0.275→0.750，t=4.79，p=1.27e-4；60-item 0.367→0.792，
+  t=6.78，p=6.39e-9——3 倍样本下效应量不变，显著性更强）——和 sycophancy 线两次空结果形成
+  对照；**但惯性性质不同**：这里是"信息单调累积"（shard 越揭示越好答）而不是 sycophancy 那种
+  "同一信息反复施压下的立场漂移"，论文措辞需要分清这两种现象，不能混着引用。**2026-09-06 追加：
+  开始 Koopman 建模（Phase B）**——决定显式加 `shard_frac`（已揭示 shard 比例）作为状态协变量
+  （不只用 y 滞后项），`contemporaneous_v=True`（reset 同轮直接影响该轮 y，代码已验证）；新增
+  `--controller random_excite` 支持 + `scripts/fit_koopman_ergo_model.py`；开环随机激励采集
+  job 15613799 已提交（60 items × 2 seeds, p=0.5，规模同防御线 Phase B）。暂不铺开到其余五个
+  ERGO 任务，先看数学任务建模是否值得投入。详见 `experiments/ergo_multiturn_reliability_pilot.md`
+  "Koopman 建模，Phase B"一节。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；

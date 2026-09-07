@@ -7,9 +7,15 @@ fixed_schedule controllers reused for the reset/no-reset decision) move
 `y_task_success` on this project's own model, before any further engineering
 (entropy readout, more tasks, upstream's live user-simulator reveal logic).
 
-Only zero_control/constant_remind/fixed_schedule are exposed -- same
-reasoning as run_mc_sycophancy_defended_screening.py: nothing past a
-minimal authority check is warranted before this gate itself passes.
+Originally only zero_control/constant_remind/fixed_schedule were exposed --
+same reasoning as run_mc_sycophancy_defended_screening.py: nothing past a
+minimal authority check was warranted before that gate itself passed. That
+gate has now passed twice (20-item pilot + 60-item expansion, see
+docs/experiments/ergo_multiturn_reliability_pilot.md), so --controller
+random_excite is added for the open-loop-excitation data collection a
+Koopman fit needs (same role as run_defended_screening.py's Phase B) --
+`u_reset` drawn i.i.d. Bernoulli(p) each turn instead of the all-0/all-1
+extremes the authority check used.
 
 Must be run where torch/transformers are installed and a GPU (or patient
 CPU) is available - see environment/setup_env.sh.
@@ -28,7 +34,7 @@ from persona_drift.controller_cli import make_controller_factory  # noqa: E402
 from persona_drift.ergo_math_screening import run_ergo_math_screening  # noqa: E402
 from persona_drift.ergo_math_trajectory import ErgoMathTrajectoryConfig  # noqa: E402
 
-CONTROLLER_CHOICES = ("zero_control", "constant_remind", "fixed_schedule")
+CONTROLLER_CHOICES = ("zero_control", "constant_remind", "fixed_schedule", "random_excite")
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,6 +63,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="required for --controller fixed_schedule",
     )
+    parser.add_argument(
+        "--random-excite-p",
+        type=float,
+        default=None,
+        help="required for --controller random_excite: Bernoulli(p) probability of u_reset=1 each turn",
+    )
     return parser.parse_args()
 
 
@@ -70,6 +82,7 @@ def main() -> None:
         threshold_y_min=0.7,
         koopman_mpc_controller=None,
         fixed_schedule_turns=tuple(args.fixed_schedule_turns) if args.fixed_schedule_turns else None,
+        random_excite_p=args.random_excite_p,
     )
     report = run_ergo_math_screening(
         agent_model_id=args.agent_model,

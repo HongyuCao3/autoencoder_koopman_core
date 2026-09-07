@@ -27,7 +27,14 @@
 | ① 人格漂移 screening（最初的 gate） | `run_signal_screening.py` | 三问全挂；10-prompt 放大后仍是空结果；渐进施压版（`run_pressure_screening.py`）中间态（该线已放弃） |
 | ② 抗攻击（对抗防御）Koopman-MPC（主线） | `run_adversarial_screening.py` / `run_defended_screening.py` | Phase A→I 完整闭环并已收尾：`koopman_mpc` 打赢 `zero_control`/`threshold`，但未打赢同代价的 `periodic` |
 | ③ Koopman 显式检测支线 | `evaluate_koopman_detector.py` | 方案 1/3/4 跑完，修完"v 对齐"bug 后方案 1/3 由负结果转为正向 |
-| ④ 抗压力（sycophancy drift）screening | `run_sycophancy_screening.py` | 两次 GPU 跑完（自评 judge + 独立 judge 配对重跑），欠功效的空结果 |
+| ④ 抗压力（sycophancy drift）screening | `run_sycophancy_screening.py` | 两次 GPU 跑完（自评 judge + 独立 judge 配对重跑），欠功效的空结果；后续换数据源（MMLU-based）重测执行器权威，结论收窄为"当前提醒文案下无可测权威"（见 `mc_sycophancy_screening_pilot.md`） |
+| ⑤ ERGO/多轮可靠性侵蚀 screening（**新任务线，2026-09-06 起**，见下方说明） | `run_ergo_math_screening.py` / `fit_koopman_ergo_model.py` | 20-item + 60-item 执行器权威验证均已完成（确认权威、效应量大且稳，60-item p=6.39e-9）；Koopman 建模 Phase B 数据采集已提交（job 15613799，随机激励，等跑完后 `fit_koopman_ergo_model.py` 出首次拟合结果） |
+
+**⑤ 是 ④ 两次执行器权威空结果之后评估的新候选线**（`docs/feasibility/ERGO_MULTITURN_
+RELIABILITY_FEASIBILITY.md` + `docs/experiments/ergo_multiturn_reliability_pilot.md`），
+带独立的真实数据集（vendor 自 `microsoft/lost_in_conversation` 的 103 个 GSM8K sharded
+数学题，`resources/ergo_gsm8k_sharded.jsonl`），尚未并入①-④的框架，上面"四条实验线"的表述
+不包含它——**新开一次对话想知道这条线跑到哪一步了，直接看 `ergo_multiturn_reliability_pilot.md`**。
 
 代理建模层另有 ARX / `richer_abs_sign` / LSTM / AE 四个 baseline 的对照（`fit_koopman_*.py`）。
 

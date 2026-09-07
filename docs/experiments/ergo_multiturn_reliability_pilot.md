@@ -92,30 +92,112 @@ Koopman/状态空间建模来说仍然是一个合理甚至更自然的拟合对
 从头推导、还没来得及给出"Current answer: X"格式），`refusal_rate` 两臂都很低（<1%），
 没有异常。
 
-## 样本扩充（job 15603367 zero_control / 15603368 reset，60 items × 2 seeds，已提交，2026-09-06）
+## 样本扩充（job 15603367 zero_control / 15603368 reset，60 items × 2 seeds，2026-09-06 已跑完并分析）
 
 20-item 最小验证已经确认权威（见上节），这一步不是重新测"有没有权威"，是把效应量估计打扎实、
 给 `analysis_ergo_math.py` 的 new-Q1/new-Q3 诊断更多功效——和 sycophancy 线 20→60 items 的
 扩样本同一个理由。**新抽的 60 items**（`--item-rng-seed 1`，不是复用 pilot 的那 20 个，题库
 总共只有 103 个 item，两次抽样会有交集但不是子集关系），两个 sbatch 用完全相同的 60 个
-item id，60 items × 2 seeds = 684 行，作业已提交，尚未跑完。下一次接续时先
-`sacct -j 15603367,15603368` 确认完成，再用 `scripts/analyze_ergo_authority_comparison.py`
-（默认参数指向 pilot 的 20-item 目录，这次需要 `--arm-a-dir outputs/ergo_math_authority_
-zero_control_60items --arm-b-dir outputs/ergo_math_authority_reset_60items`）算配对比较，
-补写进这一节。
+item id，60 items × 2 seeds = 684 行。两个 job 均 `COMPLETED`（16:14 提交，16:29/16:49 结束）。
+
+`scripts/analyze_ergo_authority_comparison.py --arm-a-dir outputs/ergo_math_authority_
+zero_control_60items --arm-b-dir outputs/ergo_math_authority_reset_60items` 的配对比较
+（按 item 比较最后一轮 `y_task_success`，n=60）：
+
+| | n_items | zero_control 均值 | reset 均值 | 差值 | t | p |
+|---|---:|---:|---:|---:|---:|---:|
+| 最终轮任务成功率 | 60 | 0.3667 | 0.7917 | **+0.4250** | 6.78 | **6.39e-09** |
+
+**效应量在 3 倍样本下依然稳，且显著性更强**（20-item: diff +0.475, t=4.79, p=1.27e-4 →
+60-item: diff +0.425, t=6.78, p=6.39e-9）——不是小样本噪声。逐轮细看同一模式重复出现：
+
+| turn | zero_control (n) | reset (n) |
+|---:|---:|---:|
+| 3 | 0.0000 (120) | 0.0333 (120) |
+| 4 | 0.1500 (120) | 0.2833 (120) |
+| 5 | 0.1702 (94) | 0.4043 (94) |
+| 6 | 0.1935 (62) | 0.4839 (62) |
+| 7 | 0.2333 (30) | 0.5000 (30) |
+| 8 | 0.3000 (10) | 0.6000 (10) |
+
+两臂差距从 turn 4 起持续拉开，到 turn 7/8 已经翻倍——和 20-item pilot 的定性一致。
+
+`ergo_math_screening_report.md` 的 new-Q1/new-Q3 诊断（60 items，各自的独立信号，不是上面的
+配对比较）：zero_control 逐item斜率 t=5.69, p<0.0001（28/60 正斜率）、lag-1 惯性
+r=0.4441, p<0.0001；reset 斜率 t=12.41, p<0.0001（53/60 正斜率）、lag-1 惯性
+r=0.3997, p<0.0001——两臂都强显著单调上升，reset 臂上升更快，与"重置后信息更快被有效利用"
+一致。诊断：`judge_parse_failure_rate` reset 臂 0.73% vs zero_control 0%，`refusal_rate`
+zero_control 3.65% vs reset 0.58%，都很低，无异常。
+
+## Koopman 建模，Phase B（job 15613799，2026-09-06 提交）
+
+执行器权威两次确认之后（20-item + 60-item），下一步的判断是：直接开始建 Koopman 模型，而不是
+先铺开到其余五个 ERGO 任务或先定论文叙事——理由见下面"下一步"第 2/4 条的状态变化。这一节记录
+建模第一阶段（Phase B：开环随机激励采集 + 首次拟合）的设计决策与执行情况，**新开一次对话想知道
+"ERGO 的 Koopman 建模做到哪一步了"，看这一节**。
+
+**读出结构的顾虑已经在实现里被绕开，之前的 feasibility 文档没跟着更新**：
+`ERGO_MULTITURN_RELIABILITY_FEASIBILITY.md` §2.3 原本担心"任务分数只在对话结束判一次、和本项目
+逐轮 `y_t` 的设计不匹配"，需要在"熵代理读出"（路径 A）和"自建逐轮打分器"（路径 B）之间选。查
+`ergo_math_trajectory.py` 代码发现**这个决策已经隐式做完了**：每一轮都会让模型给出"当前最佳猜测
+答案"并当场判分（`ergo_math_judge.judge_math_answer`），不是只在结束时判一次——已经是路径 B，
+且已经跑通、有数据。
+
+**状态空间设计决策（feasibility 文档下一步 5(b) 的答案）**：显式加入 `shard_frac = turn /
+num_shards` 作为 `ReducedStateConfig.aux_cols`（而不是只用 sycophancy 那种"只靠 y 的滞后项"设计）
+——理由是这个任务的 y 上升不是记忆/黏滞驱动的，是"揭示的 shard 变多、题目客观上更完整"这个确定性
+外生变量驱动的（见上面"惯性/动力学定性"一节），不显式建模这个变量，回归会把它的效应错误地
+归到 y 滞后项上，把"重置"这个执行器自身的效果和纯粹的信息累积效果混在一起。这个扩展点
+（`aux_cols`）`modeling/dataset.py` 里已经现成（`koopman_detection_design.md` 方案 4 留下的
+接口），不需要改核心建模代码，只需要在读数据时补一列 `shard_frac`。
+
+同时确定 `contemporaneous_v=True`（不是像 defense 线那样留一个可选 flag）：`run_ergo_math_trajectory`
+里 `u_reset` 对 turn t 的决策，在生成/判分 turn t 的回复**之前**就已生效（重建了 prompt），
+即 `u_reset_t` 同轮直接导致 `y_task_success_t`——精确对应 `ReducedStateConfig.contemporaneous_v=True`
+的语义（`dataset.py` 类文档字符串 + `koopman_case_study_design.md` Phase I 的时序错位分析）。这里
+没有理由留 False 分支做消融，跟 defense 线当年误踩的"v 错位"坑不是一回事，直接钉死。
+
+**代码**：
+- `scripts/run_ergo_math_screening.py` 新增 `--controller random_excite` + `--random-excite-p`
+  （复用 `controller_cli.make_controller_factory` 已有的、经过完整单测的 `RandomExciteController`
+  分支，零新增控制器代码）。
+- `scripts/fit_koopman_ergo_model.py`（新文件，结构照抄 `fit_koopman_defense_model.py`）：读
+  `trajectories.jsonl`，补 `shard_frac` 列，按 `item_id`（不是 `attack_id`）切 held-out split，
+  `y_col="y_task_success"`/`u_col="u_reset"`，拟合 ARX + `richer_abs_sign` 两个 baseline，报告
+  held-out rollout MSE + 可控性诊断（Gramian/谱半径），写 `koopman_fit_report.json`。
+- 用已有的 60-item zero_control+reset 数据（拼在一起，本身不是随机激励设计,只是机械 smoke test）
+  跑通过一次，确认列名/形状/`build_identification_dataset`/`rollout_output_error` 全部接得上,
+  无需改一行核心 `modeling/` 代码。CPU 全套测试 386 passed（5 个既有的、和本次改动无关的 NLTK
+  数据缺失失败不变，和 `mc_sycophancy_screening_pilot.md` 记录的同一批）。
+
+**数据采集（job 15613799，已提交，2026-09-06）**：`environment/run_ergo_phaseB_random_excite.sbatch`
+——`--controller random_excite --random-excite-p 0.5`，60 items（`--item-rng-seed 2`，和 pilot 的
+20 个、扩样本的 60 个都不同的第三次抽样，题库只有 103 个 item 所以会有重叠，但这次是单臂采集
+没有配对约束）× 2 seeds，和防御线 Phase B（30 attacks × 2 seeds, p=0.5）同一量级,预期成本和已跑完
+的 60-item 权威检查同一数量级（15-30 分钟）。
+
+**下一次接续时**：先 `sacct -j 15613799` 确认完成，再跑
+`python scripts/fit_koopman_ergo_model.py`（默认参数已经指向这次的输出目录），看
+`held_out_rollout_mse`/`controllability_rank`/`A_spectral_radius` 这几个数字，判断这条线是否
+值得往下投入 `KoopmanMPCController`（防御线的下一步模板）。
 
 ## 下一步
 
-1. **等 60-item 扩充作业跑完，确认效应量在更大样本下依然稳**：这是当前最直接的下一步。
-2. **执行器权威已确认（20-item 结果）**：这是这条线和 sycophancy 线最大的区别——不需要
-   再纠结"要不要继续试错换执行器设计"这个问题了，可以往下走。
+1. ~~等 60-item 扩充作业跑完，确认效应量在更大样本下依然稳~~ **已完成（见上节）：效应量、
+   方向、显著性三者都稳，60-item 比 20-item 显著性更强（p 从 1.27e-4 降到 6.39e-9）**。
+2. **执行器权威已确认（20-item + 60-item 两次一致）**：这是这条线和 sycophancy 线最大的区别——
+   不需要再纠结"要不要继续试错换执行器设计"这个问题了，可以往下走。
 3. **惯性/动力学定性需要重新表述**，见上面加粗的段落——不是"记忆黏滞"而是"信息累积",这个
    区别要带进任何后续文档/论文措辞，避免和 sycophancy/防御线的"惯性"概念混为一谈。
 4. **暂不急于铺开到其余五个 ERGO 任务**（code/SQL/actions/data2text/summary）——那些的评分器
    工程量更大（`PROVENANCE.md` 的"已知简化"一节），且数学任务本身已经足够回答"权威在不在"
-   这个问题；扩样本确认稳定后再决定是否值得为其余任务投入工程。
-5. **下一次真正投入建模前，还有可行性文档第 4 节没走完的部分**：a) 决定要不要为更多任务投入
-   路径 B 评分器工程；b) 想清楚"信息累积"这种动力学形态下，Koopman 状态空间怎么设计最自然
-   （e.g. 状态是否应该显式包含"已揭示多少个 shard"这个确定性协变量，而不是像 sycophancy 那样
-   只用 y 的滞后项）；c) 论文叙事层面要不要把这条线定位成"和 sycophancy 形成对照的正面案例"
-   （`docs/article/PAPER_EXECUTION_PLAN.md` §1.4 需要相应更新，目前完全没提这条线）。
+   这个问题。**2026-09-06 决定：先在数学任务上把 Koopman 建模走一遍（见上面"Koopman 建模，
+   Phase B"一节），再决定要不要为其余任务投入评分器工程**——先看一个任务上建模是否值得，
+   比先铺量再看值不值得更省。
+5. 可行性文档第 4 节的三个未走完项，现在的状态：
+   a) **为更多任务投入路径 B 评分器工程——仍未决定，推迟到 Phase B/C 结果出来之后**（见第 4 条）；
+   b) **Koopman 状态空间设计——已决定**（见上面"Koopman 建模，Phase B"一节）：显式加入
+      `shard_frac`（已揭示 shard 比例）作为 aux 协变量，而不是只用 y 的滞后项；
+   c) **论文叙事定位——仍未决定**，等 Phase B/C 建模结果（有没有可用的 A/B/可控性诊断）出来后
+      再判断这条线是"和 sycophancy 对照的正面案例"还是有独立的建模贡献，`docs/article/
+      PAPER_EXECUTION_PLAN.md` §1.4 仍未提这条线。
