@@ -226,8 +226,11 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
    c) **论文叙事定位——仍未决定**，Phase C（`KoopmanMPCController` 闭环）跑完后再判断这条线
       是"和 sycophancy 对照的正面案例"还是有独立的建模贡献，`docs/article/
       PAPER_EXECUTION_PLAN.md` §1.4 仍未提这条线。
-6. **下一次接续时**：读上面"拟合结果"小节确认起点，然后照防御线 Phase B→C 的模板（先有
-   开环拟合出的 A/B，再包一层 `KoopmanMPCController` 跑闭环、和 `reset`/`zero_control` 两个
-   开环基线比较任务成功率）设计 ERGO 线的 Phase C，脚本层面可以照抄
-   `run_defended_screening.py`/`controller_cli.py` 里 MPC 控制器已有的接入方式，域特定的
-   部分只有 `ergo_math_trajectory.py` 的 `u_reset` 决策入口。
+6. **2026-09-07 追加，Phase C 起步**：`KoopmanMPCController` 硬编码 `y_probe`/`u_remind`
+   且不支持 `aux_cols`，不能直接照抄防御线接线——按"不干扰 `control.py`/`controller_cli.py`
+   共用代码"的要求，新增了继承子类 `src/persona_drift/ergo_koopman_mpc.py`
+   （`ErgoKoopmanMPCController`，覆写 `_current_state` 支持可配置列名+aux；7 个新 CPU
+   单测全绿，全套 401 passed）。**`_simulate` 的多步展望（`shard_frac` 该不该被当预测对象）
+   和要不要给 reset 加预算约束，这两个设计问题写进了
+   [experiments/ergo_koopman_mpc_opus_design_questions.md](ergo_koopman_mpc_opus_design_questions.md)
+   等 Opus 裁决，Sonnet 5 在规格出来之前不会继续往下接 GPU 作业。**
