@@ -366,6 +366,25 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   **显著弱于**最优固定臂（同时提醒数显著更省，约省 86%），这是需要写进论文讨论/限制的新
   发现。详见该文档第七节"执行结果"。触发来源是论文 Step 2b 的作废判定
   （`../paper/evidence/superseded.md` 事件 E3）。**
+  **⚠️ 上面第 (2) 条的"约省 86%"已被 `adaptive_vs_fixed_claim_plan.md` 第 0.1 节推翻：
+  那不是效率，是控制器在独立 judge 的天花板（0.91）下停摆——提醒/轨迹从自评的 0.750 掉到
+  0.150，而 bang-bang 阈值即使推到最敏感的 `y_min=1.0`，独立 judge 下触发率上限也只有
+  1.6%–5.0%。引用这条结果时请一并读该计划的第 0.1 节。**
+- **[experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md) —
+  ⏳ 待执行（2026-09-06 立项，适用 Sonnet 5）：把"自适应控制抗侵蚀强于固定基线"这条 claim
+  做成可判定的。上游是 `independent_judge_reactive_rerun_plan.md` 第七节结果的复核。
+  第零节记了四条实测证据（全部离线、零 GPU，可复现）：(1) 上次重跑的"省 86% 提醒"是控制器
+  停摆而非效率；(2) claim 的两道闸门现状——**自评下过"打得过什么都不做"（late_y +0.0937
+  [+0.0208, +0.1927]）、不过"打得过同预算随机分配"（五个对手 CI 全跨零）；独立 judge 下两道
+  都不过**；(3) **读出里没有可反馈的状态**——去轮次后的 lag-1 自相关：独立 judge 0.000、
+  自评 0.347–0.424、激活投影 0.861–0.887，而输入增益方向相反（`y_safety` 上 `u_remind`
+  p=0.054、投影上 p=0.0995/0.363），即"有状态的读出执行器够不到，执行器够得到的读出没有
+  状态"，这是 Phase A–J 从没赢过最优固定日程的结构性原因；(4) `y_probe` 同时是控制器输入与
+  汇报指标（house 规则 V8 的 leaked-metric 缺陷）。四个可并行分派的任务：T0 把第零节诊断
+  固化成 `scripts/analyze_readout_state.py`（CPU，是后面所有任务的对比基线）、T1a threshold
+  臂最敏感阈值重跑、T1b koopman 臂在独立 judge 分上重拟合代理模型后重跑、T2 新增等代价
+  随机分配基线臂（`RandomScheduleController`），T3 检验确定性读出能否当控制器状态量
+  （零 GPU 前置闸门决定是否继续）。第六节是 T1–T3 全部落空时的收尾写法与"明确不要写的"清单。**
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) —
   `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**2026-09-05 起
@@ -454,9 +473,13 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   开始 Koopman 建模（Phase B）**——决定显式加 `shard_frac`（已揭示 shard 比例）作为状态协变量
   （不只用 y 滞后项），`contemporaneous_v=True`（reset 同轮直接影响该轮 y，代码已验证）；新增
   `--controller random_excite` 支持 + `scripts/fit_koopman_ergo_model.py`；开环随机激励采集
-  job 15613799 已提交（60 items × 2 seeds, p=0.5，规模同防御线 Phase B）。暂不铺开到其余五个
-  ERGO 任务，先看数学任务建模是否值得投入。详见 `experiments/ergo_multiturn_reliability_pilot.md`
-  "Koopman 建模，Phase B"一节。
+  job 15613799 已提交（60 items × 2 seeds, p=0.5，规模同防御线 Phase B）。**2026-09-07 追加：
+  拟合完成**——job 15613799 `COMPLETED`，`fit_koopman_ergo_model.py` 跑通：ARX 赢过 richer
+  baseline（held-out rollout MSE 0.089 vs 0.162）、可控性满秩（`rank=3=state_dim`）、
+  `A_spectral_radius=0.953`（稳定）。**判断：值得往下投**，三个前置条件（拟合质量/可控性/
+  稳定性）都过，没有出现防御线那种"读出没有可反馈状态"的结构性卡点。下一步是 Phase C
+  （`KoopmanMPCController` 闭环），不是先为其余五个 ERGO 任务投评分器工程。详见
+  `experiments/ergo_multiturn_reliability_pilot.md`"拟合结果"小节。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；

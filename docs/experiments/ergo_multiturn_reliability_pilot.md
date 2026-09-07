@@ -181,6 +181,31 @@ num_shards` 作为 `ReducedStateConfig.aux_cols`（而不是只用 sycophancy �
 `held_out_rollout_mse`/`controllability_rank`/`A_spectral_radius` 这几个数字，判断这条线是否
 值得往下投入 `KoopmanMPCController`（防御线的下一步模板）。
 
+**拟合结果（2026-09-07，`outputs/ergo_math_phaseB_random_excite/koopman_fit_report.json`）**：
+job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.py`（60 items，45 train /
+15 held-out，`--split-seed` 默认值）：
+
+| model | train one-step MSE | held-out rollout MSE |
+|---|---:|---:|
+| ARX | 0.0896 | **0.0893** |
+| richer_abs_sign | 0.0896 | 0.1621 |
+
+- **ARX 赢过 richer baseline**（rollout MSE 低 45%）——和防御线 Phase B 的选型方向一致，
+  三维状态 `z=[y_lag, shard_frac, v]`（`aux_cols=["shard_frac"]` + `contemporaneous_v=True`）
+  已经够用，不需要更复杂的特征。
+- **可控性满秩**：`controllability_rank=3`（=`state_dim`），但 `gramian_condition≈4779`——
+  奇异值 `[1.003, 0.097, 0.015]` 相差近两个数量级，`u_reset` 这一维输入对 `y`/`v` 两个状态
+  分量的驱动力强、对 `shard_frac` 分量几乎不驱动（预期之内——`shard_frac` 是外生变量，
+  `u_reset` 不该控制它，`A`/`B` 矩阵里对应行系数确实接近零），不是病态拟合。
+  `A_spectral_radius=0.953`（<1，稳定；比 `1.005` 的 `shard_frac` 自身系数略低，量级上与
+  "分数随信息累积单调上升但终会饱和" 的定性一致）。
+- **判断：值得往下投**——ARX 跑通、held-out rollout 误差不大（约 0.09，对应
+  `y∈[0,1]` 量级下约 30% 的均方根误差）、满秩可控、谱半径 <1，三个前置条件（拟合质量/
+  可控性/稳定性）都过了，没有出现防御线当年"读出没有可反馈状态"那种结构性卡点
+  （`adaptive_vs_fixed_claim_plan.md` T3）。下一步是 `KoopmanMPCController` 而不是回头
+  加更多任务的评分器工程。
+- CPU 全套测试 394 passed（同一批 5 个 NLTK 数据缺失失败，和本次改动无关）。
+
 ## 下一步
 
 1. ~~等 60-item 扩充作业跑完，确认效应量在更大样本下依然稳~~ **已完成（见上节）：效应量、
@@ -189,15 +214,20 @@ num_shards` 作为 `ReducedStateConfig.aux_cols`（而不是只用 sycophancy �
    不需要再纠结"要不要继续试错换执行器设计"这个问题了，可以往下走。
 3. **惯性/动力学定性需要重新表述**，见上面加粗的段落——不是"记忆黏滞"而是"信息累积",这个
    区别要带进任何后续文档/论文措辞，避免和 sycophancy/防御线的"惯性"概念混为一谈。
-4. **暂不急于铺开到其余五个 ERGO 任务**（code/SQL/actions/data2text/summary）——那些的评分器
-   工程量更大（`PROVENANCE.md` 的"已知简化"一节），且数学任务本身已经足够回答"权威在不在"
-   这个问题。**2026-09-06 决定：先在数学任务上把 Koopman 建模走一遍（见上面"Koopman 建模，
-   Phase B"一节），再决定要不要为其余任务投入评分器工程**——先看一个任务上建模是否值得，
-   比先铺量再看值不值得更省。
+4. **数学任务上的 Koopman 建模已跑通（见上面拟合结果小节，2026-09-07）**：ARX 赢过 richer
+   baseline、满秩可控、谱半径 <1，三个前置条件都过了——**判断是值得往下投**，不是"暂不急于
+   铺开"的悬置状态了。下一步是 `KoopmanMPCController`（Phase C），不是先为其余五个 ERGO
+   任务（code/SQL/actions/data2text/summary）投评分器工程。
 5. 可行性文档第 4 节的三个未走完项，现在的状态：
-   a) **为更多任务投入路径 B 评分器工程——仍未决定，推迟到 Phase B/C 结果出来之后**（见第 4 条）；
-   b) **Koopman 状态空间设计——已决定**（见上面"Koopman 建模，Phase B"一节）：显式加入
-      `shard_frac`（已揭示 shard 比例）作为 aux 协变量，而不是只用 y 的滞后项；
-   c) **论文叙事定位——仍未决定**，等 Phase B/C 建模结果（有没有可用的 A/B/可控性诊断）出来后
-      再判断这条线是"和 sycophancy 对照的正面案例"还是有独立的建模贡献，`docs/article/
+   a) **为更多任务投入路径 B 评分器工程——仍未决定，推迟到 Phase C（闭环 MPC）结果出来之后**；
+   b) **Koopman 状态空间设计——已决定且已验证**（见上面"Koopman 建模，Phase B"一节）：显式
+      加入 `shard_frac`（已揭示 shard 比例）作为 aux 协变量，而不是只用 y 的滞后项，拟合
+      结果证实这个设计是必要的（`shard_frac` 对应的 `A`/`B` 行系数独立于其余状态）；
+   c) **论文叙事定位——仍未决定**，Phase C（`KoopmanMPCController` 闭环）跑完后再判断这条线
+      是"和 sycophancy 对照的正面案例"还是有独立的建模贡献，`docs/article/
       PAPER_EXECUTION_PLAN.md` §1.4 仍未提这条线。
+6. **下一次接续时**：读上面"拟合结果"小节确认起点，然后照防御线 Phase B→C 的模板（先有
+   开环拟合出的 A/B，再包一层 `KoopmanMPCController` 跑闭环、和 `reset`/`zero_control` 两个
+   开环基线比较任务成功率）设计 ERGO 线的 Phase C，脚本层面可以照抄
+   `run_defended_screening.py`/`controller_cli.py` 里 MPC 控制器已有的接入方式，域特定的
+   部分只有 `ergo_math_trajectory.py` 的 `u_reset` 决策入口。
