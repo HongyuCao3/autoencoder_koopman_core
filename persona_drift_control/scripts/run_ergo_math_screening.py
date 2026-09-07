@@ -139,10 +139,16 @@ def main() -> None:
         # missing optimal fixed arm -- reset on each item's own last shard
         # turn, not an absolute turn like fixed_t1..t4.
         shards_by_item = {item.item_id: len(item.shards) for item in load_ergo_math_bank()}
+        default_num_shards = max(shards_by_item.values())
 
         def controller_factory(seed: int, entry_id: str = "") -> FixedScheduleController:
+            # entry_id=="" only happens on ergo_math_screening.py's one naming-only
+            # call (controller_factory(seeds[0]).name for the run_id string); the
+            # per-trajectory calls always pass a real item_id. Same fallback pattern
+            # as the random_schedule branch above.
+            num_shards = shards_by_item.get(entry_id, default_num_shards)
             return FixedScheduleController(
-                turns=(shards_by_item[entry_id],),
+                turns=(num_shards,),
                 name="fixed_schedule_t_last",
             )
 

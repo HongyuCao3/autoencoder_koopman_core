@@ -42,6 +42,9 @@ ARM_DIRS = {
     "fixed_t4": "outputs/ergo_math_phaseC_fixed_t4",
     "randsched_p100": "outputs/ergo_math_phaseC_randsched_p100",
     "mpc": "outputs/ergo_math_phaseC_mpc",
+    # G4 (measurement_validity_plan.md section 7.1/7.2): the missing optimal
+    # fixed arm -- reset on each item's own last shard turn.
+    "fixed_last": "outputs/ergo_math_phaseC_fixed_last",
 }
 
 
@@ -120,6 +123,20 @@ def main() -> None:
         diffs = _diff_array(loaded["mpc"]["per_item"], loaded[best_fixed_arm]["per_item"])
         gates["gate3_mpc_vs_best_fixed_t"] = {"best_fixed_arm": best_fixed_arm, **_paired_bootstrap(diffs)}
 
+    # G4 (measurement_validity_plan.md section 7.2): is the k=1 count-budget
+    # setting degenerate -- is the optimal single reset point just "the last
+    # shard turn", a fixed rule needing no feedback?
+    if "fixed_last" in loaded:
+        if "randsched_p100" in loaded:
+            diffs = _diff_array(loaded["fixed_last"]["per_item"], loaded["randsched_p100"]["per_item"])
+            gates["gate4_fixed_last_vs_randsched_p100"] = _paired_bootstrap(diffs)
+        if "fixed_t4" in loaded:
+            diffs = _diff_array(loaded["fixed_last"]["per_item"], loaded["fixed_t4"]["per_item"])
+            gates["gate5_fixed_last_vs_fixed_t4"] = _paired_bootstrap(diffs)
+        if "always_reset" in loaded:
+            diffs = _diff_array(loaded["always_reset"]["per_item"], loaded["fixed_last"]["per_item"])
+            gates["gate6_always_reset_vs_fixed_last"] = _paired_bootstrap(diffs)
+
     print("\n=== pre-registered gates ===")
     for name, g in gates.items():
         extra = f" (best={g['best_fixed_arm']})" if "best_fixed_arm" in g else ""
@@ -128,7 +145,10 @@ def main() -> None:
             f"n_pairs={g['n_pairs']} excludes_zero_and_positive={g['excludes_zero_and_positive']}"
         )
 
-    out_path = pathlib.Path("outputs/ergo_case_study/phaseC_comparison_report.json")
+    # G4 added the fixed_last arm and gates 4-6 on top of the original F3
+    # report; written to a new path rather than overwriting the pre-existing
+    # F3-only outputs/ergo_case_study/phaseC_comparison_report.json.
+    out_path = pathlib.Path("outputs/ergo_case_study/phaseC_comparison_report_g4.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if out_path.exists():
         raise SystemExit(f"refusing to overwrite existing {out_path}")

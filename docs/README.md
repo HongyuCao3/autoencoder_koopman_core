@@ -444,6 +444,18 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   漏检"的停下追问条件。数字见
   [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
   第十五节。
+  **2026-09-07 更新：G4 已完成，判定第一格（设定退化）。** 补上的 `fixed_last` 臂
+  （reset 落在 `turn = num_shards`）拿到 **0.7759**，`fixed_last − randsched_p100` =
+  **+0.3103 [+0.2069, +0.4224]**、`− fixed_t4` = **+0.1293 [+0.0259, +0.2414]**，
+  所以 Phase C 的三道闸门作废、不重跑 MPC（对真正的最优固定臂，MPC 是 −0.569 而非 −0.4397）。
+  **更要紧的是追出了一个恒等式**：`fixed_last` 与 `always_reset` 的 116/116 条轨迹**抽取答案
+  逐字相同**——`ergo_math_trajectory.py:114` 的 reset 是**覆盖**对话历史而不是追加，所以任何
+  末轮 reset 的策略末轮 prompt 相同、输出必然相同。三个推论：`always_reset` 的 0.7759 其实
+  就是**未分片基线**（分片退化效应 0.3276→0.7759 = **−0.448**，干净复现）；
+  **`final_turn_success` 是错误终点**（只是"末轮有没有 reset"的函数，控制问题被指标构造性
+  地清空）；**token 预算补救不再推荐**（一次末轮重述 152.8 token 就达到 696.1 的天花板，
+  4.56×）。ERGO 线现在的产出是三条非负结果，见
+  [experiments/ergo_multiturn_reliability_pilot.md](experiments/ergo_multiturn_reliability_pilot.md) G4 节。
 - **[experiments/signal_resolution_plan.md](experiments/signal_resolution_plan.md) —
   ⏳ **当前唯一的活计划**（2026-09-07 立项，适用 Sonnet 5）：复核 `8dde4b6`（ERGO 终止）时
   发现**那个终止判定建立在两处测量错误上**——(1) E0 的 RC-3 把 `u_{t+1}` 实现成了 `u_{t+2}`

@@ -2,7 +2,8 @@
 
 **状态**：⏳ 部分执行（2026-09-07 立项）。**P 已完成**——判定落在第一格（独立 judge 站得住），
 因此 **G0–G3 不做**，结果见 [`adaptive_vs_fixed_claim_plan.md`](adaptive_vs_fixed_claim_plan.md)
-第十五节。**G4 已跑完、结果待分析。** 防御线接下来的动作转到
+第十五节。**G4 已完成**——判定第一格（设定退化），并追出 `fixed_last ≡ always_reset` 的恒等式，见
+[`ergo_multiturn_reliability_pilot.md`](ergo_multiturn_reliability_pilot.md) G4 节；7.3 节据此作废。 防御线接下来的动作转到
 [`defense_line_redesign_plan.md`](defense_line_redesign_plan.md)（D1/A1/A2/B1）。**适用智能体：Sonnet 5**——规格、命令、预注册判据
 都写死在本文档里，不需要自己做设计判断。
 **触发来源**：2026-09-07 对两条线全部结果的复核。防御线的所有结论都建立在**两个从未被外部
@@ -533,7 +534,15 @@ bootstrap 10000 次（`default_rng(0)`）算：
 **预注册预期**：第一格（`randsched` 的剩0分层已给出 0.650 vs 其余 0.427 的估计）。
 **这是本任务的预期结局，是正面产出，不是失败。**
 
-### 7.3 Step 3 · 若退化：换成 token 预算（**只写规格，先不跑**）
+### 7.3 Step 3 · 若退化：换成 token 预算（⚠️ **2026-09-07 G4 之后不再推荐**）
+
+> **G4 的结果推翻了本节的前提。** `fixed_last` 与 `always_reset` 的 final_turn_success
+> **完全相同**（116/116 条轨迹的抽取答案逐字相同），因为 reset 会**抹掉**整个对话历史
+> （`ergo_math_trajectory.py:114`）——一次末轮重述已经达到无限预算的天花板，成本只要
+> 152.8 vs 696.1 token。**token 预算只有在低于 ~153 token 时才产生真实权衡，那是人为
+> 制造稀缺。** 详见 [`ergo_multiturn_reliability_pilot.md`](ergo_multiturn_reliability_pilot.md)
+> 的 G4 节。下面的规格保留作记录，**不要执行**。
+
 
 计数预算下"最后一轮"既最好又不额外花钱，所以最优解平凡。实测的代价曲线正好相反——
 reset 的 prompt 代价随轮次单调增长（335 次 reset 均值 121.3 token；turn1 **88.0** →
