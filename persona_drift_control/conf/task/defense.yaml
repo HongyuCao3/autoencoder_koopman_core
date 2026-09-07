@@ -64,3 +64,5 @@ screening:
   remind_budget: null
   episode_length: null
   fixed_schedule_turns: null
+  random_schedule_turns: null
+  random_schedule_spend_prob: null

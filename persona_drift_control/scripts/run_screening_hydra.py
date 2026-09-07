@@ -130,6 +130,8 @@ def main(cfg: DictConfig) -> None:
         koopman_mpc_interaction_controller=koopman_mpc_interaction_controller,
         fixed_schedule_turns=tuple(s.fixed_schedule_turns) if s.fixed_schedule_turns else None,
         remind_budget=s.remind_budget,
+        random_schedule_turns=tuple(s.random_schedule_turns) if s.random_schedule_turns else None,
+        random_schedule_spend_prob=s.random_schedule_spend_prob,
     )
     report = run_adversarial_screening(
         agent_model_id=s.agent_model,

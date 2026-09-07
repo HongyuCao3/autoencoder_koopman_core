@@ -1,5 +1,7 @@
 import numpy as np
 
+import pytest
+
 from persona_drift.control import (
     BudgetLimitedController,
     ConstantRemindController,
@@ -7,9 +9,11 @@ from persona_drift.control import (
     KoopmanMPCController,
     PeriodicController,
     RandomExciteController,
+    RandomScheduleController,
     ThresholdController,
     ZeroControlController,
 )
+from persona_drift.controller_cli import make_controller_factory
 from persona_drift.modeling.dataset import ReducedStateConfig
 from persona_drift.modeling.interaction_lift import InteractionLiftedSurrogate
 from persona_drift.modeling.koopman import KoopmanSurrogate, no_extra_features
@@ -198,6 +202,48 @@ def test_fixed_schedule_fires_only_on_listed_turns():
     assert controller.name == "fixed_schedule_t2_4"
     fired = [t for t in range(1, 6) if controller.next_u_remind(t, _rows(*([1.0] * (t - 1)))) == 1]
     assert fired == [2, 4]
+
+
+def test_random_schedule_spend_prob_zero_never_fires():
+    controller = RandomScheduleController(turns=(1, 2, 3, 4, 5), spend_prob=0.0, seed=0)
+    fired = [t for t in range(1, 6) if controller.next_u_remind(t, _rows(*([1.0] * (t - 1)))) == 1]
+    assert fired == []
+
+
+def test_random_schedule_spend_prob_one_fires_exactly_once_on_a_listed_turn():
+    controller = RandomScheduleController(turns=(1, 2, 3, 4, 5), spend_prob=1.0, seed=0)
+    fired = [t for t in range(1, 6) if controller.next_u_remind(t, _rows(*([1.0] * (t - 1)))) == 1]
+    assert len(fired) == 1
+    assert fired[0] in (1, 2, 3, 4, 5)
+
+
+def test_random_schedule_same_seed_reproduces_the_same_draw():
+    a = RandomScheduleController(turns=(1, 2, 3, 4, 5), spend_prob=1.0, seed=7)
+    b = RandomScheduleController(turns=(1, 2, 3, 4, 5), spend_prob=1.0, seed=7)
+    assert a._turn == b._turn
+
+
+def test_random_schedule_spend_prob_does_not_affect_which_turn_is_chosen():
+    # Same seed: a p=0.75 arm and a p=1.00 arm must place the reminder on the
+    # SAME turn whenever the p=0.75 arm actually spends -- both draws (spend
+    # coin, then turn choice) are always consumed regardless of spend_prob,
+    # which is what makes the two arms paired rather than independently noisy.
+    full = RandomScheduleController(turns=(1, 2, 3, 4, 5), spend_prob=1.0, seed=3)
+    partial = RandomScheduleController(turns=(1, 2, 3, 4, 5), spend_prob=0.75, seed=3)
+    if partial._turn is not None:
+        assert partial._turn == full._turn
+
+
+def test_random_schedule_factory_rejects_remind_budget_zero():
+    with pytest.raises(ValueError):
+        make_controller_factory(
+            "random_schedule",
+            threshold_y_min=0.7,
+            koopman_mpc_controller=None,
+            random_schedule_turns=(1, 2, 3, 4, 5),
+            random_schedule_spend_prob=1.0,
+            remind_budget=0,
+        )
 
 
 def test_budget_limited_controller_stops_the_inner_controller_once_spent():

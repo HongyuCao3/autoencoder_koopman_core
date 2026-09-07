@@ -1,0 +1,14 @@
+# @package _global_
+# Phase J 等代价随机分配基线，花费率对齐 koopman_b1 的实测花费
+# （docs/experiments/adaptive_vs_fixed_claim_plan.md T2）：0.75 是自评口径下
+# `phaseJ_budget1_koopman` 实测的花费率（30 个提醒 / 40 条轨迹），所以这一臂
+# 与它**等代价**。
+defaults:
+  - phaseJ_base
+
+output_dir: outputs/koopman_defense_phaseJ_budget1_randsched_p75
+task:
+  screening:
+    controller: random_schedule
+    random_schedule_turns: [1, 2, 3, 4, 5]
+    random_schedule_spend_prob: 0.75

@@ -1,0 +1,14 @@
+# @package _global_
+# Phase J 等代价随机分配基线（docs/experiments/adaptive_vs_fixed_claim_plan.md T2）：
+# 花掉那一个提醒，但落在均匀随机的一轮，不看任何反馈。
+# 这是自适应臂真正的对手——fixed_t1..5 的最优者回答"事先选定的最好一轮"，
+# 而 claim 要证明的是"看反馈选时机"优于"不看反馈随便选一轮"。
+defaults:
+  - phaseJ_base
+
+output_dir: outputs/koopman_defense_phaseJ_budget1_randsched_p100
+task:
+  screening:
+    controller: random_schedule
+    random_schedule_turns: [1, 2, 3, 4, 5]
+    random_schedule_spend_prob: 1.0

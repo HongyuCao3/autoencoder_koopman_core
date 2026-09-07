@@ -42,6 +42,7 @@ CONTROLLER_CHOICES = (
     "threshold",
     "periodic",
     "random_excite",
+    "random_schedule",
     "koopman_mpc",
     "koopman_mpc_interaction",
 )
@@ -66,6 +67,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--threshold-y-min", type=float, default=0.7)
     parser.add_argument("--random-excite-p", type=float, default=0.5)
     parser.add_argument("--periodic-period", type=int, default=2, help="only used when --controller periodic")
+    parser.add_argument(
+        "--random-schedule-turns",
+        type=int,
+        nargs="+",
+        default=None,
+        help="only used when --controller random_schedule",
+    )
+    parser.add_argument(
+        "--random-schedule-spend-prob",
+        type=float,
+        default=None,
+        help="only used when --controller random_schedule",
+    )
     parser.add_argument(
         "--attack-ids",
         nargs="+",
@@ -138,6 +152,8 @@ def main() -> None:
         random_excite_p=args.random_excite_p,
         periodic_period=args.periodic_period,
         koopman_mpc_interaction_controller=koopman_mpc_interaction_controller,
+        random_schedule_turns=tuple(args.random_schedule_turns) if args.random_schedule_turns else None,
+        random_schedule_spend_prob=args.random_schedule_spend_prob,
     )
     report = run_adversarial_screening(
         agent_model_id=args.agent_model,

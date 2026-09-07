@@ -25,6 +25,7 @@ from .control import (
     KoopmanMPCController,
     PeriodicController,
     RandomExciteController,
+    RandomScheduleController,
     ThresholdController,
     ZeroControlController,
 )
@@ -165,6 +166,8 @@ def make_controller_factory(
     koopman_mpc_interaction_controller: KoopmanMPCController | None = None,
     fixed_schedule_turns: tuple[int, ...] | None = None,
     remind_budget: int | None = None,
+    random_schedule_turns: tuple[int, ...] | None = None,
+    random_schedule_spend_prob: float | None = None,
 ) -> Callable[[int, str], Controller]:
     """Returns a `(seed, entry_id) -> Controller` factory -- `entry_id`
     (the attack_id/benign_id the trajectory is being built for, see
@@ -206,6 +209,22 @@ def make_controller_factory(
                 "budget-matched, so this is a config error rather than something to silently truncate"
             )
         return lambda seed, entry_id="": FixedScheduleController(turns=turns)
+    if name == "random_schedule":
+        if not random_schedule_turns:
+            raise ValueError("random_schedule_turns is required for --controller random_schedule")
+        if random_schedule_spend_prob is None:
+            raise ValueError("random_schedule_spend_prob is required for --controller random_schedule")
+        if remind_budget is not None and remind_budget < 1:
+            raise ValueError(
+                f"random_schedule spends at most 1 reminder per trajectory, which does not fit "
+                f"remind_budget={remind_budget}"
+            )
+        turns = tuple(int(turn) for turn in random_schedule_turns)
+        return lambda seed, entry_id="": RandomScheduleController(
+            turns=turns,
+            spend_prob=random_schedule_spend_prob,
+            seed=_excitation_seed(seed, entry_id),
+        )
     if name == "random_excite":
         if random_excite_p is None:
             raise ValueError("random_excite_p is required for --controller random_excite")

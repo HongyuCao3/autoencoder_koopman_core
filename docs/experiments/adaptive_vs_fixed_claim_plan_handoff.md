@@ -1,6 +1,9 @@
 # 交接记录：adaptive_vs_fixed_claim_plan.md 执行中断点
 
 **写于**：2026-09-06 22:23 EDT，因用户预计离开 6+ 小时、当前会话可能失联而创建。
+**更新于**：2026-09-06 22:59 EDT — T1a 已完成，见下方状态表与第 2 节更新。
+**再更新于**：2026-09-07（新会话接手）— T2 两个 GPU 作业确认 `COMPLETED`，闸门核对、
+对比脚本、两道闸门重算、commit 均已完成，见下方状态表与第 4 节更新。
 **目的**：让任何一个全新的 Claude Code 会话（不带本次对话上下文）能看这一份文件，
 在几分钟内判断"哪些做完了、哪些还在跑、接下来具体敲什么命令"，不需要从头重跑。
 
@@ -34,11 +37,11 @@
 | 任务 | 状态 | 备注 |
 |---|---|---|
 | T0 | ✅ 完成，已 commit | commit `d315b4e` |
-| T1a | 🟡 GPU 作业跑着，闸门检查未做 | job `15617755`，见第 2 节 |
+| T1a | ✅ 完成，已 commit | commit `0caac4c`，见第 2 节（已更新） |
 | T1b | ✅ 完成（NO-GO，正确停在 Step 4，未提交 Step 5） | commit `d137ed4`，见第 3 节 |
-| T2 | 🟡 代码已改完（未 commit），2 个 GPU 作业跑着 | job `15617773`/`15617774`，见第 4 节 |
+| T2 | ✅ 完成，已 commit | 见第 4 节（已更新）——**T1a/T1b/T2/T3 Step1 全部有结果，可以进 T7** |
 | T3 Step 1 | ✅ 完成，判定 CONTINUE | commit `410067d`，见第 5 节；Step 2 未做，等 Opus 出规格 |
-| T7（收尾） | 未开始 | 依赖 T1a/T1b/T2/T3 全部有结果 |
+| T7（收尾） | 未开始，四个任务都已有结果 | 依赖 T1a/T1b/T2/T3 全部有结果——现在都有了，可以开始 |
 
 `git status --short` 在写这份文件时的样子（**这是预期中的中间状态，不要 `git checkout`/`reset`/`clean` 掉**）：
 ```
@@ -109,42 +112,59 @@
 
 ---
 
-## 4. T2：等代价随机调度基线
+## 4. T2：等代价随机调度基线（已完成）
 
-**代码改动状态**：`src/persona_drift/control.py`（新增 `RandomScheduleController`）、
+**代码改动**：`src/persona_drift/control.py`（新增 `RandomScheduleController`）、
 `src/persona_drift/controller_cli.py`（新增 `random_schedule` 工厂分支）、
 `conf/task/defense.yaml`（新增两个 null 配置键）、`scripts/run_screening_hydra.py`、
-`scripts/run_defended_screening.py`、`tests/test_control.py` 均已修改，**但尚未 commit**——
-这些改动本身应该已经跑过 `pytest tests/ -q` 验证过（fork 的任务里包含这一步），接手时可以先
-重新跑一遍确认没有回归，再决定要不要相信它已经测试过。
+`scripts/run_defended_screening.py`、`tests/test_control.py`。`python -m pytest tests/ -q`：
+394 passed，只有已知的 5 个 NLTK 失败（`test_surface_features.py`），无新增失败；
+`tests/test_control.py -k Random` 单独跑 7 条全过。
 
-**SLURM jobs**（写这份文件时都 `RUNNING`）：
-- `15617773`（`pdc-phaseJ-randsched-p100`），已跑 23+ 分钟，输出目录
-  `outputs/koopman_defense_phaseJ_budget1_randsched_p100/`
-- `15617774`（`pdc-phaseJ-randsched-p75`），已跑 17+ 分钟，输出目录
-  `outputs/koopman_defense_phaseJ_budget1_randsched_p75/`
+**SLURM jobs**：`15617773`（`pdc-phaseJ-randsched-p100`，`COMPLETED 0:0`，Elapsed 00:26:43）、
+`15617774`（`pdc-phaseJ-randsched-p75`，`COMPLETED 0:0`，Elapsed 00:43:17）。
 
-**已创建但未 commit 的文件**：
-`conf/experiment/phaseJ_budget1_randsched_p100.yaml`、`conf/experiment/phaseJ_budget1_randsched_p75.yaml`、
-`environment/run_phaseJ_budget1_randsched_p100.sbatch`、`environment/run_phaseJ_budget1_randsched_p75.sbatch`。
+**出口闸门核对结果**（计划文档 4.7 节）：
+1. 两臂各 200 行，`judge_parse_failure` 全 false ✅；
+2. `judge_model` 均为 `Qwen/Qwen3-4B`（自评）✅；
+3. 花费核对：`p100` 提醒/轨迹（全 40 条）= **1.000** ✅ 恰好；`p75` = **0.900**
+   （36/40）—— 落在 [0.60, 0.90] 区间的**上边界**，仍算过，但已贴边，记录在案；
+4. `p100` 五轮落点分布 `{turn1:5, turn2:10, turn3:6, turn4:6, turn5:13}`——
+   **偏离预注册预期**"各 6–10 条"：turn1=5（低于下限）、turn5=13（高于上限）。
+   已如实记录，未重新播种或调参。
 
-**接手步骤**：
-1. `python -m pytest tests/ -q` 确认只有已知的 5 个 NLTK 失败（`test_surface_features.py`），
-   没有新增失败——尤其确认 `tests/test_control.py` 里新增的 5 条 `RandomScheduleController`
-   测试全过（spend_prob=0/1 边界、同 seed 可复现、0.75 与 1.0 同 seed 落点相同的配对不变量、
-   `remind_budget=0` 报错）。
-2. `sacct -j 15617773 --format=...` 和 `-j 15617774` 确认都 `COMPLETED 0:0`。
-3. 按计划文档 T2 第 4.7 节的出口闸门逐条核对：200 行/臂、`judge_parse_failure` 全 false、
-   `judge_model` 是自评（`Qwen/Qwen3-4B`，不是独立 checkpoint）、`p100` 提醒/轨迹恰好 1.000、
-   `p75` 落在 0.60–0.90、报 `p100` 五轮的落点分布。
-4. 跑 `scripts/analyze_budget_arm_comparison.py`（4.7 节给的确切命令）。
-5. 写一个新脚本（例如 `scripts/analyze_readout_state_t2.py`，同样**不要改**
-   `scripts/analyze_readout_state.py` 本体）把 `randsched_p100`/`randsched_p75` 加进两道闸门
-   （只用自评口径，这两个臂没有独立 judge 版本）。**这是本任务的主结果**——重点看
-   `koopman_b1` vs `randsched_p75`（真正等代价的对手）的 `late_y` 差是否落在文档预注册的
-   [-0.03, +0.08] 且 CI 跨零；若显著偏离，不要自己下结论，报给用户/Opus。
-6. `git add` 只加 T2 涉及的具体文件（上面列的改动文件 + 新建文件），不要 `git add -A`，commit。
-7. 按计划文档第九节格式汇报。
+**臂间对比**（`scripts/analyze_budget_arm_comparison.py`，全 40 条轨迹，自评口径）：
+`koopman_budget1` vs `randsched_p75`：late_y 差 **−0.0125**，95% CI [−0.0604, +0.0396]（n.s.）；
+terminal_y 差 +0.0187，95% CI [−0.0938, +0.1250]（n.s.）。产物：
+`outputs/koopman_case_study/budget_arm_comparison_vs_randsched.json`（含 p100 的三臂版本）与
+`budget_arm_comparison_vs_randsched_p75_only.json`（只用 p75 作为"最优固定臂"的版本）。
+
+**两道闸门重算**（新脚本 `scripts/analyze_readout_state_t2.py`，16 条公共轨迹，自评口径——
+两个新臂没有独立 judge 版本）：
+- 闸门 1（vs `zero_control`）：`randsched_p100` late_y 差 +0.0521 [−0.0469,+0.1615] n.s.；
+  `randsched_p75` late_y 差 +0.0469 [−0.0521,+0.1615] n.s.——两臂都**不过**闸门1（自评口径下
+  连"什么都不做"都赢不了，与其余 fixed 臂的自评表现不一致，因为这里比的是同一 judge 但
+  轮次落点随机而非固定在效果最好的轮次）。
+- 闸门 2（`koopman_b1` vs 新臂，**真实臂直接配对比较，取代 T0 的重采样替身基线**）：
+  vs `randsched_p75`（真正等代价对手）late_y 差 **+0.0469**，95% CI [−0.0313, +0.1458]，**n.s.**；
+  vs `randsched_p100` late_y 差 +0.0417 [−0.0365,+0.1406] n.s.。
+
+**与预注册预期的比对**：预期 `koopman_b1 − randsched_p75` 的 late_y 差落在 [−0.03, +0.08] 且
+CI 跨零。16 条公共轨迹口径（+0.0469，跨零）**落在区间内、匹配预期**；但全 40 条轨迹口径
+（`analyze_budget_arm_comparison.py` 给出的 −0.0125，也跨零）符号相反——两个子集给出的点估计
+不同（16 条 vs 40 条样本、公共子集是 8 个留出攻击 × 2 seed），但**结论一致**：CI 都跨零，
+即**闸门 2 在真臂对手下仍然不过，claim 没有获得新支持**（与第零节"claim 大概率站不住"的
+判断一致，不是本任务的一个正面结果）。产物：
+`outputs/koopman_case_study/readout_state_report_t2.json`。
+
+**已 commit**：`src/persona_drift/control.py`、`controller_cli.py`、`conf/task/defense.yaml`、
+`scripts/run_screening_hydra.py`、`scripts/run_defended_screening.py`、`tests/test_control.py`、
+`conf/experiment/phaseJ_budget1_randsched_p{100,75}.yaml`、
+`environment/run_phaseJ_budget1_randsched_p{100,75}.sbatch`、
+`scripts/analyze_readout_state_t2.py`——commit hash 见 `git log`（本次会话产出，紧跟在
+`0caac4c` 之后）。
+
+**这个任务不需要任何后续动作。** T1a/T1b/T2/T3 Step1 现在都有结果，可以进入第 6 节的 T7 收尾。
 
 ---
 

@@ -117,6 +117,48 @@ class FixedScheduleController:
 
 
 @dataclass
+class RandomScheduleController:
+    """Spend the k=1 budget on ONE uniformly random turn (with probability
+    `spend_prob` of spending at all): the equal-cost random-allocation
+    baseline for the budget-constrained setting.
+
+    `FixedScheduleController` answers "the best single turn, chosen in
+    advance"; this one answers "any single turn, chosen without looking at
+    feedback". An adaptive controller that beats the best fixed schedule but
+    not this arm has shown that reminders help, not that its *timing* carries
+    information -- which is the claim
+    (docs/experiments/adaptive_vs_fixed_claim_plan.md T2).
+
+    Both draws are always consumed, so the chosen turn does not depend on
+    `spend_prob`: a p=0.75 arm and a p=1.00 arm place their reminder on the
+    same turn for the same (seed, attack) whenever both spend, which makes the
+    two arms paired rather than independently noisy.
+    """
+
+    turns: tuple[int, ...]
+    spend_prob: float
+    seed: int
+    name: str = ""
+    _turn: int | None = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self.turns = tuple(sorted(int(turn) for turn in self.turns))
+        if not self.turns:
+            raise ValueError("turns must be non-empty")
+        if not 0.0 <= self.spend_prob <= 1.0:
+            raise ValueError(f"spend_prob must be in [0, 1], got {self.spend_prob}")
+        rng = random.Random(self.seed)
+        spend = rng.random() < self.spend_prob
+        chosen = rng.choice(self.turns)
+        self._turn = chosen if spend else None
+        if not self.name:
+            self.name = f"random_schedule_p{int(round(self.spend_prob * 100))}"
+
+    def next_u_remind(self, turn: int, history: list[dict[str, Any]]) -> int:
+        return int(self._turn is not None and turn == self._turn)
+
+
+@dataclass
 class ThresholdController:
     """Bang-bang feedback: remind iff the most recently measured y_probe fell
     below y_min. The classical-control baseline a Koopman-MPC controller must
