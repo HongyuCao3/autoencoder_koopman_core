@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""D1 (docs/experiments/readout_controllability_gate_plan.md 第一节):
+"""D1 (docs/experiments/backup/readout_controllability_gate_plan.md 第一节):
 is the `u_remind -> proj_pre_reply` input gain T3 Step 1 measured a persistent
 state effect, or a same-turn artifact of the reminder text sitting inside the
 context that gets projected?

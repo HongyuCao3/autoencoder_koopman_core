@@ -13,7 +13,11 @@ is inherited unchanged from `KoopmanMPCController`, so multi-step lookahead
 still lets the fitted A/B/b row for `shard_frac` free-run forward instead of
 substituting the true, deterministically known `(turn+k)/num_shards` at each
 lookahead step. That is a placeholder, not an oversight -- see
-docs/experiments/ergo_koopman_mpc_opus_design_questions.md for why it needs
+docs/experiments/signal_resolution_plan.md sections 4.0-4.2, which RESOLVED it
+    (truth-override the shard_frac dimension during lookahead; k=1 reset budget
+    justified by measured token cost; y_col made configurable so the state can be
+    `closeness`). The original open-question write-up is archived at
+    docs/experiments/backup/ergo_koopman_mpc_opus_design_questions.md for why it needs
 a design decision before Phase C can run for real (variable per-item
 episode length interacts with it too, same doc, question 2).
 """

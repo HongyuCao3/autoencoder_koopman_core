@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E1 Step 2 (docs/experiments/readout_controllability_gate_plan.md section
+"""E1 Step 2 (docs/experiments/backup/readout_controllability_gate_plan.md section
 5.2): runs the exact same RC-2/RC-3 diagnostics
 scripts/analyze_ergo_readout_state.py's segments 2/3 ran on `y_task_success`
 (section 4.2), but on the two token-entropy columns

@@ -1,6 +1,9 @@
 # 执行计划：反应式臂的独立 judge 重跑（高优先级）
 
-**状态**：待执行。**适用智能体：Sonnet 5**（规格已写死在本文档里，不需要自己做设计判断）。
+> 📕 **结果档案**。第四–六节的执行规格**已全部执行完毕**，**不要再执行**。要读结果看
+> 第七、八节。当前的活计划是 [`signal_resolution_plan.md`](signal_resolution_plan.md)。
+
+**状态**：✅ 已执行完毕（下面这行是立项时的原文，保留不改）。**适用智能体：Sonnet 5**（规格已写死在本文档里，不需要自己做设计判断）。
 **触发来源**：论文 Step 2b 的作废判定（`../../paper/evidence/superseded.md` 事件 E3
 与第五节第 2 条）。**阻塞**：论文 §Experiments 里任何"以独立 judge 为准"的臂间结论。
 
@@ -434,7 +437,7 @@ A1 最初一次提交失败重试后以 job 15603666 成功跑完（其余四臂
 逐轨迹的、可反馈的信号，所以第七节那个"显著更差"测的不是策略质量。
 **这句话的射程原本仅限于 `y_safety` 这一个读出**——不等于"任何闭环控制器都不可能赢开环"。
 状态换成 judge-独立的确定性读出之后是否还成立，是
-[`readout_controllability_gate_plan.md`](readout_controllability_gate_plan.md) D1 的问题，
+[`backup/readout_controllability_gate_plan.md`](backup/readout_controllability_gate_plan.md) D1 的问题，
 **D1 已于 2026-09-07 完成**：把遗漏的 `u_{t+1}` 项、外生子样本、隔轮持久性都补上之后，
 激活投影这个替代读出上"执行器能移动它"这个效应没有活下来（RC-A 三条预注册判据不过），
 T3 就地终止，未执行 D2。**这仍然不是"任何可能的读出都不行"的普遍结论**——只是把"不行"的

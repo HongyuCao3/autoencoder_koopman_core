@@ -386,28 +386,33 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   腰斩且被方向相反、幅度更大的 `u_{t+1}` 系数（−7.244, p=4.51e-10）盖过，外生子样本
   （`phaseG_periodic`）与隔轮持久性检验（S3 的 `u_{t-1}`）均未能确认存在效应，RC-A 三条
   预注册判据不过。T3 Step 2 未执行，也不会执行。完整数字见
-  [experiments/readout_controllability_gate_plan.md](experiments/readout_controllability_gate_plan.md)
+  [experiments/backup/readout_controllability_gate_plan.md](experiments/backup/readout_controllability_gate_plan.md)
   与 [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
   第十三节。**
-- **[experiments/readout_controllability_gate_plan.md](experiments/readout_controllability_gate_plan.md) —
-  ⏳ 待执行（2026-09-07 立项，适用 Sonnet 5）：2026-09-07 联合审计的产出，把防御线与 ERGO 线
-  收敛到同一道**读出可控性前置闸门（RC-gate）**——RC-1 打得过平凡 null / RC-2 去趋势后仍有
-  逐轨迹状态 / RC-3 控制混淆项后执行器仍能推动它，**三条全过才准做控制器工作**。
-  第零节记了审计的可复现证据：线 A 的 `proj_pre_reply` 是同轮动作的函数（非因果），且加上
-  `u_{t+1}` 后 `u_t` 增益从 +5.538 降到 +3.912 而 `u_{t+1}` 是 −7.244；线 B 的 ARX Koopman
-  (held-out 0.0893) 打不过"只用轮次均值"(0.0832) 和"零状态外生回归"(0.0792) 两个 null，
-  而它对照的 `richer_abs_sign` 在二值 `y` 下与 `y` 精确共线、是个 vacuous 基线；线 B 的
-  reset 代价是实测的（335 次 reset 平均 121.3 prompt token，turn1 88 → turn12 229）。
-  任务：**D1 输入增益规格稳健性（已完成，2026-09-07——RC-A 三条判据不过，T3 就地终止，
-  不做 D2，详见 `adaptive_vs_fixed_claim_plan.md` 第十三节）**、D2 = T3 Step 2（因 D1 不过
-  而不执行）、D3 文档修正（已完成）、
-  **E0 ERGO 读出可控性闸门（已完成，2026-09-07——RC-B 不过：RC-1 不过/RC-2 过/RC-3 不过）**、
-  **E1 熵读出替换（已完成，2026-09-07——`entropy_mean`/`entropy_answer_span` 两个候选都不过
-  RC-B，ERGO 线在当前读出族下终止）**、E2 ERGO Phase C 完整规格（**不执行**，因 E0/E1
-  都不过——两个设计问题的裁决内容保留存档，供这条线未来换读出族时复用）。完整数字见
-  `experiments/ergo_multiturn_reliability_pilot.md`"结论：ERGO 线在当前读出族下终止"一节。
-  **本文档同时是对 `adaptive_vs_fixed_claim_plan.md` 第 11.5 节四条判断题、以及
-  `ergo_koopman_mpc_opus_design_questions.md` 两个设计问题的裁决。**
+- **[experiments/signal_resolution_plan.md](experiments/signal_resolution_plan.md) —
+  ⏳ **当前唯一的活计划**（2026-09-07 立项，适用 Sonnet 5）：复核 `8dde4b6`（ERGO 终止）时
+  发现**那个终止判定建立在两处测量错误上**——(1) E0 的 RC-3 把 `u_{t+1}` 实现成了 `u_{t+2}`
+  （`analyze_ergo_readout_state.py:216-219` 的三元 `zip`），改正后 `u_t=+0.0588, p=0.0296`
+  而不是 p=0.659；(2) RC-1 的 rollout 让模型外推 `shard_frac` 这个**确定性外生量**
+  （自系数 1.005>1，会发散），而被拿来当 null 的 stateless 回归每一行都拿到它的真值——
+  把 aux 维换成真值后，ARX 在 **20/20** 个 item split 上打过全部三个平凡 null（naive 只有
+  7/20）。**RC-B 三条全过，ERGO 线不该终止。** 同时指出 E1"换读出"的方向选错了：token 熵与
+  被评价目标近乎正交（Spearman +0.114 / −0.122），正确的方向是**把同一个仪器去阈值化**——
+  ERGO 用 `closeness`（同一抽取器、同一 gold answer，不在"完全相等"处砍成 0/1；与目标
+  ρ=+0.632，lag-1 +0.276，输入增益 p=4.8e-4，四条判据全过），防御线用**软 judge**
+  （judge 输出就是一个 token，取 `"1".."5"` 的下一 token 分布期望值而不是 argmax；独立 judge
+  硬标签在 Phase B 上 95% 顶在天花板）。判据从 RC-gate 的三条升级为四条：新增 **RC-0
+  信号一致性**、RC-1 改多 split + aux 真值覆盖、RC-3 要求先声明"变好"的方向。
+  五个任务：F0 修 E0 的两处错误并重跑、F1 固化 `closeness` 读出、F2 用它重拟合 Phase B、
+  F3 ERGO Phase C（从已归档的 RC-gate 计划 §6 迁移并修订）、**F4 防御线软 judge 读出
+  ——已完成（2026-09-07）：RC-0/RC-2 过，RC-1/RC-3 不过（ARX 20 split 只打过最好 null
+  6/20；执行器输入增益 p>0.7），防御线读出族（硬标签/激活投影/软 judge 三个候选）就此
+  封闭，结论见 [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
+  第十四节**（与 F0–F3 无依赖，本身已跑完，F0–F3 状态见上）。**第九节是文档状态地图，开工前必读。**
+- [experiments/backup/](experiments/backup/) — 🗄 **归档（只读）**：已执行完毕或规格已被取代的
+  计划文档（`readout_controllability_gate_plan.md`、`ergo_koopman_mpc_opus_design_questions.md`、
+  `adaptive_vs_fixed_claim_plan_handoff.md`）。**不要执行、不要修改、不要引用为当前状态**；
+  归档规则与"已知留在里面没改的错误"见 [experiments/backup/README.md](experiments/backup/README.md)。
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) —
   `SYCOPHANCY_DRIFT_TASK_FEASIBILITY.md` 第八节步骤 2 的 screening（SYCON-Bench
   False Presuppositions 回放 + 三分类 judge + 连续斜率/离散翻转事件双判据）。**2026-09-05 起
@@ -449,8 +454,9 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   基线门槛后），p<0.0001——比 SYCON-Bench 清洗到底的最好结果（r≈0.19）强一个数量级以上，是这条
   线第一次有干净数据支持"惯性"这个前置条件。new-Q1（渐进翻转）仍不显著，但这次不是欠功效——
   逐轮均值显示的是"有粘性但可逆"的动力学（翻转后常在最后一轮反驳时恢复），不是单调恶化，也不是
-  `SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 第 2 节假设的绝对吸收态。**下一步：扩样本到 ~60
-  items、在这份更干净的数据上重做执行器权威检查（Phase A）。
+  `SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 第 2 节假设的绝对吸收态。~~**下一步：扩样本到 ~60
+  items、在这份更干净的数据上重做执行器权威检查（Phase A）。**~~（**两项均已于 2026-09-05/06
+  执行完毕**，见本条目下文。）
   把 sycophancy judge 的三分类硬标签换成同一 prompt 下 next-token 分布在三个标签 token 上的
   归一化概率，得到 y∈[0,1] 的连续读出，只回溯打分已有的 2×200 行、不重跑 agent、不动防御线。
   它同时是两条线的前置条件——`SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md` 第 5 节把它排在
@@ -500,12 +506,16 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   拟合完成——ARX 赢过 richer baseline、可控性满秩、判断值得往下投~~ **2026-09-07 联合审计撤回**：
   `richer_abs_sign` 在二值 `y` 下与 `y` 精确共线、是 vacuous 对照；ARX 的 held-out rollout
   MSE 0.0893 连"零状态外生回归"null（0.0792）都打不过；满秩/谱半径也不构成证据（见
-  `readout_controllability_gate_plan.md` §0.4）。正式闸门 E0（RC-gate）跑完：**RC-1/RC-3 不过，
-  只有 RC-2 过，Phase C 不开工**。转 E1 试了 token 熵读出（`entropy_mean`/`entropy_answer_span`），
-  **两个都不过 RC-B**——**ERGO 线在当前读出族下终止**，与防御线/`adaptive_vs_fixed_claim_plan.md`
-  并列成为"建控制器前必须先证明读出有可反馈状态"这条教训的第三个独立案例。执行器权威结论
-  （上面"结果："段）不受影响，仍然成立。详见
-  `experiments/ergo_multiturn_reliability_pilot.md`"结论：ERGO 线在当前读出族下终止"一节。
+  `backup/readout_controllability_gate_plan.md` §0.4，**该节的 RC-1 论证后来被证明信息集不对等，
+  见下**）。正式闸门 E0（RC-gate）判 RC-1/RC-3 不过、Phase C 不开工，转 E1 试 token 熵读出
+  （`entropy_mean`/`entropy_answer_span`）也不过，据此记过一次"ERGO 线终止"（commit `8dde4b6`）。
+  ~~ERGO 线在当前读出族下终止~~ **2026-09-07 再次复核后撤回该终止判定**：E0 的 RC-3 把
+  `u_{t+1}` 实现成了 `u_{t+2}`（改正后 `u_t=+0.0588, p=0.0296`），RC-1 让模型外推 `shard_frac`
+  这个确定性外生量而 null 拿到它的真值（对齐后 ARX 在 20/20 个 split 上打过全部三个 null）——
+  **RC-B 三条其实全过**。E1 的熵读出确实不合适，但理由是它与被评价目标近乎正交（新增的 RC-0），
+  不是"读出族全灭"。下一步是 `closeness`（同一抽取器的连续版本），规格见
+  [experiments/signal_resolution_plan.md](experiments/signal_resolution_plan.md) F0–F3。
+  执行器权威结论（上面"结果："段）自始至终不受影响，仍然成立。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：
   工程全链路已验证跑通，但 new-Q2 **两次都不过**——v1 直问有害目标撞天花板（p=0.0563）；

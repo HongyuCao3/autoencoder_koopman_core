@@ -6,7 +6,9 @@
 #SBATCH --gpus a100:1
 #SBATCH --output /home/hcao2/autoencoder_koopman_core/persona_drift_control/environment/slurm_logs/ergo-entropy-readout-%j.out
 
-# E1 Step 1 (docs/experiments/readout_controllability_gate_plan.md section
+# NOTE (2026-09-07): the E0 verdict cited below was WITHDRAWN -- see
+# docs/experiments/signal_resolution_plan.md sections 0.1/0.2 and task F0.
+# E1 Step 1 (docs/experiments/backup/readout_controllability_gate_plan.md section
 # 5.1): the ERGO line's E0 gate (scripts/analyze_ergo_readout_state.py)
 # found y_task_success fails RC-1 and RC-3 -- binary, sparse (13.7% success),
 # and almost entirely explained by the deterministic shard_frac ramp, not

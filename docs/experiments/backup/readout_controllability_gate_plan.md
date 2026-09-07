@@ -1,10 +1,16 @@
 # 执行计划：两条线共用的"读出可控性前置闸门"（RC-gate）+ 各自的下一步
 
-**状态**：待执行（2026-09-07 立项）。**适用智能体：Sonnet 5**——每个任务的规格、命令、预注册
+> 🗄 **已归档（只读）**。本计划的 D1/D3/E0/E1 已执行完毕，D2 因 RC-A 不过而作废；
+> **E0/E1 的闸门判定后来被证明建立在两处测量错误上**（RC-3 的 `u_next` 差一位；RC-1 让模型
+> 外推一个 null 白送的确定性外生量），第 0.4 节与第四节的相关结论**不要照抄**。
+> 取代它的是 [`../signal_resolution_plan.md`](../signal_resolution_plan.md)：RC-gate 从三条
+> 判据升级为四条，§6 的 ERGO Phase C 迁移到新计划第四节。**不要执行本文档的任何一节。**
+
+**状态**：🗄 已归档（2026-09-07 立项并执行；下面这行是立项时的原文，保留不改）。**适用智能体：Sonnet 5**——每个任务的规格、命令、预注册
 判据都写死在本文档里，不需要自己做设计判断。
 **触发来源**：2026-09-07 对两条在跑的工作线做的联合审计，输入是三份材料——
 (a) 独立审计（本文档第零节把它的可复现数字全部固化）；
-(b) [`adaptive_vs_fixed_claim_plan.md`](adaptive_vs_fixed_claim_plan.md) 第 11.4/11.5 节
+(b) [`adaptive_vs_fixed_claim_plan.md`](../adaptive_vs_fixed_claim_plan.md) 第 11.4/11.5 节
 （状态变量与 judge 打分未解耦；四条未裁决判断题）；
 (c) [`ergo_koopman_mpc_opus_design_questions.md`](ergo_koopman_mpc_opus_design_questions.md)
 （ERGO Phase C 的两个设计问题）。
@@ -604,19 +610,19 @@ E0 只写 `scripts/analyze_ergo_readout_state.py` 与 ERGO pilot 文档的"拟�
 
 ## 十、与其他文档的关系
 
-- [`adaptive_vs_fixed_claim_plan.md`](adaptive_vs_fixed_claim_plan.md)：本文档是对它第十一节
+- [`adaptive_vs_fixed_claim_plan.md`](../adaptive_vs_fixed_claim_plan.md)：本文档是对它第十一节
   （尤其 11.4/11.5）的续作。D2 是它 T3 Step 2 的规格；D3 第 3.2 节是对它 11.5 四条判断题的
   裁决。它第六节的 T7 写法与第八节失败模式清单被本文档继承。
 - [`ergo_koopman_mpc_opus_design_questions.md`](ergo_koopman_mpc_opus_design_questions.md)：
   本文档第六节是对它两个设计问题的答复（问题 1 → 6.1 真值覆盖；问题 2 → 6.2 token 代价 +
   budget=1；附带工程子问题 → 6.2 末段"做"）。**但 E2 整节的准入条件是 E0 的 RC-B**，
   在 RC-B 通过之前不要执行第六节的任何一步。
-- [`ergo_multiturn_reliability_pilot.md`](ergo_multiturn_reliability_pilot.md)：其"拟合结果"
+- [`ergo_multiturn_reliability_pilot.md`](../ergo_multiturn_reliability_pilot.md)：其"拟合结果"
   小节的三条 GO 理由按 4.4 节改写；"结果""样本扩充"两节的执行器权威结论**不受影响**。
-- [`koopman_defense_pilot.md`](koopman_defense_pilot.md) 第一节（读出分辨率不足）、第五节
+- [`koopman_defense_pilot.md`](../koopman_defense_pilot.md) 第一节（读出分辨率不足）、第五节
   （投影不能替代 judge）、第六节（一直没赢过 periodic）：RC-gate 三条判据是这三节教训的
   形式化。
-- [`../evaluation/EVALUATION_METRICS.md`](../evaluation/EVALUATION_METRICS.md) §3.3
+- [`../evaluation/EVALUATION_METRICS.md`](../../evaluation/EVALUATION_METRICS.md) §3.3
   （等代价 Pareto）：6.3 节等代价随机臂与 6.5 节闸门 2 的规范依据。
 
 ---
@@ -627,7 +633,7 @@ D1 已完成（Sonnet 5，CPU-only）。**RC-A 三条预注册判据未能全过
 单臂检验字面规格因该臂日程严格交替导致 `u_t+u_{t+1}≡1` 而精确降秩、不可识别，退而求其次的
 可识别参考值不显著；第3条隔轮持久性在 pre/post 两个通道均不显著），**T3 就地终止，未执行
 D2**。G-D1-0/G-D1-1 两道复现闸门全部逐位通过。完整数字、S0–S4 全表、RC-A 逐条判定、
-T1b 终局版限定语见 [`adaptive_vs_fixed_claim_plan.md`](adaptive_vs_fixed_claim_plan.md)
+T1b 终局版限定语见 [`adaptive_vs_fixed_claim_plan.md`](../adaptive_vs_fixed_claim_plan.md)
 第十三节；产物 `outputs/koopman_case_study/input_gain_robustness_report.json`；脚本
 `scripts/analyze_input_gain_robustness.py`（未改 `analyze_readout_state.py` 本体）。
 

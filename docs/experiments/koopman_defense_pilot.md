@@ -1,5 +1,9 @@
 # 实验记录：Koopman-MPC 防御控制器（抵抗对抗性侵蚀）
 
+> 📓 **运行记录（历史发现，不是待执行的任务）**。当前的活计划是
+> [`signal_resolution_plan.md`](signal_resolution_plan.md)——其中 F4（软 judge 读出）是本线
+> 读出族里唯一还没测过的候选。本文档各节记的是当时的运行，**不要按它们重跑或改写**。
+
 和 [adversarial_screening_pilot.md](adversarial_screening_pilot.md) 同一类"供跨会话接续"的
 记录。**新开一次对话想知道"Koopman 防御控制器现在做到哪一步了",看这份文档。**
 
@@ -862,7 +866,7 @@ Step 2 未做。综合结论仍是"不能断言自适应调度抗侵蚀能力强
 ## 十一、指针：T3 经稳健性审查后终止（2026-09-07）
 
 上一节记录的 T3 Step 1 CONTINUE 判定**没有活过后续的规格稳健性审查**：
-`readout_controllability_gate_plan.md` D1 补上预注册回归漏掉的 `u_{t+1}` 项、限制到外生
+`backup/readout_controllability_gate_plan.md` D1 补上预注册回归漏掉的 `u_{t+1}` 项、限制到外生
 日程臂、检验隔轮持久性之后，RC-A 三条判据未能全过，T3 就地终止，Step 2 未执行。完整数字见
 `adaptive_vs_fixed_claim_plan.md` 第十三节。第十节与本节记录的都是各自时点的判定，不回填
 修订——这正是为什么"CONTINUE"和"终止"两个判定都留在文档里：前者是 T3 Step 1 单独看的

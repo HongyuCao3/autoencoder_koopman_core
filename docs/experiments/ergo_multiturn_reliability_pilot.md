@@ -1,5 +1,11 @@
 # 实验记录：ERGO/Laban 多轮可靠性侵蚀，最小执行器权威验证（2026-09-06）
 
+> ⚠️ **本文档里"ERGO 线在当前读出族下终止"这个结论已于 2026-09-07 被撤回**：E0 的 RC-3 把
+> `u_{t+1}` 实现成了 `u_{t+2}`，RC-1 让模型外推一个 null 白送的确定性外生量——改正后 RC-B
+> 三条全过。证据与修正规格见 [`signal_resolution_plan.md`](signal_resolution_plan.md)
+> 第 0.1／0.2 节与任务 F0，本文档的相关各节由 F0 回写。
+> **不受影响的部分**："结果""样本扩充"两节的执行器权威结论（reset 显著提高最终轮成功率）。
+
 和 [mc_sycophancy_screening_pilot.md](mc_sycophancy_screening_pilot.md) 同一类"供跨会话接续"的
 记录。**新开一次对话想知道"这条候选线跑到哪一步了"，看这份文档。**
 
@@ -195,7 +201,7 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
   `|y|` 与 `sign(y)`——对 0/1 变量恒等于 `y` 本身，与 `y` 精确共线。两模型
   `train_one_step_mse` 到 15 位有效数字相同（`0.08956779213150870` vs
   `0.08956779213150866`），`richer` rollout 更差是退化参数化的数值产物，**不构成任何
-  选型证据**（`readout_controllability_gate_plan.md` §0.4(i)）。
+  选型证据**（`backup/readout_controllability_gate_plan.md` §0.4(i)）。
 - ~~held-out rollout 误差不大（约 0.09）~~ **2026-09-07 补充对照表，结论反过来了**：
   同一 45/15 item split 上三个平凡 null 的 held-out MSE——常数 0.1096、train 逐轮均值
   0.0832、无状态 OLS `[1, shard_frac, u_reset]`（完全不用 `y` 的滞后）0.0792——**ARX
@@ -207,7 +213,7 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
   `shard_frac`（自系数 `1.005>1`），把外生确定性斜坡算进"被控状态"再谈稳定性是范畴错误。
   这两条都**不是**"值得往下投"的证据。
 - **2026-09-07 判断：Phase C 在 E0 之前不准开工**——正式的读出可控性闸门（RC-gate，
-  [experiments/readout_controllability_gate_plan.md](readout_controllability_gate_plan.md)
+  [experiments/backup/readout_controllability_gate_plan.md](backup/readout_controllability_gate_plan.md)
   §四）跑完，**RC-1（打过平凡 null）和 RC-3（输入增益显著）都不过**，只有 RC-2（去趋势后
   仍有逐轨迹状态，`lag1_demeaned=0.2578, p=9.69e-10`）过。RC-gate 要求三条全过才能进
   Phase C，所以**这条线在当前读出（`y_task_success`）下不满足"值得往下投"的条件**——上面
@@ -226,7 +232,7 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
    区别要带进任何后续文档/论文措辞，避免和 sycophancy/防御线的"惯性"概念混为一谈。
 4. **2026-09-07 撤回**：数学任务上的 Koopman 建模"值得往下投"这个判断被 E0 闸门推翻
    （见上面拟合结果小节）——RC-1/RC-3 不过，Phase C 不开工。下一步是 E1（换读出，默认候选
-   token 熵，[experiments/readout_controllability_gate_plan.md](readout_controllability_gate_plan.md)
+   token 熵，[experiments/backup/readout_controllability_gate_plan.md](backup/readout_controllability_gate_plan.md)
    §五），不是 `KoopmanMPCController`，也不是先为其余五个 ERGO 任务
    （code/SQL/actions/data2text/summary）投评分器工程。
 5. 可行性文档第 4 节的三个未走完项，现在的状态：
@@ -243,16 +249,22 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
    （`ErgoKoopmanMPCController`，覆写 `_current_state` 支持可配置列名+aux；7 个新 CPU
    单测全绿，全套 401 passed）。**`_simulate` 的多步展望（`shard_frac` 该不该被当预测对象）
    和要不要给 reset 加预算约束，这两个设计问题写进了
-   [experiments/ergo_koopman_mpc_opus_design_questions.md](ergo_koopman_mpc_opus_design_questions.md)
-   等 Opus 裁决，Sonnet 5 在规格出来之前不会继续往下接 GPU 作业。**
+   [experiments/backup/ergo_koopman_mpc_opus_design_questions.md](backup/ergo_koopman_mpc_opus_design_questions.md)
+   ~~等 Opus 裁决，Sonnet 5 在规格出来之前不会继续往下接 GPU 作业。~~
+   **⚠️ 2026-09-07：两个设计问题都已裁决**（真值覆盖已从"建议"升级为"必须"、reset 加 `k=1`
+   预算并用实测 token 代价论证），见 [`signal_resolution_plan.md`](signal_resolution_plan.md)
+   4.0–4.2。**这条"不接 GPU 作业"的指令已作废**，下一步是该计划的 F0→F1→F2→F3。**
 7. **2026-09-07 追加，E0 已跑完，RC-B 不过**：`scripts/analyze_ergo_readout_state.py`
    （CPU，秒级）——RC-1 不过（ARX 0.0893 输给两个平凡 null）、RC-2 过
    （`lag1_demeaned=0.2578, p=9.69e-10`）、RC-3 不过（`u_t` 系数 `p=0.659`，不显著）。
-   `readout_controllability_gate_plan.md` 第 0.4 节的预期（RC-1 不过 → 转 E1）被证实。
+   `backup/readout_controllability_gate_plan.md` 第 0.4 节的预期（RC-1 不过 → 转 E1）被证实。
    产物 `outputs/ergo_math_phaseB_random_excite/readout_state_report.json`。第六节记的两个
-   设计问题（真值覆盖 / reset 预算）已经在 `readout_controllability_gate_plan.md` §6.1/6.2
+   设计问题（真值覆盖 / reset 预算）已经在 `backup/readout_controllability_gate_plan.md` §6.1/6.2
    有裁决，但**都要等 E1 通过后才用得上**——E0 不过直接堵住了整个 E2（Phase C）分支。
-   下一步是 E1（`scripts/analyze_ergo_entropy_readout.py`，token 熵读出，1 个小 GPU 作业）。
+   ~~下一步是 E1（`scripts/analyze_ergo_entropy_readout.py`，token 熵读出，1 个小 GPU 作业）。~~
+   **⚠️ 2026-09-07：E0 的这两条判定已被撤回**（RC-3 的 `u_next` 差一位、RC-1 让模型外推一个
+   null 白送的确定性外生量），下一步是 [`signal_resolution_plan.md`](signal_resolution_plan.md)
+   的 F0，不是 E1。
 8. **2026-09-07 追加，E1 已跑完，两个熵读出都不过 RC-B——ERGO 线终止**（见下面独立一节
    "结论：ERGO 线在当前读出族下终止"）。job `15644575`（`pdc-ergo-entropy-readout`）
    `COMPLETED 0:0`，Elapsed 00:01:29，666 行，`entropy_answer_span` 缺失率 0.60%（<10% 闸门）。
@@ -267,7 +279,7 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
 
 ## 结论：ERGO 线在当前读出族下终止（2026-09-07）
 
-`readout_controllability_gate_plan.md` §五预注册的判定规则：E1 两个熵读出列的 RC-2/RC-3
+`backup/readout_controllability_gate_plan.md` §五预注册的判定规则：E1 两个熵读出列的 RC-2/RC-3
 "任一不过 → ERGO 这条线在当前读出族下终止"。实测**两个熵读出都不过**：
 
 | 读出 | RC-2（去趋势后 lag-1） | RC-3（含 `u_{t+1}` 的输入增益，字面判据 `u_t>0` 且 `p<0.05`） | RC-B |
@@ -304,4 +316,7 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
 3. 论文叙事定位：这条线现在的产出是"执行器权威确认 + 读出可控性结构性负结果"，要不要正式
    写入 `docs/article/PAPER_EXECUTION_PLAN.md` §1.4，以及以什么篇幅（一段讨论 vs. 独立小节）。
 
-**这个任务不需要任何自动化后续动作**——终止收尾到此为止，除非用户/Opus 就上面三条给出裁决。
+~~**这个任务不需要任何自动化后续动作**——终止收尾到此为止，除非用户/Opus 就上面三条给出裁决。~~
+
+**⚠️ 2026-09-07 撤回上面这句**：终止判定本身已被推翻（见本文档顶部横幅）。当前的后续动作是
+[`signal_resolution_plan.md`](signal_resolution_plan.md) 的 F0→F1→F2→F3，本节各段由 F0/F2 回写。

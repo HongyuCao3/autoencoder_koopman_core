@@ -1,5 +1,10 @@
 # 交接记录：adaptive_vs_fixed_claim_plan.md 执行中断点
 
+> 🗄 **已归档（只读）**。这是 2026-09-06 会话中断时的交接记录，T0–T3 已全部执行完毕，
+> 交接对象已不存在。**不要执行、不要修改、不要当成当前状态。**
+> 当前的活计划是 [`../signal_resolution_plan.md`](../signal_resolution_plan.md)；
+> 结果在 [`../adaptive_vs_fixed_claim_plan.md`](../adaptive_vs_fixed_claim_plan.md) 第十一、十三节。
+
 **写于**：2026-09-06 22:23 EDT，因用户预计离开 6+ 小时、当前会话可能失联而创建。
 **更新于**：2026-09-06 22:59 EDT — T1a 已完成，见下方状态表与第 2 节更新。
 **再更新于**：2026-09-07（新会话接手）— T2 两个 GPU 作业确认 `COMPLETED`，闸门核对、
@@ -8,7 +13,7 @@
 在几分钟内判断"哪些做完了、哪些还在跑、接下来具体敲什么命令"，不需要从头重跑。
 
 **如果你是接手的新会话，先读这份文件，再读
-[`adaptive_vs_fixed_claim_plan.md`](adaptive_vs_fixed_claim_plan.md) 本体获取每个任务的完整规格。**
+[`adaptive_vs_fixed_claim_plan.md`](../adaptive_vs_fixed_claim_plan.md) 本体获取每个任务的完整规格。**
 本文件只记状态和"接下来做什么"，不重复规格。
 
 ---

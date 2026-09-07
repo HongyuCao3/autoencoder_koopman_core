@@ -1,6 +1,11 @@
 # 执行计划：把"自适应控制抗侵蚀强于固定基线"做成可判定的 claim（T1–T3 + 收尾写法）
 
-**状态**：待执行（2026-09-06 立项）。**适用智能体：Sonnet 5**——每个任务的规格、命令、预注册
+> 📕 **结果档案**。第一–九节的任务规格（T0/T1a/T1b/T2/T3）**已全部执行完毕**，T3 因 D1 的
+> RC-A 不过而就地终止——**不要再执行第一–九节的任何一步**。要读结果看第十一–十三节。
+> 当前的活计划是 [`signal_resolution_plan.md`](signal_resolution_plan.md)；其中 F4（防御线
+> 软 judge 读出）是本文档读出族里唯一还没测过的候选，它的结论要回写到第十三节。
+
+**状态**：✅ 已执行完毕（2026-09-06 立项，2026-09-07 收尾；下面这行是立项时的原文，保留不改）。**适用智能体：Sonnet 5**——每个任务的规格、命令、预注册
 判据都写死在本文档里，不需要自己做设计判断。
 **触发来源**：2026-09-06 会话对 [`independent_judge_reactive_rerun_plan.md`](independent_judge_reactive_rerun_plan.md)
 第七节结果的复核。该节把"koopman 用少 86% 的提醒换来显著更低的安全分"记成了一个待裁决的新结果；
@@ -974,7 +979,7 @@ T3 Step2 这条活路，后者是判死刑，两种写法在论文里的份量�
 ### 11.5 遗留的判断题（未裁决，留给用户/Opus）
 
 1. **（已裁决，见第十三节）** T1b 的 NO-GO 结论按 11.4 节改写限定语；T3 Step 2 是否提前——
-   2026-09-07 联合审计（`readout_controllability_gate_plan.md` D1）给出了答案：D1 的 RC-A
+   2026-09-07 联合审计（`backup/readout_controllability_gate_plan.md` D1）给出了答案：D1 的 RC-A
    三条预注册判据未能全过（第十三节），T3 就地终止，**没有跑 Step 2**。按该计划 D3 第3.2节
    第1条的终局句式，T1b 的 NO-GO 限定语改写为终局版——"读出替换这条路已被 D1 证否，因此
    NO-GO 是当前读出族下的最终结论"（第十三节全文）。
@@ -989,7 +994,7 @@ T3 Step2 这条活路，后者是判死刑，两种写法在论文里的份量�
 ## 十二、审计后续（2026-09-07，指针）
 
 2026-09-07 的联合审计对本文档第十一节做了三件事，产出写在
-[`readout_controllability_gate_plan.md`](readout_controllability_gate_plan.md)：
+[`backup/readout_controllability_gate_plan.md`](backup/readout_controllability_gate_plan.md)：
 
 1. **T3 Step 1 的 CONTINUE 不能直接支撑 Step 2**，两个原因：(i) `proj_pre_reply_t` 的测量
    上下文包含**本轮刚插入的提醒**（`analyze_refusal_direction_readout.py:89`），它是 `u_t`
@@ -1009,7 +1014,7 @@ T3 Step2 这条活路，后者是判死刑，两种写法在论文里的份量�
 
 ## 十三、D1 执行结果与 T3 终止（2026-09-07）
 
-**任务**：`readout_controllability_gate_plan.md` 第一节 D1——线A输入增益的规格稳健性与
+**任务**：`backup/readout_controllability_gate_plan.md` 第一节 D1——线A输入增益的规格稳健性与
 因果可用性审查。**类型**：CPU-only，秒级，无 GPU 作业。**产物**：新建
 `scripts/analyze_input_gain_robustness.py`（未改 `analyze_readout_state.py` 本体），报告写在
 `outputs/koopman_case_study/input_gain_robustness_report.json`。
@@ -1070,7 +1075,7 @@ n=736)；`proj_post_reply` `u_t=−0.1719`(se=0.6226, p=7.8249e-01, R²=0.798, n
 
 ### 13.4 结论：T3 就地终止，不做 D2
 
-按 `readout_controllability_gate_plan.md` 第1.4节的预注册规则，"任一不过→T3就地终止，
+按 `backup/readout_controllability_gate_plan.md` 第1.4节的预注册规则，"任一不过→T3就地终止，
 不做D2"。这是本任务的**正面产出**：T3 从"CONTINUE，Step2待办"变成"可判定的负结果"。
 
 **机制解释**：S1/S3 一起说明 T3 Step 1 测到的增益不是持久状态效应——补上被遗漏的
@@ -1080,11 +1085,19 @@ n=736)；`proj_post_reply` `u_t=−0.1719`(se=0.6226, p=7.8249e-01, R²=0.798, n
 更像是"提醒文本在被测上下文末尾的表征组成效应"，而不是"执行器把一个可反馈的持久状态推向
 安全方向"。
 
-**T1b 的 NO-GO 终局版**（按 `readout_controllability_gate_plan.md` D3 第3.2节第1条的
+**T1b 的 NO-GO 终局版**（按 `backup/readout_controllability_gate_plan.md` D3 第3.2节第1条的
 预置句式，本次 RC-A 不过因此生效）：
 
-> 读出替换这条路已被 D1 证否（增益不能在控制 `u_{t+1}` / 外生子样本 / 隔轮持久性中存活），
-> 因此 NO-GO 是当前读出族下的最终结论。
+> 读出替换这条路已被 D1 证否（激活投影，增益不能在控制 `u_{t+1}` / 外生子样本 / 隔轮持久性
+> 中存活），**软 judge 读出也已被 F4 排除**（ARX 20 split 里只有 6 个打过平凡 null，执行器
+> 输入增益 p>0.7）——因此 NO-GO 是当前读出族下的最终结论。
+
+**F4 已于 2026-09-07 完成，追加的限定已解除**：软 judge（同一 judge、同一 prompt，把 argmax
+换成 `"1".."5"` 的下一 token 分布期望值）跑了四条判据（第十四节全文），RC-0/RC-2 过、
+RC-1/RC-3 不过——ARX 在 20 个按 `attack_id` 切的 held-out split 上只打过最好平凡 null
+6/20（需要 ≥18/20），执行器输入增益 `u_t` 两个规格都 `p>0.7`。**"当前读出族"现在覆盖了
+硬标签、激活投影、软 judge 三个候选，三个都不支持存在一个"执行器够得到、且携带可反馈状态"
+的读出**，上面那句"终局结论"不再需要任何限定语：
 
 即：T1b"独立 judge 下重拟合模型从不提醒"不再是一个带"或许换个状态量就不一样"这条活路的
 限定判断，而是在**已经排查过"换个 judge-独立读出"这条替代路径、并证实它本身也没有可用的
@@ -1101,5 +1114,94 @@ n=736)；`proj_post_reply` `u_t=−0.1719`(se=0.6226, p=7.8249e-01, R²=0.798, n
 4. 已提交 commit，文件变动：`scripts/analyze_input_gain_robustness.py`（新建）、
    `docs/experiments/adaptive_vs_fixed_claim_plan.md`（本节 + 11.2/11.5 措辞更新）、
    `docs/README.md`、`docs/experiments/independent_judge_reactive_rerun_plan.md`、
-   `docs/experiments/readout_controllability_gate_plan.md`（三处占位符更新为 D1 已出结果）。
+   `docs/experiments/backup/readout_controllability_gate_plan.md`（三处占位符更新为 D1 已出结果）。
+
+---
+
+## 十四、F4 执行结果：软 judge 读出，四条判据两条不过，防御线读出族封闭（2026-09-07）
+
+**任务**：`signal_resolution_plan.md` 第五节 F4——防御线上唯一一个还没测过、且不破坏
+RC-0（信号一致性）的读出候选：同一 judge、同一 prompt，把 argmax 换成"1".."5" 五个 token
+的期望值 `y_soft`（分辨率从 5 档变成连续）。**类型**：GPU 1 个小作业（300 行×1 次前向，
+不生成 token）+ CPU 分析。**产物**：`scripts/score_soft_safety_judge.py`（新建）、
+`environment/run_soft_safety_judge.sbatch`（新建）、`scripts/analyze_soft_judge_readout.py`
+（新建），数据 `outputs/koopman_case_study/soft_judge_phaseB.json`、
+`outputs/koopman_case_study/soft_judge_readout_report.json`。
+
+### 14.1 Step 1：软 judge 打分
+
+job `15645390`（`pdc-soft-safety-judge`），**`COMPLETED 0:0`，Elapsed 00:01:14**。
+300 行全部打分成功，`judge_model` 与源文件一致（`Qwen/Qwen3-4B-Instruct-2507`，跑前
+assert 通过）。**G-F4-1（同一仪器闸门）**：`(argmax_k−1)/4` 与该行硬标签 `y_safety`
+一致的比例 **1.0000**（≥0.95 通过）——`resolve_label_token_ids` 在这个 tokenizer 上把
+"1".."5" 五个数字字符**各自解析为单一 token id**（16–20），共享的歧义 token（220，
+纯空格变体）被自动丢弃，未触发失败路径。
+
+### 14.2 Step 2：四条判据逐条
+
+**方向声明**：`y_soft` 越大越安全，与硬标签 `y_safety` 同极性（"变好"是上升）。
+
+**RC-0（信号一致性）**：`spearman(y_soft, y_safety_hard)=+0.3776`（p=1.33e-11，300行）。
+`y_soft` 的分布：均值 **0.9749**，标准差 0.1264，四分位数 `[2.4e-7, 0.99999999, 1.0, 1.0,
+1.0]`——**分辨率确实恢复了一部分**：硬标签在 300 行里 285 行（95%）精确钉在 1.0，`y_soft`
+把这些行摊开成一个连续值，但 25/50/75 分位数仍然极端贴近 1.0，说明多数行即使连续化后仍然
+几乎充满整个"安全"象限，只有少数行的软分数明显偏离天花板。**RC0_pass=True。**
+
+**RC-1（ARX 打不打得过平凡 null，20 split，按 `attack_id` 切）**：`ARX` 20 split
+均值 MSE **0.0182**（中位数 0.0144），三个 null 分别是 `const=0.0182`、
+`turn_mean=0.0184`、`stateless=0.0183`——**四个数字几乎相等**，`ARX` 只在 **6/20** 个
+split 上打过最好 null（需要 ≥18/20）。**RC1_pass=False。**
+
+**RC-2（去趋势后 lag-1）**：`y_soft` 去轨迹内轮次均值后的 lag-1 自相关 **+0.2294**
+（p=3.40e-4，**60 条轨迹，48 对**）——比同一批 300 行上硬标签 `y_safety` 自身的 lag-1
+（+0.1701，p=8.27e-3）还要高。**这是本任务测到的唯一一个方向对的信号**：软化之后确实测出了
+比硬标签更强的、去趋势后仍存在的逐轨迹状态。（这个数字与文档此前记录的独立 judge
+"lag-1 精确为 0"不是同一个测量——那个 0.000 来自 `phaseE_zero_control` 的 64 对
+`u_remind≡0` 数据，这里是 Phase B 随机激励数据本身的硬标签在场对照，两者数据集不同，
+不构成矛盾，但更贴切的同数据集对照就是这个 0.1701。）**RC2_pass=True。**
+
+**RC-3（执行器能不能推动它，`u_{t+1}` 取被预测目标那一行）**：
+
+| 规格 | `u_t` | p | `u_{t+1}` | p | R² | n |
+|---|---:|---:|---:|---:|---:|---:|
+| 不加轨迹固定效应 | +0.0009 | 0.9649 | +0.0373 | 0.0671 | 0.077 | 240 |
+| 加轨迹固定效应（60个虚拟变量） | +0.0068 | 0.7210 | +0.0333 | 0.0820 | 0.391 | 240 |
+
+两个规格里 `u_t` 系数都几乎为零、都不显著（p=0.96/0.72）。**不加固定效应是本任务的主规格**
+（Phase B 是纯随机激励生成，动作与轨迹身份无混淆关系，不像 D1 里跨臂比较那样需要臂固定
+效应来去混淆）——两个规格结论一致，不依赖这个选择。**RC3_pass=False。**
+
+### 14.3 综合判定：四条里两条不过
+
+| 判据 | 预期 | 实测 | 判定 |
+|---|---|---|---|
+| RC-0 | 必过（同一仪器） | ρ=0.378, p=1.33e-11 | **过** |
+| RC-1 | 未预注册方向 | 6/20 打过最好 null | **不过** |
+| RC-2 | 关键未知：若非零说明是量化损失 | +0.2294, p=3.40e-4，比硬标签本身还高 | **过** |
+| RC-3 | 未预注册方向 | 两个规格 `u_t` 都 p>0.7 | **不过** |
+
+按 F4 第 5.2 节预注册规则："任一不过→防御线读出族封闭"。**四条里两条不过（RC-1、RC-3），
+按计划终止，不设计 Phase J 重跑。**
+
+**机制解读**：RC-2 过、RC-1/RC-3 不过，拼出的图景和 D1 对激活投影测到的高度相似——
+`y_soft` 确实比硬标签多测出一点"逐轨迹、去趋势后仍在"的信号（RC-2），但这点信号
+**弱到执行器摸不到、也弱到不足以让一个真正的动力学模型打过"什么都不做/只看轮次"这类平凡
+基线**（RC-1、RC-3）。换句话说：软化恢复的是**测量的分辨率**，不是**状态本身的信息量**——
+这批数据里 `y_safety`（不论软硬）能被"提醒"这个动作移动的部分，本来就非常小。
+
+**T1b 终局版表述在此基础上补一句**（第13.4节已给出的终局句式追加）：
+
+> 读出替换这条路已被 D1 证否（激活投影，增益不能在控制 `u_{t+1}` / 外生子样本 / 隔轮持久性
+> 中存活），**软 judge 读出也已被 F4 排除**（RC-1、RC-3 不过：ARX 20 split 里只有 6 个打过
+> 平凡 null，执行器输入增益 p>0.7）——因此 NO-GO 是当前读出族下的最终结论。
+
+### 14.4 遗留事项
+
+1. **本节数字如何落进 `paper/`**——不动 `paper/`，等 Opus 走 evidence 台账流程。
+2. F4 与 F0–F3（ERGO 线读出分辨率修正）不属于同一条线，二者独立；F0–F3 的状态见
+   `signal_resolution_plan.md` 与 ERGO 侧文档，本节不涉及。
+3. 已提交 commit，文件变动：`scripts/score_soft_safety_judge.py`（新建）、
+   `environment/run_soft_safety_judge.sbatch`（新建）、
+   `scripts/analyze_soft_judge_readout.py`（新建）、
+   `docs/experiments/adaptive_vs_fixed_claim_plan.md`（本节）。
 

@@ -1,5 +1,10 @@
 # 设计问题：ERGO 线 Phase C（`KoopmanMPCController` 闭环）
 
+> 🗄 **已归档（只读）**。这两个设计问题已经裁决：`shard_frac` 展望用真值覆盖（且已从
+> "建议"升级为"必须"）、reset 加 `k=1` 预算并用实测 token 代价论证——见
+> [`../signal_resolution_plan.md`](../signal_resolution_plan.md) 4.1 / 4.2。
+> **不要再把本文档当成"等 Opus 裁决"的开放状态。**
+
 **状态**：待 Opus 规划，Sonnet 5 不擅自裁决。**写于**：2026-09-07。
 **目的**：ERGO/Laban 多轮可靠性侵蚀线（`docs/experiments/ergo_multiturn_reliability_pilot.md`）
 Phase B（开环拟合）已经跑完并判断"值得往下投"（见该文档"拟合结果"小节）。Phase C 是照防御线

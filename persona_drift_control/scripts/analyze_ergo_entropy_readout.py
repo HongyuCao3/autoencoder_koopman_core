@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""E1 Step 1 (docs/experiments/readout_controllability_gate_plan.md section
+"""NOTE (2026-09-07): the E0 verdict cited below was WITHDRAWN. E0's RC-3
+controlled for u_{t+2} instead of u_{t+1}, and its RC-1 made the model
+extrapolate a deterministic exogenous variable that the null baseline received
+as ground truth; corrected, `y_task_success` passes all of RC-1/RC-2/RC-3. See
+docs/experiments/signal_resolution_plan.md sections 0.1/0.2 and task F0. The
+entropy readout this script computes is still not usable, but for a different
+reason (RC-0: it is near-orthogonal to the evaluated objective).
+
+E1 Step 1 (docs/experiments/backup/readout_controllability_gate_plan.md section
 5.1): a token-entropy readout for the ERGO/Laban line, tried because E0
 (scripts/analyze_ergo_readout_state.py) found `y_task_success` fails RC-1
 and RC-3 -- binary, sparse (13.7% success in the Phase B random-excitation
