@@ -432,10 +432,14 @@ A1 最初一次提交失败重试后以 job 15603666 成功跑完（其余四臂
 64 对），自评下是 +0.424——**在状态变量＝judge 打分的当前架构下**（`y_probe ≡ y_safety`，
 代码级证据见 `adaptive_vs_fixed_claim_plan.md` 第 11.4 节），独立 judge 口径没有给出任何
 逐轨迹的、可反馈的信号，所以第七节那个"显著更差"测的不是策略质量。
-**这句话的射程仅限于 `y_safety` 这一个读出**——它不等于"任何闭环控制器都不可能赢开环"：
+**这句话的射程原本仅限于 `y_safety` 这一个读出**——不等于"任何闭环控制器都不可能赢开环"。
 状态换成 judge-独立的确定性读出之后是否还成立，是
-[`readout_controllability_gate_plan.md`](readout_controllability_gate_plan.md) D1/D2 的问题，
-在那之前不要把这一条写成普遍结论。
+[`readout_controllability_gate_plan.md`](readout_controllability_gate_plan.md) D1 的问题，
+**D1 已于 2026-09-07 完成**：把遗漏的 `u_{t+1}` 项、外生子样本、隔轮持久性都补上之后，
+激活投影这个替代读出上"执行器能移动它"这个效应没有活下来（RC-A 三条预注册判据不过），
+T3 就地终止，未执行 D2。**这仍然不是"任何可能的读出都不行"的普遍结论**——只是把"不行"的
+证据从一个读出（`y_safety`）扩到了两个（`y_safety`、激活投影 `proj_pre_reply`/`proj_post_reply`）。
+完整数字见 `adaptive_vs_fixed_claim_plan.md` 第十三节。
 
 完整证据、四个后续任务（含把这套诊断固化成脚本、阈值重标定重跑、独立 judge 分上重拟合代理模型、
 等代价随机分配基线臂）与收尾写法见

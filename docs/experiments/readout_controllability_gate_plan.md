@@ -618,3 +618,17 @@ E0 只写 `scripts/analyze_ergo_readout_state.py` 与 ERGO pilot 文档的"拟�
   形式化。
 - [`../evaluation/EVALUATION_METRICS.md`](../evaluation/EVALUATION_METRICS.md) §3.3
   （等代价 Pareto）：6.3 节等代价随机臂与 6.5 节闸门 2 的规范依据。
+
+---
+
+## 十一、指针：D1 执行结果（2026-09-07，线 A）
+
+D1 已完成（Sonnet 5，CPU-only）。**RC-A 三条预注册判据未能全过**（第2条 `phaseG_periodic`
+单臂检验字面规格因该臂日程严格交替导致 `u_t+u_{t+1}≡1` 而精确降秩、不可识别，退而求其次的
+可识别参考值不显著；第3条隔轮持久性在 pre/post 两个通道均不显著），**T3 就地终止，未执行
+D2**。G-D1-0/G-D1-1 两道复现闸门全部逐位通过。完整数字、S0–S4 全表、RC-A 逐条判定、
+T1b 终局版限定语见 [`adaptive_vs_fixed_claim_plan.md`](adaptive_vs_fixed_claim_plan.md)
+第十三节；产物 `outputs/koopman_case_study/input_gain_robustness_report.json`；脚本
+`scripts/analyze_input_gain_robustness.py`（未改 `analyze_readout_state.py` 本体）。
+
+**线 B（ERGO，E0/E1/E2）状态不受影响，仍待执行**——本节只是线 A 的收尾指针。

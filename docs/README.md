@@ -381,10 +381,14 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   house 规则 V8 的 leaked-metric 缺陷，T1b 的"模型学出提醒无用"是这个循环的直接后果，
   所以它的 NO-GO 带一个前提限定语（"在状态与 judge 未解耦的当前架构下"），不是终局判死刑。
   读出层面的结构性诊断（去轮次 lag-1：独立 judge 0.000 / 自评 0.347–0.424 / 激活投影
-  0.861–0.887）**仍在复核中**——T3 Step 1 在 736 个转移上测到执行器能移动"回复前"投影
-  （`u_remind` +5.538, p=6.04e-6）但移不动"回复后"投影（p=0.782），该增益的规格稳健性与
-  因果可用性由 [experiments/readout_controllability_gate_plan.md](experiments/readout_controllability_gate_plan.md)
-  的 D1 裁定，**在 D1 出结果之前不要把任一方向写成结论**。**
+  0.861–0.887）**已由 D1 复核完毕（2026-09-07）——T3 就地终止**：T3 Step 1 在736个转移上
+  测到的"执行器能移动回复前投影"（`u_remind` +5.538, p=6.04e-6）补上遗漏的 `u_{t+1}` 项后
+  腰斩且被方向相反、幅度更大的 `u_{t+1}` 系数（−7.244, p=4.51e-10）盖过，外生子样本
+  （`phaseG_periodic`）与隔轮持久性检验（S3 的 `u_{t-1}`）均未能确认存在效应，RC-A 三条
+  预注册判据不过。T3 Step 2 未执行，也不会执行。完整数字见
+  [experiments/readout_controllability_gate_plan.md](experiments/readout_controllability_gate_plan.md)
+  与 [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
+  第十三节。**
 - **[experiments/readout_controllability_gate_plan.md](experiments/readout_controllability_gate_plan.md) —
   ⏳ 待执行（2026-09-07 立项，适用 Sonnet 5）：2026-09-07 联合审计的产出，把防御线与 ERGO 线
   收敛到同一道**读出可控性前置闸门（RC-gate）**——RC-1 打得过平凡 null / RC-2 去趋势后仍有
@@ -394,8 +398,11 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   (held-out 0.0893) 打不过"只用轮次均值"(0.0832) 和"零状态外生回归"(0.0792) 两个 null，
   而它对照的 `richer_abs_sign` 在二值 `y` 下与 `y` 精确共线、是个 vacuous 基线；线 B 的
   reset 代价是实测的（335 次 reset 平均 121.3 prompt token，turn1 88 → turn12 229）。
-  任务：D1 输入增益规格稳健性（CPU，判定 T3 是否继续）、D2 = T3 Step 2、D3 文档修正（已完成）、
-  E0 ERGO 读出可控性闸门（CPU，Phase C 准入）、E1 熵读出替换、E2 ERGO Phase C 完整规格。
+  任务：**D1 输入增益规格稳健性（已完成，2026-09-07——RC-A 三条判据不过，T3 就地终止，
+  不做 D2，详见 `adaptive_vs_fixed_claim_plan.md` 第十三节）**、D2 = T3 Step 2（因 D1 不过
+  而不执行）、D3 文档修正（已完成）、
+  E0 ERGO 读出可控性闸门（CPU，Phase C 准入，⏳ 待执行）、E1 熵读出替换、
+  E2 ERGO Phase C 完整规格。
   **本文档同时是对 `adaptive_vs_fixed_claim_plan.md` 第 11.5 节四条判断题、以及
   `ergo_koopman_mpc_opus_design_questions.md` 两个设计问题的裁决。**
 - [experiments/sycophancy_screening_pilot.md](experiments/sycophancy_screening_pilot.md) —
