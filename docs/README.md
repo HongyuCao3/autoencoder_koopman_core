@@ -389,6 +389,21 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   [experiments/backup/readout_controllability_gate_plan.md](experiments/backup/readout_controllability_gate_plan.md)
   与 [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
   第十三节。**
+- **[experiments/defense_line_redesign_plan.md](experiments/defense_line_redesign_plan.md) —
+  ⏳ **活计划（防御线）**（2026-09-07 立项，适用 Sonnet 5）：P 判定独立 judge 站得住之后，
+  复核"Koopman 要怎么改才可能生效"，测出一条量化结论——**这条线的信息结构不支持闭环**。
+  255 条轨迹上：早期观测（前两轮均分）对 late(3–5) 的相关是 **−0.066/+0.041（p=0.29/0.52）**，
+  而事先就知道的攻击身份用**留一法**能解释 **57.1%/45.3%** 的 late 方差。**可预测的部分事先
+  就知道，事后观测没有预测力**——闭环的价值恰恰是用观测换预测。方差分解补一刀：轨迹内占
+  71% 的方差，但独立口径下去趋势后 lag-1 = 0.000，**"有变化"不等于"有状态"**。
+  闭环三前提（执行器权威／早期观测有预测力／读出耦合且有量程）防御线一个都没确证，
+  而**第一条最基础的从 Phase A 到 J 从来没测过**。四个任务：**D1** 用 P 的盲化协议做执行器
+  权威的裁决版检验（`zero_control` vs `constant_remind`，同 8 攻击同 16 轨迹、提醒 0 vs 5.00、
+  late 96 行，约 12 次 subagent 调用、零 GPU、零新采集；n=16 配对的最小可检出效应 0.175–0.315，
+  能查大效应查不出 0.05）、**A1** 只用攻击文本特征做留一攻击预测（零成本，路线 A 的第一道门）、
+  **A2** 跨轨迹预算分配的离线策略评价（条件触发；**是事前预测+静态分配，不是闭环**）、
+  **B1** 去掉 256-token 截断重跑（需用户裁决）。**执行顺序硬性：A1‖D1 先做，D1 出结果前不动
+  A2/B1。**
 - **[experiments/measurement_validity_plan.md](experiments/measurement_validity_plan.md) —
   ⏳ **当前唯一的活计划**（2026-09-07 立项，适用 Sonnet 5）：两条线的全部结果跑完后复核发现，
   它们卡在同一个毛病上——**先下结论，没先证明测量有效、设定非退化**。新增一条前置判据 **MV**
