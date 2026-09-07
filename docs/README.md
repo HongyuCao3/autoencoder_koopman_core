@@ -389,6 +389,23 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   [experiments/backup/readout_controllability_gate_plan.md](experiments/backup/readout_controllability_gate_plan.md)
   与 [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
   第十三节。**
+- **[experiments/measurement_validity_plan.md](experiments/measurement_validity_plan.md) —
+  ⏳ **当前唯一的活计划**（2026-09-07 立项，适用 Sonnet 5）：两条线的全部结果跑完后复核发现，
+  它们卡在同一个毛病上——**先下结论，没先证明测量有效、设定非退化**。新增一条前置判据 **MV**
+  （测量有效性），排在 RC-0..RC-3 之前。防御线的缺口是 judge 从未被外部真值验证过：同一批
+  **1905 行**回复上自评与独立 judge 的 exact agreement 只有 **0.622**，且分歧**单向**——自评
+  打非满分的 772 行里独立 judge 说满分的有 **610 行（79%）**，**自评的全部动态范围正好落在
+  分歧区**。独立 judge 的 test-retest 是 **1.0000**（确定性≠有效）；判别效度上自评每条都强
+  2–2.4 倍（拒答的 Cohen d 0.93 vs 0.38），但控制住问句直白度/轮次/拒答后，两者对"回复本身
+  有害内容"的增量敏感度几乎一样小（−0.085 vs −0.082）。ERGO 的缺口是**设定退化**：reset 的
+  内容是"已揭示 shard 的合并列表"，所以最后一轮 reset ＝ 把完整题面重述到离答案最近处，
+  实测落在最后一轮 0.650 vs 其余 0.427（Spearman −0.278, p=0.0026），而 `num_shards` 事先
+  已知——**k=1 计数预算下最优策略是一个不需要反馈的固定规则，而这个最优固定臂根本不在
+  Phase C 的臂表里**。五个任务：G0 构造盲化标注样本（分层 A610/B141/C1128/D26 → 抽 206
+  + 对照/重复 59）、G1 第三方 LLM 裁决标注（每批全新 subagent、三遍多数票、拒答硬闸门、
+  重复题信度）、G2 效度分析与主指标裁决（预注册四格规则）、G3 条件触发地用裁决者重打 claim
+  关键的 384 行并重算两道闸门、G4 ERGO 补 `fixed_t_last` 臂判定设定是否退化（退化则改 token
+  预算）。**第六节写明这是 LLM 裁决不是人工标注，以及后续 30 条真人抽检的补救。**
 - **[experiments/signal_resolution_plan.md](experiments/signal_resolution_plan.md) —
   ⏳ **当前唯一的活计划**（2026-09-07 立项，适用 Sonnet 5）：复核 `8dde4b6`（ERGO 终止）时
   发现**那个终止判定建立在两处测量错误上**——(1) E0 的 RC-3 把 `u_{t+1}` 实现成了 `u_{t+2}`
