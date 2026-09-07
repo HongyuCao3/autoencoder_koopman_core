@@ -221,6 +221,15 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
   （建控制器之前没先证明读出有可反馈状态）。下一步不是 `KoopmanMPCController`，是 E1
   （换读出，见该文档§五）。
 - CPU 全套测试 401 passed（同一批 5 个 NLTK 数据缺失失败，和本次改动无关）。
+- **2026-09-07 F0 修正，上面两条判定撤回**：`analyze_ergo_readout_state.py` 有两处测量错误
+  （[`signal_resolution_plan.md`](signal_resolution_plan.md) §0.1/0.2）——RC-3 把 `u_{t+1}`
+  取成了 `u_{t+2}`（差一行）；RC-1 的 rollout 让模型自由外推 `shard_frac` 这个确定性外生量，
+  而三个 null 都拿到真值，比较本身不公平。修正后（`scripts/analyze_ergo_readout_state.py`
+  重写版，20-split + aux 真值覆盖）：**RC-0/RC-1/RC-2/RC-3 全部通过**——
+  RC-1 aux=真值在 20/20 个 split 里赢过最优 null（mean skill +0.128，naive 版只有 7/20）；
+  RC-3 `u_t=+0.0588`（se=0.0270, p=0.0296, n=546，含 `u_{t+1}` 规格）。**"Phase C 在 E0
+  之前不准开工"、"下一步是 E1"这两条判断撤回，Phase C 已经开工，见下面新增的
+  "F0–F3：读出分辨率修正与 Phase C 结果"一节。**
 
 ## 下一步
 
@@ -277,7 +286,14 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
    一节）。产物 `outputs/ergo_math_phaseB_random_excite/entropy_readout.json` +
    `entropy_readout_state_report.json`。
 
-## 结论：ERGO 线在当前读出族下终止（2026-09-07）
+## ~~结论：ERGO 线在当前读出族下终止~~（2026-09-07，本节判定已撤回，见下一节）
+
+> **2026-09-07 撤回**：本节依据的 RC-gate 判定本身有两处测量错误（`signal_resolution_plan.md`
+> §0.1/0.2，F0 已修正），`y_task_success` 的 RC-B 实际是**过**的，不是这里写的"不过"。
+> `entropy_mean`/`entropy_answer_span` 两个熵读出仍然不过（这部分结论不受影响），但"三个读出
+> 全灭、ERGO 线终止"这个总判定是错的——正确结论、Phase C 实际执行结果见下面
+> "F0–F3：读出分辨率修正与 Phase C 结果"一节。本节以下内容保留作历史记录，**不要引用其
+> "ERGO 线终止"这个结论**。
 
 `backup/readout_controllability_gate_plan.md` §五预注册的判定规则：E1 两个熵读出列的 RC-2/RC-3
 "任一不过 → ERGO 这条线在当前读出族下终止"。实测**两个熵读出都不过**：
@@ -320,3 +336,127 @@ job 15613799 已 `COMPLETED`（21:53），本地跑通 `fit_koopman_ergo_model.p
 
 **⚠️ 2026-09-07 撤回上面这句**：终止判定本身已被推翻（见本文档顶部横幅）。当前的后续动作是
 [`signal_resolution_plan.md`](signal_resolution_plan.md) 的 F0→F1→F2→F3，本节各段由 F0/F2 回写。
+
+## F0–F3：读出分辨率修正与 Phase C 结果（2026-09-07）
+
+**新开一次对话想知道"ERGO 这条线现在到底是终止了还是在跑 Phase C"，看这一节，不要看上面
+"结论：ERGO 线在当前读出族下终止"那一节（已撤回）。**
+
+### F0：修正 E0 的两处测量错误（CPU，无作业）
+
+`scripts/analyze_ergo_readout_state.py` 重写：`build_input_gain_transitions` 的 `u_{t+1}`
+改成直接读被预测目标那一行（`b[U_COL]`），不再多看一行；`run_segment1`（RC-1）改成 20 个
+随机 item split（每个 45 train / 15 held-out），且 ARX 的多步 rollout 在每一步后把状态最后一维
+（`shard_frac`）强制换成真值 `pair["z_next"][-1]`，不再让模型自由外推这个确定性外生量。
+
+**RC-0/RC-1/RC-2/RC-3 全部通过**：
+
+| 判据 | 结果 |
+|---|---|
+| RC-0（同一仪器） | 过（`y_task_success` 就是被汇报的指标本身，trivial） |
+| RC-1（20-split，aux=真值 rollout vs 三个 null） | 过——20/20 个 split 里 ARX 赢过最优 null；均值 MSE：const=0.1257, turn_mean=0.1010, stateless_ols=0.0874, naive rollout=0.1127（只 7/20 赢）, **aux=真值 rollout=0.0759**（20/20 赢） |
+| RC-2（去 shard_frac 十等分箱均值后的 lag-1） | 过：`lag1_demeaned=0.2578`（p=9.69e-10） |
+| RC-3（含 `u_{t+1}` 的输入增益，item 固定效应） | 过：`u_t=+0.0588`（se=0.0270, p=0.0296, n=546）；`u_{t+1}=+0.0716`（se=0.0270, p=0.0083） |
+
+`richer_abs_sign` 的 vacuous 登记不变（二值 `y` 下 `train_one_step_mse` 与 ARX 差 4.16e-17）。
+CPU 全套测试 406 passed（同一批 5 个 NLTK 失败无关）。**偏离记录**：RC-3 的 p 值和
+`signal_resolution_plan.md` §0.1 表格给的参考值差约 0.0004（`p=0.0300` vs 参考 `0.0296`；
+`closeness` 那一行也有类似量级的差），beta/se 都逐位一致，怀疑是参考计算用了略有差异的
+自由度/协方差估计口径，不影响任何判定方向。
+
+### F1：把 `closeness` 固化成正式读出
+
+`closeness = 1/(1+|a-g|/max(|g|,1))`（`a`=正则抽取答案，`g`=gold answer，和硬 0/1 判分
+同一套抽取器）。`scripts/analyze_ergo_closeness_readout.py`（新脚本）：
+
+- **G-F1-1（分布）**：666 行，`mean=0.6058, sd=0.2158, ==1.0 占比 0.1366, ==0.0 占比 0.0090`
+  ——与预注册数字逐位一致。
+- **候选读出对照表**（`y_task_success`/`closeness`/`coverage`/`reply_len`(词数)/`churn`/
+  `entropy_mean`/`entropy_answer_span`，与目标 ρ / 去趋势 ρ / lag1_demeaned / 输入增益 `u_t`,p）：
+
+  | 读出 | ρ(目标) | ρ(去趋势) | lag1_demeaned | `u_t` | p |
+  |---|---:|---:|---:|---:|---:|
+  | y_task_success | +1.0000 | +1.0000 | +0.2578 | +0.0588 | 3.00e-02 |
+  | **closeness** | **+0.6315** | **+0.4519** | **+0.2757** | **+0.0540** | **5.29e-04** |
+  | coverage | +0.4335 | +0.2519 | +0.4082 | +0.0434 | 2.46e-01 |
+  | reply_len | +0.4810 | +0.2322 | +0.4525 | +0.8565 | 8.50e-01 |
+  | churn | +0.1951 | +0.0231 | +0.1627 | −0.0572 | 1.41e-01 |
+  | entropy_mean | +0.1144 | +0.0477 | +0.2193 | −0.0006 | 9.16e-01 |
+  | entropy_answer_span | −0.1219 | +0.0759 | +0.0204 | −0.0121 | 3.15e-02 |
+
+- **closeness 自己的 RC-0/1/2/3**：全过——RC-1 20-split mean skill **+0.1754**（20/20 赢），
+  RC-2 `lag1_demeaned=0.2757`（p=5.61e-11），RC-3 `u_t=+0.0540`（p=5.29e-04）。
+  **closeness 在四条判据上都不比二值 `y_task_success` 差**，采纳为 Phase C 的状态读出
+  （汇报指标仍是二值 `final_turn_success`，两者是同一次抽取的两个函数，不违反 RC-0）。
+
+### F2：用 closeness 重拟合 Phase B
+
+`scripts/fit_koopman_ergo_closeness.py` → `koopman_fit_report_closeness.json`（新文件，未覆盖
+原文件）。**G-F2-1**：`y_col="closeness"`、`aux_cols=["shard_frac"]`、`contemporaneous_v=true`、
+`nu=1,mu=1`、held-out item 与原 45/15 split 一致，全部通过。`richer_abs_sign` 改标注
+`vacuous_for_binary_y=false`（连续量下不再退化）。ARX rollout MSE：naive=0.0310, aux=真值=0.0275
+（与 F1 20-split 均值 0.0274 一致）；三个 null：const=0.0441, turn_mean=0.0344,
+stateless=0.0346——aux=真值仍然赢。
+
+### F3：ERGO Phase C（闭环 MPC vs 四个基线）
+
+**代码改动**（`control.py`/`controller_cli.py` 确认未改动）：
+`ErgoKoopmanMPCController`（`src/persona_drift/ergo_koopman_mpc.py`）新增
+`_simulate` 覆写（`shard_frac` 展望时每步强制换成真值 `(turn+k)/num_shards`）、
+`next_u_remind` 覆写（逐轨迹动态设 `episode_length=num_shards`）；`run_ergo_math_screening.py`
+新增 `random_schedule`/`ergo_koopman_mpc` 两个本地分支（不改
+`controller_cli.make_controller_factory`）。12 个新/改单测全绿。
+
+**⚠️ 执行中发现并修复一个真 bug**：继承来的 `_remaining_budget`（`control.py`）硬编码读
+`u_remind` 列，ERGO 行里根本没有这个字段，导致预算从未真正生效——第一次跑
+`ergo_koopman_mpc` 臂（job 15645632）在 664 行里 reset 了 548 次（budget=1 应该最多
+116 次，每条轨迹 1 次）。已覆写 `_remaining_budget` 改读 `self.u_col`，新增单测
+`test_remaining_budget_reads_u_reset_not_u_remind` 直接复现并锁定这个场景，旧产物存档为
+`outputs/ergo_math_phaseC_mpc_INVALID_budget_not_enforced_job15645632`（不删除，仅存档），
+重跑 job **15646133**（`COMPLETED 0:0`，6:52），确认 664 行里 reset 恰好 116 次、
+每条轨迹恰好 1 次。
+
+**评测集**（G-F3-1）：58 items（Phase B 45 个辨识 item 之外的全部，交集=0），
+`num_shards` 分布 `{4:12, 5:17, 6:13, 7:8, 8:7, 9:1}`，与预注册一致。8 个臂全部
+`COMPLETED 0:0`，664 行/臂（58 items × 2 seeds，行数随 `num_shards` 变化，8 个臂逐位相同）。
+
+**结果**（`scripts/analyze_ergo_phaseC_comparison.py`，按 item 配对，10000 次 bootstrap，
+`default_rng(0)`）：
+
+| 臂 | final_turn_success 均值 | token/轨迹 |
+|---|---:|---:|
+| zero_control | 0.3276 | 0.0 |
+| always_reset（无预算） | 0.7759 | 696.1 |
+| fixed_t1（预算 1） | 0.2069 | 88.1 |
+| fixed_t2（预算 1） | 0.2069 | 100.9 |
+| fixed_t3（预算 1） | 0.3190 | 114.6 |
+| fixed_t4（预算 1） | 0.6466 | 128.7 |
+| randsched_p100（预算 1） | 0.4655 | 118.6 |
+| **mpc（预算 1）** | **0.2069** | **100.9** |
+
+三道预注册闸门**全部不过**（mpc 全面更差，不是跨零而是整段落在负区间）：
+
+| 闸门 | mean_diff | 95% CI | 判定 |
+|---|---:|---|---|
+| 闸门 1（mpc − zero_control） | −0.1207 | [−0.2241, −0.0259] | 不过（更差） |
+| 闸门 2（mpc − randsched_p100，主判据） | −0.2586 | [−0.3621, −0.1552] | 不过（更差） |
+| 闸门 3（mpc − 最优 fixed_t，`fixed_t4`） | −0.4397 | [−0.5603, −0.3190] | 不过（更差，参照用） |
+
+**诊断（不是判据，但解释了为什么）**：mpc 的 116 条轨迹**全部**在 turn 2 花掉唯一的一次
+reset——`mean_final_turn_success`/`token/轨迹` 与 `fixed_t2` 逐位相同（0.2069/100.9），
+不是巧合，是 116 条轨迹的决策序列完全相同，MPC 退化成了一个固定臂。机制上看：
+`horizon=2` 下，turn 2（第一次有足够历史做决策）只能展望到 turn 3——**看不到 `fixed_t4`
+（最好的固定臂）所在的 turn 4**，所以"越早花掉预算"在这个短视窗里永远显得更优，MPC
+根本没有机会发现更晚花更好。这不是本次执行的偏差，是预注册规格（`horizon=2`）本身的
+局限——按闸门 2 不过的纪律，**不调 horizon 重跑**，如实记录这个诊断。
+
+**结论**：**自适应调度（`ergo_koopman_mpc`）在 ERGO 上没有打过等代价随机分配**（闸门 2 不过，
+且差距很大），也没打过任何一个固定臂。执行器权威结论不受影响（`always_reset` 无预算下
+0.7759，远高于 zero_control 的 0.3276）——问题仍然是"预算下怎么调度"，不是"reset 有没有用"。
+
+**留给用户/Opus 的判断题**：
+1. `horizon=2` 的短视是否值得作为独立诊断写进论文（"budget-1 + horizon-2 下 MPC 退化为
+   fixed_t2，因为看不到 turn 4"），还是只在 limitation 里带一句；
+2. 要不要认为"至少证明了 MPC 会做出一个自洽（虽然是退化的）决策"这件事本身值得记录，
+   还是纯粹归为负结果；
+3. 论文叙事定位（同上一节判断题 3，现在有了 Phase C 的真实数字，需要重新讨论）。

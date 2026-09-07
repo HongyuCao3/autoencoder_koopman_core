@@ -30,11 +30,21 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
 from persona_drift.chat_model import GenerationConfig  # noqa: E402
-from persona_drift.controller_cli import make_controller_factory  # noqa: E402
+from persona_drift.control import RandomScheduleController  # noqa: E402
+from persona_drift.controller_cli import _excitation_seed, make_controller_factory  # noqa: E402
+from persona_drift.ergo_koopman_mpc import load_ergo_koopman_mpc_controller  # noqa: E402
+from persona_drift.ergo_math_bank import load_ergo_math_bank  # noqa: E402
 from persona_drift.ergo_math_screening import run_ergo_math_screening  # noqa: E402
 from persona_drift.ergo_math_trajectory import ErgoMathTrajectoryConfig  # noqa: E402
 
-CONTROLLER_CHOICES = ("zero_control", "constant_remind", "fixed_schedule", "random_excite")
+CONTROLLER_CHOICES = (
+    "zero_control",
+    "constant_remind",
+    "fixed_schedule",
+    "random_excite",
+    "random_schedule",
+    "ergo_koopman_mpc",
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -69,6 +79,32 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="required for --controller random_excite: Bernoulli(p) probability of u_reset=1 each turn",
     )
+    parser.add_argument(
+        "--random-schedule-spend-prob",
+        type=float,
+        default=1.0,
+        help="--controller random_schedule only: probability of spending the single reset "
+        "(1.0 = p100, matches signal_resolution_plan.md section 4.3's equal-cost arm)",
+    )
+    parser.add_argument(
+        "--remind-budget",
+        type=int,
+        default=None,
+        help="--controller random_schedule/fixed_schedule/ergo_koopman_mpc: max resets per trajectory "
+        "(signal_resolution_plan.md section 4.2 fixes this at 1 for Phase C)",
+    )
+    parser.add_argument("--koopman-model-path", type=pathlib.Path, default=None, help="required for --controller ergo_koopman_mpc")
+    parser.add_argument("--koopman-model-key", default="arx", help="--controller ergo_koopman_mpc only")
+    parser.add_argument("--koopman-nu", type=int, default=1)
+    parser.add_argument("--koopman-mu", type=int, default=1)
+    parser.add_argument("--koopman-horizon", type=int, default=2)
+    parser.add_argument("--koopman-repeat-penalty", type=float, default=0.0)
+    parser.add_argument(
+        "--koopman-y-col",
+        default="closeness",
+        help="--controller ergo_koopman_mpc only: state readout column (default closeness, F2's fitted "
+        "readout; the reported metric stays final_turn_success regardless)",
+    )
     return parser.parse_args()
 
 
@@ -77,13 +113,52 @@ def main() -> None:
     trajectory_config = ErgoMathTrajectoryConfig(
         agent_gen=GenerationConfig(max_new_tokens=args.agent_max_new_tokens),
     )
-    controller_factory = make_controller_factory(
-        args.controller,
-        threshold_y_min=0.7,
-        koopman_mpc_controller=None,
-        fixed_schedule_turns=tuple(args.fixed_schedule_turns) if args.fixed_schedule_turns else None,
-        random_excite_p=args.random_excite_p,
-    )
+
+    # signal_resolution_plan.md section 4.3.1: `random_schedule` and
+    # `ergo_koopman_mpc` need per-item customization (num_shards varies by
+    # item) that controller_cli.make_controller_factory's fixed-turns-tuple
+    # design can't express -- handled here as local branches instead of
+    # touching that shared file (control.py/controller_cli.py must stay
+    # untouched, see docs/experiments/signal_resolution_plan.md's
+    # open-before-work rules).
+    if args.controller == "random_schedule":
+        shards_by_item = {item.item_id: len(item.shards) for item in load_ergo_math_bank()}
+        default_num_shards = max(shards_by_item.values())
+
+        def controller_factory(seed: int, entry_id: str = "") -> RandomScheduleController:
+            num_shards = shards_by_item.get(entry_id, default_num_shards)
+            return RandomScheduleController(
+                turns=tuple(range(1, num_shards + 1)),
+                spend_prob=args.random_schedule_spend_prob,
+                seed=_excitation_seed(seed, entry_id),
+            )
+
+    elif args.controller == "ergo_koopman_mpc":
+        if args.koopman_model_path is None:
+            raise ValueError("--koopman-model-path is required for --controller ergo_koopman_mpc")
+        mpc_controller = load_ergo_koopman_mpc_controller(
+            model_path=args.koopman_model_path,
+            model_key=args.koopman_model_key,
+            nu=args.koopman_nu,
+            mu=args.koopman_mu,
+            horizon=args.koopman_horizon,
+            repeat_penalty=args.koopman_repeat_penalty,
+            remind_budget=args.remind_budget,
+            y_col=args.koopman_y_col,
+        )
+
+        def controller_factory(seed: int, entry_id: str = ""):
+            return mpc_controller
+
+    else:
+        controller_factory = make_controller_factory(
+            args.controller,
+            threshold_y_min=0.7,
+            koopman_mpc_controller=None,
+            fixed_schedule_turns=tuple(args.fixed_schedule_turns) if args.fixed_schedule_turns else None,
+            random_excite_p=args.random_excite_p,
+            remind_budget=args.remind_budget,
+        )
     report = run_ergo_math_screening(
         agent_model_id=args.agent_model,
         judge_model_id=args.agent_model,  # no separate judge model needed, see ergo_math_judge.py

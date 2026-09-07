@@ -513,8 +513,18 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   `u_{t+1}` 实现成了 `u_{t+2}`（改正后 `u_t=+0.0588, p=0.0296`），RC-1 让模型外推 `shard_frac`
   这个确定性外生量而 null 拿到它的真值（对齐后 ARX 在 20/20 个 split 上打过全部三个 null）——
   **RC-B 三条其实全过**。E1 的熵读出确实不合适，但理由是它与被评价目标近乎正交（新增的 RC-0），
-  不是"读出族全灭"。下一步是 `closeness`（同一抽取器的连续版本），规格见
-  [experiments/signal_resolution_plan.md](experiments/signal_resolution_plan.md) F0–F3。
+  不是"读出族全灭"。**2026-09-07 追加，F0–F3 已执行完毕**：F0 修正后 RC-B 全过（20-split
+  aux=真值 rollout 20/20 赢最优 null）；F1 把 `closeness`（同一抽取器的连续版本）固化为正式
+  状态读出，四条判据都不比二值差（`u_t=+0.0540, p=5.29e-4`）；F2 用 closeness 重拟合
+  （`koopman_fit_report_closeness.json`）；**F3 跑了 8 个 Phase C 臂（58 items × 2 seeds），
+  三道预注册闸门全部不过**——`ergo_koopman_mpc`（预算 1）最终轮成功率 0.2069，全面输给
+  `zero_control`(0.3276)、`randsched_p100`(0.4655，主判据) 和最优固定臂 `fixed_t4`(0.6466)。
+  诊断：MPC 116 条轨迹**全部**在 turn 2 花掉唯一一次 reset，与 `fixed_t2` 逐位相同——
+  `horizon=2` 短视，看不到更优的 turn 4，按纪律未调参重跑。执行中还发现并修复一个真 bug：
+  `ErgoKoopmanMPCController` 继承的 `_remaining_budget` 硬编码读 `u_remind` 列，预算从未生效
+  （首次跑 reset 了 548/664 次而非应有的 116 次），已修复+补单测+重挑。执行器权威结论不受
+  影响。详见 `experiments/ergo_multiturn_reliability_pilot.md`"F0–F3：读出分辨率修正与
+  Phase C 结果"一节。
   执行器权威结论（上面"结果："段）自始至终不受影响，仍然成立。
 - [experiments/dose_response_pilot.md](experiments/dose_response_pilot.md) —
   步骤 2，安全方向 steering（diff-in-means 方向 + 残差流 hook）的单轮 α 剂量-响应扫描。状态：

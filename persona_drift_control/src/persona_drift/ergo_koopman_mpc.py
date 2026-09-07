@@ -1,25 +1,23 @@
-"""ERGO/Laban line's Koopman-MPC controller (Phase C scaffold).
+"""ERGO/Laban line's Koopman-MPC controller (Phase C).
 
 `control.KoopmanMPCController._current_state` hardcodes persona-drift's
 `y_probe`/`u_remind` column names and has no `aux_cols` support at all --
 both are correct for `defense`/`stance` and must not change under those
 lines' feet (they're shared, tested infra). This module extends it by
-**inheritance only**, per the 2026-09-07 decision in
-docs/experiments/ergo_multiturn_reliability_pilot.md's Phase C planning: a
-new subclass here, zero edits to control.py/controller_cli.py.
+**inheritance only**: a new subclass here, zero edits to
+control.py/controller_cli.py.
 
-Open design question this file deliberately does NOT resolve: `_simulate`
-is inherited unchanged from `KoopmanMPCController`, so multi-step lookahead
-still lets the fitted A/B/b row for `shard_frac` free-run forward instead of
-substituting the true, deterministically known `(turn+k)/num_shards` at each
-lookahead step. That is a placeholder, not an oversight -- see
-docs/experiments/signal_resolution_plan.md sections 4.0-4.2, which RESOLVED it
-    (truth-override the shard_frac dimension during lookahead; k=1 reset budget
-    justified by measured token cost; y_col made configurable so the state can be
-    `closeness`). The original open-question write-up is archived at
-    docs/experiments/backup/ergo_koopman_mpc_opus_design_questions.md for why it needs
-a design decision before Phase C can run for real (variable per-item
-episode length interacts with it too, same doc, question 2).
+**2026-09-07 (docs/experiments/signal_resolution_plan.md section 4.1)**:
+`_simulate` is now overridden to truth-override the aux (`shard_frac`)
+dimension at every lookahead step instead of letting the fitted A/B/b row
+free-run it -- `shard_frac_{t+k} = (turn+k)/num_shards` is deterministic and
+fully known at decision time (no reason to let a linear model "predict" an
+already-known quantity, and its fitted self-coefficient is >1, which
+diverges under naive multi-step rollout). `episode_length` is likewise
+taken from `history[-1]["num_shards"]` per trajectory rather than a fixed
+CLI constant, since ERGO's episode length varies by item. The original
+open-question write-up (before this was resolved) is archived at
+docs/experiments/backup/ergo_koopman_mpc_opus_design_questions.md.
 """
 
 from __future__ import annotations
@@ -50,18 +48,32 @@ def shard_frac(row: dict[str, Any]) -> float:
 
 @dataclass
 class ErgoKoopmanMPCController(KoopmanMPCController):
-    """`_current_state` override only: configurable `y_col`/`u_col` (ERGO
-    uses `y_task_success`/`u_reset`, not persona-drift's `y_probe`/
-    `u_remind`) and `aux_fns` (row -> float callables, evaluated at the most
-    recent row, appended after `y_hist`/`v_hist` -- matches the state
-    ordering `modeling.dataset.build_reduced_state_pairs` used when fitting,
-    see that function's `aux_now` construction). Everything else
-    (`_simulate`, `_remaining_budget`, `_planning_steps`, `next_u_remind`) is
+    """`_current_state` override: configurable `y_col`/`u_col` (ERGO uses
+    `closeness`/`u_reset` as of F2 -- not persona-drift's `y_probe`/
+    `u_remind`, and not the binary `y_task_success` either, see
+    docs/experiments/signal_resolution_plan.md section 3.2) and `aux_fns`
+    (row -> float callables, evaluated at the most recent row, appended
+    after `y_hist`/`v_hist` -- matches the state ordering
+    `modeling.dataset.build_reduced_state_pairs` used when fitting, see
+    that function's `aux_now` construction).
+
+    `_simulate` and `next_u_remind` overrides: truth-overrides the aux
+    (`shard_frac`) dimension at every lookahead step (signal_resolution_plan.md
+    section 4.1) and takes `episode_length` from the trajectory's own
+    `num_shards` instead of a fixed constant. `next_u_remind` stashes
+    `_lookahead_turn`/`_num_shards` as plain instance attributes before
+    delegating to the parent (which is what actually invokes `_simulate`) --
+    the controller instance is reused sequentially across trajectories/turns
+    (see `controller_cli.make_controller_factory`), never concurrently, so
+    this mutate-then-delegate pattern is safe. `_remaining_budget` is
     inherited unchanged."""
 
-    y_col: str = "y_task_success"
+    y_col: str = "closeness"
     u_col: str = "u_reset"
     aux_fns: tuple[Callable[[dict[str, Any]], float], ...] = ()
+    _lookahead_turn: int | None = None
+    _num_shards: int | None = None
+    n_missing_num_shards: int = 0
 
     def _current_state(self, history: list[dict[str, Any]]) -> np.ndarray | None:
         nu, mu = self.state_config.nu, self.state_config.mu
@@ -85,6 +97,47 @@ class ErgoKoopmanMPCController(KoopmanMPCController):
         aux_now = [fn(history[t]) for fn in self.aux_fns]
         return np.array(y_hist + v_hist + aux_now, dtype=float)
 
+    def _remaining_budget(self, history: list[dict[str, Any]]) -> int | None:
+        """Override: the parent counts spend via the hardcoded `u_remind`
+        column, which is never present on an ERGO row (`u_reset` is) -- so
+        the inherited version always read 0 rows spent and silently never
+        enforced `remind_budget` at all. Same logic otherwise, just reading
+        `self.u_col`."""
+
+        if self.remind_budget is None:
+            return None
+        return self.remind_budget - sum(int(row.get(self.u_col, 0)) for row in history)
+
+    def next_u_remind(self, turn: int, history: list[dict[str, Any]]) -> int:
+        self._lookahead_turn = int(turn)
+        raw_num_shards = history[-1].get("num_shards") if history else None
+        self._num_shards = int(raw_num_shards) if raw_num_shards is not None else None
+        if self._num_shards is None:
+            self.n_missing_num_shards += 1
+        else:
+            self.episode_length = self._num_shards
+        return super().next_u_remind(turn, history)
+
+    def _simulate(
+        self,
+        z: np.ndarray,
+        action: int,
+        remaining_steps: int,
+        remaining_budget: int | None = None,
+        lookahead_offset: int = 0,
+    ) -> float:
+        z_next = self.surrogate.step(z, np.array([float(action)]))
+        if self._num_shards is not None:
+            z_next[-1] = min(1.0, (self._lookahead_turn + lookahead_offset) / self._num_shards)
+        value = float(self.surrogate.readout(z_next)) - (self.repeat_penalty if action else 0.0)
+        if remaining_steps <= 0:
+            return value
+        budget_after = None if remaining_budget is None else remaining_budget - action
+        candidates = (0, 1) if budget_after is None or budget_after >= 1 else (0,)
+        return value + max(
+            self._simulate(z_next, a, remaining_steps - 1, budget_after, lookahead_offset + 1) for a in candidates
+        )
+
 
 def load_ergo_koopman_mpc_controller(
     model_path: pathlib.Path,
@@ -94,14 +147,23 @@ def load_ergo_koopman_mpc_controller(
     horizon: int,
     repeat_penalty: float,
     remind_budget: int | None = None,
-    episode_length: int | None = None,
+    y_col: str = "closeness",
     name: str = "koopman_mpc",
 ) -> ErgoKoopmanMPCController:
     """Mirrors `controller_cli.load_koopman_mpc_controller`, but builds an
     `ErgoKoopmanMPCController` with `contemporaneous_v=True` and
     `aux_cols=("shard_frac",)` hardcoded -- both are load-bearing decisions
     for this domain (pilot doc's "Koopman 建模，Phase B" section), not
-    optional flags the way they are for the defense line."""
+    optional flags the way they are for the defense line.
+
+    `y_col` defaults to `"closeness"` (F2's fitted state, `model_path`
+    should then point at `koopman_fit_report_closeness.json`) -- the
+    reported/evaluated metric stays the binary `final_turn_success`
+    regardless (signal_resolution_plan.md section 3.2), since the
+    controller's state and the headline metric are deliberately different
+    (though same-instrument) quantities. `episode_length` is not a
+    parameter here: `ErgoKoopmanMPCController.next_u_remind` sets it
+    per-trajectory from `history[-1]["num_shards"]`."""
 
     report = json.loads(model_path.read_text())
     fit = report[model_key]
@@ -120,8 +182,7 @@ def load_ergo_koopman_mpc_controller(
         horizon=horizon,
         repeat_penalty=repeat_penalty,
         remind_budget=remind_budget,
-        episode_length=episode_length,
-        y_col="y_task_success",
+        y_col=y_col,
         u_col="u_reset",
         aux_fns=(shard_frac,),
         name=name,

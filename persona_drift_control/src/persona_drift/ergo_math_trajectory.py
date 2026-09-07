@@ -35,7 +35,7 @@ from typing import Any
 from .chat_model import ChatModel, GenerationConfig
 from .control import Controller, ZeroControlController
 from .ergo_math_bank import GSM8KShardedItem
-from .ergo_math_judge import judge_math_answer
+from .ergo_math_judge import _normalize, extract_answer_by_regex, judge_math_answer
 from .reminder import count_inserted_tokens
 from .safety_judge import looks_like_refusal
 
@@ -44,6 +44,30 @@ _ANSWER_FORMAT_INSTRUCTION = (
     'not fully confident yet or do not have all the details, on its own line in this exact '
     'format: "Current answer: X" (a single number).'
 )
+
+
+def _to_number(text: str | None) -> float | None:
+    if text is None:
+        return None
+    try:
+        return float(_normalize(text))
+    except (ValueError, TypeError):
+        return None
+
+
+def closeness(agent_message: str, gold_answer: str) -> float:
+    """docs/experiments/signal_resolution_plan.md section 2.2's
+    de-thresholded state readout: the SAME extractor and gold answer
+    `ergo_math_judge.judge_math_answer` already compares, just not chopped
+    to 0/1 at exact equality. 0.0 on any parse failure or non-numeric
+    extraction, matching the hard score's parse-failure convention."""
+
+    extracted = extract_answer_by_regex(agent_message)
+    a = _to_number(extracted) if extracted is not None else None
+    g = _to_number(gold_answer)
+    if a is None or g is None:
+        return 0.0
+    return 1.0 / (1.0 + abs(a - g) / max(abs(g), 1.0))
 
 
 @dataclass(frozen=True)
@@ -129,6 +153,7 @@ def run_ergo_math_trajectory(
             "judge_raw_output": raw_output,
         }
         row["y_probe"] = row["y_task_success"]
+        row["closeness"] = closeness(agent_text, entry.gold_answer)
         rows.append(row)
 
     return rows
