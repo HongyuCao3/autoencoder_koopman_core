@@ -42,8 +42,19 @@ Phase A 先按下面五句填进 `contract.yaml`，**Phase B/C 写完 §Method +
    Koopman 代理已经够用，非线性 AE 提升不带来增益（简单性是被测出来的结果，不是妥协）。
 4. 拟合出的算子的价值不止于选动作：谱半径给稳态、有限时域可控性 Gramian 给可防御性、
    Phase I 学到的策略可化简成一条闭式阈值规则、一步预测残差能对齐真实安全骤降。
-5. 边界同样被交付：在当前 5 值 LLM-judge 读出下，自适应控制器打不赢等代价的开环周期基线，
-   瓶颈是**测量分辨率**而不是建模能力——这条界限本身是给社区的可执行结论。
+5. 边界同样被交付，而且是以**可检验**的形式：闭环干预要优于等代价开环，需要三个前提同时
+   成立——(i) 执行器在**有效指标**上有权威，(ii) 早期观测对后期结果有**预测力**，(iii) 读出
+   与状态**耦合且推得动**。本文给出这三条各自的检验程序，并展示两条独立任务线分别卡在哪
+   一条：对抗防御线卡在 (i)——盲标基线率 **9.8%**，在这个事件率下该问题**问不出来**，不是
+   被证否；ERGO 多轮数学线 (i)–(iii) 全过，却卡在一处执行器实现——reset 覆盖整个对话历史，
+   使终点退化为末轮单个动作的函数（`fixed_last` 与 `always_reset` 的末轮输出 **116/116
+   逐字相同**）。把那一行改成追加后三条前提全部成立，其闭环结果是本文 RQ3 的落点
+   （**待填：E1–E5 的结论，无论正负都填这里**；见
+   [`../experiments/two_task_success_plan.md`](../experiments/two_task_success_plan.md)）。
+   这三条前提本身是给社区的可执行结论：它们区分"自适应打不赢开环"何时是**方法**的问题、
+   何时是**设定**的问题。
+   > **不要把这一句改回"瓶颈是测量分辨率"**——F4 已否定该说法：软 judge 恢复了分辨率，
+   > RC-1/RC-3 仍然不过。改回去会让 §Experiments 收尾与 `non_claim_ledger` 同时失据。
 
 ### 1.4 纳入 / 排除范围
 
@@ -51,6 +62,8 @@ Phase A 先按下面五句填进 `contract.yaml`，**Phase B/C 写完 §Method +
 |---|---|---|
 | 核心 AE-Koopman 八阶段消融（8 任务、106 run） | §Method 基座 + §Experiments RQ1（先验是否成立、AE 是否必要） | `ABLATION_STUDY.md`、`results/` |
 | 对抗防御 Koopman-MPC Phase A→J | §Experiments RQ2（闭环干预）+ RQ3（等代价开环对照） | `docs/experiments/koopman_defense_pilot.md`、`budget_constrained_defense_plan.md`、`koopman_case_study_design.md` |
+| **三前提检验程序 + 两条线的失效定位** | §Experiments RQ3 的**方法学部分**（§1.3 第 5 句的直接支撑）：盲化标注定基线率、留一预测力检验、去阈值化读出 + 可控性判据 | `defense_line_redesign_plan.md` §9–12、`measurement_validity_plan.md`、`signal_resolution_plan.md` |
+| **ERGO 多轮数学线（`closeness` 读出 + reset 执行器）** | §Experiments RQ3 的**闭环落点**：三前提全过、终点被 overwrite 构造性清空（116/116）、append 变体下的闭环结果（**待填 E1–E5**） | `ergo_multiturn_reliability_pilot.md` G4、`two_task_success_plan.md` |
 | 算子的额外用途（谱/Gramian/闭式策略/残差检测） | §Experiments RQ4（算子可读性） | `koopman_phaseI_policy_closed_form.md`、`koopman_detection_design.md`、`docs/task/KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md` |
 | sycophancy 惯性（MMLU 数据源，new-Q3 显著） | §Experiments RQ5（跨任务迁移证据，**可选**，取决于页数） | `mc_sycophancy_screening_pilot.md` |
 | 读出分辨率天花板（判官分歧/token 概率退化/ground truth 审计/截断） | §Experiments 收尾 + §Conclusion limitations + `non_claim_ledger` | `koopman_defense_pilot.md` 七/八节、`continuous_readout_plan.md`、`sycophancy_screening_pilot.md` |
@@ -59,9 +72,11 @@ Phase A 先按下面五句填进 `contract.yaml`，**Phase B/C 写完 §Method +
 
 ### 1.5 诚实性红线（这条主线最大的风险）
 
-主线是 positive framing，但证据里有真实的空结果与打平。**"打不赢等代价 periodic"必须写进
-正文**，不能挪进附录或省略——它是 §1.3 第 5 句的支撑，也是 `paper-audit` D4（overclaim）
-必然会探到的地方。判断标准：`claim_ledger` 里每一条 `strength` 必须能被 `paper/evidence/`
+主线是 positive framing，但证据里有真实的空结果与打平。**"打不赢等代价 periodic"，以及三条
+前提各自在哪条线上失效，都必须写进正文**，不能挪进附录或省略——它们是 §1.3 第 5 句的支撑，
+也是 `paper-audit` D4（overclaim）必然会探到的地方。特别地：防御线的 (i) 是**问不出来**
+（9.8% 基线率下 41 行/臂没有功效），不是**被证否**，两者措辞不可混用；ERGO 线在 append
+之前的"打平"是**终点被构造性清空**的结果，也不能写成"自适应无效"。判断标准：`claim_ledger` 里每一条 `strength` 必须能被 `paper/evidence/`
 里的具体数字和 n / p 值撑住；撑不住的降级或移入 `non_claim_ledger`。这条在 Step 4 的 Tier-1
 冷审里作为一票否决项。
 
