@@ -68,6 +68,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--agent-max-new-tokens", type=int, default=512)
     parser.add_argument(
+        "--reset-mode",
+        choices=("overwrite", "append"),
+        default="overwrite",
+        help="docs/experiments/two_task_success_plan.md section 2 E1: 'overwrite' (default) is the "
+        "existing byte-for-byte-unchanged behavior; 'append' keeps the accumulated history instead "
+        "of replacing it with the reset's consolidated message.",
+    )
+    parser.add_argument(
         "--fixed-schedule-turns",
         type=int,
         nargs="+",
@@ -113,6 +121,7 @@ def main() -> None:
     args = parse_args()
     trajectory_config = ErgoMathTrajectoryConfig(
         agent_gen=GenerationConfig(max_new_tokens=args.agent_max_new_tokens),
+        reset_mode=args.reset_mode,
     )
 
     # signal_resolution_plan.md section 4.3.1: `random_schedule` and
@@ -178,6 +187,21 @@ def main() -> None:
             random_excite_p=args.random_excite_p,
             remind_budget=args.remind_budget,
         )
+    if args.reset_mode == "append":
+        # docs/experiments/two_task_success_plan.md section 2 E1 item 2:
+        # suffix excitation_design/controller.name with "_append" so the
+        # overwrite- and append-mode products of the same controller never
+        # collide under the same name. Controllers may be a singleton
+        # returned by reference on every call (e.g. ergo_koopman_mpc), so
+        # guard against double-suffixing on repeated controller_factory calls.
+        base_controller_factory = controller_factory
+
+        def controller_factory(seed: int, entry_id: str = ""):
+            controller = base_controller_factory(seed, entry_id)
+            if not controller.name.endswith("_append"):
+                controller.name = f"{controller.name}_append"
+            return controller
+
     report = run_ergo_math_screening(
         agent_model_id=args.agent_model,
         judge_model_id=args.agent_model,  # no separate judge model needed, see ergo_math_judge.py

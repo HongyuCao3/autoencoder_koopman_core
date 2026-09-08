@@ -548,3 +548,40 @@ token 预算只有在**低于 ~153 token**、连一次完整重述都买不起�
   真问题；
 - 换终点：禁止末轮 reset 之后的成功率，或逐轮成功率曲线下面积；
 - token 预算严格低于一次末轮重述的成本。
+
+---
+
+## E1：`reset_mode` 与 append 分析器
+
+**任务**：`docs/experiments/two_task_success_plan.md` 第二节 E1（四处改动）+ 第十二节 B1。零 GPU。
+
+**改动**（只这四处，加新测试文件）：
+1. `src/persona_drift/ergo_math_trajectory.py`：`ErgoMathTrajectoryConfig` 加 `reset_mode: str = "overwrite"`（`__post_init__` 对非法值抛 `ValueError`）；112–117 行按文档补丁形状改为 `overwrite`/`append` 分支；`row` 加 `"reset_mode"`；`inserted_tokens` 计法未改。
+2. `scripts/run_ergo_math_screening.py`：加 `--reset-mode {overwrite,append}`（默认 `overwrite`），透传进 `ErgoMathTrajectoryConfig`；append 模式下包一层 `controller_factory`，把 `controller.name` 加 `_append` 后缀（带幂等判断，避免复用同一控制器实例的臂被重复加后缀）。
+3. `tests/test_ergo_math_trajectory.py` 新增 4 条：`overwrite` reset 后 `agent_history` 长度为 1；`append` 下长度单调递增；两种模式下末轮消费的 stimulus 文本逐字相同；非法 `reset_mode` 抛 `ValueError`。
+4. 新增 `scripts/analyze_ergo_append_comparison.py`（B1）：臂目录走 `--arm name=path`（可重复）；gate（`--gate a-b`，配对差 + bootstrap 10000 + `default_rng(0)`）直接调用从 `analyze_ergo_phaseC_comparison.py` 原样导入的 `_per_item_final_turn_success`（未重写）；identity（`--identity a,b`）另写 `_final_turn_field_by_trajectory`，按 `trajectory_id` 交集比较末轮 `judge_raw_output` 逐字相同占比；两种比较在 item_id 集合不一致时都直接抛 `ValueError`。新增 `tests/test_analyze_ergo_append_comparison.py`，7 条（≥3 条要求）。
+
+**G-E1-1**：本任务范围内测试稳定全绿；"全套 CPU 测试通过"这一判据在并发写作环境下拿不到稳定单一数字，见下方偏离说明，判定留给 Opus。
+- 我自己四个改动文件 + 两个新文件范围内的测试：**35 passed / 35**（`test_ergo_math_bank.py` + `test_ergo_math_judge.py` + `test_ergo_math_screening.py` + `test_ergo_math_trajectory.py`(10) + `test_analyze_ergo_append_comparison.py`(7)），稳定复现多次。
+- **偏离（重要）**：`git diff --stat`/全套测试无法给出稳定单一数字——工作目录在本任务执行期间被至少三个并行会话（可辨认为 E3/E4/D1：`ergo_koopman_mpc.py`、`ergo_controllers.py`+`test_ergo_controllers.py`、`analyze_ergo_state_action_interaction.py`+其测试、`run_d1_screening.py`、`select_d1_attacks.py`、`conf/experiment/d1_attack_ids.txt`、以及 `docs/experiments/two_task_success_plan.md` 本身）同时读写。全套 `pytest -q` 在同一未改动状态下多次运行给出的 collected/passed 数字持续变化（观测到 423→433→444→449→458，passed 410→439→442 不等），且间歇性地把 `test_ergo_koopman_mpc.py`、`test_analyze_ergo_state_action_interaction.py` 也计入失败——这些文件不在我的改动范围内，`ErgoMathTrajectoryConfig` 也未在其中被构造性使用（已用 grep 核实全项目里该类只被关键字参数构造）。**取本任务结束时刻的一次快照**：`7 failed, 442 passed, 458 collected`，失败集合为 `test_surface_features.py` 5 条（NLTK，与基线一致）+ `test_ergo_koopman_mpc.py::test_remaining_budget_reads_u_reset_not_u_remind` 1 条 + `test_logging_setup.py::test_configure_run_logger_writes_config_to_a_file_under_logs_dir` 1 条（同一探针在孤立运行时稳定通过，怀疑与并行会话产生的额外 loguru sink/日志目录写入有关，不在本任务改动范围内）。我自己范围内的测试从未在任何一次快照中失败。
+- 我自己的 `git diff --stat`（限定四个改动文件）：`3 files changed, 121 insertions(+), 2 deletions(-)`；新增两个文件 `scripts/analyze_ergo_append_comparison.py`、`tests/test_analyze_ergo_append_comparison.py`。**不含** `control.py`/`controller_cli.py`/`modeling/evaluate.py`/`modeling/dataset.py`/`paper/`。
+
+**G-E1-2（回归锁）**：**通过**。
+```
+python scripts/analyze_ergo_append_comparison.py \
+  --arm always_reset=outputs/ergo_math_phaseC_always_reset \
+  --arm fixed_last=outputs/ergo_math_phaseC_fixed_last \
+  --identity always_reset,fixed_last
+```
+输出：`n_identical=116, n_trajectories=116, rate=1.0`（`trajectory_id_intersection=116`，`item_id_sets_equal=true`）。额外交叉验证：同一对臂上 `--gate always_reset-fixed_last` 给出 `mean_diff=0.0, ci=[0.0,0.0], n_pairs=58`，与 `analyze_ergo_phaseC_comparison.py` 的既有 `gate6` 数字逐字一致。**未写任何文件到 `outputs/ergo_math_phaseC_*`，只读**。
+
+**产物路径**：
+- `src/persona_drift/ergo_math_trajectory.py`（改）
+- `scripts/run_ergo_math_screening.py`（改）
+- `tests/test_ergo_math_trajectory.py`（改，+4 条）
+- `scripts/analyze_ergo_append_comparison.py`（新）
+- `tests/test_analyze_ergo_append_comparison.py`（新，7 条）
+
+**留给 Opus 的判断题**：
+1. G-E1-1 的"全套 CPU 测试通过"这一判据在多会话并发写同一工作目录时无法给出单一可复核数字——是否需要改会话协议（例如每个任务用独立 worktree），还是接受"本任务范围内测试 + 一次带时间戳的全套快照 + 偏离说明"作为等价证据？
+2. `test_logging_setup.py::test_configure_run_logger_writes_config_to_a_file_under_logs_dir` 在全套快照里间歇性失败、孤立运行必过——这是否值得单独立项排查（疑似 loguru sink 未清理导致的跨测试状态泄漏），还是等并发压力消失后视为噪声不予理会？

@@ -1,6 +1,8 @@
+import pytest
+
 from persona_drift.control import ConstantRemindController, ZeroControlController
 from persona_drift.ergo_math_bank import GSM8KShardedItem
-from persona_drift.ergo_math_trajectory import run_ergo_math_trajectory
+from persona_drift.ergo_math_trajectory import ErgoMathTrajectoryConfig, run_ergo_math_trajectory
 
 
 class FakeTokenizer:
@@ -102,3 +104,81 @@ def test_records_item_and_run_metadata_on_every_row():
         assert row["gold_answer"] == entry.gold_answer
         assert row["seed"] == 7
         assert row["trajectory_id"] == "t6"
+
+
+# docs/experiments/two_task_success_plan.md section 2 E1: reset_mode tests.
+
+
+def test_reset_mode_overwrite_wipes_history_to_length_one():
+    agent = FakeChatModel()
+    config = ErgoMathTrajectoryConfig(reset_mode="overwrite")
+    run_ergo_math_trajectory(
+        agent=agent,
+        judge=agent,
+        entry=_entry(),
+        seed=0,
+        trajectory_id="t7",
+        controller=ConstantRemindController(),
+        config=config,
+    )
+    # Existing (byte-for-byte-unchanged) behavior: every reset turn's
+    # agent-facing history is exactly the one consolidated user message.
+    for call_messages in agent.messages_seen:
+        assert len(call_messages) == 1
+        assert call_messages[0]["role"] == "user"
+
+
+def test_reset_mode_append_grows_history_monotonically():
+    agent = FakeChatModel()
+    config = ErgoMathTrajectoryConfig(reset_mode="append")
+    run_ergo_math_trajectory(
+        agent=agent,
+        judge=agent,
+        entry=_entry(),
+        seed=0,
+        trajectory_id="t8",
+        controller=ConstantRemindController(),
+        config=config,
+    )
+    lengths = [len(call_messages) for call_messages in agent.messages_seen]
+    # Every turn appends the consolidated message onto the prior history
+    # (which already grew by the assistant reply), so per-turn history
+    # length must strictly increase, never reset back down to 1.
+    assert lengths == sorted(lengths)
+    assert all(later > earlier for earlier, later in zip(lengths, lengths[1:]))
+    assert lengths[0] == 1
+
+
+def test_reset_mode_overwrite_and_append_produce_same_stimulus_text():
+    agent_overwrite = FakeChatModel()
+    agent_append = FakeChatModel()
+    run_ergo_math_trajectory(
+        agent=agent_overwrite,
+        judge=agent_overwrite,
+        entry=_entry(),
+        seed=0,
+        trajectory_id="t9a",
+        controller=ConstantRemindController(),
+        config=ErgoMathTrajectoryConfig(reset_mode="overwrite"),
+    )
+    run_ergo_math_trajectory(
+        agent=agent_append,
+        judge=agent_append,
+        entry=_entry(),
+        seed=0,
+        trajectory_id="t9b",
+        controller=ConstantRemindController(),
+        config=ErgoMathTrajectoryConfig(reset_mode="append"),
+    )
+    # The consolidated stimulus text itself must not depend on reset_mode --
+    # only where it lands in agent_history differs. Compare each turn's
+    # newest user message (last user-role message on each call).
+    for overwrite_messages, append_messages in zip(agent_overwrite.messages_seen, agent_append.messages_seen):
+        overwrite_stimulus = [m for m in overwrite_messages if m["role"] == "user"][-1]["content"]
+        append_stimulus = [m for m in append_messages if m["role"] == "user"][-1]["content"]
+        assert overwrite_stimulus == append_stimulus
+
+
+def test_invalid_reset_mode_raises_value_error():
+    with pytest.raises(ValueError):
+        ErgoMathTrajectoryConfig(reset_mode="clobber")

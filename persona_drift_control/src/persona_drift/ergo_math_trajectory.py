@@ -73,6 +73,17 @@ def closeness(agent_message: str, gold_answer: str) -> float:
 @dataclass(frozen=True)
 class ErgoMathTrajectoryConfig:
     agent_gen: GenerationConfig = field(default_factory=lambda: GenerationConfig(max_new_tokens=512))
+    # docs/experiments/two_task_success_plan.md section 2 E1: "overwrite" is
+    # the existing behavior (a reset replaces the whole accumulated history
+    # with one consolidated message) and must stay byte-for-byte identical;
+    # "append" keeps the accumulated history and appends the consolidated
+    # message on top of it, so the pre-reset history re-enters the agent's
+    # context instead of being discarded.
+    reset_mode: str = "overwrite"
+
+    def __post_init__(self) -> None:
+        if self.reset_mode not in ("overwrite", "append"):
+            raise ValueError(f"reset_mode must be 'overwrite' or 'append', got {self.reset_mode!r}")
 
 
 def _incremental_stimulus(shard: str) -> str:
@@ -111,7 +122,10 @@ def run_ergo_math_trajectory(
 
         if u_reset:
             stimulus = _consolidated_stimulus(revealed_shards)
-            agent_history = [{"role": "user", "content": stimulus}]
+            if config.reset_mode == "overwrite":
+                agent_history = [{"role": "user", "content": stimulus}]
+            else:  # append
+                agent_history.append({"role": "user", "content": stimulus})
         else:
             stimulus = _incremental_stimulus(entry.shards[turn - 1])
             agent_history.append({"role": "user", "content": stimulus})
@@ -137,6 +151,7 @@ def run_ergo_math_trajectory(
             "agent_message": agent_text,
             "agent_thinking": agent_thinking,
             "u_reset": u_reset,
+            "reset_mode": config.reset_mode,
             "excitation_design": controller.name,
             "run_id": run_id,
             "seed": seed,
