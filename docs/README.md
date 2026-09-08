@@ -206,6 +206,19 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
 
 ## 实验
 
+- **[experiments/two_task_success_plan.md](experiments/two_task_success_plan.md) —
+  ⏳ **当前唯一的活计划**（2026-09-07 立项，**E0 已签字**；Opus 5 裁决 / Sonnet 5 执行）：把
+  "两条线都要正面结果"拆成跑前写定的 S1/S2/S3 三级，然后按信息结构分配资源。**ERGO 线主攻**：
+  五层前提里已有四层站住，唯一没站住的第 0 层（终点被末轮单个动作决定）根因是
+  `ergo_math_trajectory.py:114` 把 reset 实现成**覆盖整个历史**——overwrite 下
+  `fixed_last` 与 `always_reset` 的末轮输出 **116/116 逐字相同**（E0 独立重算，`judge_raw_output`
+  与 `agent_message` 皆然），所以"状态"根本不进入终点。改成**追加**后历史重新进入被控对象，
+  四道预注册闸门（权威保留 / 恒等式打破 / reset 效应依赖 closeness / 控制器不退化成固定臂）
+  决定是否投 Phase C′，GPU 总量约 8 小时。**防御线只给两个 GPU-天**判定换目标模型能否让
+  前提 1–2 成立，闭环不再追。E0 复核（第十二节）补了四处规格缺口：现有
+  `analyze_ergo_phaseC_comparison.py` 算不出任何一道新闸门（`ARM_DIRS` 硬编码）、模式 B 的两个
+  对手臂尚不存在、`forced_last_reset` 的预算路径会让末轮强制动作静默失效、terminal 目标下
+  `repeat_penalty` 与平手规则需预注册。**两条线的 S3 版本已经是可成稿的正文，不是失败。**
 - [experiments/signal_screening_pilot.md](experiments/signal_screening_pilot.md) — 采集前
   信号探针（协议第 7 节的 gate）真实规模作业的状态记录：job ID、怎么查进度、耗时预估、
   作业结束后该做什么。**新开一次对话想知道"之前那个作业现在怎么样了"，看这份文档。**
@@ -390,7 +403,9 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   与 [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
   第十三节。**
 - **[experiments/defense_line_redesign_plan.md](experiments/defense_line_redesign_plan.md) —
-  ⏳ **活计划（防御线）**（2026-09-07 立项，适用 Sonnet 5）：P 判定独立 judge 站得住之后，
+  ✅ **已收口**（2026-09-07 立项，同日 D1/A1/A2/B1 全部跑完）：防御线的后续工作由
+  [two_task_success_plan.md](experiments/two_task_success_plan.md) 第四节（D0–D3 时间盒）接手；
+  本文档第十节的负结果写法仍是 D3 续写的目标。原文：P 判定独立 judge 站得住之后，
   复核"Koopman 要怎么改才可能生效"，测出一条量化结论——**这条线的信息结构不支持闭环**。
   255 条轨迹上：早期观测（前两轮均分）对 late(3–5) 的相关是 **−0.066/+0.041（p=0.29/0.52）**，
   而事先就知道的攻击身份用**留一法**能解释 **57.1%/45.3%** 的 late 方差。**可预测的部分事先
@@ -423,7 +438,9 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   截断砍掉的是帮助的**完整性**不是**发生**。**结论：9.8% 的低成功率是这套攻击对这个模型的
   真实属性，不是测量假象**，截断被排除为混淆，防御线停止投入、按第十节写负结果。
 - **[experiments/measurement_validity_plan.md](experiments/measurement_validity_plan.md) —
-  ⏳ **当前唯一的活计划**（2026-09-07 立项，适用 Sonnet 5）：两条线的全部结果跑完后复核发现，
+  ✅ **已收口**（2026-09-07 立项，同日 P/G1/G4 跑完）：MV 判据与 G4 的结论已并入
+  [two_task_success_plan.md](experiments/two_task_success_plan.md)（0.4 节的预算模式判定法
+  → G-E3-3；7.1 节的 `fixed_last` 臂 → 恒等式基线）。原文：两条线的全部结果跑完后复核发现，
   它们卡在同一个毛病上——**先下结论，没先证明测量有效、设定非退化**。新增一条前置判据 **MV**
   （测量有效性），排在 RC-0..RC-3 之前。防御线的缺口是 judge 从未被外部真值验证过：同一批
   **1905 行**回复上自评与独立 judge 的 exact agreement 只有 **0.622**，且分歧**单向**——自评
@@ -464,7 +481,9 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   4.56×）。ERGO 线现在的产出是三条非负结果，见
   [experiments/ergo_multiturn_reliability_pilot.md](experiments/ergo_multiturn_reliability_pilot.md) G4 节。
 - **[experiments/signal_resolution_plan.md](experiments/signal_resolution_plan.md) —
-  ⏳ **当前唯一的活计划**（2026-09-07 立项，适用 Sonnet 5）：复核 `8dde4b6`（ERGO 终止）时
+  ✅ **已收口**（2026-09-07 立项，同日 F0–F4 跑完）：`closeness` 读出与 0.5 节的四条判据被
+  [two_task_success_plan.md](experiments/two_task_success_plan.md) 的 G-E3-1 逐字沿用（不改阈值）。
+  原文：复核 `8dde4b6`（ERGO 终止）时
   发现**那个终止判定建立在两处测量错误上**——(1) E0 的 RC-3 把 `u_{t+1}` 实现成了 `u_{t+2}`
   （`analyze_ergo_readout_state.py:216-219` 的三元 `zip`），改正后 `u_t=+0.0588, p=0.0296`
   而不是 p=0.659；(2) RC-1 的 rollout 让模型外推 `shard_frac` 这个**确定性外生量**
