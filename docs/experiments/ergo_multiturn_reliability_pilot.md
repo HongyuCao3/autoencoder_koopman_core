@@ -722,3 +722,62 @@ lag-1 自相关 +0.276 → +0.588）——**而可控性的另一半随之塌掉
    性质？两者的修法完全不同。
 2. 若是后者，向上游 Laban et al. 2025（arXiv:2505.06120）/ ERGO（arXiv:2510.14077）的
    prompt 结构靠拢能否恢复 reset 权威——且这种靠拢会不会把"状态"重新洗掉？
+
+---
+
+## R1：把格式指令搬进 system prompt——权威回来了，而且状态没走（2026-09-08）
+
+**一句话结论**：E2/E3 判定的"append 抹掉了 reset 权威"**是我们自己 prompt 结构的产物**。把答案
+格式指令从每轮重复改为 system prompt 只给一次，同一个 append 执行器在同一批 58 个 item 上
+从 `−0.095`（CI 跨 0）变成 **`+0.181`（CI [+0.086, +0.284]，不跨 0）**。**权威与状态这次同时成立。**
+
+### 闸门
+
+三臂 job 15690582 / 15690584 / 15690586，全部 `COMPLETED 0:0`，各 664 行，
+`prompt_profile=upstream`、`reset_mode=append`、`item_id` 集合与 Phase C 相同。
+
+| 闸门 | 判据 | 实测 | 判定 |
+|---|---|---|---|
+| **G-R1-0 实现锁** | legacy 逐字节不变；upstream 侧结构正确 | legacy：**5980/5980** 条 `user_message` 逐字节复现（9 个已有产物目录，零 GPU）。upstream：三臂 664/664 行 `prompt_profile=upstream`，**含格式指令的 user_message = 0**，臂名 `*_up_append` | **通过** |
+| **G-R1-1 机制闸门** | `always_reset_up` 末轮回复中位 ≥ 200 字符且 ≤80 字符占比 ≤ 0.30 | **563 字符 / 0.00**（legacy 同臂为 18 / 0.91） | **通过** |
+| **G-R1-2 权威闸门** | `always_reset_up − zero_control_up` CI 下界 > 0 | **+0.1810**，CI **[+0.0862, +0.2845]** | **通过** |
+| **G-R1-3 上游排序** | `fixed_last > always_reset > zero`，两两 CI 下界 > 0 | 实得 **`always_reset` > `fixed_last` > `zero`**：`fixed_last − always_reset` = **−0.0776** CI [−0.1638, +0.0000] | **不通过**（排序与上游相反） |
+| **G-R1-4 记录项** | — | C2 prompt token 最大 **2395**，三臂 `n_turns_exceeding_limit=0`；`attempt_rate` 三臂**皆 1.0000** | — |
+
+Opus 用独立重写、不复用项目函数的代码复算了 G-R1-2/G-R1-3 的三个差值，逐位一致。
+
+### 臂均值（`final_turn_success`）
+
+| 臂 | legacy profile | **upstream profile** |
+|---|---:|---:|
+| `zero_control`（append） | 0.3276 | **0.5776** |
+| `always_reset`（append） | 0.2328 | **0.7586** |
+| `fixed_last`（append） | 0.5776 | **0.6810** |
+| `always_reset`（overwrite，参照） | 0.7759 | — |
+
+`always_reset_up` 的 **0.7586 已经逼近 overwrite 的 0.7759 天花板**，而它保留了全部历史。
+
+### 状态没有被换掉
+
+| 量 | 值 | 读作 |
+|---|---|---|
+| 末轮 `agent_message` 逐字相同（`always_reset_up` vs `fixed_last_up`） | **2/116 = 0.017** | 历史真的进了终点 |
+| 末轮 `judge_raw_output` 逐字相同 | 79/116 = 0.681 | 抽取后的数字会撞，但仍 < 0.90 |
+| overwrite legacy 的同一对 | **116/116 = 1.000** | G4 的恒等式 |
+
+**权威（+0.181，CI 不跨 0）与状态（`agent_message` 2/116）在同一个臂上同时成立。**
+
+### 对本文档「E2–E3」一节的更正
+
+那一节写的"执行器要同时满足的两个性质由同一个自由度控制、**构成互斥**"——**这个推广被证伪了**。
+E2/E3 的测量本身没错（在 legacy prompt 结构下逐条复现），错的是把它读成 `reset_mode` 这个自由度
+的性质。互斥是**每轮重复的答案格式指令**造成的：它在 append 下变成一个教模型简洁作答的 k-shot
+示范，而 reset 的权威恰恰来自"逼模型重新推导一遍"。指令只给一次，权威就回来了。
+
+**S3 那一节的结论要改写，`article/PAPER_EXECUTION_PLAN.md` 的 §1.3 第 5 句随之要改第二次。**
+不改 E2/E3 的任何数字。
+
+### 产物
+
+`outputs/ergo_upC_{zero_control,always_reset,fixed_last}/`；闸门 JSON 在
+`scratchpad/r1_gates.json`、`r1_dual.json`。
