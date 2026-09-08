@@ -549,3 +549,40 @@ possible to calcula...」。这正是 Laban 七分类里的 hedging / discussion
 重算 G-E3-1（读出闸门 RC-0..3）与 G-E3-2（b₂ 与它的 overwrite 负对照）。**这不是把旧闸门翻案**
 ——旧判定在 legacy 数据上仍然成立；这是在一个已修正的 harness 上**重新提出同一个问题**，
 判据逐字沿用、不改阈值。R1.5 的结果决定 ERGO 线还有没有 S1/S2 可谈。
+
+---
+
+## 十六、R1.5 · upstream profile 下的辨识数据与状态依赖（1 GPU 臂，约 1 小时）
+
+**为什么**：15.4 节。b₂ 上一次是在 legacy prompt 结构的 Phase B′ 上测的，那份数据现在已知被
+同一个混淆污染（`always_reset_append` 末轮 91% 是裸的 `Current answer: X`）。**R1.5 是在修正后的
+harness 上重新问同一个问题，判据逐字沿用、不改阈值。** 旧判定在 legacy 数据上仍然成立，不翻案。
+
+### 16.1 臂
+
+照抄 `environment/run_ergo_appendB_random_excite.sbatch`，只改 job-name / 日志 /
+`--prompt-profile upstream` / `--output-dir`：60 item（`--item-rng-seed 2`，与 Phase B/B′ 同一批）
+× seeds 0 1，`--controller random_excite --random-excite-p 0.5 --reset-mode append`，
+输出 `outputs/ergo_upB_random_excite/`。**`--time 06:00:00`**（upstream 回复更长，G-R1-1 实测
+末轮中位 563 字符 vs legacy 的 18，生成显著更慢——R1 三臂实际用了 37–44 分钟，legacy append 是
+9–23 分钟）。
+
+### 16.2 闸门（全部逐字沿用 E3，不改阈值）
+
+| 闸门 | 判据 | 不过 → |
+|---|---|---|
+| **G-R15-0 采集** | `COMPLETED 0:0`；666 行；`item_id` 集合与 Phase B 相同；每个 `shard_frac` 十等分箱内两种动作都出现 | 报告，不自行重采 |
+| **G-R15-1 读出** | `closeness` 的 RC-0..3 四条全过（判据沿用 `signal_resolution_plan.md` 0.5 节） | 报告；RC-3 是 legacy 下失效的那一条，它是否恢复是本步的主要看点 |
+| **G-R15-2 状态依赖** | 交互回归 `c_{t+1} = a·c_t + b0·u_{t+1} + b2·u_{t+1}·c_t + g·shard_frac + const` 的 **b₂ 的 95% CI 不含 0 且符号为负**，**且** overwrite 负对照上 b₂ 不显著 | **ERGO 线停在 S3**，写"reset 效应与状态无关"，不调参不换臂 |
+| **G-R15-3 记录项** | a / b0 / g 与 legacy Phase B′、overwrite Phase B 的三方对照；`attempt_rate` | 只记录 |
+
+**负对照沿用 §12.6 的规定**：同一脚本先在已有的 overwrite Phase B（`outputs/ergo_math_phaseB_random_excite`，
+666 行，legacy profile）上跑一遍，b₂ 必须不显著；显著则回归在捡伪影，G-R15-2 不能作为状态依赖的证据。
+该负对照 2026-09-08 已跑过两次（45-item 与全 60-item），两次都通过，见
+`backup/two_task_success_plan.md` 13.5——**不重跑，直接引用**。
+
+### 16.3 与 R4 的关系
+
+R1.5 与 R4（第六节，模型对照）**无依赖，可并行提交**。R4 用 `Qwen/Qwen3-4B-Instruct-2507`
+重跑 R1 的三个臂，输出 `outputs/ergo_upC_alt_*`，**只出记录项 G-R4-1，不进主结果**
+（失败模式 6 的同构：不做跨模型配对比较，只看排序与回复长度分布是否一致）。
