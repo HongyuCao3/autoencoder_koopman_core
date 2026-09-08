@@ -230,6 +230,25 @@ sbatch 照抄 `environment/run_ergo_appendC_*.sbatch`，只改 job-name / 日志
 `legacy`（全轮打分，与全部历史数字可比）与 `upstream`（只给 attempt 打分）。
 **任何单口径的汇报都算偏离**（失败模式 23）。
 
+**规格补丁 D1（Opus，2026-09-08）· "只给 attempt 打分"在变长轨迹上是歧义的，此处写死。**
+上游按对话记分、并跟踪最后一次 answer attempt；我们的主指标是**每条轨迹自己的末轮**。
+若末轮不是 attempt，有两种读法，**必须选一种并写死**：
+
+| 读法 | 做法 | 裁决 |
+|---|---|---|
+| **(a) 保分母** | 回退到**该轨迹最后一个被判为 attempt 的轮次**的分数；全程无 attempt → 记 **0** | ✅ **采用** |
+| (b) 缩分母 | 把末轮非 attempt 的轨迹整条丢掉 | ❌ **不采用** |
+
+**理由**：(b) 会让每个臂的 n 不同，而"产生 attempt 的比例"本身就是臂间差异最大的量
+（`always_reset_append` 末轮 91% 是 `Current answer: 12`）——按它筛样本，等于用一个与结果强相关的
+量做选择，配对也当场断掉。(a) 保住 58 个配对 item、保住 bootstrap 的配对结构，且与上游"跟踪最后
+一次 answer attempt"的做法同构。
+
+因此 `analyze_ergo_dual_metric.py` 必须输出三列而不是两列：
+`final_turn_success`（legacy 主指标，不变）、`final_attempt_success`（upstream 口径，按 (a)）、
+以及 `attempt_rate`（该臂末轮是 attempt 的轨迹占比）。**第三列是解释前两列差异的必需品**，
+不是可选诊断：两个口径的差全部来自它。
+
 ### 4.2 闸门
 
 | 闸门 | 判据 | 不过 → |
