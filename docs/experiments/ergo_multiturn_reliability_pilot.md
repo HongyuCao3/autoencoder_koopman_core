@@ -585,3 +585,140 @@ python scripts/analyze_ergo_append_comparison.py \
 **留给 Opus 的判断题**：
 1. G-E1-1 的"全套 CPU 测试通过"这一判据在多会话并发写同一工作目录时无法给出单一可复核数字——是否需要改会话协议（例如每个任务用独立 worktree），还是接受"本任务范围内测试 + 一次带时间戳的全套快照 + 偏离说明"作为等价证据？
 2. `test_logging_setup.py::test_configure_run_logger_writes_config_to_a_file_under_logs_dir` 在全套快照里间歇性失败、孤立运行必过——这是否值得单独立项排查（疑似 loguru sink 未清理导致的跨测试状态泄漏），还是等并发压力消失后视为噪声不予理会？
+
+---
+
+## E2–E3：append 执行器下的闭环——第 0 层修好了，第 2 层塌了（2026-09-08）
+
+**一句话结论**：把 `ergo_math_trajectory.py:114` 的 reset 从"覆盖历史"改成"追加历史"，
+`defense_line_redesign_plan.md` §12 分层表里唯一不成立的第 0 层（终点被末轮单个动作决定）
+**确实被修好了**——状态持久性翻倍、G4 那条 116/116 恒等式掉到 30/116。**同一改动把第 2 层
+（reset 权威）抹掉了**：reset 不再推动读出，也不再推动终点。两个性质由同一个自由度控制，
+在这个设定里互斥。按预注册判据 **ERGO 线定格 S3**（G-E2-1、G-E3-1、G-E3-2 三道不过）。
+
+### 执行摘要
+
+四个 GPU 臂于 2026-09-07 夜间提交、全部 `COMPLETED 0:0`（job 15669504/05/06 三个 append Phase C′
+臂 + 15669523 的 append Phase B′）。E2/E3 的全部闸门于 2026-09-08 在 CPU 上算出，Opus 用
+独立重写、不复用项目函数的代码复算过 G-E2-1 与 G-E2-2，数字逐位一致。
+
+按 §1.2 的两会话分离协议，本轮执行与裁决同在一个 Opus 会话完成（用户 2026-09-08 明确批准）。
+分析脚本是 E1 已过单测的确定性 CLI，重算空间有限；记录在此以免被读成纪律松动。
+
+### E2 闸门（58 held-out item × seeds 0 1，配对 bootstrap 10000，`default_rng(0)`）
+
+| 闸门 | 判据 | 实测 | 判定 |
+|---|---|---|---|
+| **G-E2-1 权威保留** | `always_reset_append − zero_control` CI 下界 > 0 | **−0.0948**，CI [−0.2328, **+0.0431**] | **不过** |
+| **G-E2-2 恒等式打破** | 末轮 `judge_raw_output` 逐字相同占比 < 0.90 | **30/116 = 0.259**（`agent_message` 16/116 = 0.138） | **通过** |
+| G-E2-3 记录项 | 只记录 | `fixed_last_append − fixed_t2_append` = +0.259 [+0.129, +0.388]；`always_reset_append − fixed_last_append` = −0.345 [−0.466, −0.224] | — |
+| **C2 上下文护栏** | prompt token 最大值 < 上下文上限 | **2960**（`always_reset_append`, turn 7），三臂 `n_turns_exceeding_limit=0` | **通过，截断混淆排除** |
+
+`item_id` 集合三臂与复用的 `zero_control` 逐一相同（`item_id_sets_equal=true`，
+`trajectory_id_intersection=116`，失败模式 3 的断言在位）。
+
+臂均值（`final_turn_success`）：
+
+| 臂 | overwrite | append |
+|---|---:|---:|
+| `zero_control` | 0.328 | 同一份数据（u≡0，与 `reset_mode` 无关） |
+| `always_reset` | 0.776 | **0.233** |
+| `fixed_last` | 0.776 | 0.578 |
+| `fixed_t2` | 0.207 | 0.319 |
+
+### E3 闸门（Phase B′，60 item × seeds 0 1，`--random-excite-p 0.5`）
+
+**G-E3-0 采集检查：通过。** 666 行（与 overwrite Phase B 逐行同数）、`item_id` 集合与 Phase B
+相同（60）、`reset_mode` 全为 `append`、动作分布 335/331（p̂=0.503）、`shard_frac` 十等分箱
+逐箱两种动作都出现。
+
+**G-E3-1 读出闸门：不过。** `closeness` 的 RC-3 失效：
+
+| 判据 | overwrite Phase B | append Phase B′ |
+|---|---|---|
+| RC-1 预测技巧 | skill=0.175，20/20 split | skill=0.123，16/20 split → **不过** |
+| RC-2 状态持久性（lag-1 去均值） | +0.276，p=5.6e-11 | **+0.588，p=4.6e-52** → 过，且强得多 |
+| RC-3 动作耦合（`u_t` 系数） | +0.054，p=5.3e-4 | **+0.020，p=0.145** → **不过** |
+
+**G-E3-2 状态依赖：不过。** 交互回归 `c_{t+1} = a·c_t + b0·u_{t+1} + b2·u_{t+1}·c_t + g·shard_frac + const`，
+全 60 item、`n_pairs=546`、1000 次按 item bootstrap：
+
+| 系数 | overwrite（§13.5 的负对照） | append Phase B′ |
+|---|---|---|
+| a（自回归） | +0.352 [+0.107, +0.594] | **+0.658 [+0.341, +0.855]** |
+| b0（reset 基础效应） | +0.066 [−0.071, +0.195] | −0.017 [−0.119, +0.089] |
+| **b2（效应 × 状态）** | −0.063 [−0.286, +0.178] | **+0.054 [−0.113, +0.222]** |
+| g（信息累积斜坡） | +0.449 [+0.372, +0.521] | +0.289 [+0.209, +0.379] |
+
+b2 跨 0，**且点估计符号为正**——与预注册要求的负号相反。判据要求"CI 不含 0 且符号为负"，
+两条都不满足。
+
+**G-E3-3 预算模式：路由到模式 A，但已无意义。** 按"最后一次 reset 之后还剩几轮"分层：
+
+| | 剩 0 轮 | 其余 | 差 | Spearman(剩余轮数, 成功率) |
+|---|---:|---:|---:|---|
+| overwrite Phase B | 0.804 (n=56) | 0.475 (n=61) | **+0.328** | **−0.421，p<1e-5** |
+| append Phase B′ | 0.429 (n=56) | 0.377 (n=61) | +0.052 | −0.054，**p=0.56** |
+
+差 0.052 < 0.10 且 p=0.56 > 0.10，落在模式 A 区间、不在阈值近失区间，所以 §12.4 的"停下报告"
+条款未触发。但 G-E3-2 已不过，E5 不跑，路由结果没有下游用途。
+
+**E3 Step 5（离线回放准入）未执行。** 它的唯一用途是给 E5 放行，E5 已被 G-E3-2 关掉。
+
+### 机制：让历史进入终点的那一行，和让 reset 触发重新求解的那一行，是同一行
+
+append 下 reset 把合并题面追加到一个**已经含有模型自己旧答案**的历史后面。模型照抄旧答案，
+不再重推：
+
+| 臂 | 末轮回复中位字符数 | 末轮 ≤80 字符占比 |
+|---|---:|---:|
+| `always_reset` overwrite | 646 | 0.09 |
+| `fixed_last_append` | 298 | 0.45 |
+| `always_reset_append` | **18** | **0.91** |
+
+`always_reset_append` 的典型末轮回复逐字是 `Current answer: 12`。overwrite 下 reset 把历史清空，
+模型只看见合并题面，必须从头解一遍——**那次"从头解"才是 reset 的权威的来源，不是题面被重述
+这件事本身**。append 保留了历史，模型于是复用历史里的答案，reset 退化成一句被忽略的重复。
+
+这解释了全部四个失效：G-E2-1（`always_reset_append` 0.233 < `zero_control` 0.328，重复 reset
+把"复读旧答案"的对话格式教给了模型）、G-E3-1 的 RC-3、G-E3-2 的 b0/b2、以及末轮优势从
++0.328 掉到 +0.052。
+
+### 这条负结果比 G4 强
+
+G4 的结论是"设定退化：终点被末轮单个动作构造性决定"。本轮做的是**对那个退化的干预实验**：
+根因定位到一行代码，改掉它，退化确实消失（恒等式 1.000 → 0.259，a 从 +0.352 → +0.658，
+lag-1 自相关 +0.276 → +0.588）——**而可控性的另一半随之塌掉**。执行器要同时满足两个性质，
+"状态进入终点"与"动作推得动读出"，在这个设定里由同一个自由度控制，构成互斥。
+
+这是带反事实、双向都测到的负结果，`article/PAPER_EXECUTION_PLAN.md` 的 §1.3 第 5 句要的正是
+这种内容：三个前提可检验，本文给出检验程序，并展示一处"改一行让前提 0 成立"的干预如何让
+前提 2 失效。
+
+### 产物
+
+- `scratchpad/e2_gates.json`（G-E2-1/2/3）、`c2_context.json`（C2）
+- `scratchpad/closeness_readout_appendB.json`（G-E3-1）
+- `scratchpad/interaction_appendB_all60.json`（G-E3-2）
+- 轨迹：`outputs/ergo_appendC_{always_reset,fixed_last,fixed_t2}/`、`outputs/ergo_appendB_random_excite/`
+
+### 偏离
+
+1. **`analyze_ergo_closeness_readout.py` 无 CLI**，把 `ROWS_PATH`/`ENTROPY_PATH`/`OUT_PATH`
+   硬编码在模块常量上（与 B1 同一类问题）。E3 Step 2 用一个 wrapper 改模块常量运行，
+   **未改脚本文件**；entropy 两列跳过（append 目录无 `entropy_readout.json`，且熵读出族已被
+   F 系列否决），候选表因此是 5 行而非 7 行。RC-0..3 与熵列无关。
+2. **`analyze_ergo_append_context_length.py` 的 docstring 有一处错误声明**：它说重建对
+   `overwrite` 与 `append` 两种模式都成立。对 overwrite 不成立——overwrite 下 reset 把
+   `agent_history` 截成单条消息，而脚本按"逐轮累积 rows 1..t−1"重建，会系统性高估。用它跑
+   overwrite 臂得到的 3282 token 是伪影，不可引用。C2 只判 append 臂，闸门不受影响。
+   **待修**。
+3. **执行与裁决同会话**（见上文执行摘要）。
+
+### 留给下一步的判断题
+
+1. 失效被归因到"模型照抄历史里的旧答案"。这是 Qwen3-4B 的性质，还是这个 harness 对上游
+   协议的简化（固定节奏揭示、无 user-simulator、无"是否在尝试作答"分类、无 LLM judge）的
+   性质？两者的修法完全不同。
+2. 若是后者，向上游 Laban et al. 2025（arXiv:2505.06120）/ ERGO（arXiv:2510.14077）的
+   prompt 结构靠拢能否恢复 reset 权威——且这种靠拢会不会把"状态"重新洗掉？
