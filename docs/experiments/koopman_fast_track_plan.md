@@ -44,7 +44,38 @@ Koopman/DMDc 需要的量（详见本文档第五节）。结论是**停止再�
 | `environment/run_defense_excite_qwen4b.sbatch` | ✅ 已写好，命令行已用真实 argparse 干跑验证（controller=random_excite, 100 个 attack_id, seeds=[0], max_new_tokens=1024） |
 | `environment/run_defense_rejudge_d1_qwen4b.sbatch` | ✅ 已写好 |
 | K2.1 null 补丁 | ✅ 已落地（`--n-folds`，默认 0）。**回归检验**：按已提交报告的原始参数（`--mu 2`）重跑，`arx` / `richer_abs_sign` / `controllability_arx` / 切分全部逐字节相同 |
-| GPU 作业 | ✅ **已按用户指令提交**（2026-09-08）：K1 = job **15696221**（work1，8h 上限），K1.2 = job **15696222**（work1，1h 上限）。提交前逐条核过不覆盖任何已有产物 |
+| GPU 作业 | ✅ 已按用户指令提交（2026-09-08）。首轮两个都没活下来，根因与修法见 0.3 |
+| 跨会话接续 | ✅ `scripts/fast_track_status.py` —— **任何新会话的唯一入口**，见 0.4 |
+
+### 0.3 首轮提交的两次失败与根因（2026-09-08）
+
+| job | 结局 | 根因 | 修法 |
+|---|---|---|---|
+| 15696221（K1） | `PREEMPTED` @ 52s，随后被调度器**自动重排并重新运行** | work1 的抢占，与本计划无关 | 加 `#SBATCH --requeue`。安全性有依据：`adversarial_screening.py:106` 按已完成的 `trajectory_id` 续跑，且控制器工厂是**逐轨迹按自己的 seed** 构造的（同文件 45–60 行注释明写这就是为了让 `random_excite` 续跑抽到与不中断时相同的序列） |
+| 15696222（K1.2） | `FAILED` exit 1 @ 66s | **两个作业并发跑 `pip install -e .`，撞在同一个共享环境上**，一个把 `__editable__.persona_drift_control-0.1.0.pth` 删到一半，另一个报 `OSError: [Errno 2]` | 两个 sbatch 的 pip 都用 `flock /scratch/hcao2/envs/.locks/persona_drift_pilot.editable.lock` 串行化 |
+
+环境已核查无损（`persona_drift` 仍从仓库源码导入，`.pth` 已恢复）。
+**这是全仓库范围的隐患，不只是本计划**：`environment/` 下其它 sbatch 都还是裸的
+`pip install -e . -q`，同时投多个作业就可能复现。
+
+K1.2 已于 K1 过了 pip 阶段之后重投：job **15696281**。
+
+### 0.4 跨会话接续：唯一入口
+
+新会话不要从本文档的叙述或上一轮总结去重建进度，跑这个：
+
+```bash
+export PATH=/scratch/hcao2/envs/persona_drift_pilot/bin:$PATH
+cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
+python scripts/fast_track_status.py
+```
+
+它按 **job name**（不是 job id）查 slurm，所以重投会自动认出来；并直接从产物树上算
+G-K1 与 K2 的闸门，因此不会像一段写死的状态那样过期。它只打印一条 `NEXT`。
+
+**一个必须由脚本来判断、不能靠人记的点**：这里的调度器会把被抢占的作业用**同一个 job
+id** 重排，所以"还没有输出"不等于"死了"——脚本先看状态再决定要不要建议重投，避免第二个
+作业写进同一个输出目录。
 
 ### 0.1 唯一的前置条件：读出量程（已满足）
 
@@ -291,8 +322,8 @@ persona-drift 的 probe-then-decide 时序，**不是 `attack_trajectory.py` 的
 
 | job | 内容 | 日志 |
 |---|---|---|
-| **15696221** | K1 激励臂，~4.5h 预期 | `environment/slurm_logs/defense-excite-qwen4b-15696221.out` |
-| **15696222** | K1.2 离线独立 rejudge，~0.5h 预期 | `environment/slurm_logs/defense-rejudge-d1-qwen4b-15696222.out` |
+| **15696221** | K1 激励臂（抢占后自动重排，仍在跑），~4.5h 预期 | `environment/slurm_logs/defense-excite-qwen4b-15696221.out` |
+| ~~15696222~~ → **15696281** | K1.2 离线独立 rejudge（首投因 pip 竞态失败，见 0.3），~0.5h 预期 | `environment/slurm_logs/defense-rejudge-d1-qwen4b-15696281.out` |
 
 K1 回来后先过 G-K1（`COMPLETED 0:0`；500 行；`attack_id` 集合与 `d1_screen_qwen4b` 相同；
 `u_remind` 均值 ∈ [0.40, 0.60]；reminded 行 ≥ 200；每轮 sd > 0），再跑 K2。

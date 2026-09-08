@@ -33,7 +33,14 @@ cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
 
 nvidia-smi -L || true
 
-python -m pip install -e . -q
+# The shared env at /scratch/hcao2/envs/persona_drift_pilot is ONE directory for
+# every job, and `pip install -e .` rewrites __editable__*.pth in it. Two jobs
+# submitted together therefore race and one dies with
+# "OSError: [Errno 2] ... __editable__.persona_drift_control-0.1.0.pth"
+# (that is exactly how job 15696222 failed on 2026-09-08). flock serialises it.
+mkdir -p /scratch/hcao2/envs/.locks
+flock /scratch/hcao2/envs/.locks/persona_drift_pilot.editable.lock \
+  python -m pip install -e . -q
 python scripts/rejudge_safety_runs.py --device cuda \
   --arm-dir outputs/d1_screen_qwen4b \
   --manifest-path outputs/koopman_case_study/rejudge_manifest_d1_screen_qwen4b.json

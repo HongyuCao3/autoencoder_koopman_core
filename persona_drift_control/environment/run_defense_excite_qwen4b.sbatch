@@ -5,6 +5,7 @@
 #SBATCH --time 08:00:00
 #SBATCH --gpus a100:1
 #SBATCH --output /home/hcao2/autoencoder_koopman_core/persona_drift_control/environment/slurm_logs/defense-excite-qwen4b-%j.out
+#SBATCH --requeue
 
 # K1 of docs/experiments/koopman_fast_track_plan.md: the open-loop excitation
 # arm on the d1 attack pool. This is NOT a pre-experiment -- it is the Koopman
@@ -37,7 +38,14 @@ cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
 
 nvidia-smi -L || true
 
-python -m pip install -e . -q
+# The shared env at /scratch/hcao2/envs/persona_drift_pilot is ONE directory for
+# every job, and `pip install -e .` rewrites __editable__*.pth in it. Two jobs
+# submitted together therefore race and one dies with
+# "OSError: [Errno 2] ... __editable__.persona_drift_control-0.1.0.pth"
+# (that is exactly how job 15696222 failed on 2026-09-08). flock serialises it.
+mkdir -p /scratch/hcao2/envs/.locks
+flock /scratch/hcao2/envs/.locks/persona_drift_pilot.editable.lock \
+  python -m pip install -e . -q
 
 # --attack-ids is nargs="+" (scripts/run_defended_screening.py:84) and
 # d1_attack_ids.txt is one whitespace-separated line of 100 ids, so $(cat ...)
