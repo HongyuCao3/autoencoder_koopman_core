@@ -1,6 +1,6 @@
 # 执行计划：Koopman 快车道（K1–K4）——一个激励臂直接进建模
 
-**状态**：⏳ 已就绪，**等待提交 K1**（2026-09-08）。**尚未取代**
+**状态**：🏃 **K1 / K1.2 已提交，运行中**（2026-09-08）。**尚未取代**
 [`defense_line_redesign_plan.md`](defense_line_redesign_plan.md)。
 K1/K1.2 的 sbatch 已写好、K2 的 null 补丁已落地并通过回归检验（0.2 节），**GPU 作业未提交**。
 **适用智能体**：Sonnet 5。
@@ -44,7 +44,7 @@ Koopman/DMDc 需要的量（详见本文档第五节）。结论是**停止再�
 | `environment/run_defense_excite_qwen4b.sbatch` | ✅ 已写好，命令行已用真实 argparse 干跑验证（controller=random_excite, 100 个 attack_id, seeds=[0], max_new_tokens=1024） |
 | `environment/run_defense_rejudge_d1_qwen4b.sbatch` | ✅ 已写好 |
 | K2.1 null 补丁 | ✅ 已落地（`--n-folds`，默认 0）。**回归检验**：按已提交报告的原始参数（`--mu 2`）重跑，`arx` / `richer_abs_sign` / `controllability_arx` / 切分全部逐字节相同 |
-| GPU 作业 | ❌ **未提交**（§1.2 第 6 条） |
+| GPU 作业 | ✅ **已按用户指令提交**（2026-09-08）：K1 = job **15696221**（work1，8h 上限），K1.2 = job **15696222**（work1，1h 上限）。提交前逐条核过不覆盖任何已有产物 |
 
 ### 0.1 唯一的前置条件：读出量程（已满足）
 
@@ -287,10 +287,12 @@ persona-drift 的 probe-then-decide 时序，**不是 `attack_trajectory.py` 的
 
 **到"能不能做真 Koopman"这个问题有答案为止：1 个 GPU 臂 + 分钟级 CPU。**
 
-提交命令（**等用户下令**）：
+提交记录（2026-09-08，用户指令）：
 
-```bash
-cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
-sbatch environment/run_defense_excite_qwen4b.sbatch        # K1，~4.5h
-sbatch environment/run_defense_rejudge_d1_qwen4b.sbatch    # K1.2，并行，~0.5h
-```
+| job | 内容 | 日志 |
+|---|---|---|
+| **15696221** | K1 激励臂，~4.5h 预期 | `environment/slurm_logs/defense-excite-qwen4b-15696221.out` |
+| **15696222** | K1.2 离线独立 rejudge，~0.5h 预期 | `environment/slurm_logs/defense-rejudge-d1-qwen4b-15696222.out` |
+
+K1 回来后先过 G-K1（`COMPLETED 0:0`；500 行；`attack_id` 集合与 `d1_screen_qwen4b` 相同；
+`u_remind` 均值 ∈ [0.40, 0.60]；reminded 行 ≥ 200；每轮 sd > 0），再跑 K2。
