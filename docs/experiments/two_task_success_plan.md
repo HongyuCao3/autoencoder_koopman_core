@@ -16,6 +16,7 @@
 > 7. 环境：`export PATH=/scratch/hcao2/envs/persona_drift_pilot/bin:$PATH`，工作目录 `/home/hcao2/autoencoder_koopman_core/persona_drift_control`。
 > 8. 每个任务完成后按第八节格式汇报，数字照抄带 CI；**Opus 独立重算后才算数**。
 > 9. **每个会话除本任务一节外，必读第十二节**（E0 复核）。第十二节改写了 E1/E2/E3/E4/E5 的部分规格；只读任务节会漏掉 B1（分析器）与 B3（`forced_last_reset` 的预算路径），两者都会让作业提交后算不出闸门。
+> 10. **禁止仓库级破坏性 git 操作**：`git stash`、`git clean`、`git checkout -- .`、`git reset --hard` 一律不许用。多个会话共享同一个工作树，这些命令会连带清掉别人**未跟踪**的新文件。只允许 `git add <明确列出的文件>`、`git diff`、`git status`、`git show`。（E1 会话触发过一次 `git stash`，本次未造成丢失，但下次不一定。）
 
 ---
 
@@ -140,7 +141,9 @@ $$
 
 直觉：自适应能赢的前提是"reset 的效果取决于现在卡得多深"，$b_2$ 就是这一项。式中 $c_t$ 是第 $t$ 轮的 closeness，$u_{t+1}$ 是下一轮是否 reset（`contemporaneous_v=True` 的语义），$b_0$ 是 reset 的基础效应，$b_2$ 是效应随 closeness 的变化，$g$ 是信息累积斜坡。复用 `analyze_state_action_interaction.py` 的回归骨架（防御线 Phase H 用过），按 item 做 1000 次 bootstrap。**新脚本落在 `scripts/analyze_ergo_state_action_interaction.py`**（不改防御线那个：它读 `y_probe`，这里读 `closeness`），带一条在合成数据上恢复已知 $b_2$ 的单测。
 
-**闸门 G-E3-2 状态依赖**：$b_2$ 的 95% CI 不含 0，且符号为负（越接近答案 reset 越没用）。不过 → 最优策略仍是常数规则，**ERGO 线停在 S3**，写"reset 效应与状态无关"。
+**负对照（E0 加，2026-09-07）**：同一脚本先在**已有的 overwrite Phase B 数据**（`outputs/ergo_math_phaseB_random_excite/`，666 行）上跑一遍。overwrite 下 reset 覆盖整个历史、状态可证不进入终点，所以 $b_2$ **应当不显著**。**若 overwrite 上 $b_2$ 已经显著，说明这个回归在捡伪影，G-E3-2 就不能作为"状态依赖"的证据**，届时先修回归再谈闸门。零成本、用已有数据、不同数据集，不构成对 append 结果的偷看。
+
+**闸门 G-E3-2 状态依赖**：$b_2$ 的 95% CI 不含 0，且符号为负（越接近答案 reset 越没用），**且上面那条负对照在 overwrite 上不显著**。不过 → 最优策略仍是常数规则，**ERGO 线停在 S3**，写"reset 效应与状态无关"。
 
 **Step 4 · 预算模式判定**（CPU）——照 `measurement_validity_plan.md` 0.4 节的方法，在 Phase B′ 数据里按"reset 之后还剩几轮"分层看最终轮成功率：
 
@@ -187,7 +190,7 @@ $$
 | `zero_control` | 复用 | 复用 | 0 |
 | `always_reset_append` | 复用 E2 | 复用 E2 | T 次（**不是同代价对手**，只作权威参照） |
 | `fixed_last_append` | 复用 E2（**同代价**） | 复用 E2（**更便宜的参照**，1 次） | 1 |
-| 固定日程（**P2 对手**） | `fixed_t1..t4_append` | `fixed_t_and_last_append`，t=1..4 | = k |
+| 固定日程（**P2 对手**） | `fixed_t1..t4_append` | `fixed_t_and_last_append`，**t=1..3**（13.3 改判：t=4 在 12/58 个 `num_shards=4` 的 item 上退化成 1 次 reset，不再是同代价） | = k |
 | 随机等代价（**P1 对手**） | `randsched_p100_append` | `randsched_t_and_last_append` | = k |
 | **被测臂** | `mpc_terminal_pad_append`（k=1） | `mpc_terminal_forcedlast_pad_append`（k=2） | = k |
 | 消融（可选，Opus 定） | `mpc_sum_append` | 同 | = k |
@@ -242,8 +245,8 @@ GPU 总量约 8 小时，全部在 9/12 前出结果，留 6 天进论文。**E4
 
 | 臂 | 攻击 | 模型 | 规模 |
 |---|---|---|---|
-| `screen_qwen4b` | SafeMTData 里**未用过的** 100 条（`default_rng(0)` 从 600 中剔除已用 40 条后抽） | Qwen3-4B | 100 × 1 seed × 5 轮，`--agent-max-new-tokens 1024` |
-| `screen_alt` | 同 100 条 | 备选目标模型（Q3：Llama-3.1-8B-Instruct 或 Qwen2.5-7B-Instruct） | 同 |
+| `screen_qwen4b` | SafeMTData 里**未用过的** 100 条——排除集是**经验并集 79 条**（不是原文写的 40，那个数不存在；见 12.8），在剩余 521 条上**按 category 比例分层**、`default_rng(0)` 抽取，落盘 `conf/experiment/d1_attack_ids.txt` | Qwen3-4B | 100 × 1 seed × 5 轮，`--agent-max-new-tokens 1024` |
+| `screen_alt` | 同 100 条 | **`Qwen/Qwen3-4B-Instruct-2507`**（Q3 改判，见 12.6；原定的 Llama-3.1-8B-Instruct 与 Qwen2.5-7B 都不在 `/scratch/hcao2/hf_cache/hub/`，Llama 还需 gated 授权 + HF token） | 同 |
 
 零控制、无 judge 依赖。跑完各抽 late(3,4,5) 的 60 行盲标（P 协议，两遍，加 5 拒答对照 + 5 重复），得每个组合的 assisted 率与 Wilson CI。
 
@@ -313,7 +316,7 @@ GPU 总量约 8 小时，全部在 9/12 前出结果，留 6 天进论文。**E4
 |---|---|---|---|
 | Q1 | append 的具体形式：(a) 只追加合并题面；(b) 追加合并题面 + 一句"忽略你此前的尝试，重新求解" | (a) | **(a)**，同意，理由如起草：一次只动一个执行器变量，(b) 会让 E2 不过时无法归因 |
 | Q2 | 主指标仍用 `final_turn_success`，还是换 turn≥3 的 `closeness` 均值 | 保留 `final_turn_success` | **保留**，但把依赖关系写显：它作为主指标**只在 G-E2-2 通过的条件下**成立。G-E2-2 不过则 E3–E5 全部不跑（已写进 E2 一节） |
-| Q3 | D1 的备选目标模型 | Llama-3.1-8B-Instruct | **Llama-3.1-8B-Instruct**，同意 |
+| Q3 | D1 的备选目标模型 | Llama-3.1-8B-Instruct | ~~Llama-3.1-8B-Instruct~~ → **改判为 `Qwen/Qwen3-4B-Instruct-2507`**（2026-09-07，用户批准）。理由见 12.6：Llama 不在本地缓存且是 gated repo、本机无 HF token；D1 只测基线率、明确**不做**跨模型配对比较（失败模式 6），所以"与 ERGO/NBF 论文数字可对照"在这一步的价值低于"今天就能跑" |
 | Q4 | 是否实现在线 ERGO 熵阈值臂 | 一天内能加就加 | **不做。** 这是全计划唯一一个压在关键路径上、工程尾巴无界（要 `chat_model.generate` 在线吐 per-token 熵）却按计划自己的表就属"可选"的项目。定性对照 + 注明不可比。若 E5 过了 P1/P2 且 9/13 后有余量再议 |
 | Q5 | D0：防御线的两个 GPU-天是否花 | 花 | **花**，同意。补一条：D1 的价值不对称——"换模型也没用"是能直接进正文的一句话，"换模型就有"会开一条 9/24 前收不了口的线。两种结果都只值第十节一句话，所以跑，但**只用队列空档，永不排在 ERGO 作业之前** |
 | Q6 | 9/13 合流截止是否接受 | 接受 | **接受** |
@@ -391,3 +394,189 @@ overwrite 下最优固定臂是 `fixed_last` = 0.776（vs `zero_control` 0.328�
 E1（含 B1）与 E4（含 B2/B3/B4/C1）可即刻开工，两者零 GPU、可并行。**E2 的 GPU 作业在 G-E1-1 与 G-E1-2 过之后提交**；其余闸门链与依赖不变。GPU 总量约 8 小时、9/12 前出结果这两个点不变；新增工作吃掉的是原有缓冲。
 
 未由我裁决、仍属用户的一项：**ICLR 2027 的档期**。9/18 摘要 / 9/24 全文与 ICLR 历年的 9 月中下旬吻合，但我核不了官网，而整张日程只压在这一个数上。
+
+### 12.6 签字后的两处改判（2026-09-07，均已写回对应各节）
+
+**Q3 改判 · D1 的备选目标模型 → `Qwen/Qwen3-4B-Instruct-2507`。** 原裁决的 Llama-3.1-8B-Instruct
+不在 `/scratch/hcao2/hf_cache/hub/`（该目录下只有 Qwen3-1.7B / Qwen3-4B / Qwen3-4B-Instruct-2507），
+且它在 HF 上是 gated repo，本机 `~/.cache/huggingface/token` 不存在；计划里的备选 Qwen2.5-7B-Instruct
+同样不在缓存。攻击数据是 vendored 的（`attack_bank.py`），不需要下载。三条路里选了"换模型"：
+D1 只测基线率、且失败模式 6 明确禁止跨模型配对比较，所以"与 ERGO/NBF 论文数字可对照"这项收益
+在这一步本来就低，不值得用一次 gated 下载 + 授权流程去换。用户已批准。
+
+**G-E3-2 加一条负对照。** 见 E3 Step 3。原判据是单向的：$b_2$ 显著为负就算"状态依赖"成立。
+但那个回归本身没有被验过——若它在**状态可证不进入终点**的 overwrite 数据上也报出显著 $b_2$，
+那这道闸门测的就不是状态依赖而是伪影。负对照用已有的 Phase B（overwrite，666 行）跑，零 GPU，
+与 append 的 Phase B′ 是不同数据集，不构成偷看。这条把 G-E3-2 从"闸门"升级成"带阴性对照的闸门"。
+
+### 12.7 执行分工的一处偏离（记录用）
+
+第一节 1.2 第 2 条要求每个任务自己 commit。**E4a / E4b / E3-Step3 / D1 采集四个会话改为不 commit，
+由 Opus 统一提交**——四个会话在同一个工作树里并发 `git add` 会抢 `index.lock`。E1 单独在跑时仍按
+原协议自行 commit。任务边界与"只报数字、不解释结果"的分工不变。
+
+另：第三节日程表写的"E4 与 E1 并行"在单工作树下**做不到**——两者都要改
+`scripts/run_ergo_math_screening.py`。实际拆法：E4a（`ergo_koopman_mpc.py`）、E4b（新建
+`ergo_controllers.py`）可与 E1 并行，**E4c（CLI 接线）必须等 E1 提交后再做**。
+
+### 12.8 D1 的两处缺口与裁决（2026-09-07）
+
+D1 采集会话在两个前置检查上按规格停工，两处都是真缺口。
+
+**缺口 1 · "已用的 40 条攻击"不存在。** 计划第四节原文写"`default_rng(0)` 从 600 中剔除已用 40 条后抽"。
+全仓库没有任何"40 条已用攻击"的定义——那个 40 是把 D1 裁决版检验里 **41 行/臂**的样本量误当成了
+攻击池大小。而且 `select_screening_attacks` 一直是按 category 分层的 `random.Random(seed+i)`，
+从来没有"用 `numpy.default_rng(0)` 从 600 里抽 40"这回事。
+
+**裁决**：排除集改为**从数据算出的经验并集**——"出现在任何 `outputs/*/trajectories.jsonl` 的
+`attack_id` 列里" ∪ "两份 `safety_direction_stats.json` 的 `calibration_attack_ids`"。Opus 独立重算：
+
+| 集合 | 大小 |
+|---|---|
+| 攻击库总量（`load_attack_bank()`，6 个 category：174 / 120 / 102 / 84 / 63 / 57） | **600** |
+| 出现在任何筛查产物里的攻击（26 个输出目录） | **49** |
+| 两份 steering 标定列表并集（各 40，交集 20） | **60** |
+| 二者交集 | 30 |
+| **排除并集** | **79** |
+| 剩余可用 | **521** |
+
+把标定用的 60 条也排除是保守选择：那些攻击被用来**拟合**过一条 steering 方向，即使没跑过零控制
+轨迹，留着会给审稿人"你在自己调过的攻击上测基线率"的口子。剩 521 条，这个保守零代价。
+原报告列出的三个候选集合（steering 标定 A、held-out-excluded 重标定 B、跑过的经验并集 C）
+全部被这个并集覆盖，所以"A 与 Phase J held-out 重叠"的顾虑一并消解。
+
+**新增规格 · 抽 100 条必须按 category 分层。** 计划只写了 `default_rng(0)`，没写分层；但攻击库的
+category 极不均衡，而 G-D1-1 的判据是拿新池基线率去比旧的 **9.8%**（来自 41 行、类别混合完全
+不同的一批攻击）。不分层会把"换模型"与"换了类别混合"混在一起。要求：在 521 条上按 category
+比例分层、`default_rng(0)`、确定性可复现；**同时报出新 100 条与旧 49 条各自的 category 分布**，
+让混合差异可见而不是被藏起来；最终 id 落盘 `conf/experiment/d1_attack_ids.txt`，格式照
+`conf/experiment/ergo_phaseC_item_ids.txt`（与 Phase C 的既有约定一致）。
+
+**缺口 2 · CLI 无法喂进显式攻击 id 集合。** `scripts/run_adversarial_screening.py` 只有
+`--num-attacks` + `--attack-rng-seed`，二者进 `select_screening_attacks()` 做分层采样，
+**无法表达"排除这 79 个、再抽 100 个"**。
+
+**裁决**：这不是功能缺口，只是 CLI 表面没暴露——底层
+`src/persona_drift/adversarial_screening.py:44` 的 `run_adversarial_screening()` **已经有**
+`attack_ids: list[str] | None` 参数，走 `select_attacks_by_id(bank, attack_ids)` 分支，注释里
+写明就是给 Phase C 那种显式 held-out split 用的。**新建薄入口 `scripts/run_d1_screening.py`
+直接调库函数并透传 `attack_ids`，不改旧 CLI**，也不要复制旧 CLI 里的采样逻辑（那正是要绕开的
+东西）。这与 B1 的处置同构：不去改一个被多处依赖的入口，另建一个窄用途的新入口。
+
+---
+
+## 十三、E1 / E4a / E4b / E3-Step3 的复核与裁决（Opus 5，2026-09-07）
+
+**冻结的全套测试数字**（四个 CPU 会话全部收敛后由 Opus 独立重跑，连跑两次一致）：
+**453 passed / 5 failed / 458 collected**。5 个失败全部在 `tests/test_surface_features.py`（NLTK 缺数据），
+即文档基线里那 5 个。基线 406 passed / 416 collected → 现在多 47 passed。**G-E1-1 与 G-E4-1 的
+"全套通过"以这个数字为准**，各会话运行期间看到的 410–449 波动值一律作废（并行编辑期间的快照）。
+
+### 13.1 E1 · 通过
+
+- **G-E1-2 通过**：新分析器在 overwrite 的 Phase C 上给出 `n_identical=116, n_trajectories=116, rate=1.0`，
+  并与既有 `gate6`（`mean_diff=0.0, CI [0,0], n_pairs=58`）交叉一致。**116/116 这个参照基线现在钉在代码里了**，
+  这是 B1 加 G-E1-2 的全部目的。
+- **G-E1-1 通过**（按上面的冻结数字）。E1 提问"全套通过在多会话并发下算不算数"：**裁决——
+  以 Opus 收敛后重跑的冻结数字为准；各会话只需报自己范围内的测试 + 一次带时戳的全套快照 + 偏离说明。**
+  下一批并行任务改用**每任务一个 git worktree**，从根上消掉这个问题。
+- E1 提问 `test_logging_setup.py` 的偶发失败：**裁决——记录为已知噪声，不专门查。** 它单独跑通过、
+  只在并发全套下偶发，冻结重跑两次均未复现，且不触及任何闸门。若它在 worktree 隔离后仍复现，再查。
+- **一处纪律违规**：E1 会话用过 `git stash`。共享工作树下这会连带清掉别人**未跟踪**的新文件。
+  本次已核实无丢失（`git stash list` 为空、四个会话产物齐全、`162a480` 只含它自己的 6 个文件），
+  但已写进"开工前必读"第 10 条，禁止一切仓库级破坏性 git 操作。
+
+### 13.2 E4b · 通过（Opus 独立重算过，不只是看测试）
+
+`tests/test_ergo_controllers.py` **17 passed**。Opus 另行直接驱动两个控制器重算：
+
+- `fixed_t_and_last`：跨全部 7 种 `num_shards` × t=1..5，**无违例**——非退化时恰好 2 次，末轮必 reset；
+- `randsched_t_and_last`：每个 T 上 `t` 覆盖满 `{1..T−1}`，恰好 2 次，末轮必 reset，同 seed 可复现。
+- 记录：攻击外的另一个事实——ERGO 题库的 `num_shards` 取值是 **{4,5,6,7,8,9,12}**，
+  58 个 held-out item 的分布是 **{4:12, 5:17, 6:13, 7:8, 8:7, 9:1}，最大 9**。所以 `--koopman-horizon 12` 覆盖全部。
+
+三个判断题的裁决：
+
+1. `t<1` / `num_shards<1` 主动抛 `ValueError`：**保留**。与 `RandomScheduleController` 对空 `turns` 抛错的既有风格一致；静默接受坏配置比多一个检查糟得多。
+2. 全套数字冻结：**已由 Opus 完成**（13 节开头）。模块内的 17 passed 足以判定 B2 本身。
+3. E4c 范围：**确认**，且 E1 已提交（`162a480`），E4c 现在解锁。
+
+**给 E4c 的新增硬要求（B2 的续）**：`RandSchedTAndLastController` 的 `seed` 必须传
+`_excitation_seed(seed, entry_id)`——就是 `run_ergo_math_screening.py` 里 `random_schedule` 分支用的那个。
+**若传原始 `seed`，所有 `num_shards` 相同的 item 会拿到同一个 `t`，`randsched_t_and_last` 就静默退化成
+一个按 shard 数分组的固定日程，P1 的随机分配对手臂当场失效。** 这与 B3 同类：一个不报错的静默降级。
+
+### 13.3 E5 臂表修正：`fixed_(t,last)` 的 t 改为 1..3
+
+原臂表写 t=1..4。但 58 个 held-out item 里有 **12 个 `num_shards=4`**，在这些 item 上
+`fixed_t4_and_last` 的两次 reset 重合、**退化成 1 次**（E4b 的 `degenerate` 路径会如实报出来）。
+那样这个臂就不是全体 item 上均匀的 k=2，直接违反 Q8 的同代价定义。
+
+**裁决**：**P2 的同代价对手集合 = `fixed_t_and_last`，t ∈ {1,2,3}**（t=3 < min(num_shards)=4，
+58 个 item 上零退化）。t=4 不进 P2，需要时只作记录臂。副作用是省掉一个 GPU 臂。
+
+### 13.4 连带发现：已发表的 gate5 被结构性稀释（要进论文台账）
+
+同一个 `t == num_shards` 的机制污染了**已经报出去的** G4 数字。Opus 重算：
+
+| 比较 | 差 | 95% CI | n |
+|---|---|---|---|
+| `fixed_last − fixed_t4`，全 58（**已发表的 gate5**） | **+0.1293** | [+0.0259, +0.2414] | 58 |
+| 仅 `t4 != num_shards` 的 46 个（两臂真正不同） | **+0.1630** | [+0.0326, +0.2935] | 46 |
+| 仅 `t4 == num_shards` 的 12 个 | **+0.0000** | [0, 0] | 12 |
+
+在那 12 个 item 上 `fixed_t4` 与 `fixed_last` **逐 item 完全相同（12/12）**——因为 t=4 就是末轮。
+分臂均值：那 12 个上两臂同为 **0.8750**，其余 46 个上 `fixed_t4` **0.5870** vs `fixed_last` **0.7500**。
+所以 `fixed_t4` 的表头数字 **0.6466** 是被"它在 12 个 item 上其实就是末轮臂"抬起来的。
+
+**读法**：这不是数字算错，是**读法要修**——"按自己的末轮 reset 优于任何绝对轮次"这个结论
+**比报出的数字更强**，不是更弱。这 12 个 item 由一个**结构性**属性（t4 == num_shards）挑出，
+不是按结果挑的，所以这个分解是合法的，不是子组捞取。已发表的 +0.1293 不撤回，但正文与
+`paper/evidence/` 台账里要同时给出 46-item 的 +0.1630 与这条稀释机制。
+
+### 13.5 E3 Step 3 · 负对照通过；G-E3-2 改用全部 60 个 item
+
+**负对照结果**（overwrite 的 Phase B，45 个 train item，`n_pairs=416`，无丢弃行）：
+
+| 系数 | 点估计 | 95% CI |
+|---|---|---|
+| a | +0.3415 | [+0.0247, +0.6254] |
+| b0 | +0.0933 | [−0.0645, +0.2361] |
+| **b2** | **−0.0929** | **[−0.3420, +0.1762]** |
+| g | +0.4615 | [+0.3723, +0.5497] |
+| const | +0.1118 | [−0.0140, +0.2684] |
+
+**$b_2$ 的 CI 跨 0 → 负对照通过。** 在状态可证不进入终点的 overwrite 数据上，这个回归**没有**
+报出状态依赖，所以它不是在捡伪影，G-E3-2 保住了它作为"状态依赖"证据的含义。附带记录：
+$g$ 强显著（信息累积斜坡），$b_0$ 不显著（overwrite 下 reset 对下一轮 closeness 无可测基础效应）。
+
+**该会话的判断题（回归用 45 个 train item 还是全部 60 个）——裁决：改用全部 60 个。**
+理由：这个回归**不是**要做样本外预测验证，而是对一个系数做**假设检验**；没有任何东西是在数据上
+被选择或调参的，推断由 item-level bootstrap 承担，因此没有需要 held-out 去防的过拟合。
+留出 15 个 item 只是白扔 25% 的功效。`fit_koopman_ergo_closeness.py` 里那个 45/15 split 存在的
+理由是它要拟合一个**代理模型**再用 rollout MSE 评分——用途不同。
+
+**预注册**：G-E3-2 与它的负对照**都用全部 60 个 item**。上表 45-item 的数字保留在此作为纸面痕迹，
+证明这条裁决没有翻转任何结论（45 个 item 上 $b_2$ 已跨 0，换成 60 个只会让 CI 更窄，方向不变）。
+
+该会话的另两处偏离（CLI 必填无默认；缺失 closeness 分支只被合成测试覆盖）：**均可接受**，不改。
+
+### 13.6 E4a · 通过，但两处类默认值要回退（交给 E4c）
+
+`tests/test_ergo_koopman_mpc.py` 从 8 条增至 **21 passed**。四处"已做"核对无误。E4a 在实现中
+自己撞上并修掉了 F3 那个 bug 的重演（初版 `_remaining_budget` 委托 `super()`，而父类
+`control.py:302` 硬编码读 `"u_remind"`），被既有测试 `test_remaining_budget_reads_u_reset_not_u_remind`
+当场抓住——**这正是 B3 要求"单测锁住末轮动作而非只锁总数"的价值实证**。
+
+**但有一处必须回退。** E4a 把类默认值设成了 `objective="terminal"`、`pad_short_history=True`
+（`ergo_koopman_mpc.py:93-95`）。这违反"开工前必读"第 5 条的实质——**既有行为逐字节不变**：
+
+- 既有的 `outputs/ergo_math_phaseC_mpc` 臂是在 `objective` 等价于 `"sum"`、`pad_short_history=False`
+  下跑出来的。改了类默认值之后，**重跑那个臂会得到不同语义**；
+- 而"Phase C 的 MPC 退化成 `fixed_t2` 的直接原因是 horizon=2 + 逐轮和"是一条**要写进论文的结论**，
+  它必须可复现。
+
+**裁决**：`objective` 的类默认值改回 **`"sum"`**，`pad_short_history` 改回 **`False`**（父类值）；
+**C1/B4 预注册的 `terminal` 与 `True` 由 E4c 在工厂/CLI 层对新臂显式传入**，并按 C1 的要求写进臂名。
+这样预注册值在调用点可见（也就在臂名和 sbatch 里可见），旧臂保持可复现。E4a 为适配新默认值而给
+两条既有测试加的 `objective="sum"` 也随之可以去掉——但**留着无害**（显式优于隐式），E4c 自行决定。

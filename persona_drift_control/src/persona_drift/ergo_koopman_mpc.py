@@ -65,15 +65,41 @@ class ErgoKoopmanMPCController(KoopmanMPCController):
     delegating to the parent (which is what actually invokes `_simulate`) --
     the controller instance is reused sequentially across trajectories/turns
     (see `controller_cli.make_controller_factory`), never concurrently, so
-    this mutate-then-delegate pattern is safe. `_remaining_budget` is
-    inherited unchanged."""
+    this mutate-then-delegate pattern is safe. `_remaining_budget` re-reads
+    `self.u_col` (not inherited unchanged: delegating to the parent's own
+    `_remaining_budget` would read the parent's hardcoded `u_remind` column,
+    the F3 bug's shape).
+
+    **2026-09-08 (E4a, docs/experiments/two_task_success_plan.md section 2 E4
+    / section 12.2-12.3)**: `objective` ("terminal", the new default, or
+    "sum", the prior/ablation behavior) controls what `_simulate` returns --
+    "terminal" propagates only the leaf (final-turn) value up through the
+    recursion (every non-leaf step's own value, including any
+    `repeat_penalty`, is discarded -- B4(a)); the inherited tie-break in the
+    parent's `next_u_remind` (`if value > best_value`, strict, so an exact
+    tie keeps action=0) is unchanged (B4(b)). `forced_last_reset` makes the
+    last turn of every trajectory an unconditional reset (u=1), not a
+    decision: `_remaining_budget` reserves one extra unit for every turn
+    before the last, and `next_u_remind` returns 1 unconditionally on the
+    last turn, bypassing the parent's `remaining_budget <= 0` early return
+    (B3 -- a uniform "budget - 1 every turn" scheme would let the parent
+    silently eat that forced reset, the F3 bug's shape again).
+    `pad_short_history` now defaults to `True` here (C1), overriding the
+    parent's `False` default -- construction-layer only, no CLI."""
 
     y_col: str = "closeness"
     u_col: str = "u_reset"
     aux_fns: tuple[Callable[[dict[str, Any]], float], ...] = ()
+    objective: str = "terminal"
+    forced_last_reset: bool = False
+    pad_short_history: bool = True
     _lookahead_turn: int | None = None
     _num_shards: int | None = None
     n_missing_num_shards: int = 0
+
+    def __post_init__(self) -> None:
+        if self.objective not in ("terminal", "sum"):
+            raise ValueError(f"objective must be 'terminal' or 'sum', got {self.objective!r}")
 
     def _current_state(self, history: list[dict[str, Any]]) -> np.ndarray | None:
         nu, mu = self.state_config.nu, self.state_config.mu
@@ -102,11 +128,29 @@ class ErgoKoopmanMPCController(KoopmanMPCController):
         column, which is never present on an ERGO row (`u_reset` is) -- so
         the inherited version always read 0 rows spent and silently never
         enforced `remind_budget` at all. Same logic otherwise, just reading
-        `self.u_col`."""
+        `self.u_col`.
+
+        B3 (`docs/experiments/two_task_success_plan.md` section 12.2): when
+        `forced_last_reset` is set and the turn being decided (`
+        self._lookahead_turn`, stashed by `next_u_remind` before this is
+        called) is strictly before the trajectory's own last turn
+        (`self._num_shards`), one more unit is reserved on top of the
+        parent's count -- the forced reset that `next_u_remind` will place
+        unconditionally on the last turn is a known future spend, not a
+        turn-by-turn decision, so it must not compete with the turns before
+        it for the same budget."""
 
         if self.remind_budget is None:
             return None
-        return self.remind_budget - sum(int(row.get(self.u_col, 0)) for row in history)
+        budget = self.remind_budget - sum(int(row.get(self.u_col, 0)) for row in history)
+        if (
+            self.forced_last_reset
+            and self._num_shards is not None
+            and self._lookahead_turn is not None
+            and self._lookahead_turn < self._num_shards
+        ):
+            return budget - 1
+        return budget
 
     def next_u_remind(self, turn: int, history: list[dict[str, Any]]) -> int:
         self._lookahead_turn = int(turn)
@@ -116,6 +160,14 @@ class ErgoKoopmanMPCController(KoopmanMPCController):
             self.n_missing_num_shards += 1
         else:
             self.episode_length = self._num_shards
+        if self.forced_last_reset and self._num_shards is not None and turn == self._num_shards:
+            # B3: unconditional, bypassing the parent's `remaining_budget <=
+            # 0` early return at control.py -- with `_remaining_budget`
+            # reserving exactly one unit for this turn (above), a uniform
+            # "budget - 1 every turn" scheme would let this turn's own
+            # reservation be silently swallowed by that early return, the
+            # F3 bug's shape.
+            return 1
         return super().next_u_remind(turn, history)
 
     def _simulate(
@@ -133,10 +185,28 @@ class ErgoKoopmanMPCController(KoopmanMPCController):
         if remaining_steps <= 0:
             return value
         budget_after = None if remaining_budget is None else remaining_budget - action
-        candidates = (0, 1) if budget_after is None or budget_after >= 1 else (0,)
-        return value + max(
+        next_turn = None
+        if self.forced_last_reset and self._num_shards is not None and self._lookahead_turn is not None:
+            next_turn = self._lookahead_turn + lookahead_offset + 1
+        if next_turn is not None and next_turn == self._num_shards:
+            # B3: the planner treats the last turn's action as a known
+            # constant (u=1), not a decision variable -- it is not
+            # enumerated over (0, 1) and is not masked by budget (the
+            # budget for it was already reserved in `_remaining_budget`).
+            candidates: tuple[int, ...] = (1,)
+        else:
+            candidates = (0, 1) if budget_after is None or budget_after >= 1 else (0,)
+        children = (
             self._simulate(z_next, a, remaining_steps - 1, budget_after, lookahead_offset + 1) for a in candidates
         )
+        if self.objective == "terminal":
+            # Only the leaf (final-turn) `value` reaches the returned total
+            # -- every intermediate step's own `value` (readout + repeat
+            # penalty) is discarded, only the subtree max propagates.
+            return max(children)
+        if self.objective == "sum":
+            return value + max(children)
+        raise ValueError(f"objective must be 'terminal' or 'sum', got {self.objective!r}")
 
 
 def load_ergo_koopman_mpc_controller(
