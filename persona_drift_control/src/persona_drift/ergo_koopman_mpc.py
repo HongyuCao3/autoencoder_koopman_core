@@ -71,28 +71,45 @@ class ErgoKoopmanMPCController(KoopmanMPCController):
     the F3 bug's shape).
 
     **2026-09-08 (E4a, docs/experiments/two_task_success_plan.md section 2 E4
-    / section 12.2-12.3)**: `objective` ("terminal", the new default, or
-    "sum", the prior/ablation behavior) controls what `_simulate` returns --
-    "terminal" propagates only the leaf (final-turn) value up through the
-    recursion (every non-leaf step's own value, including any
-    `repeat_penalty`, is discarded -- B4(a)); the inherited tie-break in the
-    parent's `next_u_remind` (`if value > best_value`, strict, so an exact
-    tie keeps action=0) is unchanged (B4(b)). `forced_last_reset` makes the
-    last turn of every trajectory an unconditional reset (u=1), not a
-    decision: `_remaining_budget` reserves one extra unit for every turn
-    before the last, and `next_u_remind` returns 1 unconditionally on the
-    last turn, bypassing the parent's `remaining_budget <= 0` early return
-    (B3 -- a uniform "budget - 1 every turn" scheme would let the parent
-    silently eat that forced reset, the F3 bug's shape again).
-    `pad_short_history` now defaults to `True` here (C1), overriding the
-    parent's `False` default -- construction-layer only, no CLI."""
+    / section 12.2-12.3)**: `objective` ("sum", the class default -- same
+    value/meaning as the pre-E4a code, kept so the existing
+    `outputs/ergo_math_phaseC_mpc` arm stays byte-for-byte reproducible under
+    this class's own defaults; or "terminal", the new alternative) controls
+    what `_simulate` returns -- "terminal" propagates only the leaf
+    (final-turn) value up through the recursion (every non-leaf step's own
+    value, including any `repeat_penalty`, is discarded -- B4(a)); the
+    inherited tie-break in the parent's `next_u_remind` (`if value >
+    best_value`, strict, so an exact tie keeps action=0) is unchanged
+    (B4(b)). `forced_last_reset` makes the last turn of every trajectory an
+    unconditional reset (u=1), not a decision: `_remaining_budget` reserves
+    one extra unit for every turn before the last, and `next_u_remind`
+    returns 1 unconditionally on the last turn, bypassing the parent's
+    `remaining_budget <= 0` early return (B3 -- a uniform "budget - 1 every
+    turn" scheme would let the parent silently eat that forced reset, the
+    F3 bug's shape again).
+
+    **2026-09-08 (E4c, section 13.6 -- reverted from E4a's landing)**:
+    `objective` and `pad_short_history`'s class defaults are `"sum"` /
+    `False` (this class's own inherited/original values, matching the
+    already-published `outputs/ergo_math_phaseC_mpc` arm), NOT the
+    `"terminal"` / `True` E4a had set as class defaults. C1's
+    `pad_short_history=True` and B4's `objective="terminal"` are
+    pre-registered values for the *new* mode-A/mode-B arms only, and are
+    passed explicitly at the factory/CLI layer
+    (`load_ergo_koopman_mpc_controller`'s `objective`/`pad_short_history`
+    parameters, wired from `run_ergo_math_screening.py`'s
+    `--koopman-objective`/`--koopman-pad-short-history`), never as this
+    class's own default -- so a bare `ErgoKoopmanMPCController()` still
+    reproduces the old arm, and the pre-registered values stay visible at
+    the call site (and in the arm name) instead of living silently in a
+    dataclass field."""
 
     y_col: str = "closeness"
     u_col: str = "u_reset"
     aux_fns: tuple[Callable[[dict[str, Any]], float], ...] = ()
-    objective: str = "terminal"
+    objective: str = "sum"
     forced_last_reset: bool = False
-    pad_short_history: bool = True
+    pad_short_history: bool = False
     _lookahead_turn: int | None = None
     _num_shards: int | None = None
     n_missing_num_shards: int = 0
@@ -219,6 +236,9 @@ def load_ergo_koopman_mpc_controller(
     remind_budget: int | None = None,
     y_col: str = "closeness",
     name: str = "koopman_mpc",
+    objective: str = "sum",
+    forced_last_reset: bool = False,
+    pad_short_history: bool = False,
 ) -> ErgoKoopmanMPCController:
     """Mirrors `controller_cli.load_koopman_mpc_controller`, but builds an
     `ErgoKoopmanMPCController` with `contemporaneous_v=True` and
@@ -233,7 +253,15 @@ def load_ergo_koopman_mpc_controller(
     controller's state and the headline metric are deliberately different
     (though same-instrument) quantities. `episode_length` is not a
     parameter here: `ErgoKoopmanMPCController.next_u_remind` sets it
-    per-trajectory from `history[-1]["num_shards"]`."""
+    per-trajectory from `history[-1]["num_shards"]`.
+
+    `objective`/`forced_last_reset`/`pad_short_history` default to this
+    class's own class defaults (`"sum"`/`False`/`False`, section 13.6) --
+    they are exposed here only so `run_ergo_math_screening.py` (E4c) can
+    pass C1/B4's pre-registered `objective="terminal"`/`pad_short_history=True`
+    explicitly for the new mode-A/mode-B arms, without changing what a bare
+    `ErgoKoopmanMPCController()` or an un-updated caller of this factory
+    produces."""
 
     report = json.loads(model_path.read_text())
     fit = report[model_key]
@@ -255,5 +283,8 @@ def load_ergo_koopman_mpc_controller(
         y_col=y_col,
         u_col="u_reset",
         aux_fns=(shard_frac,),
+        objective=objective,
+        forced_last_reset=forced_last_reset,
+        pad_short_history=pad_short_history,
         name=name,
     )

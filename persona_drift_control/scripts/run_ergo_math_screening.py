@@ -32,6 +32,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 from persona_drift.chat_model import GenerationConfig  # noqa: E402
 from persona_drift.control import FixedScheduleController, RandomScheduleController  # noqa: E402
 from persona_drift.controller_cli import _excitation_seed, make_controller_factory  # noqa: E402
+from persona_drift.ergo_controllers import (  # noqa: E402
+    FixedTAndLastController,
+    RandSchedTAndLastController,
+)
 from persona_drift.ergo_koopman_mpc import load_ergo_koopman_mpc_controller  # noqa: E402
 from persona_drift.ergo_math_bank import load_ergo_math_bank  # noqa: E402
 from persona_drift.ergo_math_screening import run_ergo_math_screening  # noqa: E402
@@ -45,6 +49,8 @@ CONTROLLER_CHOICES = (
     "random_schedule",
     "ergo_koopman_mpc",
     "fixed_last",
+    "fixed_t_and_last",
+    "randsched_t_and_last",
 )
 
 
@@ -114,15 +120,57 @@ def parse_args() -> argparse.Namespace:
         help="--controller ergo_koopman_mpc only: state readout column (default closeness, F2's fitted "
         "readout; the reported metric stays final_turn_success regardless)",
     )
+    parser.add_argument(
+        "--koopman-objective",
+        choices=("terminal", "sum"),
+        default="terminal",
+        help="--controller ergo_koopman_mpc only: passed through to "
+        "load_ergo_koopman_mpc_controller/ErgoKoopmanMPCController (docs/experiments/"
+        "two_task_success_plan.md section 12.2 B4 / section 13.6). Default here is the "
+        "pre-registered 'terminal' (C1/B4) -- a CLI default is fine to be the pre-registered "
+        "value since it is visible on the command line/sbatch; the *class's own* default "
+        "stays 'sum' (section 13.6) so a bare ErgoKoopmanMPCController() still reproduces "
+        "the existing outputs/ergo_math_phaseC_mpc arm unchanged.",
+    )
+    parser.add_argument(
+        "--koopman-forced-last-reset",
+        action="store_true",
+        help="--controller ergo_koopman_mpc only: mode-B (docs/experiments/two_task_success_plan.md "
+        "section 2 E4 item 3 / section 12.2 B3) -- the trajectory's own last turn is an "
+        "unconditional reset (u=1), not a decision; --remind-budget must then be >= 2 for a "
+        "non-degenerate mid-trajectory reset to also be available.",
+    )
+    parser.add_argument(
+        "--koopman-pad-short-history",
+        action="store_true",
+        help="--controller ergo_koopman_mpc only: passed through to "
+        "load_ergo_koopman_mpc_controller/ErgoKoopmanMPCController.pad_short_history. Default "
+        "here is False (matches the class's own default, section 13.6); the new mode-A/mode-B "
+        "arms pass this explicitly (C1's pre-registered True) in their sbatch invocation rather "
+        "than relying on an implicit class default.",
+    )
+    parser.add_argument(
+        "--fixed-t",
+        type=int,
+        default=None,
+        help="required for --controller fixed_t_and_last: the fixed absolute turn t for the "
+        "first reset (the item's own last turn is always the second, forced reset -- see "
+        "ergo_controllers.FixedTAndLastController). A dedicated flag rather than reusing "
+        "--fixed-schedule-turns[0]: that flag's nargs='+' already means 'reset on every one of "
+        "these turns' for --controller fixed_schedule (k = len(turns)), so silently taking only "
+        "its first element here and dropping any rest would be exactly the kind of silent "
+        "degradation section 12.2/13.2 keep flagging elsewhere in this plan.",
+    )
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
-    trajectory_config = ErgoMathTrajectoryConfig(
-        agent_gen=GenerationConfig(max_new_tokens=args.agent_max_new_tokens),
-        reset_mode=args.reset_mode,
-    )
+def build_controller_factory(args: argparse.Namespace):
+    """Extracted from `main()` (E4c, docs/experiments/two_task_success_plan.md
+    section 2 E4c) purely so tests can drive the CLI's controller-construction
+    branches (including the `--reset-mode append` name-suffix wrapper) with a
+    hand-built `argparse.Namespace`, without going through `main()`'s GPU-bound
+    `run_ergo_math_screening` call. No behavior change from what used to be
+    inlined in `main()`."""
 
     # signal_resolution_plan.md section 4.3.1: `random_schedule` and
     # `ergo_koopman_mpc` need per-item customization (num_shards varies by
@@ -161,9 +209,77 @@ def main() -> None:
                 name="fixed_schedule_t_last",
             )
 
+    elif args.controller == "fixed_t_and_last":
+        # B2/E4c (docs/experiments/two_task_success_plan.md section 12.2 B2
+        # / section 2 E4 item 6): mode-B's fixed-schedule opponent -- reset
+        # on absolute turn --fixed-t AND this item's own last turn.
+        if args.fixed_t is None:
+            raise ValueError("--fixed-t is required for --controller fixed_t_and_last")
+        shards_by_item = {item.item_id: len(item.shards) for item in load_ergo_math_bank()}
+        default_num_shards = max(shards_by_item.values())
+
+        def controller_factory(seed: int, entry_id: str = "") -> FixedTAndLastController:
+            num_shards = shards_by_item.get(entry_id, default_num_shards)
+            return FixedTAndLastController(t=args.fixed_t, num_shards=num_shards)
+
+    elif args.controller == "randsched_t_and_last":
+        # B2/E4c: mode-B's random-allocation opponent -- reset on a turn
+        # drawn uniformly from {1, ..., num_shards - 1} AND this item's own
+        # last turn. 13.2's B2-continuation hard requirement: the seed
+        # passed in MUST be the per-(seed, entry_id) `_excitation_seed`, not
+        # the raw trajectory-level `seed` -- otherwise every item sharing a
+        # `num_shards` value draws the identical `t` (all items with the
+        # same shard count collapse onto one shared schedule, silently
+        # defeating P1's random-allocation opponent), exactly the failure
+        # mode `random_schedule` above and `random_excite`
+        # (controller_cli.py) already guard against the same way.
+        shards_by_item = {item.item_id: len(item.shards) for item in load_ergo_math_bank()}
+        default_num_shards = max(shards_by_item.values())
+
+        def controller_factory(seed: int, entry_id: str = "") -> RandSchedTAndLastController:
+            num_shards = shards_by_item.get(entry_id, default_num_shards)
+            return RandSchedTAndLastController(
+                num_shards=num_shards,
+                seed=_excitation_seed(seed, entry_id),
+            )
+
     elif args.controller == "ergo_koopman_mpc":
         if args.koopman_model_path is None:
             raise ValueError("--koopman-model-path is required for --controller ergo_koopman_mpc")
+        if args.koopman_forced_last_reset and (args.remind_budget is None or args.remind_budget < 2):
+            # Opus's follow-up finding on this same E4c task (docs/experiments/
+            # two_task_success_plan.md section 2 E4 item 3 / section 12.2 B3):
+            # forced_last_reset reserves exactly one unit of the budget for
+            # the unconditional last-turn reset on every turn before the
+            # last (ergo_koopman_mpc.py's _remaining_budget). At k=1 that
+            # reservation leaves 0 spendable before the last turn, so the
+            # planner's own (freely chosen) first reset can never fire --
+            # the arm silently collapses into `fixed_last` (identical
+            # decisions on all 6 verified turns) while still carrying the
+            # `mpc_..._forcedlast_...` name, the same silent-degradation
+            # shape as B3/the Phase C `mpc` == `fixed_t2` collapse. Caught
+            # only by Opus's independent recompute, not by any gate in this
+            # module -- so it is stopped here, at the CLI, rather than left
+            # to the controller (which should not have to guess the
+            # caller's intent about what counts as "still meaningfully
+            # mode B").
+            raise ValueError(
+                "--koopman-forced-last-reset requires --remind-budget >= 2: forced_last_reset "
+                "reserves 1 spend for the unconditional last-turn reset, so at k=1 (remind_budget "
+                "None or 1) the planner's own first reset can never fire and this arm collapses "
+                "into fixed_last (same decisions on every turn) while still being named "
+                "mpc_..._forcedlast_..."
+            )
+        # C1 (docs/experiments/two_task_success_plan.md section 12.3): the
+        # pre-registered objective/pad_short_history values must be visible
+        # in the arm name, not just passed silently -- built here rather
+        # than left to load_ergo_koopman_mpc_controller's own "koopman_mpc"
+        # default name.
+        mpc_name = f"mpc_{args.koopman_objective}"
+        if args.koopman_forced_last_reset:
+            mpc_name += "_forcedlast"
+        if args.koopman_pad_short_history:
+            mpc_name += "_pad"
         mpc_controller = load_ergo_koopman_mpc_controller(
             model_path=args.koopman_model_path,
             model_key=args.koopman_model_key,
@@ -173,6 +289,10 @@ def main() -> None:
             repeat_penalty=args.koopman_repeat_penalty,
             remind_budget=args.remind_budget,
             y_col=args.koopman_y_col,
+            name=mpc_name,
+            objective=args.koopman_objective,
+            forced_last_reset=args.koopman_forced_last_reset,
+            pad_short_history=args.koopman_pad_short_history,
         )
 
         def controller_factory(seed: int, entry_id: str = ""):
@@ -201,6 +321,17 @@ def main() -> None:
             if not controller.name.endswith("_append"):
                 controller.name = f"{controller.name}_append"
             return controller
+
+    return controller_factory
+
+
+def main() -> None:
+    args = parse_args()
+    trajectory_config = ErgoMathTrajectoryConfig(
+        agent_gen=GenerationConfig(max_new_tokens=args.agent_max_new_tokens),
+        reset_mode=args.reset_mode,
+    )
+    controller_factory = build_controller_factory(args)
 
     report = run_ergo_math_screening(
         agent_model_id=args.agent_model,

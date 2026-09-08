@@ -114,6 +114,33 @@ def test_load_ergo_koopman_mpc_controller_builds_a_working_controller(tmp_path):
     assert controller.next_u_remind(2, history) in (0, 1)
 
 
+def test_load_ergo_koopman_mpc_controller_defaults_match_class_defaults(tmp_path):
+    # E4c: the factory's own objective/forced_last_reset/pad_short_history
+    # defaults must match the (reverted, section 13.6) class defaults, so an
+    # un-updated caller of this factory reproduces the old arm unchanged.
+    report_path = tmp_path / "koopman_fit_report_closeness.json"
+    report_path.write_text(
+        '{"arx": {"A": [[0.9, 0.0], [0.0, 1.0]], "B": [[0.2], [0.0]], '
+        '"b": [0.0, 0.0], "C": [[1.0, 0.0]]}}'
+    )
+    controller = load_ergo_koopman_mpc_controller(
+        model_path=report_path, model_key="arx", nu=1, mu=0, horizon=2, repeat_penalty=0.0
+    )
+    assert controller.objective == "sum"
+    assert controller.forced_last_reset is False
+    assert controller.pad_short_history is False
+
+    # explicit passthrough works (E4c wires --koopman-objective/
+    # --koopman-forced-last-reset/--koopman-pad-short-history to these).
+    padded = load_ergo_koopman_mpc_controller(
+        model_path=report_path, model_key="arx", nu=1, mu=0, horizon=2, repeat_penalty=0.0,
+        objective="terminal", forced_last_reset=True, pad_short_history=True,
+    )
+    assert padded.objective == "terminal"
+    assert padded.forced_last_reset is True
+    assert padded.pad_short_history is True
+
+
 # ---------------------------------------------------------------------------
 # F3 (signal_resolution_plan.md section 4.1): shard_frac truth-override
 # during MPC lookahead, and per-trajectory dynamic episode_length.
@@ -401,11 +428,19 @@ def test_pad_short_history_true_makes_turn_2_a_real_decision():
     assert unpadded._current_state(history) is None
 
 
-def test_pad_short_history_defaults_to_true():
-    # C1: "现在定死" -- the default lives at the dataclass/construction layer
-    # (no CLI flag), so any caller that does not pass pad_short_history gets
-    # True, including load_ergo_koopman_mpc_controller's factory.
+def test_class_defaults_are_sum_and_unpadded():
+    # E4c (two_task_success_plan.md section 13.6): E4a had set this class's
+    # own defaults to objective="terminal"/pad_short_history=True; Opus
+    # reverted that -- the existing outputs/ergo_math_phaseC_mpc arm was
+    # produced under this class's *original* objective="sum"/
+    # pad_short_history=False defaults, and reproducing it byte-for-byte
+    # requires a bare ErgoKoopmanMPCController() to still mean that. C1's
+    # pad_short_history=True and B4's objective="terminal" are pre-registered
+    # values for the new mode-A/mode-B arms only, passed explicitly at the
+    # load_ergo_koopman_mpc_controller/CLI layer (E4c), never as this
+    # class's own default.
     surrogate = _known_surrogate_with_aux()
     config = ReducedStateConfig(nu=1, mu=0, aux_cols=("shard_frac",))
     controller = ErgoKoopmanMPCController(surrogate=surrogate, state_config=config, aux_fns=(shard_frac,))
-    assert controller.pad_short_history is True
+    assert controller.objective == "sum"
+    assert controller.pad_short_history is False
