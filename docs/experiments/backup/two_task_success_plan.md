@@ -1,3 +1,30 @@
+> # ⛔ 已归档（2026-09-08）——不要执行本文档的任何规格
+>
+> **ERGO 半边（第二节 E0–E6、第三节日程）已结案，规格作废。** E2/E3 于 2026-09-08 跑完：
+> G-E2-2 通过（append 恢复了状态，G4 的 116/116 恒等式掉到 30/116），但 G-E2-1、G-E3-1、
+> G-E3-2 三道不过（append 同时抹掉了 reset 权威）。**ERGO 线按预注册判据定格 S3。**
+> E5 从未提交。结果与机制诊断见
+> [`../ergo_multiturn_reliability_pilot.md`](../ergo_multiturn_reliability_pilot.md) 的
+> 「E2–E3：append 执行器下的闭环」一节。
+> **后继计划**：[`../ergo_fidelity_restoration_plan.md`](../ergo_fidelity_restoration_plan.md)
+> （R0–R5：协议保真度修复）。它把失效归因到本文档 harness 自己的 prompt 结构，
+> 并继承本文档第一节的会话协议、第六节的失败模式 1–19、第八节的汇报格式。
+>
+> **防御线半边（第四节 D0–D3）在归档时仍未收口**：D1 的两个 GPU 臂已跑完（各 100 攻击 × 5 轮），
+> 但盲标被内容策略拒绝阻断（14 个 subagent 只完成 6 个，缺失非随机），**G-D1-1 算不出来**。
+> 该半边的当前状态、阻塞点与待决策项见
+> [`../defense_line_redesign_plan.md`](../defense_line_redesign_plan.md) 第十三节。
+> **第四节与 12.8 的 D1 规格本身未被取代**，只是它的执行停在盲标那一步；要续做请从
+> `defense_line_redesign_plan.md` 第十三节进入，不要直接照本文档往下跑。
+>
+> **归档时已知、留在文中未改的错误**（不要照抄）：
+> - 第七节"为什么 append 能恢复状态"的机制推理**只对了一半**。append 确实让历史进入终点，
+>   但它同时让模型照抄自己上一轮的旧答案，reset 不再触发重新求解——那次"从头解"才是
+>   overwrite 下 reset 权威的真正来源。见后继计划第 0.1 节。
+> - 12.4 的实质风险分析预判"模式 A 近乎预定只能到 S2"。实际两个模式都没走到，G-E3-2 先关门。
+> - 第五节把 §1.3 第 5 句的填空写成"E5 的结论无论正负都填这里"。E5 未跑；填进去的是
+>   E2/E3 的双向结果。
+
 # 执行计划：两条任务线上争取 Koopman 正面结果（ERGO-append 主攻 + 防御线时间盒）
 
 **日期**：2026-09-08 · **起草**：Hongyu Cao（与 Claude）· **适用**：Opus 5（裁决）/ Sonnet 5（执行）/ `general-purpose` subagent（盲标）

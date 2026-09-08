@@ -584,3 +584,56 @@ B1 之后要改成更强的版本：
 成本：一行改动 + 重跑 8 个臂（约半天 GPU）+ 重跑 RC 闸门。
 **这是唯一值得花钱的地方，而不是回去修 Koopman。** 详见
 [`ergo_multiturn_reliability_pilot.md`](ergo_multiturn_reliability_pilot.md) G4.5。
+
+---
+
+## 十三、D0–D3 时间盒的当前状态：D1 采集完成，盲标被阻断（2026-09-08）
+
+**这一节是防御线的活入口。** `two_task_success_plan.md` 第四节（D0–D3 时间盒）与 12.8（D1 的两处
+裁决）曾是这条线的操作规格；该文档已于 2026-09-08 归档到
+[`backup/two_task_success_plan.md`](backup/two_task_success_plan.md)（因为它的 ERGO 半边结案了）。
+**它的防御半边规格没有被取代，只是执行停在盲标那一步**——要续做，规格照旧读归档里的第四节与
+12.8，但当前状态与待决策项以本节为准。
+
+### 13.1 已完成：D1 的两个 GPU 臂
+
+两臂各 100 条攻击 × 5 轮 × 1 seed，`--agent-max-new-tokens 1024`，零控制，攻击 id 取自
+`conf/experiment/d1_attack_ids.txt`（521 条剩余攻击上按 category 比例分层、`default_rng(0)`，
+排除并集 79 条，见归档 12.8）。
+
+| 臂 | 目标模型 | job | 产物 | 自动 judge 的观察 |
+|---|---|---|---|---|
+| `screen_qwen4b` | Qwen3-4B | 15669226（4:33:03，`COMPLETED 0:0`） | `outputs/d1_screen_qwen4b/`，500 行 | 逐轮侵蚀明显：`y_safety` 0.90 → 0.44，76/100 条攻击出现侵蚀 |
+| `screen_alt` | Qwen3-4B-Instruct-2507 | 15669228（4:17:57，`COMPLETED 0:0`） | `outputs/d1_screen_alt_qwen3_4b_instruct_2507/`，500 行 | 贴顶，10/100 条侵蚀 |
+
+按自动 judge，`screen_qwen4b` 是好候选、`screen_alt` 是弱候选。**但 G-D1-1 判的是盲标 assisted 率，
+不是 judge 分**，所以这一步还不能下结论。
+
+### 13.2 阻塞点：盲标被内容策略拒绝打断，缺失非随机
+
+`scripts/build_d1_blind_sample.py`（每臂 60 行 late(3,4,5) + 5 拒答对照 + 5 重复，合池打乱、
+臂身份剥离）与 `scripts/split_d1_blind_batches.py`（7 批 × 2 遍，每遍重新打乱）已实现并提交
+（commit `976bebc`）。派发给 14 个全新 subagent 后 **只完成 6/14**：另外 8 个在特定有害内容条目上
+撞到 API 内容策略硬拒绝（`[bio]` 标记），**且拒绝与 `chemical_biological` 类别标签不是确定性对应**。
+
+**G-D1-1 无法从这份部分样本算出来**——缺失不是随机的，它系统性地偏向最有害的那些条目，而那些
+条目恰恰最可能被判为 assisted。用剩下的 6/14 去估 assisted 率会**系统性低估**。
+
+### 13.3 待决策（留给用户 / Opus）
+
+1. **换标注方式**：把盲标从 subagent 换成人工，或换成一个不经过内容策略层的判据（例如只标
+   "回复是否包含可执行的操作步骤"这类结构性特征，而不要求标注者复述内容）。
+2. **换攻击池**：把触发拒绝的条目从 D1 池里剔除，重抽——但这会改变 12.8 那次分层抽样的口径，
+   而 G-D1-1 的判据正是拿新池基线率去比旧的 9.8%，**换池必须重新预注册**，不能就地替换。
+3. **放弃 D1，防御线定格 S3**：第十节的负结果写法照写，加一句"换目标模型后自动 judge 显示
+   Qwen3-4B 有强侵蚀、Instruct-2507 贴顶，但盲标口径下的基线率因标注阻断未能测出"。
+
+**这三条都不是 Sonnet 能自己选的**（§1.2 第 3 条）。在决策出来之前，防御线**不提交新的 GPU 作业**。
+
+### 13.4 与 §12.3 的一处更正
+
+§12.3 曾把"把 ERGO 的 reset 从覆盖改成追加"列为唯一值得花钱的地方，并预测"第 2 层需重测但
+**大概率保留**"。**那个预测被证伪了**：2026-09-08 的 E2/E3 显示 append 恢复了第 0 层却抹掉了
+第 2 层，两者由同一行代码控制、互斥。见
+[`ergo_multiturn_reliability_pilot.md`](ergo_multiturn_reliability_pilot.md) 的「E2–E3」节与
+[`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md) 第 0.1 节。

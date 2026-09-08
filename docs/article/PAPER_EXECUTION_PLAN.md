@@ -49,8 +49,10 @@ Phase A 先按下面五句填进 `contract.yaml`，**Phase B/C 写完 §Method +
    被证否；ERGO 多轮数学线 (i)–(iii) 全过，却卡在一处执行器实现——reset 覆盖整个对话历史，
    使终点退化为末轮单个动作的函数（`fixed_last` 与 `always_reset` 的末轮输出 **116/116
    逐字相同**）。把那一行改成追加后三条前提全部成立，其闭环结果是本文 RQ3 的落点
-   （**待填：E1–E5 的结论，无论正负都填这里**；见
-   [`../experiments/two_task_success_plan.md`](../experiments/two_task_success_plan.md)）。
+   （**已填**：E2/E3 的双向结果——append 恢复了状态却抹掉了执行器权威，两者由同一行代码控制、
+   互斥；见 [`../experiments/ergo_multiturn_reliability_pilot.md`](../experiments/ergo_multiturn_reliability_pilot.md)
+   的「E2–E3」节。E5 从未提交。后继实验见
+   [`../experiments/ergo_fidelity_restoration_plan.md`](../experiments/ergo_fidelity_restoration_plan.md)）。
    这三条前提本身是给社区的可执行结论：它们区分"自适应打不赢开环"何时是**方法**的问题、
    何时是**设定**的问题。
    > **不要把这一句改回"瓶颈是测量分辨率"**——F4 已否定该说法：软 judge 恢复了分辨率，
@@ -63,7 +65,7 @@ Phase A 先按下面五句填进 `contract.yaml`，**Phase B/C 写完 §Method +
 | 核心 AE-Koopman 八阶段消融（8 任务、106 run） | §Method 基座 + §Experiments RQ1（先验是否成立、AE 是否必要） | `ABLATION_STUDY.md`、`results/` |
 | 对抗防御 Koopman-MPC Phase A→J | §Experiments RQ2（闭环干预）+ RQ3（等代价开环对照） | `docs/experiments/koopman_defense_pilot.md`、`budget_constrained_defense_plan.md`、`koopman_case_study_design.md` |
 | **三前提检验程序 + 两条线的失效定位** | §Experiments RQ3 的**方法学部分**（§1.3 第 5 句的直接支撑）：盲化标注定基线率、留一预测力检验、去阈值化读出 + 可控性判据 | `defense_line_redesign_plan.md` §9–12、`measurement_validity_plan.md`、`signal_resolution_plan.md` |
-| **ERGO 多轮数学线（`closeness` 读出 + reset 执行器）** | §Experiments RQ3 的**闭环落点**：三前提全过、终点被 overwrite 构造性清空（116/116）、append 变体下的闭环结果（**待填 E1–E5**） | `ergo_multiturn_reliability_pilot.md` G4、`two_task_success_plan.md` |
+| **ERGO 多轮数学线（`closeness` 读出 + reset 执行器）** | §Experiments RQ3 的**闭环落点**：三前提全过、终点被 overwrite 构造性清空（116/116）、append 变体下的双向结果（第 0 层修好、第 2 层塌掉，E2/E3 已完成，**S3 已成稿**） | `ergo_multiturn_reliability_pilot.md` 的 G4 与「E2–E3」节；后继 `ergo_fidelity_restoration_plan.md` |
 | 算子的额外用途（谱/Gramian/闭式策略/残差检测） | §Experiments RQ4（算子可读性） | `koopman_phaseI_policy_closed_form.md`、`koopman_detection_design.md`、`docs/task/KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md` |
 | sycophancy 惯性（MMLU 数据源，new-Q3 显著） | §Experiments RQ5（跨任务迁移证据，**可选**，取决于页数） | `mc_sycophancy_screening_pilot.md` |
 | 读出分辨率天花板（判官分歧/token 概率退化/ground truth 审计/截断） | §Experiments 收尾 + §Conclusion limitations + `non_claim_ledger` | `koopman_defense_pilot.md` 七/八节、`continuous_readout_plan.md`、`sycophancy_screening_pilot.md` |

@@ -206,15 +206,30 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
 
 ## 实验
 
-- **[experiments/two_task_success_plan.md](experiments/two_task_success_plan.md) —
-  ⏳ **当前唯一的活计划**（2026-09-07 立项，**E0 已签字**；Opus 5 裁决 / Sonnet 5 执行）：把
+- **[experiments/ergo_fidelity_restoration_plan.md](experiments/ergo_fidelity_restoration_plan.md) —
+  ⏳ **ERGO 线的活计划**（2026-09-08 立项，**待 R0 签字**；Opus 5 裁决 / Sonnet 5 执行）：E2/E3 之后
+  ERGO 线定格 S3，而失效被归因到**我们自己的 prompt 结构**，不是模型也不是数据。决定性证据：跨 6 个臂
+  Pearson(末轮回复中位长度, 成功率) = **+0.984**——reset 的全部权威 = 它让模型重新写了一遍推导。
+  让"不写推导"成为可选项的是 `ergo_math_trajectory.py:42-46` 那条**每轮重复**的答案格式指令，
+  而这个 harness **完全没有 system prompt**；上游把同一条指令放在 system prompt 里只给一次，
+  并且用 strategy classifier 把 `Current answer: 12` 这类回复判为**非作答而不打分**。
+  R1（格式指令搬进 system prompt，~1 GPU-小时）单独就能证实或证伪整条归因；R2 补 answer-attempt
+  打分口径，R3 做忠实的 ERGO reset（模型重写 consolidation，顺带拆开上游自己没拆的
+  "熵触发 vs 重写 prompt"混淆），R4 做模型对照，R5（需重开 Q4）做熵触发臂。
+  **战略要点**：`RECAP > SNOWBALL` 的非单调性就是控制问题本身，而它**只在 append 下存在**；
+  上游 ERGO 相对 RECAP 的 +14.1/+9.3 分正是"自适应时机打赢最好的固定规则"，即本项目的 S1。
+- [experiments/backup/two_task_success_plan.md](experiments/backup/two_task_success_plan.md) —
+  ⛔ **已归档**（2026-09-08）。ERGO 半边 E0–E6 结案（S3），规格作废，后继见上一条；防御半边
+  D0–D3 未被取代但执行停在盲标，入口改为
+  [defense_line_redesign_plan.md](experiments/defense_line_redesign_plan.md) 第十三节。原文：把
   "两条线都要正面结果"拆成跑前写定的 S1/S2/S3 三级，然后按信息结构分配资源。**ERGO 线主攻**：
   五层前提里已有四层站住，唯一没站住的第 0 层（终点被末轮单个动作决定）根因是
   `ergo_math_trajectory.py:114` 把 reset 实现成**覆盖整个历史**——overwrite 下
   `fixed_last` 与 `always_reset` 的末轮输出 **116/116 逐字相同**（E0 独立重算，`judge_raw_output`
   与 `agent_message` 皆然），所以"状态"根本不进入终点。改成**追加**后历史重新进入被控对象，
   四道预注册闸门（权威保留 / 恒等式打破 / reset 效应依赖 closeness / 控制器不退化成固定臂）
-  决定是否投 Phase C′，GPU 总量约 8 小时。**防御线只给两个 GPU-天**判定换目标模型能否让
+  决定是否投 Phase C′，GPU 总量约 8 小时（**实际结果**：G-E2-2 通过、G-E2-1/G-E3-1/G-E3-2 不过，
+  E5 从未提交）。**防御线只给两个 GPU-天**判定换目标模型能否让
   前提 1–2 成立，闭环不再追。E0 复核（第十二节）补了四处规格缺口：现有
   `analyze_ergo_phaseC_comparison.py` 算不出任何一道新闸门（`ARM_DIRS` 硬编码）、模式 B 的两个
   对手臂尚不存在、`forced_last_reset` 的预算路径会让末轮强制动作静默失效、terminal 目标下
@@ -403,8 +418,11 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   与 [experiments/adaptive_vs_fixed_claim_plan.md](experiments/adaptive_vs_fixed_claim_plan.md)
   第十三节。**
 - **[experiments/defense_line_redesign_plan.md](experiments/defense_line_redesign_plan.md) —
-  ✅ **已收口**（2026-09-07 立项，同日 D1/A1/A2/B1 全部跑完）：防御线的后续工作由
-  [two_task_success_plan.md](experiments/two_task_success_plan.md) 第四节（D0–D3 时间盒）接手；
+  ⏳ **防御线的活入口**（2026-09-07 立项，同日 D1/A1/A2/B1 跑完；**第十三节是当前状态**）：
+  D0–D3 时间盒的规格在已归档的
+  [backup/two_task_success_plan.md](experiments/backup/two_task_success_plan.md) 第四节（未被取代），
+  但执行停在盲标——D1 两个 GPU 臂各 100 攻击 × 5 轮已跑完，**14 个盲标 subagent 只完成 6 个**，
+  其余撞上内容策略硬拒绝且缺失非随机，**G-D1-1 算不出来**，三条待决策路线见第十三节。
   本文档第十节的负结果写法仍是 D3 续写的目标。原文：P 判定独立 judge 站得住之后，
   复核"Koopman 要怎么改才可能生效"，测出一条量化结论——**这条线的信息结构不支持闭环**。
   255 条轨迹上：早期观测（前两轮均分）对 late(3–5) 的相关是 **−0.066/+0.041（p=0.29/0.52）**，
@@ -439,7 +457,7 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   真实属性，不是测量假象**，截断被排除为混淆，防御线停止投入、按第十节写负结果。
 - **[experiments/measurement_validity_plan.md](experiments/measurement_validity_plan.md) —
   ✅ **已收口**（2026-09-07 立项，同日 P/G1/G4 跑完）：MV 判据与 G4 的结论已并入
-  [two_task_success_plan.md](experiments/two_task_success_plan.md)（0.4 节的预算模式判定法
+  [backup/two_task_success_plan.md](experiments/backup/two_task_success_plan.md)（0.4 节的预算模式判定法
   → G-E3-3；7.1 节的 `fixed_last` 臂 → 恒等式基线）。原文：两条线的全部结果跑完后复核发现，
   它们卡在同一个毛病上——**先下结论，没先证明测量有效、设定非退化**。新增一条前置判据 **MV**
   （测量有效性），排在 RC-0..RC-3 之前。防御线的缺口是 judge 从未被外部真值验证过：同一批
@@ -482,7 +500,7 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   [experiments/ergo_multiturn_reliability_pilot.md](experiments/ergo_multiturn_reliability_pilot.md) G4 节。
 - **[experiments/signal_resolution_plan.md](experiments/signal_resolution_plan.md) —
   ✅ **已收口**（2026-09-07 立项，同日 F0–F4 跑完）：`closeness` 读出与 0.5 节的四条判据被
-  [two_task_success_plan.md](experiments/two_task_success_plan.md) 的 G-E3-1 逐字沿用（不改阈值）。
+  [backup/two_task_success_plan.md](experiments/backup/two_task_success_plan.md) 的 G-E3-1 逐字沿用（不改阈值）。
   原文：复核 `8dde4b6`（ERGO 终止）时
   发现**那个终止判定建立在两处测量错误上**——(1) E0 的 RC-3 把 `u_{t+1}` 实现成了 `u_{t+2}`
   （`analyze_ergo_readout_state.py:216-219` 的三元 `zip`），改正后 `u_t=+0.0588, p=0.0296`
