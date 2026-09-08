@@ -82,6 +82,16 @@ def parse_args() -> argparse.Namespace:
         "of replacing it with the reset's consolidated message.",
     )
     parser.add_argument(
+        "--prompt-profile",
+        choices=("legacy", "upstream"),
+        default="legacy",
+        help="docs/experiments/ergo_fidelity_restoration_plan.md section 3.1: 'legacy' (default) is "
+        "the existing byte-for-byte-unchanged prompt structure (no system message; the answer "
+        "format instruction concatenated onto every user turn); 'upstream' delivers that "
+        "instruction once in a system message and leaves the per-turn stimuli bare, matching "
+        "microsoft/lost_in_conversation's shape.",
+    )
+    parser.add_argument(
         "--fixed-schedule-turns",
         type=int,
         nargs="+",
@@ -307,6 +317,21 @@ def build_controller_factory(args: argparse.Namespace):
             random_excite_p=args.random_excite_p,
             remind_budget=args.remind_budget,
         )
+    if args.prompt_profile == "upstream":
+        # docs/experiments/ergo_fidelity_restoration_plan.md section 3.1: suffix
+        # excitation_design/controller.name with "_up" for the same reason
+        # --reset-mode append suffixes with "_append" -- two prompt profiles of
+        # the same controller must never collide under one name. Applied before
+        # the append suffix so names read e.g. "constant_remind_up_append";
+        # same double-suffix guard, since controllers may be singletons.
+        base_profile_factory = controller_factory
+
+        def controller_factory(seed: int, entry_id: str = ""):
+            controller = base_profile_factory(seed, entry_id)
+            if not controller.name.endswith("_up") and "_up_" not in controller.name:
+                controller.name = f"{controller.name}_up"
+            return controller
+
     if args.reset_mode == "append":
         # docs/experiments/two_task_success_plan.md section 2 E1 item 2:
         # suffix excitation_design/controller.name with "_append" so the
@@ -330,6 +355,7 @@ def main() -> None:
     trajectory_config = ErgoMathTrajectoryConfig(
         agent_gen=GenerationConfig(max_new_tokens=args.agent_max_new_tokens),
         reset_mode=args.reset_mode,
+        prompt_profile=args.prompt_profile,
     )
     controller_factory = build_controller_factory(args)
 

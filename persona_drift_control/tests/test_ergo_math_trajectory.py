@@ -2,7 +2,12 @@ import pytest
 
 from persona_drift.control import ConstantRemindController, ZeroControlController
 from persona_drift.ergo_math_bank import GSM8KShardedItem
-from persona_drift.ergo_math_trajectory import ErgoMathTrajectoryConfig, run_ergo_math_trajectory
+from persona_drift.ergo_math_trajectory import (
+    ErgoMathTrajectoryConfig,
+    _consolidated_stimulus,
+    _incremental_stimulus,
+    run_ergo_math_trajectory,
+)
 
 
 class FakeTokenizer:
@@ -182,3 +187,94 @@ def test_reset_mode_overwrite_and_append_produce_same_stimulus_text():
 def test_invalid_reset_mode_raises_value_error():
     with pytest.raises(ValueError):
         ErgoMathTrajectoryConfig(reset_mode="clobber")
+
+
+# --- prompt_profile (docs/experiments/ergo_fidelity_restoration_plan.md R1) ---
+
+
+def test_prompt_profile_legacy_stimulus_text_is_byte_for_byte_unchanged():
+    # G-R1-0's implementation lock: "legacy" must reproduce the exact strings
+    # every existing output directory was produced with. Asserted against
+    # literals here rather than against the module constant, so that editing
+    # the constant cannot silently move the baseline with the test.
+    assert _incremental_stimulus("shard one") == (
+        "shard one\n\n"
+        'Give your current best-guess final numeric answer to the math problem, even if you are '
+        'not fully confident yet or do not have all the details, on its own line in this exact '
+        'format: "Current answer: X" (a single number).'
+    )
+    assert _consolidated_stimulus(["shard one", "shard two"]) == (
+        "Here is the math problem, given as a list of clues (all the information you have "
+        "been given so far in this conversation):\n- shard one\n- shard two\n\n"
+        'Give your current best-guess final numeric answer to the math problem, even if you are '
+        'not fully confident yet or do not have all the details, on its own line in this exact '
+        'format: "Current answer: X" (a single number).'
+    )
+
+
+def test_prompt_profile_upstream_puts_one_system_message_first_and_keeps_it_across_resets():
+    agent = FakeChatModel()
+    config = ErgoMathTrajectoryConfig(reset_mode="overwrite", prompt_profile="upstream")
+    run_ergo_math_trajectory(
+        agent=agent,
+        judge=agent,
+        entry=_entry(),
+        seed=0,
+        trajectory_id="t_up1",
+        controller=ConstantRemindController(),
+        config=config,
+    )
+    for call_messages in agent.messages_seen:
+        systems = [m for m in call_messages if m["role"] == "system"]
+        # Exactly one, and first -- an overwrite reset rebuilds the history from
+        # the initial base, so dropping the system message there would silently
+        # revert to the legacy profile from the first reset onward.
+        assert len(systems) == 1
+        assert call_messages[0]["role"] == "system"
+        assert "Current answer: X" in call_messages[0]["content"]
+
+
+def test_prompt_profile_upstream_user_turns_carry_no_answer_format_instruction():
+    agent = FakeChatModel()
+    config = ErgoMathTrajectoryConfig(reset_mode="append", prompt_profile="upstream")
+    rows = run_ergo_math_trajectory(
+        agent=agent,
+        judge=agent,
+        entry=_entry(),
+        seed=0,
+        trajectory_id="t_up2",
+        controller=ZeroControlController(),
+        config=config,
+    )
+    for row in rows:
+        assert "Current answer" not in row["user_message"]
+    assert rows[0]["user_message"] == "shard one"
+
+
+def test_prompt_profile_upstream_consolidated_stimulus_carries_no_answer_format_instruction():
+    consolidated = _consolidated_stimulus(["shard one", "shard two"], "upstream")
+    assert "Current answer" not in consolidated
+    assert consolidated.endswith("- shard one\n- shard two")
+    assert _incremental_stimulus("shard one", "upstream") == "shard one"
+
+
+def test_prompt_profile_is_recorded_on_every_row():
+    agent = FakeChatModel()
+    rows = run_ergo_math_trajectory(
+        agent=agent,
+        judge=agent,
+        entry=_entry(),
+        seed=0,
+        trajectory_id="t_up3",
+        config=ErgoMathTrajectoryConfig(prompt_profile="upstream"),
+    )
+    assert {row["prompt_profile"] for row in rows} == {"upstream"}
+    legacy_rows = run_ergo_math_trajectory(
+        agent=FakeChatModel(), judge=agent, entry=_entry(), seed=0, trajectory_id="t_up4"
+    )
+    assert {row["prompt_profile"] for row in legacy_rows} == {"legacy"}
+
+
+def test_invalid_prompt_profile_raises_value_error():
+    with pytest.raises(ValueError, match="prompt_profile"):
+        ErgoMathTrajectoryConfig(prompt_profile="upstreem")

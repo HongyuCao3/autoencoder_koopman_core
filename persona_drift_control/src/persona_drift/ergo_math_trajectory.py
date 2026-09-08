@@ -45,6 +45,32 @@ _ANSWER_FORMAT_INSTRUCTION = (
     'format: "Current answer: X" (a single number).'
 )
 
+# docs/experiments/ergo_fidelity_restoration_plan.md section 3.1: under
+# prompt_profile="upstream" the answer-format requirement lives here, delivered
+# once before turn 1, instead of being concatenated onto every user turn. That
+# is upstream's shape (microsoft/lost_in_conversation loads
+# prompts/math/math_system_prompt.txt once via generate_system_prompt()), and
+# the per-turn repetition is what section 0.1 attributes the append-mode
+# terseness collapse to: the model reads k prior turns each carrying the
+# instruction plus its own matching one-line reply, which is a k-shot
+# demonstration of answering without deriving.
+#
+# The parseability requirement is KEPT (the regex judge is the only scoring
+# instrument this harness has, so dropping it would leave R1 with no metric);
+# it just appears once rather than every turn. The framing deliberately does
+# NOT tell the assistant it is in a multi-turn underspecified conversation --
+# upstream is explicit that "the assistant is not explicitly informed that it
+# is participating in a multi-turn, underspecified conversation", and telling
+# it would be a second changed variable.
+_UPSTREAM_SYSTEM_PROMPT = (
+    "You are a helpful assistant that solves math problems.\n\n"
+    "The answer should be a single number (it could be decimal, or negative, or a fraction, "
+    "etc.).\n\n"
+    "End every reply with your current best-guess final numeric answer on its own line in this "
+    'exact format: "Current answer: X" (a single number). Give it even if you are not fully '
+    "confident yet or do not have all the details."
+)
+
 
 def _to_number(text: str | None) -> float | None:
     if text is None:
@@ -80,22 +106,50 @@ class ErgoMathTrajectoryConfig:
     # message on top of it, so the pre-reset history re-enters the agent's
     # context instead of being discarded.
     reset_mode: str = "overwrite"
+    # docs/experiments/ergo_fidelity_restoration_plan.md section 3.1: "legacy"
+    # is the existing behavior byte-for-byte (no system message; the answer
+    # format instruction concatenated onto every user turn); "upstream" moves
+    # that instruction into a single system message and leaves the per-turn
+    # stimuli as the bare shard / bare bullet list.
+    prompt_profile: str = "legacy"
 
     def __post_init__(self) -> None:
         if self.reset_mode not in ("overwrite", "append"):
             raise ValueError(f"reset_mode must be 'overwrite' or 'append', got {self.reset_mode!r}")
+        if self.prompt_profile not in ("legacy", "upstream"):
+            raise ValueError(
+                f"prompt_profile must be 'legacy' or 'upstream', got {self.prompt_profile!r}"
+            )
 
 
-def _incremental_stimulus(shard: str) -> str:
-    return f"{shard}\n\n{_ANSWER_FORMAT_INSTRUCTION}"
+def _incremental_stimulus(shard: str, prompt_profile: str = "legacy") -> str:
+    if prompt_profile == "legacy":
+        return f"{shard}\n\n{_ANSWER_FORMAT_INSTRUCTION}"
+    return shard
 
 
-def _consolidated_stimulus(revealed_shards: list[str]) -> str:
+def _consolidated_stimulus(revealed_shards: list[str], prompt_profile: str = "legacy") -> str:
     bullet_list = "\n".join(f"- {shard}" for shard in revealed_shards)
-    return (
+    head = (
         "Here is the math problem, given as a list of clues (all the information you have "
-        f"been given so far in this conversation):\n{bullet_list}\n\n{_ANSWER_FORMAT_INSTRUCTION}"
+        f"been given so far in this conversation):\n{bullet_list}"
     )
+    if prompt_profile == "legacy":
+        return f"{head}\n\n{_ANSWER_FORMAT_INSTRUCTION}"
+    return head
+
+
+def _initial_agent_history(prompt_profile: str) -> list[dict[str, str]]:
+    """The history an "empty" conversation starts from, and the base a
+    reset_mode="overwrite" reset rebuilds on top of. Under "legacy" that is
+    the empty list (existing behavior). Under "upstream" it is the single
+    system message -- which an overwrite reset must NOT discard, or the
+    system-prompt profile would silently revert to legacy from the first
+    reset onward."""
+
+    if prompt_profile == "legacy":
+        return []
+    return [{"role": "system", "content": _UPSTREAM_SYSTEM_PROMPT}]
 
 
 def run_ergo_math_trajectory(
@@ -112,7 +166,7 @@ def run_ergo_math_trajectory(
     controller = controller or ZeroControlController()
     num_turns = len(entry.shards)
 
-    agent_history: list[dict[str, str]] = []
+    agent_history: list[dict[str, str]] = _initial_agent_history(config.prompt_profile)
     rows: list[dict[str, Any]] = []
     revealed_shards: list[str] = []
 
@@ -121,13 +175,14 @@ def run_ergo_math_trajectory(
         revealed_shards.append(entry.shards[turn - 1])
 
         if u_reset:
-            stimulus = _consolidated_stimulus(revealed_shards)
+            stimulus = _consolidated_stimulus(revealed_shards, config.prompt_profile)
             if config.reset_mode == "overwrite":
-                agent_history = [{"role": "user", "content": stimulus}]
+                agent_history = _initial_agent_history(config.prompt_profile)
+                agent_history.append({"role": "user", "content": stimulus})
             else:  # append
                 agent_history.append({"role": "user", "content": stimulus})
         else:
-            stimulus = _incremental_stimulus(entry.shards[turn - 1])
+            stimulus = _incremental_stimulus(entry.shards[turn - 1], config.prompt_profile)
             agent_history.append({"role": "user", "content": stimulus})
 
         agent_seed = seed * 1_000_000 + turn * 100 + 1
@@ -152,6 +207,7 @@ def run_ergo_math_trajectory(
             "agent_thinking": agent_thinking,
             "u_reset": u_reset,
             "reset_mode": config.reset_mode,
+            "prompt_profile": config.prompt_profile,
             "excitation_design": controller.name,
             "run_id": run_id,
             "seed": seed,

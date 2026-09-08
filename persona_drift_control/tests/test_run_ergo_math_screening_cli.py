@@ -41,6 +41,7 @@ def _args(controller: str, **overrides) -> argparse.Namespace:
     base = dict(
         controller=controller,
         reset_mode="overwrite",
+        prompt_profile="legacy",
         fixed_schedule_turns=None,
         random_excite_p=None,
         random_schedule_spend_prob=1.0,
@@ -254,3 +255,38 @@ def test_mpc_arm_name_gets_append_suffix_in_append_mode(tmp_path):
     )
     controller = _rems.build_controller_factory(args)(0)
     assert controller.name == "mpc_terminal_pad_append"
+
+
+# --- prompt_profile (docs/experiments/ergo_fidelity_restoration_plan.md R1) ---
+
+
+def test_arm_name_gets_up_suffix_under_upstream_profile(tmp_path):
+    report_path = _fit_report_path(tmp_path)
+    args = _args(
+        "ergo_koopman_mpc", koopman_model_path=report_path,
+        koopman_objective="terminal", koopman_pad_short_history=True,
+        prompt_profile="upstream",
+    )
+    controller = _rems.build_controller_factory(args)(0)
+    assert controller.name == "mpc_terminal_pad_up"
+
+
+def test_up_and_append_suffixes_compose_in_a_fixed_order(tmp_path):
+    report_path = _fit_report_path(tmp_path)
+    args = _args(
+        "ergo_koopman_mpc", koopman_model_path=report_path,
+        koopman_objective="terminal", koopman_pad_short_history=True,
+        prompt_profile="upstream", reset_mode="append",
+    )
+    factory = _rems.build_controller_factory(args)
+    controller = factory(0)
+    assert controller.name == "mpc_terminal_pad_up_append"
+    # The mpc controller is a singleton returned by reference, so a second
+    # factory call must not re-suffix either wrapper (the double-suffix guard
+    # that the "_append" wrapper already carries, now needed on "_up" too).
+    assert factory(0).name == "mpc_terminal_pad_up_append"
+
+
+def test_legacy_profile_leaves_arm_names_untouched():
+    args = _args("constant_remind", prompt_profile="legacy", reset_mode="overwrite")
+    assert _rems.build_controller_factory(args)(0).name == "constant_remind"
