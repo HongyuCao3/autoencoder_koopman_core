@@ -1,8 +1,18 @@
 # 执行计划：Koopman 快车道（K1–K4）——一个激励臂直接进建模
 
-**状态**：🏃 **K1 / K1.2 已提交，运行中**（2026-09-08）。**尚未取代**
-[`defense_line_redesign_plan.md`](defense_line_redesign_plan.md)。
-K1/K1.2 的 sbatch 已写好、K2 的 null 补丁已落地并通过回归检验（0.2 节），**GPU 作业未提交**。
+**状态**：⏸ **收尾（2026-09-08 用户指令）**。`defense` 线暂时收尾，**K3 闭环臂不提交**。
+K1（job 15696221）✅ COMPLETED，G-K1 五条全过；K2 ✅ 已跑，**三条主闸门 G-K2-1/2/3 全过**（第八节）。
+本计划就此挂起——**是在辨识成立的状态下挂起的，不是失败**。
+活计划转到 ERGO 线 → [`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md)。
+**尚未取代** [`defense_line_redesign_plan.md`](defense_line_redesign_plan.md)。
+
+> **K1.2 的结果与由它触发的报告口径裁决（2026-09-08，用户）**
+>
+> 独立 rejudge **没有量程**：500 行里 ceiling share 0.91，turn 1 是 `mean=1.000 sd=0.000 distinct=1`。
+> 这正是第四节 K4 预注册的第二个分支。**用户裁决：论文写作暂用自评分数，并原样带上局限句；
+> 等有新思路再重启这条线。** 该裁决是 `.claude/global.md` → *报告口径* 的一条**具名例外**，
+> 已登记在那里（含到期条件）。**例外只覆盖 `defense` 线，不外溢到 ERGO/`stance`。**
+
 **适用智能体**：Sonnet 5。
 **触发来源**：对防御线证据基础的复核发现，用来否掉"有没有状态"的三个数字没有一个是
 Koopman/DMDc 需要的量（详见本文档第五节）。结论是**停止再做代理性前置闸门，直接跑真正的
@@ -327,3 +337,32 @@ persona-drift 的 probe-then-decide 时序，**不是 `attack_trajectory.py` 的
 
 K1 回来后先过 G-K1（`COMPLETED 0:0`；500 行；`attack_id` 集合与 `d1_screen_qwen4b` 相同；
 `u_remind` 均值 ∈ [0.40, 0.60]；reminded 行 ≥ 200；每轮 sd > 0），再跑 K2。
+
+---
+
+## 八、K1 / K2 结果（2026-09-08，收尾记录）
+
+**K1**（job 15696221，`COMPLETED`；期间被抢占一次、按 `--requeue` 自动重排，最终 wall 19m17）
+→ **G-K1 五条全过**：500 行 / `attack_id` 集合 100 vs 100 / `u_remind` 均值 0.518 /
+reminded 行 259 / 每轮 sd > 0。
+
+**K2**（CPU，命令逐字照第二节，`--nu 1 --mu 2 --contemporaneous-v --n-folds 20 --split-seed 0`）：
+
+| 闸门 | 判据 | 实测 | 判定 |
+|---|---|---|---|
+| **G-K2-1 状态** | 一步 MSE 在 ≥14/20 折打过最好 null | `arx` **14/20**（均值 0.1242 vs 最好 null `stateless` 0.1534） | ✅ **压线过** |
+| **G-K2-2 可控** | 同轮动作系数 `B` 的 95% CI 不含 0，且符号为"提醒使 `y_safety` 上升" | **B = +0.0825，CI [+0.0139, +0.1485]** | ✅ |
+| **G-K2-3 非退化** | ρ(A) ∈ (0.1, 1.05)、可控性满秩、Gramian cond < 1e12 | ρ(A)=**0.4250**、rank **3/3**、cond **2.16e3** | ✅ |
+| **G-K2-4 多步** | `held_out_rollout_mse` 打过 `turn_mean` 的同批 rollout MSE | rollout 0.1185，但**脚本未产出 null 的 rollout 对照** | ⬜ **未判定** |
+
+**G-K2-2 的 CI 不在 `fit_koopman_defense_model.py` 的产出里**，是另算的：attack 级自举 4000 次，
+同一设计矩阵（`y_{t+1} ~ 1 + y_t + u_{t+1} + u_t`，400 个转移 / 100 个 attack）。
+脚本在 `scratchpad/k2_bci.py`；**若这条要进论文，得把自举并进拟合脚本并配单测。**
+
+> **⚠️ 收尾决定与闸门结果的张力（留给用户）**：第二节预注册的是"**三条主闸门全过 → 进 K3**"，
+> 而 1/2/3 现在**全过了**。按 2026-09-08 的收尾指令 **K3 不提交**，本计划就停在这里。
+> 也就是说：`defense` 线是**在辨识成立、算子可控、且模型非退化的状态下被挂起的**，
+> 不是因为它失败。重启时从这一行进入，K3 的臂表与判定见第三节，无需重跑 K1/K2。
+
+**报告口径提醒**：以上全部是**拟合诊断量**，按 `.claude/global.md` → *报告口径*
+**不得作为任务结果**报告。K4 的任务结果数字另按那里的**具名例外**（自判 + 局限句）出。

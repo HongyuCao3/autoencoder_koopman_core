@@ -278,3 +278,123 @@ def test_prompt_profile_is_recorded_on_every_row():
 def test_invalid_prompt_profile_raises_value_error():
     with pytest.raises(ValueError, match="prompt_profile"):
         ErgoMathTrajectoryConfig(prompt_profile="upstreem")
+
+
+# ---------------------------------------------------------------------------
+# EK-A counterfactual branching
+# (docs/experiments/ergo_fidelity_restoration_plan.md section 4, gate G-EKA-0)
+# ---------------------------------------------------------------------------
+
+
+class ContentHashChatModel:
+    """Reply depends on the exact messages AND the seed, so any perturbation of
+    the prefix, the message order, or the seed changes the output. A constant-
+    reply stub cannot tell "shares the prefix" from "happens to agree"."""
+
+    def __init__(self, model_id="hash-model"):
+        self.model_id = model_id
+        self.tokenizer = FakeTokenizer()
+        self.calls: list[tuple[int, list[dict[str, str]]]] = []
+
+    def generate(self, messages, seed, config=None, enable_thinking=None, return_thinking=False):
+        import hashlib
+        import json as _json
+
+        snapshot = [dict(m) for m in messages]
+        self.calls.append((seed, snapshot))
+        h = hashlib.sha256((_json.dumps(snapshot, sort_keys=True) + f"|{seed}").encode()).hexdigest()[:8]
+        text = f"working {h}\nCurrent answer: {int(h, 16) % 100}"
+        return (text, f"think {h}") if return_thinking else text
+
+
+def _branch(reset_mode="append", prompt_profile="upstream", controller=None):
+    from persona_drift.ergo_math_trajectory import run_ergo_math_branch_trajectory
+
+    agent = ContentHashChatModel()
+    base, cf = run_ergo_math_branch_trajectory(
+        agent=agent,
+        judge=agent,
+        entry=_entry(),
+        seed=7,
+        trajectory_id="t",
+        config=ErgoMathTrajectoryConfig(reset_mode=reset_mode, prompt_profile=prompt_profile),
+        controller=controller or ZeroControlController(),
+    )
+    return agent, base, cf
+
+
+def test_branch_base_rows_are_identical_to_a_plain_run():
+    """The whole design rests on the base branch being unperturbed: if
+    generating the counterfactual changed the base trajectory, the pair would
+    not be a counterfactual of anything."""
+    for reset_mode in ("overwrite", "append"):
+        for profile in ("legacy", "upstream"):
+            cfg = ErgoMathTrajectoryConfig(reset_mode=reset_mode, prompt_profile=profile)
+            plain_agent = ContentHashChatModel()
+            plain = run_ergo_math_trajectory(
+                agent=plain_agent, judge=plain_agent, entry=_entry(), seed=7,
+                trajectory_id="t", config=cfg, controller=ZeroControlController(),
+            )
+            _, base, _cf = _branch(reset_mode, profile)
+            assert base == plain, f"base branch perturbed under {reset_mode}/{profile}"
+
+
+def test_counterfactual_shares_the_prefix_byte_for_byte():
+    agent, base, cf = _branch()
+    # two generate calls per turn: base first, then the counterfactual
+    per_turn = [agent.calls[i:i + 2] for i in range(0, len(agent.calls), 2)]
+    assert len(per_turn) == len(base)
+    for (seed_b, msgs_b), (seed_c, msgs_c) in per_turn:
+        assert msgs_b[:-1] == msgs_c[:-1], "prefix differs between base and counterfactual"
+        assert msgs_b[-1] != msgs_c[-1], "the two actions produced the same user message"
+
+
+def test_counterfactual_flips_the_action_every_turn():
+    _agent, base, cf = _branch()
+    assert len(cf) == len(base) == 4
+    assert [c["u_reset"] for c in cf] == [1 - b["u_reset"] for b in base]
+    assert [c["branch_turn"] for c in cf] == [b["turn"] for b in base]
+
+
+def test_counterfactual_reuses_the_base_agent_seed_but_not_the_judge_seed():
+    """Common random numbers: same sampling draws, different action."""
+    agent, base, _cf = _branch()
+    per_turn = [agent.calls[i:i + 2] for i in range(0, len(agent.calls), 2)]
+    for turn, ((seed_b, _), (seed_c, _)) in enumerate(per_turn, start=1):
+        assert seed_b == seed_c == 7 * 1_000_000 + turn * 100 + 1
+
+
+def test_counterfactual_rows_carry_linkage_and_base_rows_stay_schema_clean():
+    _agent, base, cf = _branch()
+    plain_keys = set(base[0])
+    for c in cf:
+        assert c["is_counterfactual"] is True
+        assert c["base_trajectory_id"] == "t"
+        assert c["trajectory_id"] == f"t#cf_t{c['branch_turn']}"
+        assert set(c) - plain_keys == {"is_counterfactual", "base_trajectory_id", "branch_turn", "base_u_reset"}
+    for b in base:
+        assert set(b) == plain_keys
+        assert "is_counterfactual" not in b
+
+
+def test_branch_costs_exactly_two_generations_per_turn():
+    agent, base, _cf = _branch()
+    assert len(agent.calls) == 2 * len(base)
+
+
+def test_overwrite_counterfactual_rebuilds_from_the_initial_history():
+    """Under overwrite a reset discards the history, so the counterfactual's
+    message list must be the initial history plus one consolidated user turn --
+    not the accumulated prefix."""
+    agent, base, cf = _branch(reset_mode="overwrite", prompt_profile="upstream")
+    per_turn = [agent.calls[i:i + 2] for i in range(0, len(agent.calls), 2)]
+    for turn, (_base_call, (_seed, msgs_c)) in enumerate(per_turn, start=1):
+        assert msgs_c[0]["role"] == "system"
+        assert len(msgs_c) == 2, f"turn {turn}: overwrite counterfactual kept history"
+
+
+def test_branch_with_a_resetting_base_flips_to_no_reset():
+    _agent, base, cf = _branch(controller=ConstantRemindController())
+    assert all(b["u_reset"] == 1 for b in base)
+    assert all(c["u_reset"] == 0 for c in cf)
+    assert all(c["base_u_reset"] == 1 for c in cf)

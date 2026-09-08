@@ -84,6 +84,15 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
   `periodic` 对照，用的仍是本文档定义的任务/通道/判据。**
 - [task/CONTROL_THEORETIC_LLM_RELATED_WORK.md](task/CONTROL_THEORETIC_LLM_RELATED_WORK.md) —
   2025–2026 控制论×LLM 相关工作调研：按时间轴分类、gap 确认、任务选型信号
+- **[task/MULTITURN_RESET_INTERVENTION_EVIDENCE.md](task/MULTITURN_RESET_INTERVENTION_EVIDENCE.md) —
+  ▶ 设计新激励臂（Q16）之前的文献核查（2026-09-08）**：reset 类介入在 Qwen3 家族 + 分片数学上
+  **被独立验证有效**（CCOPD arXiv:2605.30251 的 Reset-Then-Answer，Qwen3-8B **66.0 → 72.8**），
+  并给了我们的机制一个现成术语 **self-anchored drift**。文献效应量区间 **+0.07 ~ +0.18**，
+  本项目 R1 的 +0.181 落在区间内——**因此新臂的 MDE 必须 ≤ 0.07（底线 0.15），而现设计是 0.49。**
+  三条反证各改一处设计：ERGO 从未在 14B 以下测过且没拆开熵触发 vs 重写；Laban 的
+  `RECAP > SNOWBALL` 只有 2 个模型、无误差棒（独立支持关闭 R4）；过度 reset 的语义漂移会反转收益
+  （**中间预算不能砍**）。附带一条正面证据：Qwen3-4B 在 GSM8K 上 ECE=0.018 是同类最佳，
+  而我们关掉熵读出族是在被污染的 legacy 数据上测的（→ Q17）。落地约束 C1–C6 见其第五节。
 - [task/KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md](task/KOOPMAN_MECHANISM_AND_TRANSFER_ANALYSIS.md) —
   对抗防御这条线（Phase A→I）的 baseline 对比/机制分析总结，Koopman 在这个任务上"work"的
   具体机制（惯性前提+边际效应复利累积+可控性形式化证明+无交互架构的自适应性上限）、拟合出的
@@ -224,17 +233,28 @@ ERGO/多轮可靠性侵蚀（`experiments/ergo_multiturn_reliability_pilot.md`�
 ## 实验
 
 - **[experiments/ergo_fidelity_restoration_plan.md](experiments/ergo_fidelity_restoration_plan.md) —
-  ⏳ **ERGO 线的活计划**（2026-09-08 立项，**待 R0 签字**；Opus 5 裁决 / Sonnet 5 执行）：E2/E3 之后
+  ▶ **ERGO 线的活计划，也是当前唯一的活计划**（2026-09-08 立项；同日按 **Koopman 贡献过滤器**
+  重写为 **Koopman 相位 EK0–EK2**，R 相位已结案）：E2/E3 之后
   ERGO 线定格 S3，而失效被归因到**我们自己的 prompt 结构**，不是模型也不是数据。决定性证据：跨 6 个臂
   Pearson(末轮回复中位长度, 成功率) = **+0.984**——reset 的全部权威 = 它让模型重新写了一遍推导。
   让"不写推导"成为可选项的是 `ergo_math_trajectory.py:42-46` 那条**每轮重复**的答案格式指令，
   而这个 harness **完全没有 system prompt**；上游把同一条指令放在 system prompt 里只给一次，
   并且用 strategy classifier 把 `Current answer: 12` 这类回复判为**非作答而不打分**。
-  R1（格式指令搬进 system prompt，~1 GPU-小时）单独就能证实或证伪整条归因；R2 补 answer-attempt
-  打分口径，R3 做忠实的 ERGO reset（模型重写 consolidation，顺带拆开上游自己没拆的
-  "熵触发 vs 重写 prompt"混淆），R4 做模型对照，R5（需重开 Q4）做熵触发臂。
+  R1（格式指令搬进 system prompt）**已完成并通过**：权威回来了（`+0.1810`，CI [+0.0862, +0.2845]），
+  状态也还在。**R2/R4 已关闭、R3/R5 挂起**——它们测的是"我们像不像上游"，
+  填不出论文任何一格。计划现在只剩 **EK0**（状态依赖分析，CPU）→ **EK1**（Koopman
+  辨识，CPU）→ **EK2**（闭环臂，待签字）。
   **战略要点**：`RECAP > SNOWBALL` 的非单调性就是控制问题本身，而它**只在 append 下存在**；
   上游 ERGO 相对 RECAP 的 +14.1/+9.3 分正是"自适应时机打赢最好的固定规则"，即本项目的 S1。
+  > **该战略要点已被 R1 部分推翻（2026-09-08）**：G-R1-3 不通过——在我们修好的 harness 上
+  > `SNOWBALL > RECAP`，非单调性**不存在**，所以"它就是控制问题本身"这条论证作废。
+  > 剩下唯一还站着的问题是**固定预算 k 下最优 reset 时机是否随状态变化**，那正是 EK0 测的东西。
+- **[experiments/constraint_retention_plan.md](experiments/constraint_retention_plan.md) —
+  ⏸ **计划稿，未开工**（2026-09-08 立项）。`constraint` 线（约束保持）：SEQUOR
+  （arXiv 2605.06353, COLM 2026）的多轮约束遵守 + 预算内提醒再注入。它为什么存在：`defense`
+  卡在读出没量程、ERGO 卡在主模态是确定性斜坡且激励功效不足，而这里 `y` 是 **k 条并行验证通道
+  的计数**（k=3，4 档），且闭环可选的不只是时机、还有**方向**（提醒哪一条）。
+  按用户裁决，**第一个作业等 ERGO 出较明确结果之后**才提交。
 - [experiments/backup/two_task_success_plan.md](experiments/backup/two_task_success_plan.md) —
   ⛔ **已归档**（2026-09-08）。ERGO 半边 E0–E6 结案（S3），规格作废，后继见上一条；防御半边
   D0–D3 未被取代但执行停在盲标，入口改为

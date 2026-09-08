@@ -50,7 +50,7 @@
 | 09-07 | D1 base-rate screening（含 alt 模型） | 2 | 仪器 | 9.8% base rate → 权威问题不可答 |
 | 09-07 | **ERGO append-mode 重跑（B + C 三臂）** | 4 | 方法 | append 修好 layer 0，打坏 layer 2 |
 | 09-08 | **ERGO prompt_profile 重跑（upB + upC 六臂）** | 7 | 方法 | R1：权威回来了，状态还在——E2/E3 的机制主张是错的 |
-| 09-08 | K1 激励臂 + K1.2 离线重判 | 2 | 方法/仪器 各 1 | 运行中（job 15696221 / 15696222） |
+| 09-08 | K1 激励臂 + K1.2 离线重判 | 2 | 方法/仪器 各 1 | 均已落地：K1 过 G-K1 五条；K1.2 独立 judge 无量程（ceiling 0.91） |
 
 ### 基线统计
 
@@ -90,19 +90,30 @@ ERGO 闭环比较：Phase C（9 臂，09-07）→ append 重跑（3 臂，09-07�
 | 09-08 10:23 | 15690584 | `pdc-ergoUP-always` | 方法 | ✅ COMPLETED 41m | R1：always_reset 臂 |
 | 09-08 10:23 | 15690586 | `pdc-ergoUP-fixed_last` | 方法 | ✅ COMPLETED 44m | R1：fixed_last 臂——权威回来了、状态还在，E2/E3 机制主张被否 |
 | 09-08 11:42 | 15696222 | `run_defense_rejudge_d1_qwen4b.sbatch` | 仪器 | ❌ **FAILED 1m06** — 并发 pip 竞争，非科学失败 | — |
-| 09-08 11:43 | 15696226 | `pdc-ergoUP-excite` | 方法 | 🏃 RUNNING | R4：prompt_profile 下的激励臂，供辨识 |
+| 09-08 11:43 | 15696226 | `pdc-ergoUP-excite` | 方法 | ✅ COMPLETED 43m | **R1.5**（本行原误记为 R4）：upstream profile 下的激励臂，666 行，供 EK0/EK1 辨识 |
 | 09-08 11:43 | 15696227 | `pdc-ergoALT-always` | 方法 | ❌ **FAILED 1m16** — 同一并发 pip 竞争。**⚠️ 未重提** | R4 的 ALT 三臂缺 always_reset，比较不完整 |
-| 09-08 11:43 | 15696228 | `pdc-ergoALT-fixed_last` | 方法 | 🏃 RUNNING | R4：ALT fixed_last 臂 |
-| 09-08 11:43 | 15696229 | `pdc-ergoALT-zero` | 方法 | 🏃 RUNNING | R4：ALT zero-control 基线 |
-| 09-08 11:43 | 15696221 | `run_defense_excite_qwen4b.sbatch` | 方法 | 🏃 RUNNING（8h 上限） | K2 的 DMDc 辨识用哪份激励数据；`B` 的 CI 是否覆盖 0（前提 2 的判据） |
-| 09-08 11:49 | 15696281 | `run_defense_rejudge_d1_qwen4b.sbatch`（15696222 重提） | 仪器 | 🏃 RUNNING | K4 的报告口径用自判还是重判分数 |
+| 09-08 11:43 | 15696228 | `pdc-ergoALT-fixed_last` | 方法 | ✅ COMPLETED 1h19m | R4：ALT fixed_last 臂。**R4 已关闭，本产物不进结果** |
+| 09-08 11:43 | 15696229 | `pdc-ergoALT-zero` | 方法 | ✅ COMPLETED 1h18m | R4：ALT zero-control 基线。**R4 已关闭，本产物不进结果** |
+| 09-08 11:43 | 15696221 | `run_defense_excite_qwen4b.sbatch` | 方法 | ✅ COMPLETED 19m17（先被抢占、`--requeue` 后重跑） | K2 的 DMDc 辨识用哪份激励数据；`B` 的 CI 是否覆盖 0（前提 2 的判据）。**G-K1 五条全过**：500 行 / 100 个 attack_id（与 `d1_screen_qwen4b` 同集）/ `u_remind` 均值 0.518 / reminded 259 行 / 每轮跨轨迹 sd > 0 |
+| 09-08 11:49 | 15696281 | `run_defense_rejudge_d1_qwen4b.sbatch`（15696222 重提） | 仪器 | ✅ COMPLETED 6m37 | K4 的报告口径：独立 judge 无量程（ceiling 0.91）→ **暂用自判 + 局限句**，`defense` 线收尾 |
 
 **近 10 个作业配额检查**：仪器 2 / 方法 8 → ✅ 通过（阈值：仪器 > 5 即停）。
 
-**⚠️ 未决**：`pdc-ergoALT-always`(15696227) 失败后未重提，ALT 臂组不完整。
+**⚠️ 未决（原文保留）**：`pdc-ergoALT-always`(15696227) 失败后未重提，ALT 臂组不完整。
 失败原因是两个作业并发对同一 conda env 做 editable install 的竞争
 （`__editable__.persona_drift_control-0.1.0.pth` 缺失），与实验内容无关，重提即可。
 **这是提交前应当避免的并发模式**，见 `.claude/experiments.md` → *提交 GPU 作业前*。
+
+**⚠️ 未决 → 已裁决（2026-09-08）**：`pdc-ergoALT-always`(15696227) 失败后**不重提**。
+理由：它服务的 G-R4-1 只回答"我们的排序像不像上游"，按
+[`experiments/ergo_fidelity_restoration_plan.md`](experiments/ergo_fidelity_restoration_plan.md)
+第零节的 **Koopman 贡献过滤器**填不出论文任何一格，R4 整步关闭。**G-R4-1 记为永远不可判定。**
+（原失败根因仍成立且已修：并发 editable install 竞争 → `flock`；这是提交前应当避免的并发模式。）
+
+**`defense` 线收尾（2026-09-08 用户指令）**：K1.2 的独立 rejudge 无量程（ceiling share 0.91），
+论文暂用自判分数 + 局限句，见 `.claude/global.md` → *报告口径* → **具名例外**。
+**K3 闭环臂不提交**；K1(15696221) 跑完归档、K2 拟合是纯 CPU 收尾动作。
+此后 GPU 预算转到 ERGO 线的 EK 相位，且 EK0/EK1 两步都是零 GPU。
 
 <!-- 追加新行时：先答"它改变了哪个决定"，答不出就不要提交这个作业。 -->
 
@@ -114,6 +125,12 @@ ERGO 闭环比较：Phase C（9 臂，09-07）→ append 重跑（3 臂，09-07�
 > 在此之前**不要动**这两项——它们会改到复现路径，而 K 系列正在跑。
 > 来源：2026-09-08 对 `~/Pytorch-lightining-Hydra-Optuna-MLflow-Slurm-Project-Tempate-for-Scientific-Research`
 > 的 `.claude/` 规则体系的借鉴分析。
+
+**2026-09-08 更新（`defense` 线收尾后）**：触发条件放宽——K3 不跑了，T-1/T-2 只等 K1(15696221)
+落地与 K2 拟合，之后即可开工，且**都不占 GPU**。T-1 的守卫必须能表达
+`.claude/global.md` → *报告口径* 的那条**具名例外**（`defense` 线暂用自判）：
+做法是让守卫**默认拒绝自判**，例外以显式参数传入并要求同时给出局限句字段，
+**而不是**把自判那条判据整个去掉——去掉就等于这条例外悄悄外溢到其他线。
 
 ### T-1 报告口径守卫（`_validate_report` 的同构物）
 

@@ -781,3 +781,504 @@ E2/E3 的测量本身没错（在 legacy prompt 结构下逐条复现），错�
 
 `outputs/ergo_upC_{zero_control,always_reset,fixed_last}/`；闸门 JSON 在
 `scratchpad/r1_gates.json`、`r1_dual.json`。
+
+---
+
+# R 相位的记录与裁决（2026-09-08 从计划文档原样迁入）
+
+> 以下三节原本写在 [`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md)
+> 的第十三～十五节。按 `.claude/docs.md`「计划文档 ≤ 150 行，超出的部分是结果，写到结果文档」，
+> **逐字迁入本结果档案，一个字未改**。计划文档只保留仍要执行的规格。
+>
+> 同批迁入的还有原**第零节**（归因诊断与上游对照，本节末尾）——它是诊断结果，不是待执行的
+> 规格。**外部文档引用的「`ergo_fidelity_restoration_plan.md` 第 0.1 节」现在指本文件末尾
+> 那一节**（`docs/experiments/defense_line_redesign_plan.md:639`、`backup/README.md:36`）。
+
+## 十三、R0 签字与 R1 提交记录（2026-09-08）
+
+### 13.1 签字
+
+用户于 2026-09-08 裁决 Q9–Q12（见第十节），**R0 签字完成**。R1 的三个 GPU 臂随即提交：
+
+| 臂 | job | 输出目录 | 对应上游条件 |
+|---|---|---|---|
+| `zero_control_up` | **15690582** | `outputs/ergo_upC_zero_control/` | SHARDED |
+| `always_reset_append_up` | **15690584** | `outputs/ergo_upC_always_reset/` | SNOWBALL |
+| `fixed_last_append_up` | **15690586** | `outputs/ergo_upC_fixed_last/` | RECAP |
+
+三臂全部 `--reset-mode append --prompt-profile upstream`，58 held-out item × seeds 0 1，
+`--time 06:00:00`，`Qwen/Qwen3-4B`。
+
+### 13.2 Q9 推迟 R5 的两个下游后果（记录，避免以后被读成遗漏）
+
+1. **R1–R4 的任何闸门结果都不自动触发 R5。** 即使 G-R1-2 与 G-R1-3 全过、harness 判为忠实，
+   熵触发臂也要等 ERGO 的 Koopman 工作跑完之后重新签字才开工。第七节保留完整规格，状态是待办。
+2. **本轮能达到的上限因此是 S2，不是 S1。** 上游 ERGO 相对 RECAP 的 +14.1/+9.3 来自熵触发的
+   自适应时机；不做 R5，本轮的被测臂就只有 Koopman-MPC 自己，S1 要靠它打赢同代价最优固定日程。
+   这不是坏消息——**S1 本来就该由本项目自己的控制器去拿，用上游的熵触发去拿反而说明不了
+   Koopman 的价值**——但要写清楚，免得以后把"没做 R5"记成"忘了做"。
+
+### 13.3 Q10 与 Q11 合起来定义了 R2 的产物形状
+
+- **主指标不换**（Q11）：`final_turn_success` 仍是主指标，attempt-only 分数**并列新增**，
+  不是替换。论文里两个都报。
+- **旧数据重算**（Q10）：既有的 overwrite Phase B/C 与 append Phase B′/C′ 全部按新口径重算，
+  **旧数字不删**。全 CPU，用已有数据。
+- 两条合起来 → 第四节 4.1 的 `analyze_ergo_dual_metric.py` 是 R2 的**唯一**汇报入口，
+  任何单口径汇报算偏离（失败模式 23）。
+
+### 13.4 Q12：合流点不变
+
+9/13 合流点保持。R1（9/8 已提交）→ R2（9/9–9/10）→ R3（9/10–9/12）仍在窗口内；
+R5 推迟本来就把日程压力去掉了。
+
+---
+
+## 十四、G-R2-1 不通过：规则层单向过判（2026-09-08）
+
+**判定：不通过。** 按 4.2 节，下一步是**启用 LLM 层并重测**；若 LLM 层仍不过，则**不换口径**，
+R2 终止并报告。在 LLM 层通过之前，`final_attempt_success` 与 `attempt_rate` **不得写进任何
+对外结论**。
+
+### 14.1 数字
+
+60 行盲标样本（按规则层判定分层各 30，臂名/轮次/judge 分全部剥离，两遍独立全新 subagent 实例，
+P 协议）：
+
+| 比较 | agreement |
+|---|---|
+| 标注者间 A vs B | **0.9833**（59/60） |
+| 规则层 vs A | 0.8333（50/60） |
+| 规则层 vs B | 0.8167（49/60） |
+| 规则层 vs 两遍共识（59 行） | 0.8305（49/59） |
+
+判据要求 ≥ 0.85，**两遍都不到**。标注者间 0.983 说明分歧是真的，不是标注噪声。
+
+### 14.2 失效是单向的，这一点决定了怎么读现有数字
+
+混淆矩阵（规则层 × 两遍共识，59 行）：
+
+| | 共识 = attempt | 共识 = 非 attempt |
+|---|---:|---:|
+| **规则 = attempt** | 19 | **10 ← 全部误差在这一格** |
+| **规则 = 非 attempt** | **0** | 30 |
+
+**规则层从不漏判**：它说不是 attempt 的，人判 30/30 全部同意。误差 100% 是过判。
+
+过判的 10 行是同一种东西——**长篇的"拒绝求解"**：模型写一整段解释为什么信息不足、算不出来，
+然后给一个兜底数字。例如 `row_33`「The percentage ... varies by school, district, and region.
+Without specific data ...」、`row_36`「However, the total charge ...」、`row_57`「it is not
+possible to calcula...」。这正是 Laban 七分类里的 hedging / discussion 类，不是 answer attempt。
+**80 字符的规则分不出"80 个字符的推导"和"80 个字符的解释为什么推不出来"。**
+
+### 14.3 对既有 Q10 数字的两条限定（必须一起引用）
+
+1. **`attempt_rate` 是上界，不是估计。** 非 attempt 一侧 30/30 可靠，所以真实 attempt 率
+   **不高于**已报的数。
+2. **修正后臂间差距会缩小，不会重排。** 过判需要**长回复**才可能发生，而长回复正是
+   overwrite 与 `fixed_last_append` 多、`always_reset_append`（末轮中位 18 字符）几乎没有的东西。
+   在规则-attempt 那一层上过判率是 10/30 = 33%；若各臂同率，`always_reset_append` 的 0.086
+   几乎不动而 overwrite 的 0.905 会明显下来。**过判率是否跨臂均匀是未知的，且没有理由假设它均匀**
+   ——这正是必须先过 G-R2-1 的原因。
+
+**主结论不受影响**：Q11 裁决主指标不换，E2/E3 与 Q10 的定性结论（append 下每轮 reset 不比
+从不 reset 好）在 legacy 口径上独立成立，不依赖这个分类器。
+
+### 14.4 重测时必须一并修的抽样缺陷
+
+本次样本按**规则层**分层各 30，于是共识 attempt 类只有 **19 行 < 判据要求的 20**。
+即使 agreement 达标，这一条也不满足。重测时改为：先用当前分类器抽一个更大的候选池
+（例如各 45），标完后按**共识**类别核对两类各 ≥ 20；或直接过采样规则-attempt 层。
+**这不是放宽判据，是修一个抽样设计缺陷**——原判据"两类各 ≥ 20"指的就是共识类别。
+
+---
+
+## 十五、R1 裁决（Opus，2026-09-08）
+
+结果与数字见 [`ergo_multiturn_reliability_pilot.md`](ergo_multiturn_reliability_pilot.md) 的
+「R1」一节。本节只出裁决。
+
+### 15.1 G-R1-0/1/2 通过；第零节的归因成立
+
+`always_reset_append − zero_control` 从 `−0.0948`（CI 跨 0）到 **`+0.1810`（CI [+0.0862, +0.2845]）**，
+唯一改动是那条答案格式指令的位置。**E2/E3 的 G-E2-1 失效被解释并逆转。**
+
+同时 `agent_message` 末轮逐字相同只有 2/116，所以**状态仍在终点里**。E2/E3 那句"两个性质互斥"
+是对 legacy prompt 结构的描述，不是对 `reset_mode` 的描述——已在 pilot 文档里更正。
+
+### 15.2 G-R1-3 不通过：裁决为**进 R4**，且**不许把它论证成通过**
+
+上游三次测量都是 RECAP > SNOWBALL；我们得到 SNOWBALL > RECAP（`fixed_last − always_reset`
+= −0.0776，CI [−0.1638, +0.0000]）。**判为不通过，记录在案。**
+
+我现在认为这条判据当初写得不好：`always_reset` 花 T 次 reset、`fixed_last` 花 1 次，**二者不同代价**，
+而本计划自己在 E5 臂表里就写明 `always_reset`"不是同代价对手，只作权威参照"。把一个代价不对称的
+比较当作保真度判据，是把两件事混在了一起。**但这个事后认识不能把"不通过"变成"通过"**
+（失败模式 26 的同构：判据写完就该认，改判据要在跑之前）。
+
+**裁决：进 R4**（模型对照，约 1 GPU-小时）。上游模型集是 Phi-4 / Llama-3.1-8B / GPT-4o 系，
+**没有 Qwen**；一个 4B 模型比 GPT-4o 更依赖反复的上下文合并，是这个排序差异最省事的解释，且可测。
+**不进 R2 的 LLM 层**（理由见 15.3）。
+
+### 15.3 R2 的剩余工作降级
+
+三个 upstream 臂的 `attempt_rate` **皆为 1.0000**，`final_attempt_success` 与
+`final_turn_success` 逐位相同。**在修好的 prompt 结构下，attempt / 非 attempt 的区分整个消失了**
+——R2 这个口径本来就是为了处理 legacy harness 产生的非作答回复而存在的。
+
+因此：
+- **R1 及其之后的任何结论都不依赖 R2 的分类器**，G-R2-1 不过不阻塞 R 相位；
+- R2 的 LLM 层仍然欠着，但它现在只影响 **Q10 对 legacy 旧数据的重算**这一件事，优先级降到
+  R3/R4 之后；
+- 14.3 的两条限定继续有效，且**只适用于 legacy 数据的 upstream 口径列**。
+
+### 15.4 对 S1 前景的诚实修正：0.4 节的论证没了一半
+
+第 0.4 节把"RECAP > SNOWBALL 的非单调性"当作"控制问题真实存在"的证据。**在我们的 harness 里
+这个非单调性不存在**（G-R1-3），所以那条论证作废。
+
+剩下的、也是唯一还站着的问题是：**在固定预算 k 下，最优的 reset 时机是否随 item / 状态变化。**
+那是 b₂ 测的东西，而 b₂ 上一次是在 legacy prompt 结构的 Phase B′ 上测的，
+**那份数据现在已知被同一个混淆污染**。
+
+**因此下一步是 R1.5**：在 upstream profile 下重跑随机激励的 Phase B′（1 个 GPU 臂，约 1 小时），
+重算 G-E3-1（读出闸门 RC-0..3）与 G-E3-2（b₂ 与它的 overwrite 负对照）。**这不是把旧闸门翻案**
+——旧判定在 legacy 数据上仍然成立；这是在一个已修正的 harness 上**重新提出同一个问题**，
+判据逐字沿用、不改阈值。R1.5 的结果决定 ERGO 线还有没有 S1/S2 可谈。
+
+---
+
+## 零、这份计划为什么存在：E2/E3 的失效被归因到我们自己的 prompt 结构
+
+### 0.1 决定性证据：我们测到的"reset 权威"其实是"模型有没有写出推导"
+
+E2/E3 的结论是 append 下 reset 失去权威（G-E2-1、G-E3-1、G-E3-2 三道不过）。2026-09-08 的
+事后诊断把这件事解释掉了：
+
+| 臂 | 末轮回复中位字符 | 末轮 ≤80 字符占比 | `final_turn_success` |
+|---|---:|---:|---:|
+| `zero_control`（从不 reset） | 19 | 0.66 | 0.328 |
+| `always_reset_append` | 18 | 0.91 | 0.233 |
+| `fixed_t2_append` | 19 | 0.69 | 0.319 |
+| `fixed_last_append` | 298 | 0.45 | 0.578 |
+| `fixed_last`（overwrite） | 646 | 0.09 | 0.776 |
+| `always_reset`（overwrite） | 646 | 0.09 | 0.776 |
+
+跨 6 个臂 **Pearson(末轮回复中位长度, 成功率) = +0.984**。臂内同样成立：长回复（>80 字符）
+成功率 0.67–1.00，短回复 0.15–0.36。**reset 的全部权威 = 它让模型重新写了一遍推导**，
+而不是题面被重述这件事本身。
+
+让"不写推导"成为可选项的是我们自己加的一行（`ergo_math_trajectory.py:42-46`）：
+
+```python
+_ANSWER_FORMAT_INSTRUCTION = (
+    'Give your current best-guess final numeric answer to the math problem, even if you are '
+    'not fully confident yet or do not have all the details, on its own line in this exact '
+    'format: "Current answer: X" (a single number).'
+)
+```
+
+它被拼在**每一轮** user message 末尾（`:90` 与 `:97`），而这个 harness **完全没有 system prompt**
+（`agent_history` 从空列表开始）。overwrite 下无害——历史被清空，模型只看见一次指令、必须从头解；
+append 下模型看见 k 轮「指令 + 自己回的 `Current answer: 12`」，这是一个 **k-shot 的简洁作答示范**。
+
+### 0.2 与上游的三条偏离（ground truth，非论文措辞）
+
+| | 上游 | 我们 |
+|---|---|---|
+| 格式指令位置 | **system prompt，只给一次**（`prompts/math/math_system_prompt.txt`，`generate_system_prompt()`）：*"The answer should be a single number..."* | **每轮 user message 末尾**，重复 4–12 次 |
+| system prompt | 有，minimal，turn 1 之前给一次 | **完全没有** |
+| 打分对象 | **strategy classifier** 把回复分成 7 类（澄清/拒答/对冲/追问/讨论/缺失/**answer attempt**），**只给 answer attempt 打分**，再由 answer extractor 抽 span | 每轮正则抽数字打分，**无 attempt 分类** |
+| ERGO 的 reset 内容 | **让模型把累积输入重写成一个优化的单轮 prompt** | 机械拼接的 bullet list |
+| ERGO 的 reset 语义 | **stateless**："passed into a new instance of the model, simulating a stateless chat environment with no memory of prior turns" | 我们的 `overwrite` **就是这个** |
+| 模型 | Phi-4 / Llama-3.1-8B-Instruct / GPT-4o / GPT-4o-mini / GPT-4.1 | Qwen3-4B（**上游模型集里没有 Qwen**） |
+
+第三行最要命：**上游会把 `Current answer: 12` 这类回复判为「非作答」而不打分，我们给它打 0 分
+并计入指标。** 所以 append 下的 `y_task_success` 有相当一部分在测「模型愿不愿意写推导」，
+而上游明确把这一维过滤掉了。
+
+来源：
+- Laban et al. 2025, *LLMs Get Lost In Multi-Turn Conversation*, arXiv:2505.06120（[abs](https://arxiv.org/abs/2505.06120) / [html](https://arxiv.org/html/2505.06120v1)）
+- *ERGO: Entropy-guided Resetting for Generation Optimization in Multi-turn Language Models*, arXiv:2510.14077（[abs](https://arxiv.org/abs/2510.14077) / [html](https://arxiv.org/html/2510.14077v1) / [ACL Anthology](https://aclanthology.org/2025.uncertainlp-main.23/)）
+- 上游代码与 prompt：[microsoft/lost_in_conversation](https://github.com/microsoft/lost_in_conversation)（本仓库 `resources/ergo_gsm8k_sharded.jsonl` 的来源）
+
+### 0.3 我们的结果与上游同向，只是幅度更大
+
+| | SHARDED（无 reset） | SNOWBALL（每轮 recap） | RECAP（末轮一次 recap） |
+|---|---:|---:|---:|
+| Laban GPT-4o-mini | 50.4 | 61.8 | **66.5** |
+| Laban GPT-4o | 59.1 | 65.3 | **76.6** |
+| ERGO 论文复现 4o-mini | 44.3 | 54.0 | **57.7** |
+| **我们（append，Qwen3-4B）** | 0.328 | 0.233 | **0.578** |
+
+三次独立测量都给出 **RECAP > SNOWBALL**。我们的排序一致，唯一差异是我们的 SNOWBALL 掉到
+SHARDED 之下。Laban 的 root cause #4 是 *"overly rely on previous (incorrect) answer attempts
+leading to lengthier 'bloated' answers"*——上游那里表现为**回复臃肿**，我们这里表现为**回复简短**，
+因为我们把输出格式钉死了。**同一现象的两个表面形态。**
+
+### 0.4 对 Koopman 的意义：非单调性就是控制问题，而它只在 append 下存在
+
+overwrite 下 `always_reset ≡ fixed_last` 是 116/116 的恒等式——reset 次数完全不影响结果，
+没有任何可权衡的东西（G4 的结论）。append 下「多 reset 反而更差」，上游两个模型 + 我们的数据
+三次确认。**一个自适应控制器需要的正是这种非单调性。**
+
+而上游还有一个数字直接就是本项目的 S1：
+
+| | GPT-4o-mini | GPT-4o |
+|---|---:|---:|
+| RECAP（最优固定规则） | 57.7 | 66.3 |
+| **ERGO（熵触发的自适应时机）** | **71.8** | **75.6** |
+
+**+14.1 / +9.3 分——"自适应时机打赢最好的固定规则"。** 上游声称它存在。
+
+同时上游留了一个**它自己没做的消融**：ERGO 的增益同时来自 (a) 熵触发的自适应时机与
+(b) 模型重写的 consolidation prompt，论文没有报「固定日程 + 同样的重写 prompt」这一臂，
+**两者贡献是混淆的**。拆开它是本计划 R3 的副产品，也是一个能独立成立的贡献。
+
+### 0.5 三个不能忘的诚实前提
+
+1. **R1/R2 可能恢复权威，但最优解仍停在「末轮 recap 一次」这个固定规则上。** 上游的 RECAP
+   就是这个固定规则，Laban 从未声称自适应能赢它。真正能翻盘的是熵触发臂（R5），而它正是
+   `backup/two_task_success_plan.md` 第九节 Q4 裁决掉的那一项。**Q4 值得重开，但那是用户的决定（Q9）。**
+2. **`defense_line_redesign_plan.md` §12.3 曾预测「第 2 层需重测但大概率保留」。它被证伪了。**
+   本计划的预测同样可能被证伪；G-R1-1 就是为了让证伪来得便宜且明确。
+3. **改打分口径会让所有历史数字不可直接比较**（Q11）。R2 因此强制双口径报告。
+
+---
+
+---
+
+# EK0 / EK1：upstream harness 上的状态依赖与 Koopman 辨识（2026-09-08）
+
+数据 `outputs/ergo_upB_random_excite/`（job 15696226，upstream profile，append，
+60 item × seeds 0 1，`random_excite p=0.5`，666 行）。全部 CPU，无新 GPU 作业。
+
+## G-R15-0 采集：✅ 过
+
+666 行 ✅；60 item ✅；`item_id` 集合与 overwrite Phase B **逐一相同** ✅；激励动作 335 / 331 两种都有 ✅。
+
+## G-R15-1 读出（`closeness` 的 RC-0..3）：❌ 不过
+
+`analyze_ergo_closeness_readout.py`，产物 `outputs/ergo_upB_random_excite/closeness_readout_state_report.json`。
+
+| 闸门 | 判据 | 实测 | 判定 |
+|---|---|---|---|
+| RC-0 | 与 `y_task_success` 同一仪器 | 构造性成立 | ✅ |
+| RC-1 | ARX(aux=truth) 在 ≥18/20 split 上打过最好 null | **14/20**；mean skill **+0.1077**（mse 0.0273 vs best null 0.0295） | ❌ |
+| RC-2 | 去趋势 lag-1 自相关 > 0，p<0.05 | **+0.5355**，p=7.6e-42 | ✅ |
+| RC-3 | 输入增益 `u_t` 系数 > 0，p<0.05 | **+0.0131，p=0.339**，n=546 | ❌ |
+
+## G-R15-2 状态依赖：❌ 不过
+
+`analyze_ergo_state_action_interaction.py --held-out-frac 0`（预注册的全 60-item 口径）。
+**首次运行误用了默认 `--held-out-frac 0.25`（45 item / n_pairs=416），已按预注册重跑**；
+两次结论一致，45-item 版留作纸面痕迹（`state_action_interaction_report.json`）。
+
+判据：b₂ 的 95% CI 不含 0 **且符号为负**。实测 **b₂ = +0.0786，CI [−0.1229, +0.2407]**——跨 0，
+且符号为正。**不过。**
+
+## G-R15-3 记录项：a / b0 / g 三方对照（全部 60 item，n_pairs=546）
+
+| 数据 | a | b0 | b2 | g |
+|---|---|---|---|---|
+| overwrite Phase B（负对照，引用 `backup/two_task_success_plan.md` 13.5，不重跑） | +0.3522 | +0.0661 | **−0.0632** [−0.2861, +0.1779] | +0.4493 |
+| legacy append B′（本次新算） | +0.6577 | −0.0165 | **+0.0538** [−0.1129, +0.2220] | +0.2895 |
+| **upstream append B（本次新算）** | **+0.5963** | **−0.0457** | **+0.0786** [−0.1229, +0.2407] | **+0.4755** |
+
+**b₂ 在三份数据上全部跨 0。** 15.4 节曾把 legacy Phase B′ 的 b₂ 判为"被混淆污染、需要在修正后的
+harness 上重问"——重问之后答案没变。自回归系数 `a` 在 append 下（0.60/0.66）显著高于 overwrite
+（0.35），信息累积斜坡 `g` 三处都强显著。
+
+## EK1 Koopman 辨识（单 45/15 split，记录用）
+
+`fit_koopman_ergo_closeness.py --rows-path outputs/ergo_upB_random_excite/trajectories.jsonl`，
+产物 `koopman_fit_report_closeness.json`：
+
+- ARX held-out rollout MSE（aux=truth）**0.023459** vs 最好 null（stateless OLS）**0.024214** → skill **+3.1%**；
+  naive rollout 0.033188 输给全部 null。
+- `controllability_rank=3`（满秩），`gramian_condition=3.87e5`，`A_spectral_radius=1.0299`。
+- **`B` 在 closeness 维上是 −3.5e−4**——与 RC-3 的 `u_t` p=0.34、交互回归的 b0/b2 跨 0 三处同向。
+- **单 split 不作判定**：G-EK1-1 判在 20-split 上，即上面 RC-1 的 14/20。
+
+## 读法：失效定位在**输入通道**，不在状态
+
+`closeness` 在 upstream harness 上的**状态**比以往任何一份 ERGO 数据都强（RC-2 = 0.5355，
+`a` = 0.60），Koopman 拟合平均也打得过 null（skill +10.8%）。**塌的是 u 这一路**：
+reset 对下一轮 closeness 的边际效应，在四个互相独立的估计上都不可与 0 区分。
+
+**这与 R1 存在一处必须解释的张力**：R1 在同一 profile 下测到 `always_reset − zero_control`
+= **+0.1810**，CI [+0.0862, +0.2845]。**一个推不动读出的执行器，不该推得动终点。** 两种读法：
+
+1. **口径不匹配**（更可能）：R1 测的是**持续策略的终点效应**，RC-3/b0 测的是**一步边际效应**。
+   `random_excite p=0.5` 的一步设计对前者没有功效——需要先算这个设计能探测的最小效应量。
+2. **指标失效**：`closeness` 是在 legacy harness（末轮中位 18 字符）上标定的；upstream 下末轮
+   中位 563 字符，抽取与打分行为可能已经不同（本次实测 `mean=0.6057`、`frac==1.0=0.17`）。
+
+按第九节的**闭合前审查**，这两条查清之前不闭合 ERGO 线。
+
+## 闭合前审查（第九节 A/B/C 三项，2026-09-08，全部零 GPU）
+
+问题：EK0 的 u 通道全线为零，是**模型变强导致任务饱和**，还是**动力学有某种特殊之处让 Koopman
+拟合不了**？答案是**两者都不是**——是激励臂的功效配不上要测的效应量。
+
+### B 指标有效性：没有饱和，读出也没坏
+
+| | `closeness==1.0` 占比 | 从已解出状态出发的转移 | `P(y'=1｜y=0)` | 逐行 y 均值 |
+|---|---:|---:|---:|---:|
+| upstream append B | 17.0% | 3.7% | 0.177 | 0.170 |
+| legacy append B′ | 9.2% | 2.2% | 0.092 | 0.092 |
+| overwrite Phase B | 13.7% | 2.7% | 0.145 | 0.137 |
+
+终点成功率 0.775 是**尾部陡升**，不是全程贴顶：绝大多数转移仍在"未解出"区域，动作空间是够的。
+把样本限制在未解出子集（n=526）重估 u，系数与全样本一致（−0.0032 vs −0.0035）——**不是饱和把效应吃掉了。**
+
+### 动力学：状态是真的，一阶结构也没漏东西
+
+- 在确定性斜坡 `shard_frac` 之上加状态 `c_t`，R² **0.3964 → 0.5652（+0.169）**；再加 u 只 +0.0001。
+- 加分布滞后（`u_t`、`u_{t-1}`）与**累积 u**，四项**没有一项** CI 排除 0 → `nu=1/mu=1` 不是太窄，
+  效应不是藏在更长的滞后里。
+- RC-2 = **0.5355** 是三份 ERGO 数据里最强的状态持续性，`a` = 0.60。
+
+**所以不是"Koopman 拟合不了这套动力学"**——状态项是这套数据里最结实的部分。
+
+### C 口径匹配：激励臂的最小可检测效应是 R1 效应的 2.7 倍
+
+终点剂量–反应 `y_final ~ frac_resets`（n=120 轨迹，平均 5.5 轮）：
+
+| | sd(frac_resets) | 残差 sd | se | **MDE@80%** | 能否分辨 R1 的 +0.1810 |
+|---|---:|---:|---:|---:|---|
+| upstream append B | 0.218 | 0.419 | 0.176 | **+0.49** | ❌ 差 2.7 倍 |
+| overwrite Phase B | 0.218 | 0.463 | 0.194 | +0.54 | ❌ |
+
+要在这个设计下分辨 +0.1810 需要 **885 条轨迹**（2 seed 下约 442 题）= 现有数据的 **7.4 倍**。
+**upB 里每一个"u 是死的"的数字，在 R1 的效应量上什么都排除不了。**
+
+而且 pooled 估计本身读错了方向。换成 **item 固定效应**（每题两个 seed 的 reset 模式不同，
+47/60 题有题内变异）：
+
+| | item-FE 终点效应（y） | 95% CI |
+|---|---:|---|
+| upstream append B | **+0.3463** | [−0.0708, +0.7032] |
+| overwrite Phase B | **+0.8459** | [+0.2562, +1.3600] |
+
+upB 的点估计从 ≈0 **翻成 +0.35**，**R1 的 +0.1810 稳稳落在 CI 内**。题间难度方差才是压住 pooled
+估计的东西，不是 reset 没有效应。
+
+### A 过程正确性
+
+查出并已修一处：G-R15-2 首跑用了默认 `--held-out-frac 0.25`，预注册是全 60 item `--held-out-frac 0`；
+按预注册重跑，结论未变。其余参数与负对照引用无误。
+
+### 审查结论：**不闭合**，且要回写一条旧判定
+
+1. **ERGO 线不因 EK0/EK1 闭合。** 三道闸门是被一个 MDE ≈ 0.5 的仪器判的，而要测的效应是 0.18。
+2. **append 的执行器确实弱于 overwrite**（upB 的 CI 上界 +0.70 vs overwrite 点估计 +0.85），
+   但"更弱"不等于"零"，**这个设计分不出来**。
+3. **⚠️ 回写**：同一个功效地板适用于 overwrite Phase B。G-E3-2 当初"负对照通过（b₂ 跨 0）"
+   是在同一个分辨不出效应的仪器上宣布的——它证明的是**测不到伪影**，不是**没有伪影**。
+   凡引用该负对照的地方都要带这条限定。
+4. **下一步是激励设计，不是换读出、也不是换模型。** R1 的配对设计（58 题配对，CI 半宽 0.10）
+   比这个 i.i.d. 激励臂**效率高约 8 倍**，因为它把题间难度配对消掉了、且两端都取到
+   （Δfrac = 1 vs 现在的 sd 0.354）。代价是配对到两端就没有中间档的 u 变异供辨识。
+   **需要用户裁决的取舍**：分层激励（一部分题跑 0/1 配对拿功效，一部分题跑中间预算拿辨识）
+   还是别的设计。属新 GPU 作业，**未提交**。
+
+---
+
+# EK 臂设计的功效依据（2026-09-08，零 GPU，全部从既有数据反推）
+
+设计取舍见 [`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md) 第四、五节；
+外部效应量区间见 [`../task/MULTITURN_RESET_INTERVENTION_EVIDENCE.md`](../task/MULTITURN_RESET_INTERVENTION_EVIDENCE.md)。
+本节只放数字。
+
+## 一、题库是 103 题，且辨识集与评测集目前有 15 题重叠
+
+`resources/ergo_gsm8k_sharded.jsonl` 共 **103 题**，恰好被切成三块：
+**Phase B 独占 45 + 两边共有 15 + held-out 独占 43 = 103**。
+
+→ 若拿 Phase B 的 60 题辨识、held-out 58 题评测，**有 15 题既进辨识又进评测**。
+**设计决定**：辨识只用 **B 独占的 45 题**，评测用 **held-out 全部 58 题**（与 R1 / Phase C 逐字相同，
+保持可比）。两集合此时严格不交。
+
+## 二、配对对比的方差分解：seed 还买得到功效，item 不是硬上限
+
+对 `fixed_last − always_reset`（policy-vs-policy，S1 的形状）做单因素分解
+`Var(配对均值差) = σ_b²/I + σ_w²/(I·S)`：
+
+| 指标 | σ_within² | σ_between² | I=103 且 S→∞ 的地板 |
+|---|---:|---:|---:|
+| `y_final` | 0.14655 | 0.03025 | MDE **0.048** |
+| `closeness` | 0.02428 | 0.00461 | MDE **0.019** |
+
+`σ_within² ≈ 5 倍 σ_between²` → **加 seed 仍然有效**，题目数不是当前的硬约束。
+
+| I | S | se(`y_final`) | MDE@80% | MDE(`closeness`) | 轨迹/臂 | GPU-h/臂 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 43 | 6 | 0.0357 | 0.100 | 0.040 | 258 | 1.50 |
+| **58** | **6** | **0.0307** | **0.086** | **0.034** | **348** | **2.03** |
+| 58 | 10 | 0.0278 | 0.078 | 0.031 | 580 | 3.38 |
+| 103 | 6 | 0.0230 | 0.065 | 0.026 | 618 | 3.60 |
+
+运行时基数：R1 三臂实测 **19.1 / 21.2 / 22.8 秒每轨迹**（116 轨迹，37/41/44 分钟），
+取 **21 s/轨迹**。假设：Qwen3-4B、`max_new_tokens=512`、upstream profile、同一队列同型号卡。
+
+**选定 58 题 × 6 seed**：`y_final` MDE **0.086**，`closeness` MDE **0.034**。
+对照外部效应量：ERGO 声称的"自适应打赢最优固定规则"是 +0.141（4o-mini）/ +0.093（4o）。
+**预注册限定：本设计能可靠分辨 ≥0.09 的 S1 效应；若真实效应小于 0.09，结果必须写成
+"本设计对 <0.09 的效应功效不足"，不得写成"自适应没有优势"。**（EK0 的教训，失败模式 29。）
+
+## 三、为什么辨识改用反事实分叉，而不是继续做观测式激励
+
+同一 (item, turn) 跨 seed 的 `closeness` 离散度，与观测式一步回归的残差对比：
+
+| | 跨 seed 同 (item,turn) 的 sd | 观测式一步残差 sd | 方差比 |
+|---|---:|---:|---:|
+| `ergo_upC_always_reset` | 0.0219 | 0.1573 | ~51× |
+| `ergo_upB_random_excite` | 0.0409 | 0.1534 | ~14× |
+
+跨 seed 的那一列**仍然包含前缀分叉带来的噪声**，而反事实分叉对**共享完全相同的前缀**，
+所以它是分叉设计噪声下界的**上界**。取保守端 14×，分叉每轮生成成本约 2×，
+→ **每 GPU-秒的信息量约 7 倍于观测式激励臂**。
+
+补充：解码是随机的（`temperature=0.7`），两个 seed 的 `agent_message` 有 **94.9%** 不逐字相同，
+所以 seed 确实是独立样本，不是重复。（turn 1 的 `closeness` 跨 seed sd 为 0 是**读出在 turn 1
+分辨不出差别**，不是解码确定性——不要据此认为 seed 无效。）
+
+---
+
+# G-EKA-0 实现锁：通过（2026-09-08，零 GPU）
+
+规格见 [`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md) 第四节。
+
+## 改了什么
+
+| 文件 | 改动 |
+|---|---|
+| `src/persona_drift/ergo_math_trajectory.py` | 把 `run_ergo_math_trajectory` 的循环体抽成 `_run_one_turn`（**不改变任何行为，不改动历史列表，返回续接后的历史**），新增 `run_ergo_math_branch_trajectory` 返回 `(base_rows, counterfactual_rows)` |
+| `scripts/run_ergo_branch_arm.py` | **新脚本**。不改 `run_ergo_math_screening.py`——那个 driver 的续跑靠 `expected_rows_by_trajectory_id`，而反事实行是单轮、有自己的 `trajectory_id`，走它会同时污染续跑记账和所有按 `trajectory_id` 分组的分析器 |
+| `tests/test_ergo_math_trajectory.py` | 新增 8 条单测 |
+| `environment/run_ergo_ekA_branch.sbatch` | 新 sbatch，**未提交** |
+
+## 判据与实测
+
+| 判据 | 实测 |
+|---|---|
+| 重构后 `run_ergo_math_trajectory` **逐字节不变** | ✅ **8/8 配置**（`overwrite`/`append` × `legacy`/`upstream` × `zero_control`/`constant_remind`）行内容与 generate/judge **调用序列**都逐字节相同。用的是内容敏感桩（回复 = 消息全文 + seed 的哈希），常量回复桩分不出"共享前缀"和"碰巧相同" |
+| 分叉不扰动基线分支 | ✅ 分叉跑出的 `base_rows` 与同配置普通跑**完全相同**（4 种 reset_mode × profile 组合，单测 `test_branch_base_rows_are_identical_to_a_plain_run`） |
+| 前缀真的共享 | ✅ 每轮 base 与反事实看到的消息列表**除最后一条 user 外逐条相同**，且最后一条不同 |
+| 动作确实翻转 | ✅ `u_cf = 1 − u_base` 全轮成立；base 用 `constant_remind` 时反事实是 0 |
+| 共同随机数 | ✅ 反事实**复用 base 的 `agent_seed`**（`seed·10⁶ + turn·100 + 1`），judge 用 +3 区分 |
+| 成本 | ✅ **每轮恰好 2 次 generate**（judge 是正则，不调模型）→ 成本正好 2× |
+| 全量测试 | **496 passed / 5 failed**；5 个失败全在 `test_surface_features.py`，是 NLTK 语料未下载的环境问题，与本改动无关 |
+
+## 题集与运行时（sbatch 里写死，可审计）
+
+`--item-ids` 是 **Phase B 用而 held-out 评测集不用的那 45 题**（103 题的库切成 45 / 15 共有 / 43）。
+写死而不是运行时推导，是为了题集不随 bank 或选择种子漂移。EK-B 在 58 held-out 题上评测，
+**辨识与评测严格不交**。
+
+45 题 × 3 seed = **135 条轨迹**，每轮生成两次 → 约 42 s/轨迹（R1 实测单次 19–23 s）→ **约 95 分钟**。
+`--time 04:00:00`（约 2.5× 余量）。加了 `--requeue`（本队列会抢占，K1 就被抢占过）与 pip 的 `flock`。
+
+**干跑验证**：用 sbatch 里逐字的命令行跑通了完整路径（把 135 条轨迹预标记为已完成，
+因此不加载模型），item 选择、续跑判定、两文件写入、退出码全部正常。

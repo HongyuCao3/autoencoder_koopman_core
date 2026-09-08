@@ -38,6 +38,21 @@ cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
 
 **选择在自判上做、报告在重判上出**，两者解耦。选完之后必须重跑一次重判才有可报告的数。
 
+### 具名例外（唯一一条，2026-09-08 用户裁决）
+
+**`defense` 线的 K4 报告数字暂用自判分数。** 例外的成立条件、边界与到期条件：
+
+- **成立依据**：K1.2 的独立 rejudge（job 15696281，500 行）**本身没有量程**——ceiling share
+  0.91，turn 1 `mean=1.000 sd=0.000 distinct=1`。独立重判在这个任务上分不开臂，
+  所以"用重判"这个要求在这里买不到它本来要买的东西。这是
+  `docs/experiments/koopman_fast_track_plan.md` 第四节 **预注册的第二个分支**，不是事后放宽。
+- **边界**：只覆盖 `defense` 线。**不外溢到 ERGO / `stance` / 任何新线。**
+- **义务**：每一处引用都必须同址带上局限句（自判 = 单向漏检，systematically 低估效应），
+  并标注 `judge_kind=self`。上表其余五条禁止项（单 seed、2 seed、拟合损失、选择信号、序数聚合）
+  **一条都不豁免**。
+- **到期**：`defense` 线重启时作废，重启需要一个**新的判分思路**——按*null 结果的默认后果是关闭*，
+  不许第五次修同一条 judge/readout 链。
+
 **这条规则必须有可执行守卫。** 参照本仓库既有的 `persona_drift.run_config_guard`
 （它防的是"一份报告平均了两个控制器产出的轨迹"，元测试见
 `tests/test_run_config_guard.py`，其 docstring 说明了原理：**守卫若静默通过，

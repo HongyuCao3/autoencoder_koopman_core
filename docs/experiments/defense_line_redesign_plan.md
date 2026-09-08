@@ -636,7 +636,7 @@ B1 之后要改成更强的版本：
 **大概率保留**"。**那个预测被证伪了**：2026-09-08 的 E2/E3 显示 append 恢复了第 0 层却抹掉了
 第 2 层，两者由同一行代码控制、互斥。见
 [`ergo_multiturn_reliability_pilot.md`](ergo_multiturn_reliability_pilot.md) 的「E2–E3」节与
-[`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md) 第 0.1 节。
+同文件「R 相位的记录与裁决」节的 0.1（原在 `ergo_fidelity_restoration_plan.md`，2026-09-08 迁入结果档案）。
 
 ## 十四、D1 弱结论落地 + D2 首次尝试与一处对"预测 vs 动力学"的更正（2026-09-08，Sonnet）
 

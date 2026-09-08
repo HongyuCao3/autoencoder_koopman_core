@@ -16,6 +16,7 @@ scripts/analyze_ergo_entropy_readout.py (already run, E1 Step 1).
 
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import random
@@ -38,9 +39,9 @@ from persona_drift.modeling.dataset import (  # noqa: E402
 from persona_drift.modeling.evaluate import rollout_output_error  # noqa: E402
 from persona_drift.modeling.koopman import KoopmanSurrogate, no_extra_features  # noqa: E402
 
-ROWS_PATH = pathlib.Path("outputs/ergo_math_phaseB_random_excite/trajectories.jsonl")
-ENTROPY_PATH = pathlib.Path("outputs/ergo_math_phaseB_random_excite/entropy_readout.json")
-OUT_PATH = pathlib.Path("outputs/ergo_math_phaseB_random_excite/closeness_readout_state_report.json")
+DEFAULT_ROWS_PATH = pathlib.Path("outputs/ergo_math_phaseB_random_excite/trajectories.jsonl")
+DEFAULT_ENTROPY_PATH = pathlib.Path("outputs/ergo_math_phaseB_random_excite/entropy_readout.json")
+DEFAULT_OUT_PATH = pathlib.Path("outputs/ergo_math_phaseB_random_excite/closeness_readout_state_report.json")
 
 U_COL = "u_reset"
 N_SPLITS = 20
@@ -49,6 +50,20 @@ RIDGE = 1e-6
 STATE_CONFIG = ReducedStateConfig(nu=1, mu=1, aux_cols=("shard_frac",), contemporaneous_v=True)
 
 NUM_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--rows-path", type=pathlib.Path, default=DEFAULT_ROWS_PATH)
+    parser.add_argument(
+        "--entropy-path",
+        type=pathlib.Path,
+        default=DEFAULT_ENTROPY_PATH,
+        help="entropy_readout.json; only feeds the two entropy rows of the candidate table. "
+             "When the file is absent those two rows are omitted.",
+    )
+    parser.add_argument("--out-path", type=pathlib.Path, default=DEFAULT_OUT_PATH)
+    return parser.parse_args()
 
 
 # ---------------------------------------------------------------------------
@@ -100,8 +115,8 @@ def _add_derived_columns(rows: list[dict]) -> list[dict]:
     return rows
 
 
-def _load_entropy_columns(rows: list[dict]) -> None:
-    data = json.loads(ENTROPY_PATH.read_text())
+def _load_entropy_columns(rows: list[dict], entropy_path: pathlib.Path) -> None:
+    data = json.loads(entropy_path.read_text())
     by_key = {(r["trajectory_id"], r["turn"]): r for r in data["rows"]}
     for row in rows:
         entry = by_key[(row["trajectory_id"], row["turn"])]
@@ -351,14 +366,17 @@ def run_rc3(rows: list[dict], y_col: str) -> dict:
 
 
 def main() -> None:
-    rows = _add_derived_columns(load_trajectories(ROWS_PATH))
-    _load_entropy_columns(rows)
+    args = parse_args()
+    rows = _add_derived_columns(load_trajectories(args.rows_path))
+    cols = ["y_task_success", "closeness", "coverage", "reply_len", "churn"]
+    if args.entropy_path.exists():
+        _load_entropy_columns(rows, args.entropy_path)
+        cols += ["entropy_mean", "entropy_answer_span"]
 
     gate1 = run_gate_f1_1(rows)
     print_gate_f1_1(gate1)
 
-    table = [candidate_row(rows, col) for col in
-             ("y_task_success", "closeness", "coverage", "reply_len", "churn", "entropy_mean", "entropy_answer_span")]
+    table = [candidate_row(rows, col) for col in cols]
     print_candidate_table(table)
 
     rc0_pass = True  # same extractor + same gold answer as y_task_success -- constructively RC-0.
@@ -386,7 +404,7 @@ def main() -> None:
     print(f"\ncloseness not worse than y_task_success on all four criteria (section 2.4)? {not_worse}")
 
     report = {
-        "rows_path": str(ROWS_PATH),
+        "rows_path": str(args.rows_path),
         "gate_f1_1": gate1,
         "candidate_table": table,
         "closeness_rc0_pass": rc0_pass,
@@ -396,11 +414,11 @@ def main() -> None:
         "closeness_rc_b_pass": rc_b_pass,
         "closeness_not_worse_than_binary": not_worse,
     }
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if OUT_PATH.exists():
-        raise SystemExit(f"refusing to overwrite existing {OUT_PATH}")
-    OUT_PATH.write_text(json.dumps(report, indent=2))
-    print(f"\nreport written to {OUT_PATH}")
+    args.out_path.parent.mkdir(parents=True, exist_ok=True)
+    if args.out_path.exists():
+        raise SystemExit(f"refusing to overwrite existing {args.out_path}")
+    args.out_path.write_text(json.dumps(report, indent=2))
+    print(f"\nreport written to {args.out_path}")
 
 
 if __name__ == "__main__":
