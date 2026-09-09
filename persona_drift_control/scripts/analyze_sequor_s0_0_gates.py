@@ -109,13 +109,15 @@ def pairs_from(report: dict) -> list[dict]:
     """One record per counterfactual pair: the state before the action, the
     measured one-step gain, and the turn."""
 
-    by_key = {(r["branch"], r["item_id"], r["turn"]): r for r in report["rows"]}
+    by_key = {(r["branch"], r["item_id"], r["turn"], r.get("seed")): r for r in report["rows"]}
     out = []
-    for (branch, item, turn), row in by_key.items():
+    for (branch, item, turn, seed), row in by_key.items():
         if branch != "reminded":
             continue
-        base = by_key.get(("base", item, turn))
-        prev = by_key.get(("base", item, turn - 1))
+        # same seed on both sides: under sampling, a pair across seeds compares
+        # two trajectories rather than one action
+        base = by_key.get(("base", item, turn, seed))
+        prev = by_key.get(("base", item, turn - 1, seed))
         if base is None or prev is None:
             continue
         if base["prefix_sha256"] != row["prefix_sha256"]:
@@ -123,12 +125,12 @@ def pairs_from(report: dict) -> list[dict]:
         if None in (row["y_graded"], base["y_graded"], prev["y_graded"]):
             continue
         out.append({
-            "item_id": item, "turn": turn,
+            "item_id": item, "turn": turn, "seed": seed,
             "y_prev": prev["y_graded"], "y_base": base["y_graded"], "y_reminded": row["y_graded"],
             "delta_y": row["y_graded"] - base["y_graded"],
             "echo_jaccard_prev": row["echo_jaccard_prev"],
         })
-    return sorted(out, key=lambda r: (r["item_id"], r["turn"]))
+    return sorted(out, key=lambda r: (r["item_id"], r["seed"] if r["seed"] is not None else -1, r["turn"]))
 
 
 def _item_bootstrap(pairs: list[dict], statistic, seed: int) -> tuple[float, list[float], float]:
@@ -160,13 +162,23 @@ def _ols(pairs: list[dict], regressors: tuple[str, ...]) -> np.ndarray | None:
     return np.linalg.lstsq(x, y, rcond=None)[0]
 
 
+K1_FIRST_TURN = 2
+
+
 def gate_k1(report: dict) -> dict:
-    """Range: at every turn, cross-trajectory sd > 0 and >= 3 distinct values
-    of `y`; and >= 4 of the 2^k satisfaction patterns occur in the arm.
+    """Range: at every turn IN SCOPE, cross-trajectory sd > 0 and >= 3 distinct
+    values of `y`; and >= 4 of the 2^k satisfaction patterns occur in the arm.
 
     This is the gate the `defense` line failed after the fact rather than
     before (independent judge ceiling share 0.91, turn 1 sd = 0), which is why
     it runs first and closes the line on failure with no second judge attempt.
+
+    SCOPE t2..t20 (user ruling 2026-09-09, screening doc section 10 item 5).
+    Turn 1 states the constraints, so it admits no u=1 action and contributes
+    ZERO counterfactual pairs -- the same fact that made the arm 228 pairs
+    rather than 240. A gate on the readout that feeds K2/K3 should not be
+    decided by a turn none of those pairs come from. Turn 1's statistics are
+    still computed and reported, so nothing is hidden by the scope.
     """
 
     base = [r for r in report["rows"] if r["branch"] == "base" and r["y_graded"] is not None]
@@ -183,10 +195,17 @@ def gate_k1(report: dict) -> dict:
         }
         for turn, vals in sorted(by_turn.items())
     }
-    dead = [t for t, s in per_turn.items() if s["sd"] == 0.0 or s["distinct"] < 3]
+    dead = [t for t, s in per_turn.items()
+            if t >= K1_FIRST_TURN and (s["sd"] == 0.0 or s["distinct"] < 3)]
+    out_of_scope = {t: s for t, s in per_turn.items() if t < K1_FIRST_TURN}
     return {
-        "criterion": "every turn: sd > 0 AND >= 3 distinct y; AND >= 4 of 8 satisfaction patterns",
+        "criterion": f"every turn t >= {K1_FIRST_TURN}: sd > 0 AND >= 3 distinct y; "
+                     f"AND >= 4 of 8 satisfaction patterns",
+        "turn_scope": f"t{K1_FIRST_TURN}..t{max(per_turn)}" if per_turn else None,
+        "scope_rationale": "turn 1 carries the constraint block, admits no u=1 action and "
+                           "contributes no counterfactual pair (user ruling 2026-09-09)",
         "per_turn": per_turn,
+        "per_turn_out_of_scope": out_of_scope,
         "turns_failing": dead,
         "n_patterns_seen": len(patterns),
         "patterns_seen": sorted("".join("1" if b else "0" for b in p) for p in patterns),

@@ -86,8 +86,8 @@ def _row(
     text = generated["text"]
     return {
         "run_id": run_id,
-        "trajectory_id": f"{item.conversation_id}__{branch}__t{turn}" if branch == REMINDED
-        else f"{item.conversation_id}__{BASE}",
+        "trajectory_id": f"{item.conversation_id}__{branch}__s{config.seed}__t{turn}"
+        if branch == REMINDED else f"{item.conversation_id}__{BASE}__s{config.seed}",
         "item_id": item.conversation_id,
         "tuple_id": item.tuple_id,
         "turn": turn,
@@ -190,14 +190,19 @@ def assert_pairs_share_prefix(rows: list[dict]) -> int:
     branch design is that this cannot be assumed.
     """
 
-    base = {(r["item_id"], r["turn"]): r for r in rows if r["branch"] == BASE}
+    base = {(r["item_id"], r["turn"], r["seed"]): r for r in rows if r["branch"] == BASE}
     pairs = 0
     for row in rows:
         if row["branch"] != REMINDED:
             continue
-        sibling = base.get((row["item_id"], row["turn"]))
+        # The seed is part of the key: under sampled decoding an arm runs the
+        # same item several times, and pairing across seeds would compare two
+        # different trajectories rather than one action.
+        sibling = base.get((row["item_id"], row["turn"], row["seed"]))
         if sibling is None:
-            raise ValueError(f"reminded row {row['item_id']} turn {row['turn']} has no base sibling")
+            raise ValueError(
+                f"reminded row {row['item_id']} turn {row['turn']} seed {row['seed']} "
+                f"has no base sibling")
         if sibling["prefix_sha256"] != row["prefix_sha256"]:
             raise ValueError(
                 f"prefix mismatch at {row['item_id']} turn {row['turn']}: the pair was NOT "

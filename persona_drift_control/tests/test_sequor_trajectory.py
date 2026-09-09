@@ -148,3 +148,46 @@ def test_a_system_prompt_lands_in_every_prefix(items):
     rows = run_branch_arm(items, gen, config, run_id="r")
     assert all(c[0] == {"role": "system", "content": "be terse"} for calls in gen.calls for c in calls)
     assert all(r["system_prompt"] == "be terse" for r in rows)
+
+
+def test_trajectory_ids_and_pairs_are_seed_scoped(items):
+    """Two seeds of the same item are two trajectories. Ids must separate them,
+    and a pair must never be built across them."""
+
+    rows = []
+    for seed in (0, 1):
+        config = BranchArmConfig(model_id="stub/model", n_turns=N_TURNS, seed=seed)
+        rows.extend(run_branch_arm(items, StubGenerator(), config, run_id="r"))
+    ids = {r["trajectory_id"] for r in rows if r["branch"] == BASE}
+    assert len(ids) == N_ITEMS * 2
+    assert all("__s0" in i or "__s1" in i for i in ids)
+    assert assert_pairs_share_prefix(rows) == N_ITEMS * (N_TURNS - 1) * 2
+
+
+def test_a_reminded_row_whose_seed_has_no_base_sibling_raises(items, config):
+    rows = run_branch_arm(items, StubGenerator(), config, run_id="r")
+    for r in rows:
+        if r["branch"] == REMINDED:
+            r["seed"] = 99
+    with pytest.raises(ValueError, match="no base sibling"):
+        assert_pairs_share_prefix(rows)
+
+
+def test_constraints_in_system_moves_the_block_out_of_turn_one(items):
+    gen = StubGenerator()
+    config = BranchArmConfig(model_id="stub/model", n_turns=3, constraints_in_system=True)
+    rows = run_branch_arm(items, gen, config, run_id="r")
+    first_prompts = gen.calls[0]
+    for conversation, item in zip(first_prompts, items):
+        assert conversation[0]["role"] == "system"
+        assert conversation[0]["content"] == item.constraint_block
+        assert conversation[1]["content"] == item.turns[0]
+        assert item.constraint_block not in conversation[1]["content"]
+    assert all(r["constraints_in_system"] for r in rows)
+
+
+def test_sampling_knobs_are_recorded_on_every_row(items):
+    config = BranchArmConfig(model_id="stub/model", n_turns=2, temperature=0.7, top_p=0.8, top_k=20)
+    rows = run_branch_arm(items, StubGenerator(), config, run_id="r")
+    assert all(r["decoding_config"] == {"temperature": 0.7, "top_p": 0.8, "top_k": 20,
+                                        "max_new_tokens": 1024} for r in rows)

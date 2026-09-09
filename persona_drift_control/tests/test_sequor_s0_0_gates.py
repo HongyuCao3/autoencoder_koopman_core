@@ -136,9 +136,25 @@ def test_k1_passes_on_a_readout_with_range():
     assert k1["pass"] and not k1["turns_failing"] and k1["n_patterns_seen"] >= 4
 
 
-def test_k1_fails_when_a_turn_is_saturated():
-    """The `defense` line's death: turn 1 at mean 1.000, sd 0.000, one distinct
+def test_k1_fails_when_an_in_scope_turn_is_saturated():
+    """The `defense` line's death: a turn at mean 1.000, sd 0.000, one distinct
     value. It must be caught here, before anything is fitted."""
+
+    report = synth_readout()
+    for row in report["rows"]:
+        if row["turn"] == 3:
+            row["y_graded"] = 1.0
+            row["followed"] = [True, True, True]
+    k1 = mod.gate_k1(report)
+    assert not k1["pass"] and 3 in k1["turns_failing"]
+    assert k1["per_turn"][3]["sd"] == 0.0 and k1["per_turn"][3]["ceiling_share"] == 1.0
+
+
+def test_a_saturated_turn_one_does_not_decide_k1_but_is_still_reported():
+    """Scope t2.. (user ruling 2026-09-09): turn 1 states the constraints, so it
+    admits no u=1 action and contributes no pair to K2/K3. It must not close the
+    line on its own -- and it must still be visible in the artifact, or the
+    scope would be a way of hiding a saturated readout."""
 
     report = synth_readout()
     for row in report["rows"]:
@@ -146,8 +162,10 @@ def test_k1_fails_when_a_turn_is_saturated():
             row["y_graded"] = 1.0
             row["followed"] = [True, True, True]
     k1 = mod.gate_k1(report)
-    assert not k1["pass"] and 1 in k1["turns_failing"]
-    assert k1["per_turn"][1]["sd"] == 0.0 and k1["per_turn"][1]["ceiling_share"] == 1.0
+    assert k1["pass"] and 1 not in k1["turns_failing"]
+    assert k1["per_turn_out_of_scope"][1]["sd"] == 0.0
+    assert k1["per_turn_out_of_scope"][1]["ceiling_share"] == 1.0
+    assert k1["turn_scope"].startswith("t2")
 
 
 def test_k2_recovers_planted_state_dependence():
@@ -263,3 +281,28 @@ def test_cap_guard_refuses_an_arm_report_that_predates_the_criterion():
 
     with pytest.raises(SystemExit, match="predates"):
         mod.refuse_if_the_cap_bound({"token_cap_share": 0.186}, [])
+
+
+def test_pairs_are_keyed_by_seed():
+    """Under sampled decoding an arm runs each item several times. A pair built
+    across seeds would compare two trajectories, not one action."""
+
+    a = synth_readout(n_items=2, n_turns=4, base_gain=0.3, seed=1)
+    b = synth_readout(n_items=2, n_turns=4, base_gain=0.3, seed=2)
+    for r in a["rows"]:
+        r["seed"] = 0
+    for r in b["rows"]:
+        r["seed"] = 1
+        r["prefix_sha256"] = "s1-" + r["prefix_sha256"]
+    merged = dict(a)
+    merged["rows"] = a["rows"] + b["rows"]
+    pairs = mod.pairs_from(merged)
+    assert len(pairs) == 2 * 2 * 3          # two seeds x two items x (T-1) pairs
+    assert {p["seed"] for p in pairs} == {0, 1}
+
+
+def test_a_pair_split_across_seeds_is_not_formed():
+    report = synth_readout(n_items=1, n_turns=3, base_gain=0.3)
+    for r in report["rows"]:
+        r["seed"] = 0 if r["branch"] == "base" else 1
+    assert mod.pairs_from(report) == []

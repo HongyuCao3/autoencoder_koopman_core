@@ -149,6 +149,7 @@ def main() -> None:
             "trajectory_id": row["trajectory_id"], "item_id": row["item_id"], "turn": row["turn"],
             "branch": row["branch"], "u_remind": row["u_remind"],
             "prefix_sha256": row["prefix_sha256"], "variant": row.get("variant"),
+            "seed": row.get("seed"),
             "followed": verdicts[i], "y_graded": y, "y_binary": binary_turn_success(verdicts[i]),
             "n_judge_parse_failures": n_failed,
             "echo_jaccard_prev": row["echo_jaccard_prev"],
