@@ -217,7 +217,18 @@ S0 校准 ×2 + S0-0 共 3 个仪器、在 S1 之前就绑住配额；EK-A 当�
 第二相 2880 次判分 × 实测 0.10 s = 约 5 min + 14B 加载 4 min。**未实测**：采样变体是否比 greedy 更长）。
 `--time 02:30:00` ≥ 2× 悲观值。
 
-| — | — | `run_sequor_s0_0_arm_fidelity_harness.sbatch`（S0-0 臂在保真 harness 下重跑：system 位置 + 模型默认采样，**3 seed**，一个作业三相） | **方法** | ⏸ 已写好并干跑，待提交 | **K1/K2/K3 重算**——这次的失败或通过不再是 harness 造的。1404 次生成 / **684 对**；两处判据改动（K1 范围 t2..t20、3 seed）已签字，记在筛查 §十 第 5 条。运行时估计 **75–110 min**（依据：cap2048 臂 2.01 s/生成；保真臂 `system_default` 变体 2.10 s/生成、中位 804 token vs greedy 524 → 采样 + system 位置更费 token。三相：生成 50–90 min + 14B 判分 11 min + 4B 判分 8 min），`--time 03:00:00` ≥1.6× 悲观值 |
+| 09-09 17:3x | 15761810 | `run_sequor_s0_0_arm_fidelity_harness.sbatch` | **方法** | ❌ **FAILED 54m08 — 我的代码 bug，52 分钟生成全部丢失**：三个 seed 各 468 行都跑完了（16.6 / 17.3 / 18.3 min），脚本在**写盘之前**崩于 `NameError: turn_clock`——多 seed 重构时删了它的定义、漏了汇总里那处引用。行只在内存里，**一行都没落盘**。**已重提**（下一行） | **K1/K2/K3 重算**——这次的失败或通过不再是 harness 造的。1404 次生成 / **684 对**；两处判据改动（K1 范围 t2..t20、3 seed）已签字，记在筛查 §十 第 5 条。运行时估计 **75–110 min**（依据：cap2048 臂 2.01 s/生成；保真臂 `system_default` 变体 2.10 s/生成、中位 804 token vs greedy 524 → 采样 + system 位置更费 token。三相：生成 50–90 min + 14B 判分 11 min + 4B 判分 8 min），`--time 03:00:00` ≥1.6× 悲观值 |
+
+**⚠️ 15761810 的教训（2026-09-09，两条，都已变成代码而非备忘）**
+
+1. **产物写盘顺序**：生成是昂贵产物，汇总是廉价代码——**先写 `trajectories.jsonl`，再算汇总**。
+   原来的顺序让一个汇总里的 NameError 抹掉了 52 分钟 GPU。已改，并有单测
+   （在汇总里注入异常，断言 trajectories 已经在盘上、`arm_report.json` 不存在）。
+2. **干跑只跑了 `parse_args`，没跑写盘路径**——而挂掉的正是写盘路径。
+   新增 `tests/test_sequor_arm_runner_end_to_end.py`：用**假的 `vllm` 模块**在 pytest 里跑真正的
+   `main()`，覆盖参数解析 / seed 循环 / 前缀断言 / 三个产物的写出 / 按题触顶会计。
+   6 条测试，其中一条直接断言 `arm_report["batches"]` 这个字段存在——**就是 15761810 崩的那个名字**。
+   此后改 runner 不需要靠 GPU 作业来发现 NameError。
 
 **保真度判定：GAP CLOSED，但只有两个旋钮同时打开才成立（`fidelity_verdict.json`）**
 

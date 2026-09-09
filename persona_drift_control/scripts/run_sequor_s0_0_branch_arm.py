@@ -144,6 +144,7 @@ def main() -> None:
 
     rows: list[dict] = []
     configs: dict[int, dict] = {}
+    batches = 0
     t0 = time.time()
     for seed in args.seeds:
         config = BranchArmConfig(
@@ -166,6 +167,7 @@ def main() -> None:
             } for o in outputs]
 
         seed_rows = run_branch_arm(items, generate_batch, config, run_id=args.out_dir.name)
+        batches += clock["batches"]
         for row in seed_rows:
             row["inserted_tokens"] = block_tokens[row["item_id"]] if row["u_remind"] else 0
         rows.extend(seed_rows)
@@ -178,6 +180,16 @@ def main() -> None:
         max_new_tokens=args.max_new_tokens, system_prompt=args.system_prompt,
         constraints_in_system=args.constraints_in_system, **decoding,
     )
+
+    # Rows first, summary second. Job 15761810 spent 52 GPU-minutes generating
+    # 1404 rows and lost all of them to a NameError raised while building the
+    # report: nothing had been written yet. Generation output is the expensive
+    # artifact and must survive any failure in the cheap code after it.
+    args.out_dir.mkdir(parents=True)
+    with (args.out_dir / "trajectories.jsonl").open("w") as fh:
+        for row in rows:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print(f"{len(rows)} rows written to {args.out_dir / 'trajectories.jsonl'}", flush=True)
 
     n_pairs = assert_pairs_share_prefix(rows)
     capped = [r for r in rows if r["hit_token_cap"]]
@@ -198,10 +210,6 @@ def main() -> None:
     }
     items_over_criterion = [i for i, v in cap_by_item.items() if v["token_cap_share"] > CAP_CRITERION]
 
-    args.out_dir.mkdir(parents=True)
-    with (args.out_dir / "trajectories.jsonl").open("w") as fh:
-        for row in rows:
-            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
     (args.out_dir / "run_config.json").write_text(json.dumps({
         "mode": args.mode, "arm": "S0-0 counterfactual branch", "provenance": prov,
         "seeds": args.seeds, "decoding_mode": args.decoding, "decoding": decoding,
@@ -221,7 +229,7 @@ def main() -> None:
         "cap_criterion_pass": not items_over_criterion,
         "output_tokens_median": tokens[len(tokens) // 2], "output_tokens_max": tokens[-1],
         "elapsed_s": elapsed, "seconds_per_generation": elapsed / len(rows),
-        "batches": turn_clock["batches"],
+        "batches": batches,
     }, indent=2, ensure_ascii=False))
 
     print(f"\n{len(rows)} rows, {n_pairs} counterfactual pairs, {elapsed/60:.1f} min "
