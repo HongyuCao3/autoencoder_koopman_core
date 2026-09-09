@@ -13,6 +13,7 @@ still import `hundred_system_prompts.py` and score probe responses.
 | `mtbench_questions.jsonl` | `lm-sys/FastChat` on GitHub, `fastchat/llm_judge/data/mt_bench/question.jsonl` (MT-Bench, Zheng et al., "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena", NeurIPS 2023) | commit `b494d0c6b4e7935f1764f8439e75da3e66beccc7` (last touched that path; fetched 2026-09-01) | Apache-2.0 |
 | `sycon_false_presuppositions.jsonl` | `JiseungHong/SYCON-Bench` on GitHub, `false-presuppositions-setting/data/{questions,presuppositions,corrections}.txt` + `push_back.csv` merged into one JSONL (SYCON-Bench, Hong et al., "Measuring Sycophancy of Language Models in Multi-turn Dialogues", EMNLP 2025 Findings, arXiv:2505.23840) | `master` branch (fetched 2026-09-02; upstream has no tagged release) | MIT (SYCON-Bench repo); the four source `.txt`/`.csv` files themselves trace to the CREPE dataset (`velocityCavalry/CREPE`) per SYCON-Bench's own `data/source.txt` -- not independently re-verified here, flagged for whoever revisits licensing before any external release |
 | `mmlu_sycophancy_mc.jsonl` | `meg-tong/sycophancy-eval` on GitHub, `datasets/are_you_sure.jsonl`, filtered to the `mmlu_mc_cot` rows (Sharma et al., "Towards Understanding Sycophancy in Language Models", ICLR 2024, arXiv:2310.13548) | commit `9a1694221e3639887138f61deae344335eca6752` (fetched 2026-09-05) | **no LICENSE file in the source repo** (`gh api repos/meg-tong/sycophancy-eval` reports `license: null`); published alongside a citable arXiv/ICLR paper with an explicit canary string inviting research reuse and reproduction, vendored here for internal research use on that basis, not independently cleared for external release -- flag for whoever revisits licensing. The underlying questions are MMLU (Hendrycks et al., "Measuring Massive Multitask Language Understanding", ICLR 2021), MIT-licensed. |
+| `sequor/sequor_tuples3.jsonl`, `sequor/sequor_constraints3.jsonl`, `sequor/sequor_gold_judge_calibration.jsonl` | `deep-spin/SEQUOR` on GitHub (SEQUOR, Canaverde et al., "SEQUOR: A Multi-Turn Benchmark for Realistic Constraint Following", COLM 2026, [OpenReview 93Xw0UkZhC](https://openreview.net/forum?id=93Xw0UkZhC)) | commit `60bcdacad3bb25c81d79ca833c49c0eb4554d722` (fetched 2026-09-08) | **no LICENSE file in the source repo** (`api.github.com/repos/deep-spin/SEQUOR` reports `license: null`); published alongside a citable COLM paper, vendored for internal research use on that basis, not cleared for external release -- flag for whoever revisits licensing. The tasks trace to LMSYS-derived constraints (`lmsys-*` ids). |
 
 `hundred_system_prompts.py` carries two small local patches relative to the
 upstream file, documented in a comment at the top of the file itself:
@@ -140,3 +141,69 @@ runner built on this file should reveal shards on this project's usual fixed sch
 at turn `i`, in the stored order) and score every turn directly, not just the turn a classifier
 flags as an "answer attempt". This is a deliberate scope reduction, not an oversight -- see the
 feasibility doc's section 2.3 for the two design paths this leaves open.
+
+---
+
+## `sequor/` (three files, vendored 2026-09-08 for the `constraint` line)
+
+Source layout upstream: `data/testsets/tuples/3/*.jsonl` (200 conversations, one JSON object per
+turn), `data/constraints/3.jsonl` (948 constraint triples), `data/gold_responses/<model>/{follow,
+violate}_constraint.jsonl` (4 files × 500 rows). None of the three vendored files is a straight
+re-host; each is a documented reshape.
+
+**Structure verified at fetch time across all 200 conversations, not inferred from one file:**
+
+- every turn object is exactly `{prompt, constraints_data}` (one key schema, 200/200);
+- `constraints_data` is **constant within a conversation** (0/200 files vary across turns), and its
+  `constraint_ids` triple resolves in `data/constraints/3.jsonl` for 200/200;
+- **turn 1 states all three constraint texts verbatim; no later turn ever mentions any of them**
+  (200/200 and 0 later mentions) -- which is the property the `constraint` line depends on: the
+  constraints are said once and must be *retained*;
+- the turn-1 prompt splits cleanly on `"\n\n\n"` into `[constraint block, first task]` (200/200);
+- the constraint preamble is **paraphrased, not fixed** -- six variants across the 200
+  conversations ("For the duration of this chat, follow these constraints:" ×43, "Throughout the
+  following conversation, always follow these constraints:" ×36, "In every reply, abide by these
+  rules:" ×31, "As we talk, always comply with these constraints:" ×31, "In all your responses,
+  make sure to adhere to these rules:" ×30, "During this conversation, ensure you follow these
+  directives:" ×29). **Do not key any parsing on a literal preamble string.**
+- conversation length upstream is 120-210 turns (mean 138.4).
+
+`sequor_tuples3.jsonl` -- one row per conversation:
+`{conversation_id, tuple_id, constraint_ids, constraints, preamble, constraint_block,
+n_turns_available, turns}`. `turns[0]` is the first task with the constraint block **stripped**
+(the block is kept separately, since the reminder actuator needs to re-inject exactly that text);
+`turns[1:]` are later prompts verbatim.
+
+> **`turns` is TRUNCATED to the first 30 turns per conversation.** `n_turns_available` records the
+> real upstream length. 30 was chosen as 1.5× the `T=20` the plan
+> (`docs/experiments/constraint_retention_plan.md` §4) uses; full-length conversations are 6.05 MB
+> merged vs 1.49 MB at 30, and every other vendored resource here is under 610 KB. **If a design
+> ever needs T > 30, re-fetch -- do not read `turns` as a complete conversation.**
+
+`sequor_constraints3.jsonl` -- byte-for-byte copy of `data/constraints/3.jsonl`.
+
+`sequor_gold_judge_calibration.jsonl` -- the four gold files concatenated and trimmed to
+`{gold_id, source_model, label, constraint, task, response, source_filename}`, dropping upstream's
+`reasoning_details`/`usage`/`messages`/`prompt` (6.9 MB kept vs 18.7 MB raw). 2000 rows, exactly
+label-balanced: 1000 `follow` / 1000 `violate`, 1000 per source model (`openai/gpt-5.2`,
+`google/gemini-3-flash-preview`). This is the S0 judge-calibration set -- the `response` field is
+the thing a judge reads, so it is kept at full length.
+
+**Citation check, unresolved**: `constraint_retention_plan.md` cites this work as
+"arXiv 2605.06353". The upstream README gives only the OpenReview link and a COLM 2026 BibTeX
+entry with no arXiv id, and that id was **not** verified here. Resolve it before it reaches a
+paper's bibliography.
+
+Re-fetch commands:
+
+```bash
+SHA=60bcdacad3bb25c81d79ca833c49c0eb4554d722
+B=https://raw.githubusercontent.com/deep-spin/SEQUOR/$SHA
+curl -s "$B/data/constraints/3.jsonl" -o sequor_constraints3.jsonl
+curl -s "https://api.github.com/repos/deep-spin/SEQUOR/git/trees/$SHA?recursive=1" \
+  | grep -o 'data/testsets/tuples/3/[^"]*\.jsonl' \
+  | xargs -P 8 -I{} sh -c 'curl -sf "'$B'/{}" -o "$(basename {})"'
+for m in GPT-5.2 gemini_3_flash_preview; do for l in follow violate; do
+  curl -sf "$B/data/gold_responses/$m/${l}_constraint.jsonl" -o "gold_${m}_${l}.jsonl"; done; done
+# then reshape per the three descriptions above (T_MAX=30 for the tuples).
+```

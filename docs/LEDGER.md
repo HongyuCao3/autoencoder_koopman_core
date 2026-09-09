@@ -129,6 +129,34 @@ ERGO 闭环比较：Phase C（9 臂，09-07）→ append 重跑（3 臂，09-07�
 
 ---
 
+## 三·五、campaign：`constraint` 线（约束保持，2026-09-08 开线）
+
+计划 [`experiments/constraint_retention_plan.md`](experiments/constraint_retention_plan.md) ·
+开线前筛查与死亡条件 [`experiments/constraint_signal_screening.md`](experiments/constraint_signal_screening.md) ·
+术语 [`NAMING.md`](NAMING.md) 的 `constraint` 行。
+
+**开线四步核查**（`.claude/experiments.md` → *开一条新任务线*）：
+
+| 步 | 要求 | 状态 |
+|---|---|---|
+| 1 | 跑 `/research-experiment-design`，产出 kill criterion | ✅ 2026-09-08，产物即 `constraint_signal_screening.md` |
+| 2 | 写下死亡条件 | ✅ 计划 §7 三条 + 筛查文件 §5 追加两条（K1/K2 不过即关线） |
+| 3 | 论文三句话 + 那张表的空壳 | ✅ 筛查文件 §7 |
+| 4 | `NAMING.md` 登记 + LEDGER 开 campaign 段 | ✅ 代号已登记（commit 1fdab1a）；本段即 campaign 段 |
+
+**数据**：`resources/sequor/` 三个文件，2026-09-08 vendor 自 `deep-spin/SEQUOR`
+commit `60bcdaca`，结构在**全部 200 个对话上核过**（不是从单个文件推断）：
+约束在第 1 轮说一次、之后 0 次重提；前言有 **6 种措辞**，不许按字面串解析；
+`turns` **截断到前 30 轮**（上游 120–210）。详见 `resources/PROVENANCE.md`。
+
+**尚未提交任何 GPU 作业。** 第一个动作是 S0（判分校准）；S0-0 筛查臂在 S0 之后。
+
+| 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
+|---|---|---|---|---|---|
+| — | — | *（S0 判分校准，待提交）* | 仪器 | — | 定下 in-loop judge 与报告 judge；G-S0-1/2 不过则换一次候选，两轮都不过 → 关线 |
+
+---
+
 ## 四、待完成项（阻塞于 K 系列结果）
 
 > **触发条件**：K1(15696221) / K1.2(15696281) 落地并完成 K2 辨识之后。

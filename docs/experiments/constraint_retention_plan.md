@@ -1,7 +1,9 @@
 # 执行计划：`constraint` 线（约束保持）S0–S3
 
-**状态**：⏸ **计划稿，未开工（2026-09-08）**。活计划仍是 ERGO 的 EK 相位
-（[`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md)）；本线**在 ERGO 出较明确结果之后**才开第一个作业（2026-09-08 用户裁决）。
+**状态**：▶ **活跃（2026-09-08 起）**。ERGO 的 EK 相位已出结果并挂起
+（[`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md)：算子辨识成立，但输入通道与状态解耦，
+闭环退化为固定日程），触发条件"ERGO 出较明确结果"已满足，本线开工。
+**开工前筛查与死亡条件见 [`constraint_signal_screening.md`](constraint_signal_screening.md)（S0-0）。**
 **适用**：Opus 5（裁决）/ Sonnet 5（执行）。**规则**：`.claude/global.md` → `.claude/experiments.md` → `.claude/code.md`，**本文件不重抄规则**。
 术语见 [`../NAMING.md`](../NAMING.md) 的 `constraint` 行。
 
@@ -14,6 +16,9 @@
 | 前提 (i) 执行器权威 | 提醒再注入是否推得动 `y`（S1a） |
 | 前提 (ii)(iii) + Koopman 拟合表 `constraint` 行 | `y_{t+1}=Ay_t+Bu_t+c` 的 held-out 一步误差 vs 三个平凡 null（S1b→S2） |
 | RQ3 闭环结果表 | Koopman-MPC vs 等代价随机分配 vs 同代价最优固定日程（S3） |
+
+**论文里的三句话与那张表的空壳**（*开一条新任务线* 第 3 步）见
+[`constraint_signal_screening.md`](constraint_signal_screening.md) 第七节。
 
 **为什么是这个 task**：`defense` 卡在读出没量程（独立 judge ceiling 0.91、turn-1 `sd=0`）、
 ERGO 卡在主模态是确定性斜坡 + 激励功效不足（MDE 0.49 vs 效应 0.181）。这里 `y` 是
@@ -50,6 +55,12 @@ ERGO 卡在主模态是确定性斜坡 + 激励功效不足（MDE 0.49 vs 效应
 **已知解释性风险，写进报告不回避**：judge 只看答案，而提醒会让回复更格式化 →
 **judge 的错误率可能与 `u` 相关**，会给 `B` 灌水。gold 集里没有 `u`，答不了这一问；
 在 S2 报告时对「提醒过 / 未提醒过」的行做强 judge 抽样对照。`B` 不许写成纯因果状态增益。
+
+## 二·五、S0-0 开工前信号筛查（S0 之后、S1 之前，1 个小 GPU 臂）
+
+**12 个对话 × T=20 的反事实分叉臂 = 240 个同前缀对**（S1 是 3200 行），三道闸门 K1 读出量程 / K2 状态超出轮次 / K3 执行器权威。**规格、阈值、MDE 口径、死亡条件与非主张台账见
+[`constraint_signal_screening.md`](constraint_signal_screening.md)。** K1 或 K2 不过即关线。
+**把 EK-A 的分叉设计放到最前面而不是最后**，是 ERGO 那 18 个作业的直接教训。
 
 ## 三、S0 判分校准（零轨迹生成，纯离线）
 
