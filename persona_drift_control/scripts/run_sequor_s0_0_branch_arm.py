@@ -38,19 +38,17 @@ from persona_drift.sequor_trajectory import (  # noqa: E402
     BranchArmConfig,
     arm_config_record,
     assert_pairs_share_prefix,
+    cap_accounting,
     run_branch_arm,
 )
 
 RESOURCES = pathlib.Path("resources/sequor")
 
 # Pre-registered 2026-09-09 (screening doc section 10 item 4, and the ruling
-# after job 15756689): a response cap that BINDS makes the readout partly a
-# truncation measurement. The share is checked PER ITEM, not globally, because
-# response length is a function of the constraint set -- 15756689 sat at 18.6%
-# overall while 2 of its 12 items accounted for 75 of the 87 truncations
-# ("Write a longer dialog", "Write creatively as a story") and the other ten
-# were under 13%. A global average hides exactly the failure that matters.
-CAP_CRITERION = 0.05
+# after job 15756689). The accounting itself lives in
+# persona_drift.sequor_trajectory.cap_accounting, so the runner and the
+# report-rebuild tool cannot drift apart on the criterion.
+from persona_drift.sequor_trajectory import CAP_CRITERION  # noqa: E402,F811
 
 
 def parse_args() -> argparse.Namespace:
@@ -192,23 +190,9 @@ def main() -> None:
     print(f"{len(rows)} rows written to {args.out_dir / 'trajectories.jsonl'}", flush=True)
 
     n_pairs = assert_pairs_share_prefix(rows)
-    capped = [r for r in rows if r["hit_token_cap"]]
-    tokens = sorted(r["n_output_tokens"] for r in rows)
-
-    by_item: dict[str, list[dict]] = {}
-    for row in rows:
-        by_item.setdefault(row["item_id"], []).append(row)
-    cap_by_item = {
-        item: {
-            "n_rows": len(item_rows),
-            "n_hit_token_cap": sum(1 for r in item_rows if r["hit_token_cap"]),
-            "token_cap_share": sum(1 for r in item_rows if r["hit_token_cap"]) / len(item_rows),
-            "output_tokens_median": sorted(r["n_output_tokens"] for r in item_rows)[len(item_rows) // 2],
-            "constraints": item_rows[0]["constraints"],
-        }
-        for item, item_rows in sorted(by_item.items())
-    }
-    items_over_criterion = [i for i, v in cap_by_item.items() if v["token_cap_share"] > CAP_CRITERION]
+    caps = cap_accounting(rows, CAP_CRITERION)
+    cap_by_item = caps["token_cap_by_item"]
+    items_over_criterion = caps["items_over_cap_criterion"]
 
     (args.out_dir / "run_config.json").write_text(json.dumps({
         "mode": args.mode, "arm": "S0-0 counterfactual branch", "provenance": prov,
@@ -223,20 +207,16 @@ def main() -> None:
         "seeds": args.seeds, "decoding_mode": args.decoding, "decoding": decoding,
         "constraints_in_system": args.constraints_in_system,
         "max_new_tokens": args.max_new_tokens,
-        "n_hit_token_cap": len(capped), "token_cap_share": len(capped) / len(rows),
-        "cap_criterion": CAP_CRITERION, "token_cap_by_item": cap_by_item,
-        "items_over_cap_criterion": items_over_criterion,
-        "cap_criterion_pass": not items_over_criterion,
-        "output_tokens_median": tokens[len(tokens) // 2], "output_tokens_max": tokens[-1],
+        **caps,
         "elapsed_s": elapsed, "seconds_per_generation": elapsed / len(rows),
         "batches": batches,
     }, indent=2, ensure_ascii=False))
 
     print(f"\n{len(rows)} rows, {n_pairs} counterfactual pairs, {elapsed/60:.1f} min "
           f"({elapsed/len(rows):.2f} s/generation)")
-    print(f"response tokens: median {tokens[len(tokens)//2]}, max {tokens[-1]}")
-    print(f"hit the {args.max_new_tokens}-token cap: {len(capped)}/{len(rows)} "
-          f"({len(capped)/len(rows)*100:.1f}%) overall")
+    print(f"response tokens: median {caps['output_tokens_median']}, max {caps['output_tokens_max']}")
+    print(f"hit the {args.max_new_tokens}-token cap: {caps['n_hit_token_cap']}/{len(rows)} "
+          f"({caps['token_cap_share']*100:.1f}%) overall")
     for item, stats in cap_by_item.items():
         flag = "  <-- OVER" if stats["token_cap_share"] > CAP_CRITERION else ""
         print(f"    {item:16s} {stats['n_hit_token_cap']:3d}/{stats['n_rows']:3d} "

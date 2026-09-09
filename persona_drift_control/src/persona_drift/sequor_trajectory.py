@@ -181,6 +181,45 @@ def run_branch_arm(
     return rows
 
 
+CAP_CRITERION = 0.05
+
+
+def cap_accounting(rows: list[dict], criterion: float = CAP_CRITERION) -> dict:
+    """Per-item share of responses that hit the generation cap.
+
+    Checked PER ITEM, not globally, because response length is a function of
+    the constraint set: job 15756689 sat at 18.6% overall while two of its
+    twelve items ("Write a longer dialog", "Write creatively as a story")
+    accounted for 75 of 87 truncations and the other ten were under 13%. A
+    global average hides exactly the failure that matters, and a truncated
+    response can fail a constraint the model would have satisfied.
+    """
+
+    by_item: dict[str, list[dict]] = {}
+    for row in rows:
+        by_item.setdefault(row["item_id"], []).append(row)
+    by_item_stats = {
+        item: {
+            "n_rows": len(item_rows),
+            "n_hit_token_cap": sum(1 for r in item_rows if r["hit_token_cap"]),
+            "token_cap_share": sum(1 for r in item_rows if r["hit_token_cap"]) / len(item_rows),
+            "output_tokens_median": sorted(r["n_output_tokens"] for r in item_rows)[len(item_rows) // 2],
+            "constraints": item_rows[0]["constraints"],
+        }
+        for item, item_rows in sorted(by_item.items())
+    }
+    over = [i for i, v in by_item_stats.items() if v["token_cap_share"] > criterion]
+    capped = sum(1 for r in rows if r["hit_token_cap"])
+    tokens = sorted(r["n_output_tokens"] for r in rows)
+    return {
+        "cap_criterion": criterion,
+        "n_hit_token_cap": capped, "token_cap_share": capped / len(rows),
+        "token_cap_by_item": by_item_stats,
+        "items_over_cap_criterion": over, "cap_criterion_pass": not over,
+        "output_tokens_median": tokens[len(tokens) // 2], "output_tokens_max": tokens[-1],
+    }
+
+
 def assert_pairs_share_prefix(rows: list[dict]) -> int:
     """Every reminded row must share its prefix digest with the base row of the
     same (item, turn). Returns the number of pairs checked.

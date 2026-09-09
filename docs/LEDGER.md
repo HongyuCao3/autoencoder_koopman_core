@@ -217,7 +217,29 @@ S0 校准 ×2 + S0-0 共 3 个仪器、在 S1 之前就绑住配额；EK-A 当�
 第二相 2880 次判分 × 实测 0.10 s = 约 5 min + 14B 加载 4 min。**未实测**：采样变体是否比 greedy 更长）。
 `--time 02:30:00` ≥ 2× 悲观值。
 
-| 09-09 17:3x | 15761810 | `run_sequor_s0_0_arm_fidelity_harness.sbatch` | **方法** | ❌ **FAILED 54m08 — 我的代码 bug，52 分钟生成全部丢失**：三个 seed 各 468 行都跑完了（16.6 / 17.3 / 18.3 min），脚本在**写盘之前**崩于 `NameError: turn_clock`——多 seed 重构时删了它的定义、漏了汇总里那处引用。行只在内存里，**一行都没落盘**。**已重提**（下一行） | **K1/K2/K3 重算**——这次的失败或通过不再是 harness 造的。1404 次生成 / **684 对**；两处判据改动（K1 范围 t2..t20、3 seed）已签字，记在筛查 §十 第 5 条。运行时估计 **75–110 min**（依据：cap2048 臂 2.01 s/生成；保真臂 `system_default` 变体 2.10 s/生成、中位 804 token vs greedy 524 → 采样 + system 位置更费 token。三相：生成 50–90 min + 14B 判分 11 min + 4B 判分 8 min），`--time 03:00:00` ≥1.6× 悲观值 |
+| 09-09 17:3x | 15761810 | `run_sequor_s0_0_arm_fidelity_harness.sbatch` | **方法** | ⚠️ **FAILED 54m08 — 我的代码 bug，但生成没有丢**（**此格已更正**：先前写成"52 分钟全部丢失"是错的）。三个 seed 各 468 行跑完（16.6 / 17.3 / 18.3 min），`trajectories.jsonl`（1404 行）与 `run_config.json` **都已落盘**，脚本崩在最后一步`arm_report.json` 的 `NameError: turn_clock`（多 seed 重构时删了定义、漏了这处引用）。**产物有效**：720 base + 684 reminded、3 seed、12 题、`constraints_in_system=true`、T=0.7/top_p=0.8/top_k=20、sha `47dfd4c`。缺的只有那个派生报告 | **K1/K2/K3 重算**——这次的失败或通过不再是 harness 造的。1404 次生成 / **684 对**；两处判据改动（K1 范围 t2..t20、3 seed）已签字，记在筛查 §十 第 5 条。运行时估计 **75–110 min**（依据：cap2048 臂 2.01 s/生成；保真臂 `system_default` 变体 2.10 s/生成、中位 804 token vs greedy 524 → 采样 + system 位置更费 token。三相：生成 50–90 min + 14B 判分 11 min + 4B 判分 8 min），`--time 03:00:00` ≥1.6× 悲观值 |
+| 09-09 18:1x | 15762950 | `run_sequor_s0_0_arm_fidelity_harness.sbatch`（15761810 重提） | **方法** | ✅ **FAILED 2s — 守卫按设计拒绝**：`refusing to write into existing outputs/sequor_s0_0_branch_arm_fidelity_harness`。**这正是要的行为**——15761810 的产物在那里，重跑会覆盖 52 分钟的有效生成。**不需要重新生成**，改为从盘上的行重建派生报告 | 同 15761810：**K1/K2/K3 重算**，这次的判定不再是 harness 造的。1404 次生成 / 684 对 / 3 seed；判据两处改动见筛查 §十 第 5 条 |
+
+**重建派生报告（2026-09-09，零 GPU）+ 它触发的判据**
+
+`scripts/rebuild_sequor_arm_report.py`（新，带 `rebuilt_from_rows=true` 与 `rebuild_reason`；
+时间字段写 `null` 并附原因——时长是"那次运行"的属性、不是行的属性，不许填看起来合理的数）。
+`cap_accounting()` 已抽到 `sequor_trajectory.py`，runner 与重建工具共用一份判据，不会各自漂移。
+
+**结果：按题触顶判据 FAILED。**
+
+| 题 | 触顶 | 中位 token | 它的约束 |
+|---|---|---|---|
+| **`tuple_294_1`** | **25/117 = 21.4%** ⚠️ | **1858**（cap 2048） | Include examples...viscerally / **Write a longer dialog** / internet slang |
+| 其余 11 题 | **0/117 = 0.0%** | 87 – 1311 | — |
+
+整体 25/1404 = 1.8%，但**按题看就是这一题超标**——正是"全局均值会藏住的那种失败"，
+守卫因此按题算（筛查 §十 第 4 条）。原因：新 harness（system 位置 + 采样）让回复更长，
+这一题的中位从 cap-1024 那次的 1653 涨到 **1858**，把 2048 压满了。
+
+**按预注册规则：报告并交还，不自行抬 cap、不自行剔题。** `analyze_sequor_s0_0_gates.py` 的
+`refuse_if_the_cap_bound()` 会拒绝这个臂，唯一通路是显式 `--exclude-item tuple_294_1`（并写进闸门报告）。
+**判分（两相）暂不提交**——若裁决是抬 cap 重跑，这一臂的判分就白花。
 
 **⚠️ 15761810 的教训（2026-09-09，两条，都已变成代码而非备忘）**
 
