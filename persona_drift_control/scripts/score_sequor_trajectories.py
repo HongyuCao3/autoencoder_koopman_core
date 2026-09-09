@@ -62,17 +62,18 @@ def readout_range_by_turn(scored: list[dict]) -> dict:
     saturated readout is visible in the scoring artifact itself and not only
     after the gate script runs."""
 
-    per_turn: dict[tuple[str, int], list[float]] = {}
+    per_turn: dict[tuple[str, str, int], list[float]] = {}
     for row in scored:
         if row["y_graded"] is not None:
-            per_turn.setdefault((row["branch"], row["turn"]), []).append(row["y_graded"])
+            per_turn.setdefault((row.get("variant") or "-", row["branch"], row["turn"]), []).append(
+                row["y_graded"])
     return {
-        f"{branch}_t{turn}": {
+        (f"{branch}_t{turn}" if variant == "-" else f"{variant}_{branch}_t{turn}"): {
             "n": len(vals), "mean": statistics.fmean(vals),
             "sd": statistics.stdev(vals) if len(vals) > 1 else 0.0,
             "distinct": len(set(vals)),
         }
-        for (branch, turn), vals in sorted(per_turn.items())
+        for (variant, branch, turn), vals in sorted(per_turn.items())
     }
 
 
@@ -147,7 +148,7 @@ def main() -> None:
         scored.append({
             "trajectory_id": row["trajectory_id"], "item_id": row["item_id"], "turn": row["turn"],
             "branch": row["branch"], "u_remind": row["u_remind"],
-            "prefix_sha256": row["prefix_sha256"],
+            "prefix_sha256": row["prefix_sha256"], "variant": row.get("variant"),
             "followed": verdicts[i], "y_graded": y, "y_binary": binary_turn_success(verdicts[i]),
             "n_judge_parse_failures": n_failed,
             "echo_jaccard_prev": row["echo_jaccard_prev"],

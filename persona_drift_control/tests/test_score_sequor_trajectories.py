@@ -70,3 +70,23 @@ def test_range_by_turn_excludes_undefined_rows_rather_than_scoring_them_zero():
 
 def test_range_by_turn_is_empty_when_nothing_parsed():
     assert mod.readout_range_by_turn([_row("base", 1, None)]) == {}
+
+
+def _vrow(variant: str | None, branch: str, turn: int, y: float | None) -> dict:
+    return {"variant": variant, "branch": branch, "turn": turn, "y_graded": y}
+
+
+def test_range_by_turn_keeps_variants_apart():
+    """The fidelity arm puts four harnesses in one readout. Averaging them per
+    turn would report a curve that no harness actually produced."""
+
+    scored = [_vrow("turn1_greedy", "base", 1, 1.0), _vrow("system_default", "base", 1, 1 / 3)]
+    ranges = mod.readout_range_by_turn(scored)
+    assert set(ranges) == {"turn1_greedy_base_t1", "system_default_base_t1"}
+    assert ranges["turn1_greedy_base_t1"]["mean"] == 1.0
+
+
+def test_range_by_turn_keys_are_unchanged_without_variants():
+    """The S0-0 arms carry no variant, and their artifacts' keys must not move."""
+    ranges = mod.readout_range_by_turn([_vrow(None, "base", 3, 0.5), _vrow(None, "reminded", 3, 1.0)])
+    assert set(ranges) == {"base_t3", "reminded_t3"}

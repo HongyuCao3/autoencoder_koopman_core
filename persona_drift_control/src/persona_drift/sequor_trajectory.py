@@ -28,7 +28,7 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Callable, Sequence
 
-from .sequor_bank import SequorItem, user_message
+from .sequor_bank import SequorItem, system_message, user_message
 
 GenerateBatch = Callable[[list[list[dict]]], list[dict]]
 
@@ -43,7 +43,11 @@ class BranchArmConfig:
     seed: int = 0
     max_new_tokens: int = 1024
     temperature: float = 0.0
+    top_p: float = 1.0
+    top_k: int = -1
     system_prompt: str | None = None
+    constraints_in_system: bool = False
+    variant: str | None = None
 
 
 def word_jaccard(a: str, b: str) -> float:
@@ -106,12 +110,18 @@ def _row(
         "model": config.model_id,
         "seed": config.seed,
         "system_prompt": config.system_prompt,
-        "decoding_config": {"temperature": config.temperature, "max_new_tokens": config.max_new_tokens},
+        "constraints_in_system": config.constraints_in_system,
+        "variant": config.variant,
+        "decoding_config": {
+            "temperature": config.temperature, "top_p": config.top_p, "top_k": config.top_k,
+            "max_new_tokens": config.max_new_tokens,
+        },
     }
 
 
 def run_branch_arm(
     items: list[SequorItem], generate_batch: GenerateBatch, config: BranchArmConfig, run_id: str,
+    branch: bool = True,
 ) -> list[dict]:
     """Lockstep over turns; returns base rows and reminded (counterfactual) rows.
 
@@ -121,6 +131,10 @@ def run_branch_arm(
     the arm measures the ONE-STEP gain of a reminder, and a second-order
     reminded history would be a different (and unpaired) quantity.
 
+    `branch=False` runs the base trajectory alone -- the zero-control arm the
+    upstream-fidelity check needs, where the question is only what the
+    retention curve looks like under a given harness.
+
     Turn 1 has no reminded row: it already carries the constraint block, so
     u=1 there is not a distinct action (`sequor_bank.user_message` refuses it).
     With T=20 that gives 19 pairs per item, not 20 -- 228 pairs at N=12, where
@@ -129,19 +143,26 @@ def run_branch_arm(
     """
 
     histories: list[list[dict]] = [
-        [{"role": "system", "content": config.system_prompt}] if config.system_prompt else []
-        for _ in items
+        [{"role": "system", "content": system_message(item)}] if config.constraints_in_system
+        else ([{"role": "system", "content": config.system_prompt}] if config.system_prompt else [])
+        for item in items
     ]
     prev_agent: list[str | None] = [None] * len(items)
     rows: list[dict] = []
 
     for turn in range(1, config.n_turns + 1):
-        base_messages = [user_message(item, turn - 1, remind=False) for item in items]
+        base_messages = [
+            user_message(item, turn - 1, remind=False, constraints_in_system=config.constraints_in_system)
+            for item in items
+        ]
         base_prompts = [h + [{"role": "user", "content": m}] for h, m in zip(histories, base_messages)]
         base_out = generate_batch(base_prompts)
 
-        if turn > 1:
-            reminded_messages = [user_message(item, turn - 1, remind=True) for item in items]
+        if branch and turn > 1:
+            reminded_messages = [
+                user_message(item, turn - 1, remind=True, constraints_in_system=config.constraints_in_system)
+                for item in items
+            ]
             reminded_prompts = [h + [{"role": "user", "content": m}] for h, m in zip(histories, reminded_messages)]
             reminded_out = generate_batch(reminded_prompts)
             for item, history, message, generated, prev in zip(

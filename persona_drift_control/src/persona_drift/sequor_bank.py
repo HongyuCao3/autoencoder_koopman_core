@@ -117,6 +117,22 @@ def select_screening_items(items: list[SequorItem], gold: set[str], n: int) -> l
     return covered[:n]
 
 
+def system_message(item: SequorItem) -> str:
+    """The constraint block as a system message.
+
+    The alternative placement, for the upstream-fidelity check
+    (`constraint_signal_screening.md`, the 2026-09-09 fidelity arm): our turn-1
+    placement was INFERRED from the vendored `constraint_block` field, never
+    checked against upstream's own conversation builder, and the ERGO line
+    demonstrated that moving instructions between a system message and a user
+    turn changes the answer to the closed-loop question (LEDGER section 3,
+    `prompt_profile`). The block is used verbatim in both placements, so the
+    only thing that varies is where it sits.
+    """
+
+    return item.constraint_block
+
+
 def first_turn_user_message(item: SequorItem) -> str:
     """Turn 1: the constraint block, then the user's first question.
 
@@ -128,7 +144,7 @@ def first_turn_user_message(item: SequorItem) -> str:
     return f"{item.constraint_block}\n\n{item.turns[0]}"
 
 
-def user_message(item: SequorItem, turn: int, remind: bool) -> str:
+def user_message(item: SequorItem, turn: int, remind: bool, constraints_in_system: bool = False) -> str:
     """The user turn as the agent sees it. `turn` is 0-based.
 
     `remind` is the executor (`u=1`): the item's own constraint block, appended
@@ -136,9 +152,16 @@ def user_message(item: SequorItem, turn: int, remind: bool) -> str:
     own wording rather than a new instruction style -- the action under study
     is "restate the constraints", and a reworded reminder would confound the
     dose with a prompt change.
+
+    `constraints_in_system` moves the block out of turn 1 (see
+    `system_message`); the executor is unchanged either way, since restating
+    the constraints in the user turn is the action being studied.
     """
 
-    base = first_turn_user_message(item) if turn == 0 else item.turns[turn]
+    if turn == 0:
+        base = item.turns[0] if constraints_in_system else first_turn_user_message(item)
+    else:
+        base = item.turns[turn]
     if not remind:
         return base
     if turn == 0:
