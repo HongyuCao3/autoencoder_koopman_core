@@ -220,6 +220,8 @@ S0 校准 ×2 + S0-0 共 3 个仪器、在 S1 之前就绑住配额；EK-A 当�
 | 09-09 17:3x | 15761810 | `run_sequor_s0_0_arm_fidelity_harness.sbatch` | **方法** | ⚠️ **FAILED 54m08 — 我的代码 bug，但生成没有丢**（**此格已更正**：先前写成"52 分钟全部丢失"是错的）。三个 seed 各 468 行跑完（16.6 / 17.3 / 18.3 min），`trajectories.jsonl`（1404 行）与 `run_config.json` **都已落盘**，脚本崩在最后一步`arm_report.json` 的 `NameError: turn_clock`（多 seed 重构时删了定义、漏了这处引用）。**产物有效**：720 base + 684 reminded、3 seed、12 题、`constraints_in_system=true`、T=0.7/top_p=0.8/top_k=20、sha `47dfd4c`。缺的只有那个派生报告 | **K1/K2/K3 重算**——这次的失败或通过不再是 harness 造的。1404 次生成 / **684 对**；两处判据改动（K1 范围 t2..t20、3 seed）已签字，记在筛查 §十 第 5 条。运行时估计 **75–110 min**（依据：cap2048 臂 2.01 s/生成；保真臂 `system_default` 变体 2.10 s/生成、中位 804 token vs greedy 524 → 采样 + system 位置更费 token。三相：生成 50–90 min + 14B 判分 11 min + 4B 判分 8 min），`--time 03:00:00` ≥1.6× 悲观值 |
 | 09-09 18:1x | 15762950 | `run_sequor_s0_0_arm_fidelity_harness.sbatch`（15761810 重提） | **方法** | ✅ **FAILED 2s — 守卫按设计拒绝**：`refusing to write into existing outputs/sequor_s0_0_branch_arm_fidelity_harness`。**这正是要的行为**——15761810 的产物在那里，重跑会覆盖 52 分钟的有效生成。**不需要重新生成**，改为从盘上的行重建派生报告 | 同 15761810：**K1/K2/K3 重算**，这次的判定不再是 harness 造的。1404 次生成 / 684 对 / 3 seed；判据两处改动见筛查 §十 第 5 条 |
 
+| 09-09 18:4x | 15763577 | `run_sequor_s0_0_score_fidelity_harness.sbatch`（只判分两相，**不含生成**——不可能覆盖 15761810 的臂） | 仪器 | 🏃 RUNNING | 保真 harness 臂的两份读出。**用户裁决「执行a」**：`tuple_294_1` 以 `--exclude-item` 在**闸门这一步**具名剔除（筛查 §十 第 6 条），判分仍覆盖全部 1404 行 → 裁决可逆、不必再花一个 GPU 作业。闸门将在 **11 题 × 3 seed × 19 轮 = 627 对**上计算。估计 25–35 min |
+
 **重建派生报告（2026-09-09，零 GPU）+ 它触发的判据**
 
 `scripts/rebuild_sequor_arm_report.py`（新，带 `rebuilt_from_rows=true` 与 `rebuild_reason`；
