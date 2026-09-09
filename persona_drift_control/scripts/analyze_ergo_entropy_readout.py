@@ -47,6 +47,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 import torch  # noqa: E402
 
 from persona_drift.chat_model import ChatModel, _build_prompt_text  # noqa: E402
+from persona_drift.ergo_math_trajectory import _initial_agent_history  # noqa: E402
 from persona_drift.modeling.dataset import load_trajectories  # noqa: E402
 
 ANSWER_MARKER = "Current answer:"
@@ -66,6 +67,15 @@ def parse_args() -> argparse.Namespace:
         type=pathlib.Path,
         default=pathlib.Path("outputs/ergo_math_phaseB_random_excite/entropy_readout.json"),
     )
+    # 2026-09-08: the replay below rebuilds the agent-facing history from the
+    # recorded rows, and under prompt_profile="upstream" that history STARTS
+    # with a system message (ergo_math_trajectory._initial_agent_history).
+    # Without this flag the replay silently drops it and the entropies are
+    # read off a context the model never saw. Default is "legacy" -- the
+    # existing behavior byte-for-byte, so the already-published
+    # outputs/ergo_math_phaseB_random_excite/entropy_readout.json stays
+    # reproducible from the bare command line.
+    parser.add_argument("--prompt-profile", choices=("legacy", "upstream"), default="legacy")
     return parser.parse_args()
 
 
@@ -111,27 +121,63 @@ def _answer_span_entropy(model: ChatModel, completion_text: str, entropies: torc
     return float(span_entropies.mean())
 
 
-def main() -> None:
-    args = parse_args()
-    rows = load_trajectories(args.rows_path)
-    model = ChatModel(args.agent_model, device=args.device, enable_thinking=False)
-
+def group_trajectories(rows: list[dict]) -> list[list[dict]]:
     groups: dict[str, list[dict]] = {}
     for row in rows:
         groups.setdefault(row["trajectory_id"], []).append(row)
     for traj_rows in groups.values():
         traj_rows.sort(key=lambda r: r["turn"])
+    return list(groups.values())
+
+
+def replay_histories(traj_rows: list[dict], prompt_profile: str):
+    """Rebuild the agent-facing history each recorded turn actually saw, and
+    yield (row, messages) in turn order.
+
+    Two guards, because both failure modes are invisible in the output --
+    the entropies would just be read off the wrong context (.claude/global.md:
+    a guard that passes silently hides the thing it exists to catch):
+
+    * the rows' own `prompt_profile` must match the requested one, or the
+      replay starts from the wrong initial history;
+    * a reset is replayed with OVERWRITE semantics (history replaced by the
+      consolidated turn). Rows recorded under `reset_mode="append"` keep the
+      pre-reset history, so replaying those here would be wrong -- refuse.
+    """
+
+    for row in traj_rows:
+        recorded = row.get("prompt_profile")
+        if recorded is not None and recorded != prompt_profile:
+            raise SystemExit(
+                f"row {row['trajectory_id']} turn {row['turn']} was recorded under "
+                f"prompt_profile={recorded!r} but --prompt-profile is {prompt_profile!r}"
+            )
+        if row["u_reset"] and row.get("reset_mode") == "append":
+            raise SystemExit(
+                f"row {row['trajectory_id']} turn {row['turn']} is a reset recorded under "
+                'reset_mode="append"; this replay only implements overwrite semantics'
+            )
+
+    agent_history = _initial_agent_history(prompt_profile)
+    for row in traj_rows:
+        if row["u_reset"]:
+            agent_history = [*_initial_agent_history(prompt_profile),
+                             {"role": "user", "content": row["user_message"]}]
+        else:
+            agent_history.append({"role": "user", "content": row["user_message"]})
+        yield row, agent_history
+        agent_history = [*agent_history, {"role": "assistant", "content": row["agent_message"]}]
+
+
+def main() -> None:
+    args = parse_args()
+    rows = load_trajectories(args.rows_path)
+    model = ChatModel(args.agent_model, device=args.device, enable_thinking=False)
 
     entropy_by_row: dict[tuple[str, int], dict] = {}
     n_missing_span = 0
-    for traj_rows in groups.values():
-        agent_history: list[dict[str, str]] = []
-        for row in traj_rows:
-            if row["u_reset"]:
-                agent_history = [{"role": "user", "content": row["user_message"]}]
-            else:
-                agent_history.append({"role": "user", "content": row["user_message"]})
-
+    for traj_rows in group_trajectories(rows):
+        for row, agent_history in replay_histories(traj_rows, args.prompt_profile):
             entropies = _token_entropies(model, agent_history, row["agent_message"])
             entropy_mean = float(entropies.mean()) if entropies.numel() > 0 else None
             entropy_answer_span = _answer_span_entropy(model, row["agent_message"], entropies)
@@ -142,8 +188,6 @@ def main() -> None:
                 "entropy_answer_span": entropy_answer_span,
                 "n_completion_tokens": int(entropies.numel()),
             }
-
-            agent_history.append({"role": "assistant", "content": row["agent_message"]})
 
     out_rows = []
     for row in rows:
@@ -162,6 +206,7 @@ def main() -> None:
 
     report = {
         "agent_model": args.agent_model,
+        "prompt_profile": args.prompt_profile,
         "rows_path": str(args.rows_path),
         "n_rows": len(out_rows),
         "n_missing_answer_span": n_missing_span,

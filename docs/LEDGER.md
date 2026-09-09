@@ -96,9 +96,16 @@ ERGO 闭环比较：Phase C（9 臂，09-07）→ append 重跑（3 臂，09-07�
 | 09-08 11:43 | 15696229 | `pdc-ergoALT-zero` | 方法 | ✅ COMPLETED 1h18m | R4：ALT zero-control 基线。**R4 已关闭，本产物不进结果** |
 | 09-08 11:43 | 15696221 | `run_defense_excite_qwen4b.sbatch` | 方法 | ✅ COMPLETED 19m17（先被抢占、`--requeue` 后重跑） | K2 的 DMDc 辨识用哪份激励数据；`B` 的 CI 是否覆盖 0（前提 2 的判据）。**G-K1 五条全过**：500 行 / 100 个 attack_id（与 `d1_screen_qwen4b` 同集）/ `u_remind` 均值 0.518 / reminded 259 行 / 每轮跨轨迹 sd > 0 |
 | 09-08 11:49 | 15696281 | `run_defense_rejudge_d1_qwen4b.sbatch`（15696222 重提） | 仪器 | ✅ COMPLETED 6m37 | K4 的报告口径：独立 judge 无量程（ceiling 0.91）→ **暂用自判 + 局限句**，`defense` 线收尾 |
-| 09-08 16:14 | 15708895 | `run_ergo_ekA_branch.sbatch` | 方法 | 🏃 PENDING（4h 上限，`--requeue`） | EK-A：`B` 与 `b₂` 的 CI 能不能收窄到可判定——**决定 EK-B 闭环三臂（约 6.1 GPU-h）跑不跑**，以及 ERGO 线是进 S1/S2 还是停在 S3 |
+| 09-08 16:14 | 15708895 | `run_ergo_ekA_branch.sbatch` | 方法 | ✅ COMPLETED 1h11m（18:08，759 对，45 题 × 3 seed） | EK-A：`B` 与 `b₂` 的 CI 能不能收窄到可判定——**决定 EK-B 闭环三臂（约 6.1 GPU-h）跑不跑**，以及 ERGO 线是进 S1/S2 还是停在 S3。**已答**：`B` 收窄到 +0.0250 [+0.0095,+0.0418]（G-EKA-1/3 过，EK-B 准入成立）；`b₂` **没有**收窄（G-EKA-2 斜率 CI 跨 0，但 MDE ±0.126 是预期量级的 4.5 倍 → 判为不可判定，非无状态依赖）。EK-B 的 `k` 与是否提交待用户裁决 |
+| 09-08 19:03 | 15716425 | `run_ergo_ekA_entropy.sbatch` | 仪器 | ✅ COMPLETED 2m41（759 行） | **ERGO 闭环还有没有状态轴**：反事实对已给出每轮 reset 有没有用的真值，本作业补上文献自己用的那个状态（熵）。过 → 用熵重问前提 (iii)（T2 形式）与策略可分性，决定 EK-B（6.1 GPU-h）跑不跑；不过 → ERGO 停在 S3，预算转 `constraint` 线。**用户 2026-09-08「先执行2」即为重开熵读出族的显式签字**（Q17 / `.claude/global.md` *同一个仪器只修一次*）。**已答：不过。** `entropy_mean` 与 `shard_frac` 相关 −0.5162，控住斜坡后斜率从 −0.2453 衰减到 −0.0070（97%）；唯一稳健的预测量仍是确定性外生的 `shard_frac`（+0.1161，CI [+0.0503,+0.1796]，效应大于 MDE）。算子层面 T2 仍跨 0，策略仍是「最后 k 轮」。→ **ERGO 停在 S3，预算转 `constraint` 线**（待用户确认）。副产物：`entropy_answer_span` 控住斜坡后仍有信号，方向与 ERGO 的熵触发**相反**（笃定时 reset 有用、犹豫时没用），但小于 MDE，只作讨论段观察 |
 
 **近 10 个作业配额检查**（2026-09-08 16:14，含 15708895）：仪器 2 / 方法 8 → ✅ 通过（阈值：仪器 > 5 即停）。
+
+**近 10 个作业配额检查**（2026-09-08 19:03，含 `pdc-ergoEKA-entropy`）：仪器 3 / 方法 7 → ✅ 通过。
+
+**`pdc-ergoEKA-entropy` 提交前六条核查**：① 用户已裁决（「先执行2」）；② 运行时估计 5–10 分钟，依据：前一个熵作业 15644575 跑 666 行 legacy 行只用 1m29（含加载），本次 759 行、回复更长（均 53 词）、上下文最长 12 轮，`--time 00:45:00` ≥4× 余量；③ `outputs/ergo_ekA_branch/entropy_readout.json` 提交前不存在，脚本自身也拒绝覆盖；④ 见上一行；⑤ 配额通过；⑥ 队列里无其它本项目作业，且 pip 已用 `flock` 串行化。
+
+**本次改了脚本**（计划 §4.1 说「不需要改代码」是错的，两处）：`analyze_ergo_entropy_readout.py` 的重放①在 upstream profile 下会丢掉 system message、②对 `reset_mode="append"` 的 reset 用的是 overwrite 语义。新增 `--prompt-profile`（默认 `legacy` = 旧行为逐字节不变，已发布的 phaseB 产物仍可由裸命令行复现）与两道拒绝式守卫；7 条单测，含 legacy 回归检验。反事实文件会被守卫挡下——这正是照计划做会掉进去的坑。
 
 **15708895 提交前六条核查**：① 用户已裁决；② 运行时估计 95 分钟，依据写在 sbatch 注释里（45 题 × 3 seed = 135 轨迹，每轮生成两次，R1 实测单次 19–23 s/轨迹）；③ `outputs/ergo_ekA_branch` 提交前不存在，不覆盖任何产物；④ 本行；⑤ 配额通过；⑥ 队列里无其它本项目作业，且 pip 已用 `flock` 串行化。
 
