@@ -10,7 +10,7 @@ keyword lattice）都以这份表为准。
 | `stance` | **抗压力** | stance holding under sustained pushback / sycophancy resistance | 用户持续反驳下模型是否放弃正确立场；MMLU "Are You Sure?" 数据源 | 活跃 |
 | `benign` | 良性代价对照 | benign helpfulness cost | Phase F 的 MT-Bench 良性会话代价对照 | 活跃（`defense` 的附属） |
 | `detect` | 检测支线 | Koopman-based regime detection | 一步预测残差 / 双 regime 对比 / 内容相似度特征 | 收尾 |
-| `constraint` | **约束保持** | multi-turn constraint retention | SEQUOR（arXiv 2605.06353, COLM 2026）多轮约束遵守下的预算内提醒再注入；`tuples/3` regime，k=3 分级读出 | 计划稿，未开工 |
+| `constraint` | **约束保持** | multi-turn constraint retention | SEQUOR（arXiv 2605.06353, COLM 2026）多轮约束遵守下的预算内提醒再注入；`tuples/3` regime，k=3 分级读出 | **活跃**（2026-09-09 开工：S0 判分校准完成，S0-0 筛查臂 K1 不过，去留待裁决） |
 | `persona_drift` | 人格漂移 | persona drift | 最初的任务线，screening 三问全挂后放弃 | **已放弃，仅作历史术语** |
 
 ## 三条消歧说明
