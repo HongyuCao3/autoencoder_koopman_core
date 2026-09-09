@@ -55,6 +55,16 @@ source activate /scratch/hcao2/envs/sequor_vllm
 export HF_HOME=/scratch/hcao2/hf_cache
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 
+# 2026-09-09, job 15738603 FAILED here after loading weights and capturing CUDA
+# graphs: vLLM's sampler routes to FlashInfer, whose sampling kernels JIT-compile
+# on the first token and need nvcc / CUDA_HOME, neither of which exists on the
+# compute node (the env's torch ships its CUDA libs as wheels, not a toolkit).
+# Greedy decoding does not need those kernels at all. `module load cuda/13.0.2`
+# would also supply nvcc, but it puts a second CUDA runtime on LD_LIBRARY_PATH
+# ahead of the wheels this env was built against -- a numerical-stack change
+# under an instrument, which is what the separate env exists to prevent.
+export VLLM_USE_FLASHINFER_SAMPLER=0
+
 cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
 
 nvidia-smi -L || true
