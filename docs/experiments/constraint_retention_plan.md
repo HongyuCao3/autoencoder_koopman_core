@@ -75,6 +75,8 @@ ERGO 卡在主模态是确定性斜坡 + 激励功效不足（MDE 0.49 vs 效应
 
 judge 弱只抬噪声、不偏移臂间差——**前提是错误率与 `u` 无关**，所以 G-S0 不能替代第二节那条抽样对照。
 
+**S0 已完成（2026-09-09）**：报告口径 judge = **Qwen3-14B**（G-S0-1 过），in-loop 自判 judge = **Qwen3-4B-Instruct-2507**（= agent）。数与谱系见 `../LEDGER.md` §三·五 的 15739195 / 15739196 两行；判分 cap 的例外见 `constraint_signal_screening.md` §十 第 4 条。
+
 ## 四、S1 采集（两组配对臂，T=20，N=40 item）
 
 **这一组同时是**：前提 (i) 的检验、Koopman 的训练集、S3 的 zero-control 下界臂。

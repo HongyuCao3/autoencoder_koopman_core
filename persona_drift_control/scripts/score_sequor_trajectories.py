@@ -40,6 +40,42 @@ from persona_drift.sequor_constraint_judge import (  # noqa: E402
 )
 
 
+def refuse_self_judge_mislabel(arm_config: dict, judge_model: str, judge_kind: str) -> None:
+    """A judge that IS the agent's model cannot be labelled independent.
+
+    Raises rather than downgrading the label: the whole reason `--judge-kind`
+    is a required argument is that a self-judged score reaching a results table
+    is the failure that hid a 4x effect size on the `defense` line, and it is
+    invisible in the artifact once written.
+    """
+
+    if arm_config.get("model_id") == judge_model and judge_kind == "independent":
+        raise SystemExit(
+            f"--judge-kind independent but the judge IS the agent's model "
+            f"({judge_model}): that is a self-judged score, and .claude/global.md forbids "
+            f"reporting one. Pass --judge-kind self, or judge with a different model."
+        )
+
+
+def readout_range_by_turn(scored: list[dict]) -> dict:
+    """Per (branch, turn) spread of `y`. K1's raw material, reported here so a
+    saturated readout is visible in the scoring artifact itself and not only
+    after the gate script runs."""
+
+    per_turn: dict[tuple[str, int], list[float]] = {}
+    for row in scored:
+        if row["y_graded"] is not None:
+            per_turn.setdefault((row["branch"], row["turn"]), []).append(row["y_graded"])
+    return {
+        f"{branch}_t{turn}": {
+            "n": len(vals), "mean": statistics.fmean(vals),
+            "sd": statistics.stdev(vals) if len(vals) > 1 else 0.0,
+            "distinct": len(set(vals)),
+        }
+        for (branch, turn), vals in sorted(per_turn.items())
+    }
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--arm-dir", type=pathlib.Path, required=True,
@@ -52,8 +88,11 @@ def parse_args() -> argparse.Namespace:
                         "reported by accident.")
     p.add_argument("--out-path", type=pathlib.Path, required=True, help="JSON report; must not exist.")
     p.add_argument("--max-new-tokens", type=int, default=512,
-                   help="512 measured sufficient on the S0 smoke: judge output median ~185 tokens, "
-                        "max ~340, 0/24 parse failures, 0/24 truncated.")
+                   help="512 is sufficient for Qwen3-14B (job 15739195: median 124 output tokens, "
+                        "p90 194, 12/2000 truncated) and NOT for Qwen3-4B-Instruct-2507 (job "
+                        "15739196: p90 463, 8.1% of calls unparsed, 149 of them truncations). "
+                        "Pass 1024 for the 4B -- an unparsed constraint nulls its whole turn, which "
+                        "at k=3 costs ~22% of turns.")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--gpu-memory-utilization", type=float, default=0.90)
     p.add_argument("--max-model-len", type=int, default=8192)
@@ -66,12 +105,7 @@ def main() -> None:
         raise SystemExit(f"refusing to overwrite existing {args.out_path}")
     rows = [json.loads(l) for l in (args.arm_dir / "trajectories.jsonl").open() if l.strip()]
     arm_config = json.loads((args.arm_dir / "run_config.json").read_text())
-    if arm_config.get("model_id") == args.judge_model and args.judge_kind == "independent":
-        raise SystemExit(
-            f"--judge-kind independent but the judge IS the agent's model "
-            f"({args.judge_model}): that is a self-judged score, and .claude/global.md forbids "
-            f"reporting one. Pass --judge-kind self, or judge with a different model."
-        )
+    refuse_self_judge_mislabel(arm_config, args.judge_model, args.judge_kind)
 
     prov = provenance(switches={
         "judge_model": args.judge_model, "judge_kind": args.judge_kind, "arm_dir": str(args.arm_dir),
@@ -121,17 +155,7 @@ def main() -> None:
         })
 
     usable = [s for s in scored if s["y_graded"] is not None]
-    per_turn = {}
-    for s in usable:
-        per_turn.setdefault((s["branch"], s["turn"]), []).append(s["y_graded"])
-    range_by_turn = {
-        f"{branch}_t{turn}": {
-            "n": len(vals), "mean": statistics.fmean(vals),
-            "sd": statistics.stdev(vals) if len(vals) > 1 else 0.0,
-            "distinct": len(set(vals)),
-        }
-        for (branch, turn), vals in sorted(per_turn.items())
-    }
+    range_by_turn = readout_range_by_turn(scored)
 
     report = {
         "mode": arm_config.get("mode"), "backend": "vllm", "provenance": prov,
