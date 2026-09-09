@@ -153,7 +153,50 @@ commit `60bcdaca`，结构在**全部 200 个对话上核过**（不是从单个
 
 | 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
 |---|---|---|---|---|---|
-| — | — | *（S0 判分校准，待提交）* | 仪器 | — | 定下 in-loop judge 与报告 judge；G-S0-1/2 不过则换一次候选，两轮都不过 → 关线 |
+| 09-08 22:0x | 15719117 | `run_sequor_judge_smoke.sbatch` | **基建**（不入配额） | ✅ COMPLETED 4m46 | **定下 S0 全量的跑法**：实测 s/row < 3 → 直接在现有 env 上跑 2000 行（约 1.7 h/候选）；≥3 → 先建独立 vLLM env（计划 §8）。同时验 `--max-new-tokens 512` 够不够（解析失败率 / 触顶率）。24 行分层切片，`mode=debug`，**数字不作为证据**。**已答**：**7.42 s/row** → 全量 2000 行 **4.12 h/候选** → 按预注册规则（≥3 s/row）**先建独立 vLLM env**；`--max-new-tokens 512` **够用**（judge 输出中位 ~185 token、最长 ~340，解析失败 0/24、触顶 0/24） |
+| 09-08 22:1x | 15719166 | `build_sequor_vllm_env.sbatch` | **基建**（CPU-only，不入配额） | ✅ COMPLETED 1h16m40（09-08 23:10） | 建 `/scratch/hcao2/envs/sequor_vllm`。**不碰共享 env**——vLLM 自带 torch，装进 `persona_drift_pilot` 就等于在 `defense`/`stance`/ERGO 已发布产物底下换数值栈。作业开头 `if [ -d ]` 拒绝重建；回滚 = 删目录重跑 |
+| — | — | `run_sequor_judge_vllm_consistency.sbatch` | **基建**（不入配额） | ⏸ 已写好并干跑，待裁决 | **S0 全量在哪个后端出数**：vLLM 与 HF 在**同一批 24 行**（`--limit 24` 的确定性分层切片，单测证明与 smoke 报告逐行同集）上逐条比对判决。≥22/24 → S0 全量走 vLLM（约 0.5 h/候选）；≤21/24 → 回 HF 路径（4.12 h/候选），差异按工程 bug 修（chat template / `enable_thinking` 传递），**不作为科学结论** |
+| — | — | `run_sequor_s0_report_judge_vllm.sbatch` | 仪器 | ⏸ 已写好并干跑，待裁决（consistency 过后才提） | **定下报告口径 judge**（`.claude/global.md` → *报告口径*：本线所有可报告数字的来源）。G-S0-1（一致率 ≥0.80 且 κ ≥0.60）过 → 进 S1；只过 G-S0-2 → 用但每处标注"judge 弱 → MDE 抬高"；都不过 → **换候选一次**（Qwen3-30B-A3B），第二次不过 → **关线**（计划 §7 死亡条件 1）。同址报 G-S0-0 长度地板（配对 64.8% / 不配对 59.7%） |
+| — | — | `run_sequor_s0_inloop_judge_vllm.sbatch` | 仪器 | ⏸ 已写好并干跑，待裁决（**agent 模型待用户签字**） | **定下 in-loop 选择信号 judge**（= agent 同一个服务模型，自判，只用于选动作）。预注册判据：平衡准确率 ≥0.65 **且**高出 G-S0-0 配对长度地板 ≥10 点。过 → S0-0 筛查臂与 S3 的 in-loop 读出用它；不过 → **换仪器**：报告 judge 同时跑 in-loop（S3 变慢、无自判），**不许下调阈值**——否则闭环反馈的"状态"是回复长度的代理，控制器在调节啰嗦程度 |
+
+**`run_sequor_judge_smoke` 提交前六条核查**：① 用户已裁决（「提交」）；② 运行时估计 5–15 分钟（约 1 分钟加载 + 24 行；s/row 未知正是它要买的量），`--time 00:30:00`；③ `outputs/sequor_s0_smoke/` 提交前不存在，脚本自身亦拒绝覆盖；④ 见上行；⑤ 近 10 个作业 仪器 3 / 方法 7 ✅（本作业记基建）；⑥ 队列无其它本项目作业，pip 已 `flock`。
+
+**三个 S0 作业的提交前六条核查**（2026-09-09）：① **用户已裁决**（2026-09-09 三问三答：
+「先提 consistency，过了我直接接全量」= consistency 过 ≥22/24 即**预授权**接着提两个全量、
+≤21/24 则停下报告；agent 与 in-loop judge = **Qwen3-4B-Instruct-2507**（上游 tuples/3 用的就是它，
+计划 §1 的量程先验读自它的曲线；计划 §9 写的 `Qwen3-4B` 是不一致处，以本裁决为准）；
+S0-0 筛查臂**按 EK-A 先例记「方法」**）；
+② 运行时估计与假设写在每个 sbatch 的注释里——consistency **5–10 min**（`--time 00:40`）、
+报告 judge **15–30 min 中位 / ~1 h 悲观**（`--time 02:00`）、in-loop judge **8–20 min**（`--time 01:30`），
+假设：A100-PCIE-40GB（smoke 实测落到的卡）/ 2000 行 / 提示均长 ~650 token（gold 回复 median 429 词、mean 427、p90 679、max 1936）/
+judge 输出 median ~185 token（smoke 实测 741 字符中位、1351 最长）/ cap 512 / greedy / thinking off；
+**未实测的量**：4B 模型在判分前的啰嗦程度（smoke 用的是 14B），它长则 decode 项变大；
+③ 三个输出目录 `outputs/sequor_s0_vllm_consistency/` `outputs/sequor_s0_report_judge_qwen3_14b/`
+`outputs/sequor_s0_inloop_judge_qwen3_4b_instruct_2507/` 提交前均不存在（干跑逐条核过），脚本自身亦拒绝覆盖，**一个作业一个目录**；
+④ 见上表三行；⑤ 配额见下；⑥ **三个作业都不做任何 pip install**——vLLM env 里没装本项目，
+runner 按文件路径加载共享模块（`load_shared_module`），因此结构上不可能重演 2026-09-08 的并发 editable install 竞态。
+
+**近 10 个作业配额检查**（2026-09-09，含上表三个作业）：仪器 **4** / 方法 3 / 基建 3 → ✅ 通过（阈值：仪器 > 5 即停）。
+
+**S0-0 筛查臂的分类（2026-09-09 用户裁决）：记「方法」**，按 EK-A（15708895）的先例——
+同前缀反事实分叉臂产出的 240 对**就是后续拟合的辨识数据**，不是另造一个测量装置。
+（分类口径里"信号 screening = 仪器"的字面读法会把它记成仪器，那会让本线的开线序列
+S0 校准 ×2 + S0-0 共 3 个仪器、在 S1 之前就绑住配额；EK-A 当时记的是方法，同一设计同一归类。）
+**后果**：若报告 judge 需要换候选（Qwen3-30B-A3B），那是第 5 个仪器，仍在阈值内但只剩 1 格。
+
+**2026-09-09 干跑抓到的两件事**（都在申请 GPU 之前）：
+
+1. **vLLM runner 在它自己的 env 里 import 就死**：`persona_drift/__init__.py` → `.analysis` → `pandas`，
+   而 `sequor_vllm` env 按计划 §8 只有 vLLM。修法是 `load_shared_module()` 按文件路径加载
+   `sequor_calibration_metrics` / `sequor_constraint_judge` / `run_provenance`，**不走包 `__init__`**——
+   保住"两个后端读同一份 prompt/parser/metric 源码，不是两份拷贝"这个 `--compare-to` 赖以成立的性质。
+   6 条单测，其中一条把这次的失败本身钉成回归检验（屏蔽 `pandas`/`torch`/`transformers` 后仍须加载成功）。
+2. **本仓库没有任何产物记 harness 指纹**（`outputs/ergo_ekA_branch/run_config.json` 也没有），
+   而这是 `.claude/global.md` → *产物与谱系* 的硬约束、也是 §2 里 ERGO 那 18 个作业的直接成因。
+   新模块 `src/persona_drift/run_provenance.py`：`git_sha` / `git_branch` / `git_dirty` / `n_dirty_paths` /
+   `job_id` / `node` / `python` / `argv` / `switches`，**取不到指纹就 raise**（不返回 `git_sha: null`——
+   那会让"产物不可追溯"这个失败在产物里长得像已经追溯过了，参照 `run_config_guard` 元测试的论证）；
+   9 条单测；已接进两个判分 runner 的报告。**这也是 §4 T-2 的第一块。**
 
 ---
 
@@ -210,6 +253,11 @@ commit `60bcdaca`，结构在**全部 200 个对话上核过**（不是从单个
 | `harness_switches`（`reset_mode` / `prompt_profile` / judge 版本 / `controller`） | 仪器改动后**只重跑真正受影响的 run**，不全量重跑 |
 | `judge_kind`（`self` / `independent`） | 让 T-1 的守卫可判定 |
 | `seeds` | 让 T-1 的守卫可判定 |
+
+**2026-09-09 已落地第一块**：`src/persona_drift/run_provenance.py`（`git_sha` / `git_branch` / `git_dirty` /
+`n_dirty_paths` / `job_id` / `job_name` / `node` / `python` / `started_at` / `argv` / `switches`；缺指纹即 raise；
+9 条单测），并接进 `constraint` 线的两个 S0 判分 runner。**未动的部分**：统一 `run_summary.json` schema、
+`status` / `traceback`（异常路径也必须写）、把它接到其余脚本、以及 99 个既有 outputs 目录的回填。
 
 **收益**：LEDGER §3 从手写变自动生成；重跑范围可计算；配额检查可脚本化。
 
