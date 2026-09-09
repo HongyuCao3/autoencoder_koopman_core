@@ -43,6 +43,15 @@ from persona_drift.sequor_trajectory import (  # noqa: E402
 
 RESOURCES = pathlib.Path("resources/sequor")
 
+# Pre-registered 2026-09-09 (screening doc section 10 item 4, and the ruling
+# after job 15756689): a response cap that BINDS makes the readout partly a
+# truncation measurement. The share is checked PER ITEM, not globally, because
+# response length is a function of the constraint set -- 15756689 sat at 18.6%
+# overall while 2 of its 12 items accounted for 75 of the 87 truncations
+# ("Write a longer dialog", "Write creatively as a story") and the other ten
+# were under 13%. A global average hides exactly the failure that matters.
+CAP_CRITERION = 0.05
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -139,6 +148,21 @@ def main() -> None:
     capped = [r for r in rows if r["hit_token_cap"]]
     tokens = sorted(r["n_output_tokens"] for r in rows)
 
+    by_item: dict[str, list[dict]] = {}
+    for row in rows:
+        by_item.setdefault(row["item_id"], []).append(row)
+    cap_by_item = {
+        item: {
+            "n_rows": len(item_rows),
+            "n_hit_token_cap": sum(1 for r in item_rows if r["hit_token_cap"]),
+            "token_cap_share": sum(1 for r in item_rows if r["hit_token_cap"]) / len(item_rows),
+            "output_tokens_median": sorted(r["n_output_tokens"] for r in item_rows)[len(item_rows) // 2],
+            "constraints": item_rows[0]["constraints"],
+        }
+        for item, item_rows in sorted(by_item.items())
+    }
+    items_over_criterion = [i for i, v in cap_by_item.items() if v["token_cap_share"] > CAP_CRITERION]
+
     args.out_dir.mkdir(parents=True)
     with (args.out_dir / "trajectories.jsonl").open("w") as fh:
         for row in rows:
@@ -150,19 +174,33 @@ def main() -> None:
     (args.out_dir / "arm_report.json").write_text(json.dumps({
         "mode": args.mode, "n_rows": len(rows), "n_pairs": n_pairs,
         "prefix_check": "every pair shares a byte-identical prefix (assert_pairs_share_prefix)",
+        "max_new_tokens": args.max_new_tokens,
         "n_hit_token_cap": len(capped), "token_cap_share": len(capped) / len(rows),
+        "cap_criterion": CAP_CRITERION, "token_cap_by_item": cap_by_item,
+        "items_over_cap_criterion": items_over_criterion,
+        "cap_criterion_pass": not items_over_criterion,
         "output_tokens_median": tokens[len(tokens) // 2], "output_tokens_max": tokens[-1],
         "elapsed_s": elapsed, "seconds_per_generation": elapsed / len(rows),
         "batches": turn_clock["batches"],
-    }, indent=2))
+    }, indent=2, ensure_ascii=False))
 
     print(f"\n{len(rows)} rows, {n_pairs} counterfactual pairs, {elapsed/60:.1f} min "
           f"({elapsed/len(rows):.2f} s/generation)")
     print(f"response tokens: median {tokens[len(tokens)//2]}, max {tokens[-1]}")
     print(f"hit the {args.max_new_tokens}-token cap: {len(capped)}/{len(rows)} "
-          f"({len(capped)/len(rows)*100:.1f}%)"
-          + ("   <-- a readout partly measuring truncation; raise the cap before canonical"
-             if len(capped) / len(rows) > 0.05 else ""))
+          f"({len(capped)/len(rows)*100:.1f}%) overall")
+    for item, stats in cap_by_item.items():
+        flag = "  <-- OVER" if stats["token_cap_share"] > CAP_CRITERION else ""
+        print(f"    {item:16s} {stats['n_hit_token_cap']:3d}/{stats['n_rows']:3d} "
+              f"({stats['token_cap_share']*100:5.1f}%)  median {stats['output_tokens_median']:5d}{flag}")
+    if items_over_criterion:
+        print(f"\n  CAP CRITERION FAILED for {len(items_over_criterion)} item(s): "
+              f"{items_over_criterion}\n  Their readout is partly a truncation measurement. The gate "
+              f"script REFUSES this arm until each is either fixed or explicitly excluded "
+              f"(--exclude-item), which is recorded in the gate report. Report it; do not raise the "
+              f"cap or drop items unasked.")
+    else:
+        print(f"\n  cap criterion PASSED: every item at or under {CAP_CRITERION*100:.0f}%")
     print(f"written to {args.out_dir}")
 
 

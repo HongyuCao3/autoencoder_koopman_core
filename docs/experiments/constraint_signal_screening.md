@@ -215,6 +215,19 @@ ERGO 的账单是 18 个作业回答同一个问题，而最终唯一奏效的**
 4. **agent 回复 cap = 1024 token，且触顶率 > 5% 视为不合格。** 上游未报生成超参；
    gold 回复中位 429 词 / p90 679 词，cap 咬住就等于在测截断而不是测约束保持。
    `run_sequor_s0_0_branch_arm.py` 逐行记 `finish_reason` / `hit_token_cap` 并在超过 5% 时告警。
+   **修正（2026-09-09 第二次裁决，选项 a）**：cap **1024 也不够**。15756689 触顶 18.6%，
+   且 **75/87 集中在 2 题**——它们的约束本身要求写长（`tuple_294_1`「Write a longer dialog」100%、
+   `tuple_245_1`「Write creatively as a story」92.3%），另一头 `tuple_399_1`（「under 100 words」）
+   中位 96 token、`tuple_247_1`（「line length ≤ 100 characters」）中位 47。
+   **所以长度是约束集合的函数，任何全局 cap 都不中性**：它在"要求写长"的约束上制造违规。
+   现行规格：**cap = 2048、`max_model_len` = 49152**（20 × (2048+120) ≈ 43k，32768 会静默丢掉
+   最早那几轮——而约束就是在第 1 轮说的），**触顶判据按题算、阈值 5%**。
+   **仍有单题超标 → 报告并交还**，不再自行抬 cap、不自行剔题：
+   `run_sequor_s0_0_branch_arm.py` 写 `token_cap_by_item` / `items_over_cap_criterion`，
+   `analyze_sequor_s0_0_gates.py` 的 `refuse_if_the_cap_bound()` **拒绝**这样的臂，
+   唯一的通过方式是逐个 `--exclude-item`（并写进闸门报告，与它改动的那些数同址）。
+   **按"约束要求写长"剔题会把题集偏向容易保持的约束——那是关于设计的发现，不是可以顺手抹掉的细节。**
+
    **另一处同源修正**：判分 cap 512 是在 14B 上测的（smoke 15719117），
    对 4B 不成立（解析失败 8.1%，其中 149/162 是触顶；判词 p90 463 token vs 14B 的 194）。
    自判那一遍的判分 cap 取 **1024**，失败率就在 S0-0 的判分产物里量——不为它另开仪器作业。

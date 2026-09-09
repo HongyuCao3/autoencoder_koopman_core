@@ -51,8 +51,8 @@ cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
 nvidia-smi -L || true
 
 python scripts/score_sequor_trajectories.py \
-  --arm-dir outputs/sequor_s0_0_branch_arm \
+  --arm-dir outputs/sequor_s0_0_branch_arm_cap2048 \
   --judge-model Qwen/Qwen3-14B \
   --judge-kind independent \
   --max-new-tokens 512 \
-  --out-path outputs/sequor_s0_0_branch_arm/readout_independent_qwen3_14b.json
+  --out-path outputs/sequor_s0_0_branch_arm_cap2048/readout_independent_qwen3_14b.json

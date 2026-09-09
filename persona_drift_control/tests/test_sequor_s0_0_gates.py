@@ -221,3 +221,45 @@ def test_self_vs_independent_is_split_by_action():
     split = mod.judge_agreement_by_action(independent, self_report)
     assert split["u=0 (base)"]["mean_signed_gap_self_minus_independent"] == pytest.approx(0.0)
     assert split["u=1 (reminded)"]["mean_signed_gap_self_minus_independent"] > 0.1
+
+
+def _arm_report(shares: dict[str, float], criterion: float = 0.05) -> dict:
+    return {
+        "cap_criterion": criterion, "token_cap_share": sum(shares.values()) / len(shares),
+        "max_new_tokens": 2048,
+        "token_cap_by_item": {
+            item: {"n_rows": 39, "n_hit_token_cap": round(share * 39), "token_cap_share": share,
+                   "output_tokens_median": 600, "constraints": ["a", "b", "c"]}
+            for item, share in shares.items()
+        },
+    }
+
+
+def test_cap_guard_passes_when_no_item_binds():
+    record = mod.refuse_if_the_cap_bound(_arm_report({"i0": 0.0, "i1": 0.02}), [])
+    assert record["excluded_items"] == [] and record["max_new_tokens"] == 2048
+
+
+def test_cap_guard_refuses_a_single_offending_item_even_when_the_average_is_fine():
+    """Job 15756689's shape: a global average of 18.6% with two items at 92%
+    and 100%. A guard on the average would have let those two through."""
+
+    report = _arm_report({f"i{i}": 0.0 for i in range(10)} | {"long_a": 0.92, "long_b": 1.0})
+    with pytest.raises(SystemExit, match="long_a 92.0%|long_b 100.0%"):
+        mod.refuse_if_the_cap_bound(report, [])
+
+
+def test_cap_guard_is_passable_only_by_naming_the_excluded_items():
+    report = _arm_report({"i0": 0.0, "long_a": 0.92})
+    record = mod.refuse_if_the_cap_bound(report, ["long_a"])
+    assert record["excluded_items"] == ["long_a"]
+    with pytest.raises(SystemExit):
+        mod.refuse_if_the_cap_bound(report, ["some_other_item"])
+
+
+def test_cap_guard_refuses_an_arm_report_that_predates_the_criterion():
+    """An older artifact must not read as compliant just because the field it
+    would have failed on does not exist yet."""
+
+    with pytest.raises(SystemExit, match="predates"):
+        mod.refuse_if_the_cap_bound({"token_cap_share": 0.186}, [])

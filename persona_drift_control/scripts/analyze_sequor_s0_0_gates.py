@@ -37,6 +37,49 @@ POWER_Z = 2.80  # two-sided alpha=0.05 at 80% power
 N_BOOTSTRAP = 10000
 
 
+def refuse_if_the_cap_bound(arm_report: dict, excluded: list[str]) -> dict:
+    """Refuse to compute gates on an arm whose response cap bound on some item.
+
+    Pre-registered after job 15756689 (18.6% of responses truncated, 75 of 87
+    on two items whose constraints ask for length): a truncated response can
+    fail a constraint the model would have satisfied, so `y` there is partly a
+    measurement of our own token budget. Checked per item, since length is a
+    function of the constraint set and a global average hid it.
+
+    An item may be dropped, but never quietly: `--exclude-item` is the only way
+    past this guard, and every exclusion is written into the gate report next
+    to the number it changed. Excluding items BECAUSE their constraints demand
+    length biases the item set toward constraints that are easy to keep, which
+    is a finding about the design, not a detail.
+    """
+
+    by_item = arm_report.get("token_cap_by_item")
+    if by_item is None:
+        raise SystemExit(
+            f"arm report has no per-item cap accounting: it predates the 2026-09-09 "
+            f"criterion. Re-run the arm with the current runner rather than assuming."
+        )
+    criterion = arm_report.get("cap_criterion", 0.05)
+    offending = {
+        item: stats["token_cap_share"]
+        for item, stats in by_item.items()
+        if stats["token_cap_share"] > criterion and item not in excluded
+    }
+    if offending:
+        raise SystemExit(
+            f"the response cap bound on {len(offending)} item(s) above the {criterion:.0%} "
+            f"criterion: " + ", ".join(f"{i} {s:.1%}" for i, s in offending.items()) +
+            f". Their readout is partly a truncation measurement. Raise the cap and re-generate, "
+            f"or pass --exclude-item for each (recorded in the report) if that is the ruling."
+        )
+    return {
+        "cap_criterion": criterion,
+        "excluded_items": sorted(excluded),
+        "token_cap_share_overall": arm_report.get("token_cap_share"),
+        "max_new_tokens": arm_report.get("max_new_tokens"),
+    }
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--independent-readout", type=pathlib.Path, required=True,
@@ -45,6 +88,11 @@ def parse_args() -> argparse.Namespace:
                    help="Optional judge_kind=self report over the same rows.")
     p.add_argument("--out-path", type=pathlib.Path, required=True, help="Must not already exist.")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--exclude-item", action="append", default=[], metavar="ITEM_ID",
+                   help="Drop this item from the pair set. The ONLY way past the response-cap "
+                        "guard, and every exclusion is written into the report beside the numbers "
+                        "it changed. Use it when the exclusion is the ruling, never to make a "
+                        "criterion pass.")
     return p.parse_args()
 
 
@@ -268,6 +316,12 @@ def main() -> None:
     if args.out_path.exists():
         raise SystemExit(f"refusing to overwrite existing {args.out_path}")
     independent = load_readout(args.independent_readout, "independent")
+    arm_report = json.loads((pathlib.Path(independent["arm_dir"]) / "arm_report.json").read_text())
+    cap_record = refuse_if_the_cap_bound(arm_report, args.exclude_item)
+    # Excluded items leave the readout entirely, not just the pair set: K1 reads
+    # the rows directly, and an item dropped from K2/K3 while still propping up
+    # K1's spread would be the worst of both.
+    independent["rows"] = [r for r in independent["rows"] if r["item_id"] not in args.exclude_item]
     pairs = pairs_from(independent)
     if not pairs:
         raise SystemExit("no usable counterfactual pairs")
@@ -279,6 +333,7 @@ def main() -> None:
         "arm_dir": independent["arm_dir"], "agent_model": independent["agent_model"],
         "judge_model": independent["judge_model"], "judge_kind": independent["judge_kind"],
         "n_pairs": len(pairs), "n_items": len({p["item_id"] for p in pairs}),
+        "response_cap": cap_record,
         "K1_readout_range": k1, "K2_state_beyond_turn": k2, "K3_executor_authority": k3,
     }
     if args.self_readout:
