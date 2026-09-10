@@ -17,6 +17,11 @@
 - 函数保持单一职责；只用一次的东西不要抽象成 helper。
 - 不给未改动的代码补 docstring / 注释。
 - 不写向后兼容 shim；无用代码直接删。
+  **历史包名例外（2026-09-10 用户裁定）**：目录名 `persona_drift_control/` 与包名
+  `persona_drift` 与当前任务早已脱钩，但**不改名、也不写 alias shim**——`outputs/` 下 50+ 份
+  已完成实验的 `.hydra/hydra.yaml` 记着 `persona_drift.*` 的 `_target_`，改名就让论文证据
+  盘点要读的历史产物无法重放。理由与规模见 `docs/DOC_CLEANUP_PLAN.md` §五。
+  这条例外**只覆盖这一个标识符**，不是"可以留 shim"的一般许可。
 - 只在系统边界做校验（CLI 入参、外部 API、产物读入）。
 
 ## 测试
