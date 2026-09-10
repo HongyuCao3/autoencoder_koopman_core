@@ -218,18 +218,33 @@ def gate_k2(pairs: list[dict], seed: int) -> dict:
     """State beyond the turn index: the `y_prev` coefficient in
     delta_y ~ y_prev + turn, with the attenuation against the marginal fit.
 
-    Two degeneracies are checked BEFORE the verdict, because either one makes
-    a CI that crosses zero uninformative:
+    Two degeneracies make a CI that crosses zero uninformative:
 
     - a flat x-axis (`y_prev` with no spread): ERGO's G-EKA-2 had IQR 0 with
       75% of rows at one value, so there was nothing for a slope to be fitted
-      against;
+      against. Checked before anything is fitted;
     - a slope MDE larger than the mean gain itself, i.e. the design could not
       have resolved a state effect even as big as the whole average effect.
 
     Either -> UNDECIDABLE (report and hand back), not a failed gate. A failed
     gate closes the line; an unpowered one closing it would be the mistake the
     pre-closure review caught on ERGO.
+
+    The power clause guards the FAIL branch ONLY (screening section 10 item 7,
+    signed 2026-09-09; diagnosed 2026-09-09 on the old harness, when K1 was
+    failing and this correction could not have saved the line). A CI that
+    excludes zero has demonstrated power after the fact -- the effect WAS
+    resolved, so the design could resolve it -- and a prospective MDE cannot
+    overturn a realized detection. Ordered ahead of PASS, the clause fires
+    hardest when the mean gain is small, which is the regime this line lives
+    in. It also compared two different quantities: the MDE is on the slope
+    (delta_y per unit y_prev), the mean gain is in delta_y -- ERGO's trap of
+    quoting an MDE computed on something other than what the gate tests.
+
+    A PASS whose |slope| still sits below the 80%-power MDE keeps
+    `underpowered: true` and carries a caveat: significant at ~1.96 sigma but
+    detected at under 80% power, so the point estimate is likely inflated. K2
+    is a go/no-go filter, not a publishable measurement (screening section 3).
     """
 
     y_prev = [p["y_prev"] for p in pairs]
@@ -244,7 +259,9 @@ def gate_k2(pairs: list[dict], seed: int) -> dict:
         "marginal_slope": None, "attenuation": None, "turn_coefficient": None,
         "degenerate_axis": False, "underpowered": None,
         "note": "UNDECIDABLE is not FAIL: a failed gate closes the line, an unpowered one "
-                "would close it without having tested it (ERGO G-EKA-2 precedent).",
+                "would close it without having tested it (ERGO G-EKA-2 precedent). The power "
+                "clause reaches the verdict only when the CI crosses 0 -- a CI that excludes 0 "
+                "has demonstrated power after the fact (screening section 10 item 7).",
     }
 
     # The flat-axis check comes FIRST and is not a fit failure to be reported as
@@ -273,15 +290,36 @@ def gate_k2(pairs: list[dict], seed: int) -> dict:
         "marginal_slope": float(marginal[1]), "attenuation": attenuation,
         "turn_coefficient": float(full[2]), "underpowered": bool(underpowered),
     })
-    if underpowered:
-        result["verdict"] = "UNDECIDABLE"
-        result["reason"] = (f"slope MDE {mde:.4f} exceeds the mean gain {abs(mean_gain):.4f}: this "
-                            f"design could not have resolved a state effect even as large as the "
-                            f"whole average effect")
-    elif ci[0] * ci[1] > 0 and attenuation is not None and attenuation < 0.50:
+    excludes_zero = bool(ci[0] * ci[1] > 0)
+    attenuation_ok = attenuation is not None and attenuation < 0.50
+    result["excludes_zero"] = excludes_zero
+    result["slope_over_mde"] = abs(point) / mde if mde else None
+    if excludes_zero and attenuation_ok:
         result["verdict"] = "PASS"
+        # The caveat keys off |slope| vs the SLOPE's MDE -- same units. The
+        # `underpowered` flag above is the signed criterion's own quantity
+        # (slope MDE vs mean gain, different units); it is reported, not used
+        # here, because a small mean gain says nothing about how well the
+        # slope was resolved.
+        if result["slope_over_mde"] is not None and result["slope_over_mde"] < 1.0:
+            result["caveat"] = (
+                f"|slope| {abs(point):.4f} is {abs(point) / mde:.2f}x the 80%-power MDE {mde:.4f}: "
+                f"the CI excludes 0 at ~1.96 sigma but the detection sits under 80% power, so the "
+                f"point estimate is likely inflated. Go/no-go only, never a reported number.")
+    elif excludes_zero:
+        att = "undefined (marginal slope 0)" if attenuation is None else f"{attenuation:.1%}"
+        result["verdict"] = "FAIL"
+        result["reason"] = (f"the slope CI excludes 0 but the attenuation against the marginal fit "
+                            f"is {att}: at >= 50% the state is a turn proxy (ERGO's death)")
+    elif underpowered:
+        result["verdict"] = "UNDECIDABLE"
+        result["reason"] = (f"the slope CI crosses 0 AND the slope MDE {mde:.4f} exceeds the mean "
+                            f"gain {abs(mean_gain):.4f}: this design could not have resolved a "
+                            f"state effect even as large as the whole average effect")
     else:
         result["verdict"] = "FAIL"
+        result["reason"] = ("the slope CI crosses 0 on a design that could resolve an effect the "
+                            "size of the mean gain: the gain is not a function of the state")
     return result
 
 

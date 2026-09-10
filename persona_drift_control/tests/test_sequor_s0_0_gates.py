@@ -200,10 +200,91 @@ def test_k2_is_undecidable_when_the_x_axis_is_flat():
 
 
 def test_k2_is_undecidable_when_the_design_cannot_resolve_the_effect():
-    pairs = mod.pairs_from(synth_readout(state_slope=-0.05, base_gain=0.02, noise=0.60, seed=4))
+    """The power clause on its own branch: the CI must ALSO cross zero. Without
+    that assertion this test would still pass under the buggy ordering, so it
+    would not be guarding what it claims to guard.
+
+    The fixture was retuned when that assertion went in (2026-09-09). The
+    original one -- same noise, no `mid_range` -- had `y` pinned against 0 and
+    1, and the clipping manufactured a slope of -0.44 whose CI EXCLUDED zero.
+    It reported UNDECIDABLE only because the buggy clause reached the verdict
+    first, so the test was green for the wrong reason. `mid_range` keeps the
+    readout off the boundaries, and the unpowered case is then a real one."""
+
+    pairs = mod.pairs_from(synth_readout(state_slope=-0.02, base_gain=0.02, noise=0.60,
+                                        mid_range=True, seed=4))
     k2 = mod.gate_k2(pairs, seed=0)
     assert k2["verdict"] == "UNDECIDABLE"
     assert k2["underpowered"] and k2["mde_at_80pct"] > abs(k2["mean_gain_for_scale"])
+    assert k2["ci"][0] * k2["ci"][1] <= 0 and not k2["excludes_zero"]
+
+
+def test_k2_passes_when_the_ci_excludes_zero_even_though_the_mde_exceeds_the_mean_gain():
+    """Regression for the clause bug (screening section 10 item 7): the power
+    clause used to sit AHEAD of the pass branch, so this exact combination --
+    a slope whose CI excludes zero, on a design whose slope MDE is larger than
+    the mean gain -- was reported UNDECIDABLE. A CI excluding zero demonstrates
+    power after the fact; the clause guards the FAIL branch only.
+
+    `underpowered` is still true here, which is what makes this the case the
+    old ordering could not get right."""
+
+    pairs = mod.pairs_from(synth_readout(state_slope=-0.30, base_gain=0.15, noise=0.05,
+                                        mid_range=True, seed=1))
+    k2 = mod.gate_k2(pairs, seed=0)
+    assert k2["underpowered"]
+    assert k2["mde_at_80pct"] > abs(k2["mean_gain_for_scale"])
+    assert k2["excludes_zero"] and k2["ci"][0] < 0 and k2["ci"][1] < 0
+    assert k2["attenuation"] < 0.50
+    assert k2["verdict"] == "PASS"
+
+
+def pairs_with_heterogeneous_slope(slope: float, item_sd: float, noise: float = 0.05,
+                                   base_gain: float = 0.30, n_items: int = 12,
+                                   n_turns: int = 19, seed: int = 0) -> list[dict]:
+    """Pairs built directly, so the slope's own standard error can be dialled
+    by the spread of per-item slopes -- the knob `synth_readout` does not
+    expose. Used to land a slope that is significant at ~1.96 sigma yet below
+    the 80%-power (2.8 sigma) MDE."""
+
+    rng = np.random.default_rng(seed)
+    out = []
+    for item in range(n_items):
+        item_slope = slope + item_sd * rng.standard_normal()
+        for turn in range(2, n_turns + 2):
+            y_prev = Y_LEVELS[rng.integers(4)]
+            out.append({"item_id": f"i{item}", "turn": turn, "y_prev": y_prev,
+                        "delta_y": base_gain + item_slope * y_prev + noise * rng.standard_normal()})
+    return out
+
+
+def test_k2_pass_below_its_own_mde_carries_the_inflation_caveat():
+    """This is the S0-0 fidelity-harness situation: |slope| 0.86x the 80%-power
+    MDE. The gate passes -- it is a go/no-go filter -- but the point estimate
+    was detected at under 80% power and is likely inflated, so the verdict must
+    carry that in writing, next to the number, or it will be quoted as a
+    measurement."""
+
+    k2 = mod.gate_k2(pairs_with_heterogeneous_slope(-0.20, item_sd=0.18, seed=2), seed=0)
+    assert k2["verdict"] == "PASS"
+    assert k2["excludes_zero"]
+    assert 0.5 < k2["slope_over_mde"] < 1.0
+    assert "likely inflated" in k2["caveat"]
+    assert "never a reported number" in k2["caveat"]
+
+
+def test_k2_fails_not_undecidable_when_a_resolved_slope_is_mostly_the_turn_ramp():
+    """The other side of the reordering: moving the power clause off the pass
+    branch must not turn a real FAIL into an escape. A slope whose CI excludes
+    zero but which attenuates >= 50% against the marginal fit is ERGO's death,
+    and it stays a FAIL."""
+
+    pairs = mod.pairs_from(synth_readout(state_slope=-0.06, turn_slope=-0.02, base_gain=0.45,
+                                        noise=0.01, mid_range=True, seed=2))
+    k2 = mod.gate_k2(pairs, seed=0)
+    assert k2["excludes_zero"] and k2["attenuation"] >= 0.50
+    assert k2["verdict"] == "FAIL"
+    assert "turn proxy" in k2["reason"]
 
 
 def test_k3_passes_on_a_real_effect_and_reports_it_against_the_mde():
