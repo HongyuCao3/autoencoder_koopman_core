@@ -117,6 +117,49 @@ def select_screening_items(items: list[SequorItem], gold: set[str], n: int) -> l
     return covered[:n]
 
 
+def select_bank_items(items: list[SequorItem], gold: set[str], n: int | None = None) -> list[SequorItem]:
+    """The whole bank, ordered by conversation_id, first `n` (all if None).
+
+    S1/S3 need N=40 and only 16 dialogues are fully gold-covered, so they must
+    leave that set (section 9.2). This is the selection that admits the other
+    184, and it is deliberately a SEPARATE function rather than a flag on
+    `select_screening_items`: the screening arm's coverage guarantee is what
+    makes its gates interpretable, and a flag would let it be switched off by
+    a stray argument.
+
+    Every item carries `gold_coverage` so the cost of leaving the covered set
+    is written into the artifact rather than being remembered: the share of
+    judged constraints that sit outside the judge's calibration set must be
+    reported verbatim wherever these items produce a number.
+    """
+
+    ordered = sorted(items, key=lambda it: it.conversation_id)
+    if n is not None:
+        if len(ordered) < n:
+            raise ValueError(f"{n} dialogues requested, the bank has {len(ordered)}")
+        ordered = ordered[:n]
+    return ordered
+
+
+def coverage_record(items: list[SequorItem], gold: set[str]) -> dict:
+    """What leaving the gold-covered set costs, as a number in the artifact."""
+
+    per_item = {it.conversation_id: gold_coverage(it, gold) for it in items}
+    judged = len(items) * K_CONSTRAINTS
+    covered = sum(per_item.values())
+    return {
+        "n_items": len(items),
+        "n_constraints_judged": judged,
+        "n_constraints_in_calibration_set": covered,
+        "share_outside_calibration_set": (judged - covered) / judged if judged else None,
+        "n_items_fully_covered": sum(1 for v in per_item.values() if v == K_CONSTRAINTS),
+        "gold_coverage_by_item": per_item,
+        "note": "Constraints outside the calibration set are judged by an instrument whose "
+                "accuracy was never measured on them (screening section 9.2). This share must "
+                "be reported verbatim beside any number these items produce.",
+    }
+
+
 def system_message(item: SequorItem) -> str:
     """The constraint block as a system message.
 

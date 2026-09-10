@@ -23,6 +23,8 @@ section 2).
 
 from __future__ import annotations
 
+import random
+
 import hashlib
 import json
 from dataclasses import asdict, dataclass
@@ -82,17 +84,26 @@ def prefix_digest(conversation: Sequence[dict]) -> str:
 def _row(
     item: SequorItem, turn: int, branch: str, prefix: Sequence[dict], message: str,
     generated: dict, prev_agent_message: str | None, config: BranchArmConfig, run_id: str,
+    u_remind: int | None = None,
 ) -> dict:
+    """`u_remind` defaults to the branch label, which is right for the
+    counterfactual arm where the label IS the action. A schedule arm labels
+    rows by the arm they belong to and takes an action per turn, so it passes
+    `u` explicitly -- without that the reminded turns of `constant_remind`
+    would be recorded as u=0 and every downstream `B` would be unidentifiable.
+    """
+
     text = generated["text"]
+    u = int(branch == REMINDED) if u_remind is None else int(u_remind)
     return {
         "run_id": run_id,
         "trajectory_id": f"{item.conversation_id}__{branch}__s{config.seed}__t{turn}"
-        if branch == REMINDED else f"{item.conversation_id}__{BASE}__s{config.seed}",
+        if branch == REMINDED else f"{item.conversation_id}__{branch}__s{config.seed}",
         "item_id": item.conversation_id,
         "tuple_id": item.tuple_id,
         "turn": turn,
         "branch": branch,
-        "u_remind": int(branch == REMINDED),
+        "u_remind": u,
         "n_turns": config.n_turns,
         "constraints": list(item.constraints),
         "constraint_ids": list(item.constraint_ids),
@@ -103,7 +114,7 @@ def _row(
         "finish_reason": generated.get("finish_reason"),
         "hit_token_cap": generated.get("finish_reason") == "length",
         "n_output_tokens": generated.get("n_output_tokens"),
-        "inserted_chars": len(item.constraint_block) + 2 if branch == REMINDED else 0,
+        "inserted_chars": len(item.constraint_block) + 2 if u else 0,
         "inserted_tokens": generated.get("n_inserted_tokens"),
         "echo_jaccard_prev": None if prev_agent_message is None else word_jaccard(prev_agent_message, text),
         "echo_verbatim_prev": None if prev_agent_message is None else text.strip() == prev_agent_message.strip(),
@@ -172,6 +183,121 @@ def run_branch_arm(
 
         for i, (item, message, generated) in enumerate(zip(items, base_messages, base_out)):
             rows.append(_row(item, turn, BASE, histories[i], message, generated, prev_agent[i], config, run_id))
+            histories[i] = histories[i] + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": generated["text"]},
+            ]
+            prev_agent[i] = generated["text"]
+
+    return rows
+
+
+SCHEDULE_ARMS = ("zero_control", "constant_remind", "bernoulli", "antithetic")
+
+
+def build_schedules(items: list[SequorItem], n_turns: int, seed: int) -> dict[str, dict[str, list[int]]]:
+    """The per-turn action for each S1 arm, as `schedules[arm][item_id][turn-1]`.
+
+    Turn 1 is u=0 in EVERY arm. It states the constraints, so "remind" there is
+    not a distinct action -- `sequor_bank.user_message` refuses it, and the
+    same fact is why the branch arm has 19 pairs per item and not 20.
+
+    `bernoulli` and `antithetic` are drawn from ONE stream per (seed, item) and
+    the antithetic arm is its exact complement, so the two trajectories differ
+    in every action from turn 2 on. That is the pairing plan section 4 asks for
+    -- each (item, turn) cell has exactly one reminded side -- and it is why
+    `B` is a matched-pair estimate rather than an i.i.d. pooled one. It is also
+    why the endpoint dose contrast is zero by construction, so terminal
+    authority has to come from the zero_control/constant_remind pair instead:
+    the two groups do not substitute for each other.
+    """
+
+    schedules: dict[str, dict[str, list[int]]] = {arm: {} for arm in SCHEDULE_ARMS}
+    for item in items:
+        draws = random.Random(f"{seed}:{item.conversation_id}")
+        coin = [0] + [draws.randint(0, 1) for _ in range(n_turns - 1)]
+        schedules["zero_control"][item.conversation_id] = [0] * n_turns
+        schedules["constant_remind"][item.conversation_id] = [0] + [1] * (n_turns - 1)
+        schedules["bernoulli"][item.conversation_id] = coin
+        schedules["antithetic"][item.conversation_id] = [0] + [1 - u for u in coin[1:]]
+    return schedules
+
+
+def assert_schedules_are_well_formed(schedules: dict[str, dict[str, list[int]]], n_turns: int) -> dict:
+    """G-S1's structural half, checked before any GPU time is spent on it.
+
+    Not a statistical gate -- these are properties of the design, and if one
+    fails the arm was built wrong. Turn 1 must be an action-free turn in every
+    arm; the antithetic pair must be an exact complement from turn 2 on; and
+    every arm must cover the same items, because a `B` estimated on one item
+    set and compared against a curve from another is not a paired comparison.
+    """
+
+    items = {arm: sorted(by_item) for arm, by_item in schedules.items()}
+    if len({tuple(v) for v in items.values()}) != 1:
+        raise ValueError(f"arms cover different item sets: { {a: len(v) for a, v in items.items()} }")
+    for arm, by_item in schedules.items():
+        for item_id, u in by_item.items():
+            if len(u) != n_turns:
+                raise ValueError(f"{arm}/{item_id}: {len(u)} turns, expected {n_turns}")
+            if u[0] != 0:
+                raise ValueError(f"{arm}/{item_id}: turn 1 carries u=1, which is not an action")
+    for item_id, u in schedules["bernoulli"].items():
+        anti = schedules["antithetic"][item_id]
+        if any(a + b != 1 for a, b in zip(u[1:], anti[1:])):
+            raise ValueError(f"antithetic/{item_id} is not the complement of bernoulli")
+    pooled = [u for by_item in (schedules["bernoulli"],) for us in by_item.values() for u in us[1:]]
+    return {
+        "n_items": len(schedules["zero_control"]),
+        "n_turns": n_turns,
+        "bernoulli_u_mean": sum(pooled) / len(pooled) if pooled else None,
+        "antithetic_is_exact_complement": True,
+        "turn1_action_free": True,
+    }
+
+
+def run_schedule_arm(
+    items: list[SequorItem], generate_batch: GenerateBatch, config: BranchArmConfig, run_id: str,
+    arm: str, schedule: dict[str, list[int]],
+) -> list[dict]:
+    """One sustained trajectory per item, actions taken from `schedule`.
+
+    The difference from `run_branch_arm` that matters: here the chosen action's
+    response ADVANCES the conversation. The branch arm generates the reminded
+    turn from the base prefix and throws it away, which is what keeps its pairs
+    byte-identical and makes it a one-step measurement. S1 needs the opposite
+    -- the trajectory the controller would actually produce, where a reminder
+    at turn 5 is in the history at turn 6 -- because the endpoint of a
+    sustained policy is the quantity S1a compares and the trajectory is what
+    S2 fits an operator to.
+
+    Consequence worth stating: rows from two different arms do NOT share a
+    prefix and must never be paired at the row level. They are paired by item
+    (S1a) or by the complementary action within a matched cell (S1b).
+    """
+
+    if arm not in SCHEDULE_ARMS:
+        raise ValueError(f"unknown arm {arm!r}; expected one of {SCHEDULE_ARMS}")
+    histories: list[list[dict]] = [
+        [{"role": "system", "content": system_message(item)}] if config.constraints_in_system
+        else ([{"role": "system", "content": config.system_prompt}] if config.system_prompt else [])
+        for item in items
+    ]
+    prev_agent: list[str | None] = [None] * len(items)
+    rows: list[dict] = []
+
+    for turn in range(1, config.n_turns + 1):
+        actions = [schedule[item.conversation_id][turn - 1] for item in items]
+        messages = [
+            user_message(item, turn - 1, remind=bool(u),
+                         constraints_in_system=config.constraints_in_system)
+            for item, u in zip(items, actions)
+        ]
+        prompts = [h + [{"role": "user", "content": m}] for h, m in zip(histories, messages)]
+        out = generate_batch(prompts)
+        for i, (item, message, generated, u) in enumerate(zip(items, messages, out, actions)):
+            rows.append(_row(item, turn, arm, histories[i], message, generated,
+                             prev_agent[i], config, run_id, u_remind=u))
             histories[i] = histories[i] + [
                 {"role": "user", "content": message},
                 {"role": "assistant", "content": generated["text"]},
