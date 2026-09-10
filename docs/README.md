@@ -14,10 +14,10 @@
 
 ## 五条线的当前状态（2026-09-10）
 
-| 线 | 状态 | 一句话 | 入口文档（详见下面「实验」一节） |
+| 线（代号以 [`NAMING.md`](NAMING.md) 为准） | 状态 | 一句话 | 入口文档（详见下面「实验」一节） |
 |---|---|---|---|
-| `constraint` | ▶ **活跃** | 唯一在跑的线；S1 辨识臂已提交（job 15772956/15772957） | `constraint_retention_plan.md` |
-| ERGO | ⏸ 挂起 | 算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程 | `ergo_fidelity_restoration_plan.md` |
+| `constraint`（SEQUOR） | ▶ **活跃** | 唯一在跑的线；S1 辨识臂已提交（job 15772956/15772957） | `constraint_retention_plan.md` |
+| `gsm8k_sharded`（旧称 ERGO） | ⏸ 挂起 | 算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程 | `ergo_fidelity_restoration_plan.md` |
 | `defense` | ⏸ 收尾 | 辨识成立时挂起；读出没量程（独立 judge 天花板 0.91） | `defense_line_redesign_plan.md` |
 | `stance` | ⏸ 挂起 | 执行器权威两次空结果（SYCON、MMLU） | `mc_sycophancy_screening_pilot.md` |
 | `persona_drift` | ⛔ 已放弃 | screening 三问全挂，仅作历史术语 | `NAMING.md` |
@@ -69,7 +69,7 @@
 ## 可行性分析（`feasibility/`）
 
 - [feasibility/ERGO_MULTITURN_RELIABILITY_FEASIBILITY.md](feasibility/ERGO_MULTITURN_RELIABILITY_FEASIBILITY.md) —
-  ERGO 线开线依据：执行器权威有外部论文支持，但读出结构与本项目管线不匹配；贡献点收窄为"诊断已知有效执行器的动力学形状"。
+  `gsm8k_sharded` 线的开线依据：执行器权威有外部论文支持，但读出结构与本项目管线不匹配；贡献点收窄为"诊断已知有效执行器的动力学形状"。
 - [feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md](feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md) —
   `stance` 线的五个前置条件核对。**结论：AE 不需要**（离散立场下 Koopman 算子就是转移矩阵）；"惯性"一条已按 ground truth 审计收窄。
 - [feasibility/SAFETY_SPEC_DECOMPOSITION_FEASIBILITY.md](feasibility/SAFETY_SPEC_DECOMPOSITION_FEASIBILITY.md) —
@@ -132,7 +132,7 @@
 - [experiments/constraint_results.md](experiments/constraint_results.md) —
   📊 结果档案 · `constraint` 线全部结果（S0 / S0-0 三闸门 / 保真度臂 / S1 试点与辨识臂），从 LEDGER §三·五 拆出。
 
-### ERGO 线（⏸ 挂起）
+### `gsm8k_sharded` 线（分片指令，旧称 ERGO；⏸ 挂起）
 
 - [experiments/ergo_fidelity_restoration_plan.md](experiments/ergo_fidelity_restoration_plan.md) —
   ⏸ 挂起 · Koopman 相位 EK0–EK2：算子辨识成立，但**输入通道与状态解耦**，闸门下闭环退化为固定日程；

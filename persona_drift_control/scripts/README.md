@@ -4,10 +4,9 @@
 标"线"、按引用计数（docs/environment/tests/scripts 四处 grep + 集群 `outputs/` 产物扫描）判"状态"。
 **冻结-复现用**指该脚本是某条已收尾/暂停线（`defense`/`stance`/`benign`/`detect`/`persona_drift`/ERGO）
 已提交结果的复现路径——按 `.claude/code.md` 不得删改，只是不再产生新结果。
-`ERGO`（多轮可靠性侵蚀线）**不在 `docs/NAMING.md` 的术语表里**——它是 `stance` 两次空结果后
-开的第三条线，`docs/README.md`／`docs/LEDGER.md`／`feasibility/ERGO_MULTITURN_RELIABILITY_FEASIBILITY.md`
-都按独立线写它，本表沿用这个写法；它**不是** `constraint` 的子阶段（`constraint` 是 SEQUOR 那条线）。
-NAMING.md 该不该补一行 `ERGO`，留给用户裁定。**注意**：`score_sequor_trajectories.py` 当前被
+此前文档里写作「ERGO」的那条线，代号是 **`gsm8k_sharded`**（2026-09-10 用户裁定按数据集命名：
+它用 Laban et al. 的 sharded GSM8K，`constraint` 用 SEQUOR；ERGO 只是它借用的执行器方法名）。
+见 `docs/NAMING.md` 消歧说明第 4 条。**脚本文件名里的 `ergo_*` 不改**（历史标识符）。**注意**：`score_sequor_trajectories.py` 当前被
 SLURM 作业 15772957（`pdc-sequor-s1-score`）调用，正在跑，本清单只读未改动它。
 
 **分布（2026-09-10）**：活跃 11 · 冻结-复现用 81 · 候删 1。计划一 C6 点名的 4 个"零引用"里
@@ -23,17 +22,17 @@ SLURM 作业 15772957（`pdc-sequor-s1-score`）调用，正在跑，本清单�
 | `analyze_compounding_hypothesis.py` | defense | 冻结-复现用 | v 对齐修正后，检验 mu=1 单步 ARX 模型能否解释 Phase A 持续提醒 5 轮的终轮安全分增益 |
 | `analyze_continuous_readout.py` | stance | 冻结-复现用 | sycophancy judge 连续（label-token 分布）读出的 G0-G3 闸门报告 |
 | `analyze_d1_self_judge_gate.py` | defense | 冻结-复现用 | D1 闸门 G-D1-1 改用自判分数评估（盲标 P 协议因 8/14 子代理不可用而无法完成时的偏离记录） |
-| `analyze_ergo_append_comparison.py` | ERGO | 冻结-复现用 | ERGO append-mode 臂比较：把 phaseC 比较脚本硬编码的闸门集合泛化到任意 append-mode 输出目录 |
-| `analyze_ergo_append_context_length.py` | ERGO | 冻结-复现用 | 重建 append-mode 下每轮 agent 实际看到的 prompt token 数，检验 E2 的 context 增长护栏 C2 |
-| `analyze_ergo_authority_comparison.py` | ERGO | 冻结-复现用 | ERGO/Laban 最小执行器权威检查的配对比较：reset 相对 zero_control 是否移动终轮任务成功率 |
-| `analyze_ergo_branch_pairs.py` | ERGO | 冻结-复现用 | EK-A 反事实分叉臂上的 G-EKA-1/2/4 闸门：同前缀下 u=1/u=0 两次生成的 closeness 差值直接估计 |
-| `analyze_ergo_closeness_readout.py` | ERGO | 冻结-复现用 | F1：把 closeness（去阈值化的正确性打分）形式化为 ERGO 候选状态读出，跑 RC-0..RC-3 四条闸门 |
-| `analyze_ergo_dual_metric.py` | ERGO | 冻结-复现用 | R2 双指标报告：每臂只报三个数，是 R2 唯一允许的报告入口 |
-| `analyze_ergo_entropy_readout.py` | ERGO | 冻结-复现用 | 计算 token 熵读出（entropy_mean/entropy_answer_span）；E0 撤回后该读出仍不可用作状态读出，但原因改了 |
-| `analyze_ergo_entropy_state.py` | ERGO | 冻结-复现用 | E1 Step2：对熵读出的两列跑与 analyze_ergo_readout_state.py 相同的 RC-2/RC-3 诊断。**产物零命中但不删**：ergo_multiturn_reliability_pilot.md 报告的 `entropy_mean`/`entropy_answer_span` 两列 RC-2/RC-3 判定（`u_t=-0.0201, p=0.00368` 等）正是本脚本 docstring 描述的计算，文档只点名了产出熵列的 analyze_ergo_entropy_readout.py——这是谱系缺口，不是脚本没用过 |
-| `analyze_ergo_phaseC_comparison.py` | ERGO | 冻结-复现用 | F3：ERGO Phase C 五臂（zero_control/always_reset/fixed_t{1..4}/randsched_p100/mpc）配对 bootstrap 比较 |
-| `analyze_ergo_readout_state.py` | ERGO | 冻结-复现用 | E0/F0：y_task_success 的可控性闸门 RC-0..RC-3，判定 Koopman MPC 控制前状态是否可用 |
-| `analyze_ergo_state_action_interaction.py` | ERGO | 冻结-复现用 | E3 Step3：在 ERGO 的 closeness 读出上拟合状态-动作交互回归 |
+| `analyze_ergo_append_comparison.py` | gsm8k_sharded | 冻结-复现用 | ERGO append-mode 臂比较：把 phaseC 比较脚本硬编码的闸门集合泛化到任意 append-mode 输出目录 |
+| `analyze_ergo_append_context_length.py` | gsm8k_sharded | 冻结-复现用 | 重建 append-mode 下每轮 agent 实际看到的 prompt token 数，检验 E2 的 context 增长护栏 C2 |
+| `analyze_ergo_authority_comparison.py` | gsm8k_sharded | 冻结-复现用 | ERGO/Laban 最小执行器权威检查的配对比较：reset 相对 zero_control 是否移动终轮任务成功率 |
+| `analyze_ergo_branch_pairs.py` | gsm8k_sharded | 冻结-复现用 | EK-A 反事实分叉臂上的 G-EKA-1/2/4 闸门：同前缀下 u=1/u=0 两次生成的 closeness 差值直接估计 |
+| `analyze_ergo_closeness_readout.py` | gsm8k_sharded | 冻结-复现用 | F1：把 closeness（去阈值化的正确性打分）形式化为 ERGO 候选状态读出，跑 RC-0..RC-3 四条闸门 |
+| `analyze_ergo_dual_metric.py` | gsm8k_sharded | 冻结-复现用 | R2 双指标报告：每臂只报三个数，是 R2 唯一允许的报告入口 |
+| `analyze_ergo_entropy_readout.py` | gsm8k_sharded | 冻结-复现用 | 计算 token 熵读出（entropy_mean/entropy_answer_span）；E0 撤回后该读出仍不可用作状态读出，但原因改了 |
+| `analyze_ergo_entropy_state.py` | gsm8k_sharded | 冻结-复现用 | E1 Step2：对熵读出的两列跑与 analyze_ergo_readout_state.py 相同的 RC-2/RC-3 诊断。**产物零命中但不删**：ergo_multiturn_reliability_pilot.md 报告的 `entropy_mean`/`entropy_answer_span` 两列 RC-2/RC-3 判定（`u_t=-0.0201, p=0.00368` 等）正是本脚本 docstring 描述的计算，文档只点名了产出熵列的 analyze_ergo_entropy_readout.py——这是谱系缺口，不是脚本没用过 |
+| `analyze_ergo_phaseC_comparison.py` | gsm8k_sharded | 冻结-复现用 | F3：ERGO Phase C 五臂（zero_control/always_reset/fixed_t{1..4}/randsched_p100/mpc）配对 bootstrap 比较 |
+| `analyze_ergo_readout_state.py` | gsm8k_sharded | 冻结-复现用 | E0/F0：y_task_success 的可控性闸门 RC-0..RC-3，判定 Koopman MPC 控制前状态是否可用 |
+| `analyze_ergo_state_action_interaction.py` | gsm8k_sharded | 冻结-复现用 | E3 Step3：在 ERGO 的 closeness 读出上拟合状态-动作交互回归 |
 | `analyze_input_gain_robustness.py` | defense | 冻结-复现用 | D1：检验 u_remind→proj_pre_reply 输入增益是持续状态效应还是提醒文本留在上下文里的同轮伪影 |
 | `analyze_koopman_innovation.py` | detect | 冻结-复现用 | 检测设计选项1：用已拟合的 Phase C/D Koopman 代理模型计算 Phase E 四条闭环臂的一步预测残差 |
 | `analyze_koopman_mpc_cases.py` | defense | 冻结-复现用 | KoopmanMPCController 决策案例研究：在 Phase E/G 已记录轨迹上重放控制器决策逻辑，找出五类候选现象 |
@@ -74,10 +73,10 @@ SLURM 作业 15772957（`pdc-sequor-s1-score`）调用，正在跑，本清单�
 | `fit_koopman_ae_hydra.py` | defense | 冻结-复现用 | AE Koopman 基线的任务级 Hydra 入口（新增入口，不替换 fit_koopman_ae_baseline.py）。**不删**：`conf/fit_koopman_ae.yaml` 整组配置就是为它写的，`conf/task/defense.yaml` 里也有一段注明"只被它读"的旋钮——计划的四处扫描不含 `conf/` |
 | `fit_koopman_benign_model.py` | detect | 冻结-复现用 | 检测设计选项3 step1：拟合"良性 regime" Koopman 代理，与已有"攻击 regime"模型配对 |
 | `fit_koopman_defense_model.py` | defense | 冻结-复现用 | Phase C：在 Phase B 开环随机激励轨迹上拟合 Koopman 代理，评估一步/rollout 误差与可控性诊断 |
-| `fit_koopman_ergo_branch_lifted.py` | ERGO | 冻结-复现用 | EK-A 反事实分叉臂上的升维（含双线性）Koopman-with-control，正规化版 fit_koopman_ergo_branch.py |
-| `fit_koopman_ergo_branch.py` | ERGO | 冻结-复现用 | EK-A 门 G-EKA-3：在反事实分叉臂上拟合受控算子，用三个平凡零假设按题目不相交折检验 |
-| `fit_koopman_ergo_closeness.py` | ERGO | 冻结-复现用 | F2：用 closeness 读出替代 y_task_success 重跑 Phase B 拟合（复用 fit_koopman_ergo_model.py 结构） |
-| `fit_koopman_ergo_model.py` | ERGO | 冻结-复现用 | ERGO/Laban 线 Phase B/C：在开环随机激励轨迹（u_reset/y_task_success）上拟合 Koopman 代理 |
+| `fit_koopman_ergo_branch_lifted.py` | gsm8k_sharded | 冻结-复现用 | EK-A 反事实分叉臂上的升维（含双线性）Koopman-with-control，正规化版 fit_koopman_ergo_branch.py |
+| `fit_koopman_ergo_branch.py` | gsm8k_sharded | 冻结-复现用 | EK-A 门 G-EKA-3：在反事实分叉臂上拟合受控算子，用三个平凡零假设按题目不相交折检验 |
+| `fit_koopman_ergo_closeness.py` | gsm8k_sharded | 冻结-复现用 | F2：用 closeness 读出替代 y_task_success 重跑 Phase B 拟合（复用 fit_koopman_ergo_model.py 结构） |
+| `fit_koopman_ergo_model.py` | gsm8k_sharded | 冻结-复现用 | ERGO/Laban 线 Phase B/C：在开环随机激励轨迹（u_reset/y_task_success）上拟合 Koopman 代理 |
 | `fit_koopman_hydra.py` | defense | 冻结-复现用 | ARX/richer_abs_sign 岭回归拟合的任务级 Hydra 入口（新增入口，不替换 fit_koopman_defense_model.py） |
 | `fit_koopman_lstm_baseline.py` | defense | 冻结-复现用 | LSTM 代理基线：在与 richer_abs_sign 相同的 Phase B 数据/切分上拟合，报告一步与 rollout MSE |
 | `generate_user_scripts.py` | persona_drift | 冻结-复现用 | 一次性离线生成脚本化用户轮次库：每个话题先跑一次真实自聊拿回复脚手架，再生成多份用户轮次脚本 |
@@ -92,8 +91,8 @@ SLURM 作业 15772957（`pdc-sequor-s1-score`）调用，正在跑，本清单�
 | `run_d1_screening.py` | defense | 冻结-复现用 | D1 基线率筛查的轻量 CLI：接受外部确定好的 attack-id 列表，不做自己的分层采样 |
 | `run_defended_screening.py` | defense | 冻结-复现用 | 带防御控制器的对抗筛查 CLI：channel-A 安全提醒执行器由 control.py 的 Controller 实现驱动 |
 | `run_dose_response_screening.py` | defense | 冻结-复现用 | 单轮安全方向剂量-反应筛查 step CLI（需已校准方向、需 GPU） |
-| `run_ergo_branch_arm.py` | ERGO | 冻结-复现用 | EK-A 反事实分叉识别臂：每题×seed 跑一条基础轨迹，每轮额外从同前缀生成相反动作的一轮 |
-| `run_ergo_math_screening.py` | ERGO | 冻结-复现用 | ERGO/Laban 分片 GSM8K 最小执行器权威检查 CLI：简化版"reset"执行器移动 y_task_success 的效应 |
+| `run_ergo_branch_arm.py` | gsm8k_sharded | 冻结-复现用 | EK-A 反事实分叉识别臂：每题×seed 跑一条基础轨迹，每轮额外从同前缀生成相反动作的一轮 |
+| `run_ergo_math_screening.py` | gsm8k_sharded | 冻结-复现用 | ERGO/Laban 分片 GSM8K 最小执行器权威检查 CLI：简化版"reset"执行器移动 y_task_success 的效应 |
 | `run_eroded_dose_response_screening.py` | defense | 冻结-复现用 | 侵蚀上下文剂量-反应筛查变体 CLI（需已校准方向与 step-1 筛查轨迹） |
 | `run_mc_sycophancy_defended_screening.py` | stance | 冻结-复现用 | MMLU-sycophancy 线执行器权威检查（Phase A 对应版）：channel-A 提醒能否移动 y_consistency |
 | `run_mc_sycophancy_screening.py` | stance | 冻结-复现用 | 基于 MMLU 的 sycophancy 筛查 CLI，替代 run_sycophancy_screening.py 的 SYCON-Bench 题库 |
