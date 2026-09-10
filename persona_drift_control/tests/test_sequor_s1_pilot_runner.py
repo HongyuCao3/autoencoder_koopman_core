@@ -167,3 +167,43 @@ def test_it_refuses_to_write_into_an_existing_directory(runner, monkeypatch, tmp
     out.mkdir()
     with pytest.raises(SystemExit, match="refusing to write into existing"):
         _run(runner, monkeypatch, out)
+
+
+def test_the_default_item_selection_is_still_the_screening_set(runner, monkeypatch, tmp_path):
+    """`--item-selection` was added for S1. The default must leave the pilot's
+    item set untouched: the sizing report and the S0-0 gates were computed on
+    the fully gold-covered dialogues, and a flag that silently widened them
+    would change what those artifacts mean."""
+
+    out = tmp_path / "default"
+    _run(runner, monkeypatch, out)
+    report = json.loads((out / "arm_report.json").read_text())
+    from persona_drift.sequor_bank import gold_constraints, load_sequor_bank, select_screening_items
+    expected = select_screening_items(load_sequor_bank(TUPLES, n_turns=5), gold_constraints(GOLD), 3)
+    assert sorted(report["gold_coverage"]["gold_coverage_by_item"]) == \
+        sorted(it.conversation_id for it in expected)
+    assert report["gold_coverage"]["share_outside_calibration_set"] == 0.0
+
+
+def test_bank_selection_admits_uncovered_dialogues_and_prices_them(runner, monkeypatch, tmp_path):
+    out = tmp_path / "bank"
+    _run(runner, monkeypatch, out, "--item-selection", "bank")
+    report = json.loads((out / "arm_report.json").read_text())
+    from persona_drift.sequor_bank import gold_constraints, load_sequor_bank, select_bank_items
+    expected = select_bank_items(load_sequor_bank(TUPLES, n_turns=5), gold_constraints(GOLD), 3)
+    assert sorted(report["gold_coverage"]["gold_coverage_by_item"]) == \
+        sorted(it.conversation_id for it in expected)
+    # the whole point of the ruling: the cost is a number in the artifact
+    assert report["gold_coverage"]["share_outside_calibration_set"] > 0.0
+
+
+def test_screening_selection_refuses_more_items_than_are_fully_covered(runner, monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "argv", [
+        "run_sequor_s1_pilot_arm.py", "--agent-model", "stub/model",
+        "--out-dir", str(tmp_path / "too-many"),
+        "--tuples-path", str(TUPLES), "--gold-path", str(GOLD),
+        "--n-items", "40", "--n-turns", "3", "--seeds", "0",
+        "--max-new-tokens", "64", "--mode", "debug",
+    ])
+    with pytest.raises(ValueError, match="fully gold-covered"):
+        runner.main()
