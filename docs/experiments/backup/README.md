@@ -4,15 +4,22 @@
 "当时为什么这么决定"，**不是当前要执行的任务**。
 
 > **给接手的会话**：不要执行这里的任何规格、不要修改这里的任何文件、不要把这里的判定
-> 当成当前状态。当前的活计划只有一条（2026-09-08 更新）：
-> ERGO 线 → [`../ergo_fidelity_restoration_plan.md`](../ergo_fidelity_restoration_plan.md)（Koopman 相位 EK0–EK2）。
-> 防御线的两份计划（[`../koopman_fast_track_plan.md`](../koopman_fast_track_plan.md) 与
-> [`../defense_line_redesign_plan.md`](../defense_line_redesign_plan.md)）按 2026-09-08 用户指令
-> **收尾挂起**——挂起不等于归档，它们仍在 `../` 下，重启时从各自顶部的横幅进入。
+> 当成当前状态。当前的活计划只有一条（2026-09-10 更新）：
+> `constraint` 线 → [`../constraint_retention_plan.md`](../constraint_retention_plan.md)（S0–S3，S1 已提交）。
+> ERGO 线（[`../ergo_fidelity_restoration_plan.md`](../ergo_fidelity_restoration_plan.md)）与防御线的两份计划
+> （[`../koopman_fast_track_plan.md`](../koopman_fast_track_plan.md) 与
+> [`../defense_line_redesign_plan.md`](../defense_line_redesign_plan.md)）按用户指令**收尾挂起**——
+> 挂起不等于归档，它们仍在 `../` 下，重启时从各自顶部的横幅进入。
 
 **归档规则**：一份计划的全部任务执行完毕、或它的规格被后续文档取代之后，就移进来，并在
 下表加一行。**结果不跟着进来**——结果留在对应的结果档案或运行记录里，否则会出现
 "找不到数字"。
+
+两种情况**不归档**（2026-09-10 复核 `../` 下 28 份文档后写死的判据）：**挂起的线**
+（挂起不等于归档，见上）；**未执行且未被取代的设计稿**（例如
+[`../reminder_history_interaction_plan.md`](../reminder_history_interaction_plan.md)——它既没跑完
+也没被取代，归档规则的两个条件都不满足，留在 `../` 下带 📝 横幅）。含带数字结果节的文档
+一律**原地冻结**（只加状态横幅，不拆分），拆一份 1598 行的结果档案等于重写历史。
 
 | 文档 | 它是什么 | 被谁取代 | 结果落在哪 |
 |---|---|---|---|

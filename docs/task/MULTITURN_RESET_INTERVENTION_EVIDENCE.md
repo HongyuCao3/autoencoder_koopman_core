@@ -117,7 +117,7 @@ R1 已证明那份数据被截断回复污染（`always_reset` 末轮 91% 是裸
 | C6 | 论文定位一句：CCOPD 主张把一致性内化进权重、并把外部控制回路当作缺点；**本文正面研究那个外部回路，并给出它何时值得** | 第一节 |
 
 **本文件不提交任何 GPU 作业。** 新臂的具体规格与运行时估计另出，按
-[`../.claude/experiments.md`](../.claude/experiments.md) → *提交 GPU 作业前* 六条走。
+[`../.claude/experiments.md`](../../.claude/experiments.md) → *提交 GPU 作业前* 六条走。
 
 ---
 
