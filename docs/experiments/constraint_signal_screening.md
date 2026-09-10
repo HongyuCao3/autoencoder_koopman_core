@@ -1,5 +1,9 @@
 # `constraint` 线的开线前信号筛查（S0-0）与死亡条件
 
+> **状态（2026-09-10）**：现行。这是 `constraint` 线（当前唯一的活线）开工前写死的信号筛查与
+> **死亡条件**，S0-0 三道闸门的判词以本文 §十（判据修订记录）为准；闸门数字见
+> [`constraint_results.md`](constraint_results.md)。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 **日期**：2026-09-08 · **产出自** `/research-experiment-design`（`.claude/experiments.md` → *开一条新任务线* 第 1 步）
 **计划**：[`constraint_retention_plan.md`](constraint_retention_plan.md) · **数据**：`resources/sequor/`（见 `resources/PROVENANCE.md`）
 **本文件不重抄规则。** 它只做一件事：把**这条线该怎么死**在开工前写死。

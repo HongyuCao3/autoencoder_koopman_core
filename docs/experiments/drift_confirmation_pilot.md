@@ -1,5 +1,9 @@
 # 实验记录：人格漂移功效确认 pilot（10 prompt 规模）
 
+> **状态（2026-09-10）**：已放弃线的历史草案。这是已放弃的 `persona_drift` 线上的 10-prompt
+> 功效放大 pilot，结论（干净空结果）已定格；文中的 scripted-user 失败记录仍可作方法论参考，
+> 不要照搬其采集设计。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 记录这次跑在 Palmetto 2 上的作业本身的状态，供换一次新对话（没有本会话上下文）时能接得上——
 和 [signal_screening_pilot.md](signal_screening_pilot.md) 是同一类文档，但这是**另一个、更晚的
 实验**：signal_screening_pilot.md 记录的是协议第 7 节要求的 5-prompt gate screening（已完成，

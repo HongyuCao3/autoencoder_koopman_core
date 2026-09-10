@@ -1,5 +1,9 @@
 # 提醒历史交互项 $B_3\,(u\cdot u_{t-1})$：把 `repeat_penalty` 从超参变成辨识量
 
+> **状态（2026-09-10）**：现行但**未执行**的设计稿（📝）——无代码改动、无产物、无 GPU 作业。
+> 它既没跑完也没被取代，所以按 [`backup/README.md`](backup/README.md) 的归档规则不归档；
+> `defense` 线挂起期间不推进。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 和 [koopman_case_study_design.md](koopman_case_study_design.md)（路径 2 的状态-动作交互项）、
 [koopman_phaseI_policy_closed_form.md](koopman_phaseI_policy_closed_form.md)（Phase I 策略的闭式刻画）
 同一条线的下一步设计。**本文件只记录设计与判据，未执行、无代码改动、无新产物。**
