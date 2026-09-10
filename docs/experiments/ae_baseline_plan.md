@@ -1,5 +1,9 @@
 # 计划：encoder-decoder（AE）Koopman baseline，对照 `core` 的 `DeepAugmentedKoopmanAutoencoder`
 
+> **状态（2026-09-10）**：结果档案（冻结）。AE baseline 已执行完毕，held-out rollout MSE 与
+> `richer_abs_sign`/`arx` 基本打平，结论已定格，不是活跃计划。术语基准见
+> [`NAMING.md`](../NAMING.md)。
+
 和 [lstm_baseline_plan.md](lstm_baseline_plan.md) 同一类"供跨会话接续"的记录。**新开一次对话
 想知道"AE baseline 做到哪一步、结论是什么"，看这份文档。** 计划部分（下面到"资源预估"为止）
 已执行完毕，**结果见文末"执行结果"一节**。

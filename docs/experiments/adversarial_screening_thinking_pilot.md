@@ -1,5 +1,9 @@
 # 实验记录：adversarial_screening 的 enable_thinking 复现性重跑
 
+> **状态（2026-09-10）**：结果档案（冻结）。thinking 模式复现重跑已完成（job 15410124），
+> 结论（推理链未显著改变渐进侵蚀）已定格，是 `defense` 线 Phase A→I 的补充证据存档，不是
+> 活跃工作。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 和 [adversarial_screening_pilot.md](adversarial_screening_pilot.md) 同一类"供跨会话接续"的记录。
 **新开一次对话想知道"这个 thinking 复现重跑现在跑到哪一步了"，看这份文档。**
 

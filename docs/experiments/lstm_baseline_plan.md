@@ -1,5 +1,9 @@
 # 计划：LSTM 代理模型 baseline（补齐 `BASELINES.md` ③层缺口）
 
+> **状态（2026-09-10）**：结果档案（冻结）。LSTM baseline 已执行完毕并于 2026-09-03 v 对齐
+> 修正后复核结清，跨文档比较请用文末最后一节的数字，不要引用旧口径的"接近 2 倍"。术语基准见
+> [`NAMING.md`](../NAMING.md)。
+
 和 [koopman_detection_design.md](koopman_detection_design.md)/[koopman_defense_pilot.md](koopman_defense_pilot.md)
 同一类"供跨会话接续"的记录。**新开一次对话想知道"LSTM baseline 做到哪一步、结论是什么"，
 看这份文档。** 计划部分（下面到"资源预估"为止）已执行完毕。

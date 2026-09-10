@@ -1,5 +1,9 @@
 # 设计笔记：Koopman-MPC 决策的 case 分析（回应 Phase G 的自适应性开放问题）
 
+> **状态（2026-09-10）**：结果档案（冻结）。Phase G→I 案例分析已完整收尾（v 对齐 bug 修复、
+> 反应式策略结构性无法在 turn1 抢跑），结论已定格，不代表当前活跃工作。术语基准见
+> [`NAMING.md`](../NAMING.md)。
+
 和 [koopman_detection_design.md](koopman_detection_design.md) 同一类"供跨会话接续"的记录。
 **新开一次对话想知道"case 分析这条线想验证什么、怎么做的、做到哪一步了"，看这份文档。**
 **最新进展（2026-09-02）：文末"Phase I：v 对齐修正与再验证"——Phase H"需要更好的标定/更多

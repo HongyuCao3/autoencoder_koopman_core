@@ -1,5 +1,9 @@
 # 实验记录：MMLU 版 sycophancy screening（数据源替换方案 2，2026-09-05）
 
+> **状态（2026-09-10）**：结果档案（冻结）。两次执行器权威检查（SYCON+MMLU）均为空结果，已
+> 促成开出 ERGO 新线；判官的"文本抽取式"设计仍可复用，但 channel-A 提醒效力已判定为空结果，
+> 不要当作 `stance` 线当前正在推进的工作照搬。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 和 [sycophancy_screening_pilot.md](sycophancy_screening_pilot.md) 同一类"供跨会话接续"的
 记录。**新开一次对话想知道"换数据源之后这条线跑到哪一步了"，看这份文档。**
 

@@ -1,5 +1,9 @@
 # 实验记录：Koopman-MPC 防御控制器（抵抗对抗性侵蚀）
 
+> **状态（2026-09-10）**：结果档案（冻结）。Phase A→I 已于 2026-09-02 收尾，`defense` 线整条
+> 已挂起收尾（入口 [`defense_line_redesign_plan.md`](defense_line_redesign_plan.md)），当前活跃
+> 的是 `constraint` 线；不要按本文档重跑或改写。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 > 📓 **运行记录（历史发现，不是待执行的任务）**。当前的活计划是
 > [`signal_resolution_plan.md`](signal_resolution_plan.md)——其中 F4（软 judge 读出）是本线
 > 读出族里唯一还没测过的候选。本文档各节记的是当时的运行，**不要按它们重跑或改写**。

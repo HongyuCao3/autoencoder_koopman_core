@@ -1,5 +1,9 @@
 # 实验记录：对抗防御任务 screening（ADVERSARIAL_DEFENSE_TASK_FEASIBILITY.md 第 7 节步骤 1）
 
+> **状态（2026-09-10）**：结果档案（冻结）。这是 `defense` 线 Phase 7 步骤 1 的 screening 记录，
+> new-Q1/new-Q3 结论仍被后续 `defense` 线引用为前提，但其中 judge 分数是自评而非独立重判，
+> 不要当作可报告数字直接引用。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 和 [drift_confirmation_pilot.md](drift_confirmation_pilot.md)/[signal_screening_pilot.md](signal_screening_pilot.md)
 同一类"供跨会话接续"的记录。**新开一次对话想知道"这个 screening 现在跑到哪一步了"，看这份文档。**
 

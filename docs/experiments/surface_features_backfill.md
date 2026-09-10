@@ -1,5 +1,9 @@
 # 实验记录：signal_screening_pilot 数据的免费表层特征回填（CPU-only）
 
+> **状态（2026-09-10）**：已放弃线的历史草案。这是已放弃的 `persona_drift` 线
+> （`signal_screening_pilot` 数据）上的表层特征回填分析，`avg_word_len` 等发现仅供历史参考，
+> 不代表当前 `defense`/`stance` 线的判据设计。术语基准见 [`NAMING.md`](../NAMING.md)。
+
 记录这次分析的目的、代码位置和结论，跟 `signal_screening_pilot.md`/`drift_confirmation_pilot.md`
 是同一类"供跨会话接续"的记录，但这次不涉及 GPU 作业排队/续跑，跑完就有结果，不需要"下次打开先做
 什么"那一节。
