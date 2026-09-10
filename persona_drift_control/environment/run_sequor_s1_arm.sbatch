@@ -31,14 +31,12 @@
 # (MDE(n=40) 0.0636 at s=3 vs 0.0616 at s=5) and only N moves the MDE. Hence
 # N=40, s=3: it is the plan's N, and it is now the N the arithmetic supports.
 #
-# THE ESTIMAND MUST BE SIGNED BEFORE THIS JOB IS SUBMITTED. Proposed: S1a is
-# the per-item difference of mean `y` over the LATE WINDOW t15..t20,
-# independent judge, paired within (item, seed), with the turn-20-only
-# functional reported beside it as a secondary. This is the agent's proposal,
-# NOT a user ruling -- the 2026-09-10 rulings covered the item set and the
-# fidelity wording. The two windows imply MDEs a factor 1.6 apart, so whoever
-# signs it is choosing the design's power; picking one after S1's rows exist
-# would be choosing the estimand from the noise.
+# THE ESTIMAND, SIGNED 2026-09-10 BEFORE SUBMISSION ("按照你的建议提交"): S1a
+# is the per-item difference of mean `y` over the LATE WINDOW t15..t20,
+# independent judge, paired within (item, seed). The turn-20-only functional
+# is reported beside it as a secondary and cannot be promoted afterwards --
+# the two windows imply MDEs a factor 1.6 apart, so picking one after S1's
+# rows exist would be choosing the estimand from the noise.
 #
 # ITEM SET: the first 40 dialogues by conversation_id from the whole bank
 # (`--item-selection bank`), user ruling 2026-09-10 = option (a). What it
@@ -50,7 +48,11 @@
 # which biases the state coefficient TOWARD ZERO -- the direction that would
 # fake this line's death (ERGO died at 97% attenuation). The clean purchase of
 # that cell is a small human check set on UNCOVERED constraints (screening
-# section 9.2); it is zero-GPU and still outstanding.
+# section 9.2). DEFERRED by the user 2026-09-10, with the consequence stated:
+# until it exists, a null or attenuated state coefficient from these rows has
+# two possible causes -- no state, or a judge whose noise on 65% of the
+# constraints pushed the coefficient toward zero -- and S2 cannot tell them
+# apart. So a WEAK G-S2-1 result on this arm is not a line-closing result.
 #
 # RESPONSE CAP: 2048, unchanged, and the per-item >5% criterion still governs.
 # Job 15768372's probe named 6 dialogues that cannot run; NONE is in this set.
