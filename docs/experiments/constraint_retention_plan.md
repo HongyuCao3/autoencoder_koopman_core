@@ -4,6 +4,13 @@
 （[`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md)：算子辨识成立，但输入通道与状态解耦，
 闭环退化为固定日程），触发条件"ERGO 出较明确结果"已满足，本线开工。
 **开工前筛查与死亡条件见 [`constraint_signal_screening.md`](constraint_signal_screening.md)（S0-0）。**
+
+> ⏸ **S0–S2 已完成并入库；S3 阻塞在一个待用户裁决的三选一（2026-09-10）。**
+> S1 的终点权威成立（+0.1389 ± 0.0147，n=3 seeds，2.04×MDE），S2 的算子四条闸门全过，
+> 但**准入前检查发现 `koopman_mpc` 臂在这个算子上退化**——最优日程与状态无关
+> （全状态区间扫描仍只有 1 种日程），模拟臂间差 +0.0008 对 MDE 0.0690。
+> **三个选项与推荐见** [`constraint_results.md`](constraint_results.md) **§S3 准入前检查**。
+> **裁决前不提交任何 GPU 作业。** 下一个会话从那一节读起，不要从本文件 §六 直接开跑。
 **适用**：Opus 5（裁决）/ Sonnet 5（执行）。**规则**：`.claude/global.md` → `.claude/experiments.md` → `.claude/code.md`，**本文件不重抄规则**。
 术语见 [`../NAMING.md`](../NAMING.md) 的 `constraint` 行。
 

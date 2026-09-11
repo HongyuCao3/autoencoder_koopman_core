@@ -16,7 +16,7 @@
 
 | 线（代号以 [`NAMING.md`](NAMING.md) 为准） | 状态 | 一句话 | 入口文档（详见下面「实验」一节） |
 |---|---|---|---|
-| `constraint`（SEQUOR） | ▶ **活跃** | 唯一在跑的线；S1 辨识臂已提交（job 15772956/15772957） | `constraint_retention_plan.md` |
+| `constraint`（SEQUOR） | ⏸ **等裁决** | S0–S2 完成入库；S3 阻塞在三选一，见 `constraint_results.md` §S3 准入前检查 | `constraint_retention_plan.md` |
 | `gsm8k_sharded`（旧称 ERGO） | ⏸ 挂起 | 算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程 | `ergo_fidelity_restoration_plan.md` |
 | `defense` | ⏸ 收尾 | 辨识成立时挂起；读出没量程（独立 judge 天花板 0.91） | `defense_line_redesign_plan.md` |
 | `stance` | ⏸ 挂起 | 执行器权威两次空结果（SYCON、MMLU） | `mc_sycophancy_screening_pilot.md` |
@@ -130,7 +130,8 @@
 - [experiments/constraint_signal_screening.md](experiments/constraint_signal_screening.md) —
   ▶ 活跃 · 开线前信号筛查（S0-0）与**死亡条件**；§十 是判据修订记录 · 闸门数字见 `constraint_results.md`。
 - [experiments/constraint_results.md](experiments/constraint_results.md) —
-  📊 结果档案 · `constraint` 线全部结果（S0 / S0-0 三闸门 / 保真度臂 / S1 试点与辨识臂），从 LEDGER §三·五 拆出。
+  📊 结果档案 · `constraint` 线全部结果（S0 / S0-0 三闸门 / 保真度臂 / S1 试点与辨识臂 /
+  **S3 准入前检查 ← 当前待裁决项在这里**），从 LEDGER §三·五 拆出。
 
 ### `gsm8k_sharded` 线（分片指令，旧称 ERGO；⏸ 挂起）
 
