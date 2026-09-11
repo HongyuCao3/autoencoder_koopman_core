@@ -384,3 +384,118 @@ def test_seeds_buy_less_than_items_in_the_sizing():
     three = module.gate_s2_4(gap, sizing, seeds=3, fraction=0.25, unpaired_late_sd=0.9, b=0.02)
     nine = module.gate_s2_4(gap, sizing, seeds=9, fraction=0.25, unpaired_late_sd=0.9, b=0.02)
     assert nine["n_items_required"] >= 0.8 * three["n_items_required"]
+
+
+def _interaction_rows(d: float, *, a: float = 0.6, b: float = 0.10, noise: float = 0.02,
+                      seed: int = 3) -> list[dict]:
+    """Trajectories from `y_(t+1) = c + a y_t + u (b + d y_t)`."""
+
+    rng = np.random.default_rng(seed)
+    rows = []
+    for item in range(N_ITEMS):
+        for s in SEEDS:
+            schedule = {t: int(rng.integers(0, 2)) for t in range(2, N_TURNS + 1)}
+            for arm in ("bernoulli", "antithetic"):
+                y = 0.5
+                for turn in range(1, N_TURNS + 1):
+                    u = 0 if turn == 1 else (schedule[turn] if arm == "bernoulli" else 1 - schedule[turn])
+                    if turn > 1:
+                        y = a * y + u * (b + d * y) + (1 - a) * 0.5 + rng.normal(0, noise)
+                    rows.append({
+                        "trajectory_id": f"tuple_{item}__{arm}__s{s}", "item_id": f"tuple_{item}",
+                        "turn": turn, "branch": arm, "u_remind": u, "seed": s,
+                        "y_graded": float(np.clip(y, 0.0, 1.0)),
+                    })
+    return rows
+
+
+def test_the_bilinear_term_is_recovered_when_it_is_there():
+    module = _load()
+    rows = module.rows_for_identification({"rows": _interaction_rows(d=-0.30)}, [])
+    gate = module.fit_bilinear(module.one_step_transitions(rows), seed=0)
+    assert gate["pooled"]["interaction_d"] == pytest.approx(-0.30, abs=0.06)
+    assert gate["verdict"] == "PASS"
+    marginal = gate["pooled"]["marginal_effect_of_a_reminder"]
+    assert marginal["y=0.00"] > marginal["y=1.00"]
+
+
+def test_no_interaction_is_not_reported_as_one():
+    """Negative control. ERGO's bilinear term was null and enumeration then
+    showed the closed loop was degenerate; a fit that invented an interaction
+    would send this line into the same 6 GPU-hours ERGO avoided."""
+
+    module = _load()
+    rows = module.rows_for_identification({"rows": _interaction_rows(d=0.0)}, [])
+    gate = module.fit_bilinear(module.one_step_transitions(rows), seed=0)
+    assert gate["pooled"]["interaction_d"] == pytest.approx(0.0, abs=0.05)
+    assert gate["verdict"] in ("NULL", "UNDECIDABLE")
+    assert not gate["pooled"]["ci_excludes_zero"]
+
+
+def test_an_interior_operator_wants_one_schedule_for_everyone():
+    """The structural fact S3 hinges on, as a test rather than an argument: on
+    a scalar operator whose trajectories stay inside [0, 1], the budget-k
+    optimum is the same k turns at EVERY starting state, with or without a
+    bilinear term. This is the negative control for the checker and, on the
+    real fit, the finding itself."""
+
+    module = _load()
+    starts = {f"y{v:.2f}": float(v) for v in np.linspace(0.1, 0.9, 17)}
+    linear = {"a": 0.63, "b": 0.018, "c": 0.31, "d": 0.0}
+    bilinear = {**linear, "b": 0.072, "d": -0.061}
+    out = module.schedule_separability({"linear": linear, "bilinear": bilinear}, starts,
+                                       (1, 2, 3), start_turn=2, n_turns=20, late_from=15)
+    assert out["negative_control_holds"]
+    assert not out["closed_loop_has_something_to_do"]
+    assert all(v == 1 for v in out["bilinear_distinct_schedules"].values())
+
+
+def test_a_saturating_operator_does_want_different_schedules():
+    """Positive control: the checker must be ABLE to report state-dependent
+    schedules, or its "1 distinct" finding would be unfalsifiable. Saturation
+    is the honest way to produce one -- reminding a trajectory already at the
+    ceiling is wasted, so the best turn depends on where the state is. It is
+    also not hypothetical here: 60-67% of real late turns sit at y = 1, a
+    censoring the linear fit smooths away."""
+
+    module = _load()
+    starts = {f"y{v:.2f}": float(v) for v in (0.05, 0.2, 0.4, 0.6, 0.8, 0.95)}
+    saturating = {"a": 0.9, "b": 0.30, "c": 0.02, "d": -0.50}
+    out = module.schedule_separability({"bilinear": saturating}, starts, (2, 3),
+                                       start_turn=2, n_turns=20, late_from=15)
+    assert out["closed_loop_has_something_to_do"]
+    assert max(out["bilinear_distinct_schedules"].values()) > 1
+
+
+def test_the_simulation_ranks_feedback_above_random_and_uses_common_noise():
+    module = _load()
+    starts = {f"y{v:.2f}": float(v) for v in np.linspace(0.2, 0.8, 8)}
+    op = {"a": 0.63, "b": 0.072, "c": 0.31, "d": -0.061}
+    residuals = np.array([-0.1, -0.05, 0.0, 0.05, 0.1])
+    sim = module.simulate_s3_gap(op, starts, residuals, budget=3, start_turn=2, n_turns=20,
+                                 late_from=15, n_sims=20, seed=0)
+    assert sim["is_a_gate"] is False
+    # feedback must beat a random placement, or the simulator is not measuring control at all
+    assert sim["mpc_minus_random"] > sim["mpc_minus_best_fixed"]
+    # and on a state-independent optimum it must NOT beat the best fixed schedule by much
+    assert abs(sim["mpc_minus_best_fixed"]) < 0.02
+
+
+def test_a_zero_noise_simulation_makes_feedback_worthless_by_construction():
+    """Guard on the simulator's own premise: with no disturbance there is
+    nothing to react to, so MPC and the best fixed schedule must coincide. If
+    they differed here, the gap would be an artifact of the planner, not
+    control."""
+
+    module = _load()
+    starts = {f"y{v:.2f}": float(v) for v in (0.3, 0.5, 0.7)}
+    op = {"a": 0.63, "b": 0.072, "c": 0.31, "d": -0.061}
+    sim = module.simulate_s3_gap(op, starts, np.array([0.0]), budget=2, start_turn=2, n_turns=20,
+                                 late_from=15, n_sims=3, seed=0)
+    assert sim["mpc_minus_best_fixed"] == pytest.approx(0.0, abs=1e-9)
+
+    # and the guard has teeth: on a grid too coarse to plan on, the DP loses to
+    # the exactly-enumerated schedule and the gap turns spuriously negative
+    coarse = module.simulate_s3_gap(op, starts, np.array([0.0]), budget=2, start_turn=2,
+                                    n_turns=20, late_from=15, n_sims=3, seed=0, grid_n=21)
+    assert coarse["mpc_minus_best_fixed"] < -1e-4
