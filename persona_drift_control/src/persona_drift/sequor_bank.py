@@ -22,6 +22,7 @@ Two properties of the file that shape this module:
 from __future__ import annotations
 
 import json
+from typing import Sequence
 import pathlib
 from dataclasses import dataclass
 
@@ -210,3 +211,48 @@ def user_message(item: SequorItem, turn: int, remind: bool, constraints_in_syste
     if turn == 0:
         raise ValueError("turn 1 already carries the constraint block; u=1 there is not a distinct action")
     return f"{base}\n\n{item.constraint_block}"
+
+def targeted_constraint_block(item: SequorItem, indices: "Sequence[int]") -> str:
+    """The item's own constraint block carrying only the named constraints.
+
+    The action option (a)'s pilot studies is "restate the rule that broke"
+    rather than "restate all three", so the reminder text has to vary with the
+    state. What must NOT vary is the wording: each constraint is copied
+    verbatim and the preamble is the item's own, exactly as the blanket
+    reminder uses them -- a reworded or re-styled reminder would confound the
+    targeting with a prompt change, which is the reason `user_message` appends
+    the block verbatim in the first place.
+
+    The format is not invented here, it is DERIVED and then checked: rebuilding
+    the block from the preamble and the full constraint list must reproduce
+    `item.constraint_block` byte for byte, or this function raises. All 200
+    dialogues in the vendored bank satisfy that today; an item that did not
+    would otherwise get a reminder in a format the blanket arm never used.
+    """
+
+    chosen = sorted(set(indices))
+    if not chosen:
+        raise ValueError("a targeted reminder with no constraint is not an action")
+    if chosen[0] < 0 or chosen[-1] >= len(item.constraints):
+        raise ValueError(f"constraint index out of range for {item.conversation_id}: {chosen}")
+    build = lambda picked: "\n".join(
+        [item.preamble] + [f"{n}. {item.constraints[i]}" for n, i in enumerate(picked, 1)])
+    if build(range(len(item.constraints))) != item.constraint_block:
+        raise ValueError(
+            f"{item.conversation_id}: the block is not 'preamble + numbered constraints', so a "
+            f"targeted block cannot be built in the item's own format without inventing one")
+    return build(chosen)
+
+
+def targeted_user_message(item: SequorItem, turn: int, indices: "Sequence[int]",
+                          constraints_in_system: bool = False) -> str:
+    """`user_message` with a targeted reminder instead of the whole block.
+
+    Same append position, same separator, same turn-1 refusal -- the only
+    difference from `user_message(..., remind=True)` is which constraints the
+    appended block contains.
+    """
+
+    if turn == 0:
+        raise ValueError("turn 1 already carries the constraint block; u=1 there is not a distinct action")
+    return f"{item.turns[turn]}\n\n{targeted_constraint_block(item, indices)}"

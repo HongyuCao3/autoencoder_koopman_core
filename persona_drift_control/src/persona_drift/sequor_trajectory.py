@@ -84,21 +84,29 @@ def prefix_digest(conversation: Sequence[dict]) -> str:
 def _row(
     item: SequorItem, turn: int, branch: str, prefix: Sequence[dict], message: str,
     generated: dict, prev_agent_message: str | None, config: BranchArmConfig, run_id: str,
-    u_remind: int | None = None,
+    u_remind: int | None = None, per_turn_branch: bool | None = None,
 ) -> dict:
     """`u_remind` defaults to the branch label, which is right for the
     counterfactual arm where the label IS the action. A schedule arm labels
     rows by the arm they belong to and takes an action per turn, so it passes
     `u` explicitly -- without that the reminded turns of `constant_remind`
     would be recorded as u=0 and every downstream `B` would be unidentifiable.
+
+    `per_turn_branch` says whether this branch is a one-step counterfactual,
+    whose trajectory id must carry the turn, or a continuing trajectory, whose
+    id must not. It defaults to the old rule (`branch == REMINDED`), so every
+    existing caller produces byte-identical rows; an arm with SEVERAL
+    counterfactual branches per turn passes it explicitly, or its branches
+    would share one id and collide.
     """
 
     text = generated["text"]
     u = int(branch == REMINDED) if u_remind is None else int(u_remind)
+    per_turn = (branch == REMINDED) if per_turn_branch is None else per_turn_branch
     return {
         "run_id": run_id,
         "trajectory_id": f"{item.conversation_id}__{branch}__s{config.seed}__t{turn}"
-        if branch == REMINDED else f"{item.conversation_id}__{branch}__s{config.seed}",
+        if per_turn else f"{item.conversation_id}__{branch}__s{config.seed}",
         "item_id": item.conversation_id,
         "tuple_id": item.tuple_id,
         "turn": turn,
