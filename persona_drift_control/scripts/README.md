@@ -1,15 +1,15 @@
 # scripts/ 清单
 
-这份清单盘点 `persona_drift_control/scripts/` 下全部 93 个脚本，按术语基准（[`docs/NAMING.md`](../../docs/NAMING.md)）
+这份清单盘点 `persona_drift_control/scripts/` 下全部 95 个脚本，按术语基准（[`docs/NAMING.md`](../../docs/NAMING.md)）
 标"线"、按引用计数（docs/environment/tests/scripts 四处 grep + 集群 `outputs/` 产物扫描）判"状态"。
 **冻结-复现用**指该脚本是某条已收尾/暂停线（`defense`/`stance`/`benign`/`detect`/`persona_drift`/ERGO）
 已提交结果的复现路径——按 `.claude/code.md` 不得删改，只是不再产生新结果。
 此前文档里写作「ERGO」的那条线，代号是 **`gsm8k_sharded`**（2026-09-10 用户裁定按数据集命名：
 它用 Laban et al. 的 sharded GSM8K，`constraint` 用 SEQUOR；ERGO 只是它借用的执行器方法名）。
-见 `docs/NAMING.md` 消歧说明第 4 条。**脚本文件名里的 `ergo_*` 不改**（历史标识符）。**注意**：`score_sequor_trajectories.py` 当前被
-SLURM 作业 15772957（`pdc-sequor-s1-score`）调用，正在跑，本清单只读未改动它。
+见 `docs/NAMING.md` 消歧说明第 4 条。**脚本文件名里的 `ergo_*` 不改**（历史标识符）。（2026-09-10 更新：清单初版写作时 `score_sequor_trajectories.py` 正被作业 15772957 调用，
+该作业已于 16:44 COMPLETED，脚本未被改动。）
 
-**分布（2026-09-10）**：活跃 11 · 冻结-复现用 81 · 候删 1。计划一 C6 点名的 4 个"零引用"里
+**分布（2026-09-10，S1 落地后 +2）**：活跃 13 · 冻结-复现用 81 · 候删 1。计划一 C6 点名的 4 个"零引用"里
 **只有 1 个真的可删**——另 3 个的引用/产物落在计划的扫描口径之外（`conf/` 下的 Hydra 配置组、
 不叫 `run_*.json` 的产物目录、只在脚本 docstring 里留下的谱系）。**判"候删"前把这三处一起扫**，
 否则删掉的是已提交结果的复现路径（`.claude/code.md` 硬约束）。
@@ -49,6 +49,7 @@ SLURM 作业 15772957（`pdc-sequor-s1-score`）调用，正在跑，本清单�
 | `analyze_sequor_fidelity.py` | constraint | 活跃 | 上游保真度臂的判定（预注册）：任一 harness 变体能否把留存曲线拉到基准水平，CPU-only |
 | `analyze_sequor_s0_0_gates.py` | constraint | 活跃 | constraint 线 S0-0 的三条闸门（K1 读出量程、K2 状态超越单轮、K3…），CPU-only |
 | `analyze_sequor_s1_pilot.py` | constraint | 活跃 | 用 S1 试点臂（job 15768661）实测方差重算 S1a 的 MDE 与所需 N，不出裁决 |
+| `analyze_sequor_s1_gates.py` | constraint | 活跃 | S1 的准入闸门 G-S1（按臂算量程）与跑前签死的 S1a 估计量（t15..t20，按 (题,seed) 配对），CPU-only |
 | `analyze_soft_judge_readout.py` | defense | 冻结-复现用 | F4 Step2：把四条 RC 闸门套用到 y_soft（期望值软安全 judge），判定防御线读出族是否升级 |
 | `analyze_state_action_interaction.py` | defense | 冻结-复现用 | "如何证明 Koopman 动机"路径2：拟合带显式状态-动作交互控制输入的 Koopman 代理，对比 richer_abs_sign |
 | `analyze_surface_feature_input_effect.py` | persona_drift | 冻结-复现用 | Q2/Q3 式 u_remind 效应检验套用到自由表层特征而非 y_probe，纯离线分析 |
@@ -74,6 +75,7 @@ SLURM 作业 15772957（`pdc-sequor-s1-score`）调用，正在跑，本清单�
 | `fit_koopman_benign_model.py` | detect | 冻结-复现用 | 检测设计选项3 step1：拟合"良性 regime" Koopman 代理，与已有"攻击 regime"模型配对 |
 | `fit_koopman_defense_model.py` | defense | 冻结-复现用 | Phase C：在 Phase B 开环随机激励轨迹上拟合 Koopman 代理，评估一步/rollout 误差与可控性诊断 |
 | `fit_koopman_ergo_branch_lifted.py` | gsm8k_sharded | 冻结-复现用 | EK-A 反事实分叉臂上的升维（含双线性）Koopman-with-control，正规化版 fit_koopman_ergo_branch.py |
+| `fit_koopman_sequor_model.py` | constraint | 活跃 | S2：在 S1b 反相激励臂上拟合 y_{t+1}=Ay_t+Bu_t+c，跑 G-S2-1..4 与状态来源诊断，CPU-only |
 | `fit_koopman_ergo_branch.py` | gsm8k_sharded | 冻结-复现用 | EK-A 门 G-EKA-3：在反事实分叉臂上拟合受控算子，用三个平凡零假设按题目不相交折检验 |
 | `fit_koopman_ergo_closeness.py` | gsm8k_sharded | 冻结-复现用 | F2：用 closeness 读出替代 y_task_success 重跑 Phase B 拟合（复用 fit_koopman_ergo_model.py 结构） |
 | `fit_koopman_ergo_model.py` | gsm8k_sharded | 冻结-复现用 | ERGO/Laban 线 Phase B/C：在开环随机激励轨迹（u_reset/y_task_success）上拟合 Koopman 代理 |
