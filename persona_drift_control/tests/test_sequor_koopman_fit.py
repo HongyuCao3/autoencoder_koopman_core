@@ -30,6 +30,17 @@ def _load():
     return module
 
 
+def _followed(y: float) -> list[bool]:
+    """The constraint vector a readout row carries, quantised from `y`.
+
+    The real judge returns `followed: [b, b, b]` and `y_graded` is its mean, so
+    a fixture whose `y` moves while its vector does not would let the binary
+    model pass on a state that never varies."""
+
+    kept = int(round(float(np.clip(y, 0.0, 1.0)) * 3))
+    return [i < kept for i in range(3)]
+
+
 def _synthetic(a: float, b: float, *, noise: float = 0.02, item_spread: float = 0.0,
                lagged_actuator: bool = False, seed: int = 0) -> list[dict]:
     """Trajectories from a known `y_(t+1) = a y_t + b u_(t+1) + c_item`.
@@ -61,7 +72,8 @@ def _synthetic(a: float, b: float, *, noise: float = 0.02, item_spread: float = 
                         "trajectory_id": f"tuple_{item}__{arm}__s{s}", "item_id": f"tuple_{item}",
                         "turn": turn, "branch": arm, "u_remind": u, "seed": s,
                         "y_graded": float(np.clip(y, 0.0, 1.0)),
-                        "followed": [True, True, True], "echo_jaccard_prev": None,
+                        "followed": _followed(float(np.clip(y, 0.0, 1.0))),
+                        "echo_jaccard_prev": None,
                         "inserted_tokens": 0, "hit_token_cap": False,
                     })
     return rows
@@ -79,7 +91,7 @@ def _s1a_rows() -> list[dict]:
                     rows.append({
                         "trajectory_id": f"tuple_{item}__{arm}__s{s}", "item_id": f"tuple_{item}",
                         "turn": turn, "branch": arm, "u_remind": u if turn > 1 else 0,
-                        "seed": s, "y_graded": 0.5, "followed": [True, True, True],
+                        "seed": s, "y_graded": 0.5, "followed": _followed(0.5),
                         "echo_jaccard_prev": None, "inserted_tokens": 0, "hit_token_cap": False,
                     })
     return rows
@@ -315,7 +327,7 @@ def _sizing_rows():
                     rows.append({
                         "trajectory_id": f"tuple_{item}__{arm}__s{s}", "item_id": f"tuple_{item}",
                         "turn": turn, "branch": arm, "u_remind": int(arm == "constant_remind" and turn > 1),
-                        "seed": s, "y_graded": float(y),
+                        "seed": s, "y_graded": float(y), "followed": _followed(float(y)),
                     })
     return rows, gap
 
@@ -499,3 +511,239 @@ def test_a_zero_noise_simulation_makes_feedback_worthless_by_construction():
     coarse = module.simulate_s3_gap(op, starts, np.array([0.0]), budget=2, start_turn=2,
                                     n_turns=20, late_from=15, n_sims=3, seed=0, grid_n=21)
     assert coarse["mpc_minus_best_fixed"] < -1e-4
+
+
+def _count_kernel_from_means(mean: dict) -> np.ndarray:
+    """A count kernel with prescribed conditional means, built as two-point
+    distributions on the integers straddling each mean."""
+
+    kernel = np.zeros((2, 4, 4))
+    for (u, m), value in mean.items():
+        lo = int(np.floor(value))
+        hi = min(lo + 1, 3)
+        frac = value - lo
+        kernel[u, m, lo] += 1.0 - frac
+        kernel[u, m, hi] += frac
+    assert np.allclose(kernel.sum(axis=2), 1.0)
+    return kernel
+
+
+def _affine_kernel(a: float = 0.5, c0: float = 0.5, c1: float = 1.0) -> np.ndarray:
+    """NEGATIVE CONTROL for the binary check: `E[m'|m,u] = a m + c_u`, the same
+    slope under both actions. A reminder is then worth the same wherever the
+    state is, the value function stays linear in `m`, and feedback can buy
+    nothing -- the binary-space statement of what killed the scalar arm. If the
+    new model class reported headroom here, it would be reporting its own
+    arithmetic."""
+
+    return _count_kernel_from_means({(u, m): a * m + (c1 if u else c0)
+                                     for u in (0, 1) for m in range(4)})
+
+
+def _saturating_kernel() -> np.ndarray:
+    """POSITIVE CONTROL: a reminder restores violated constraints and can do
+    nothing for kept ones, so its value falls as `m` rises. This is the
+    mechanism the scalar fit could not represent; the check must be able to
+    see it, or "no headroom" on the real kernel would be unfalsifiable."""
+
+    kernel = np.zeros((2, 4, 4))
+    for m in range(4):
+        kernel[0, m, max(m - 1, 0)] += 0.4
+        kernel[0, m, m] += 0.6
+        kernel[1, m, 3] += 0.8
+        kernel[1, m, m] += 0.2
+    return kernel
+
+
+def test_the_binary_state_reads_the_vector_the_scalar_fit_averaged():
+    module = _load()
+    rows = _synthetic(a=0.6, b=0.10) + _s1a_rows()
+    transitions = module.binary_transitions({"rows": rows}, [])
+    assert {t["item_id"] for t in transitions} == {f"tuple_{i}" for i in range(N_ITEMS)}
+    # S1a arms carry no excitation and must stay out, exactly as in the scalar fit
+    scalar = module.one_step_transitions(module.rows_for_identification({"rows": rows}, []))
+    assert len(transitions) == len(scalar)
+    # the action credited to a transition is the reminder of the turn it lands in
+    by_key = {(r["trajectory_id"], r["turn"]): r for r in rows}
+    for t in transitions[:50]:
+        assert t["u"] == by_key[(t["trajectory_id"], t["turn"])]["u_remind"]
+
+
+def test_an_unparsed_constraint_drops_its_pair_from_the_binary_state():
+    module = _load()
+    rows = _synthetic(a=0.6, b=0.10)
+    full = len(module.binary_transitions({"rows": rows}, []))
+    for row in rows:
+        if row["turn"] == 10 and row["trajectory_id"].endswith("bernoulli__s0"):
+            row["followed"] = [True, None, True]
+            row["y_graded"] = None
+    assert len(module.binary_transitions({"rows": rows}, [])) == full - 2 * N_ITEMS
+
+
+def test_the_constraint_kernel_recovers_a_planted_state_dependent_gain():
+    module = _load()
+    rng = np.random.default_rng(0)
+    p = {(0, 0): 0.30, (0, 1): 0.80, (1, 0): 0.85, (1, 1): 0.95}  # (b_now, u) -> P(next=1)
+    transitions = []
+    for item in range(N_ITEMS):
+        state = [True, False, True]
+        for turn in range(2, 200):
+            u = int(rng.integers(0, 2))
+            nxt = [bool(rng.random() < p[(int(b), u)]) for b in state]
+            transitions.append({"b_now": tuple(state), "b_next": tuple(nxt), "u": u,
+                                "turn": turn, "item_id": f"tuple_{item}",
+                                "trajectory_id": f"tuple_{item}__bernoulli__s0"})
+            state = nxt
+    fit = module.fit_constraint_kernel(transitions, seed=0)
+    assert fit["cells"]["b=0,u=1"]["p_next_1"] == pytest.approx(0.80, abs=0.03)
+    assert fit["cells"]["b=1,u=1"]["p_next_1"] == pytest.approx(0.95, abs=0.03)
+    # planted gains: 0.50 when violated, 0.10 when kept
+    assert fit["state_dependence_of_the_gain"] == pytest.approx(0.40, abs=0.05)
+    assert fit["ci_excludes_zero"]
+
+
+def test_a_state_independent_action_value_leaves_the_closed_loop_nothing_to_do():
+    """The negative control, and the reason the scalar finding was believed:
+    when the reminder's worth does not move with the state, the DP picks the
+    same turns as the best fixed schedule and the simulated gap is exactly 0
+    under common random numbers."""
+
+    module = _load()
+    starts = {f"item_{m}": np.eye(4)[m] for m in range(4)}
+    sim = module.simulate_binary_s3_gap(_affine_kernel(), starts, budget=3, start_turn=2,
+                                        n_turns=20, late_from=15, n_sims=25, seed=0)
+    assert sim["mpc_minus_best_fixed"] == pytest.approx(0.0, abs=1e-12)
+    sep = module.binary_schedule_separability({"binary_count": _affine_kernel()}, starts,
+                                              (1, 2, 3), start_turn=2, n_turns=20, late_from=15)
+    assert set(sep["distinct_schedules"]["binary_count"].values()) == {1}
+
+
+def test_a_saturating_kernel_does_give_the_closed_loop_something_to_do():
+    """Positive control. The check must report headroom on a kernel where the
+    reminder's value falls as constraints are already kept -- otherwise a null
+    on the real data would say nothing about the system."""
+
+    module = _load()
+    starts = {f"item_{m}": np.eye(4)[m] for m in range(4)}
+    sim = module.simulate_binary_s3_gap(_saturating_kernel(), starts, budget=3, start_turn=2,
+                                        n_turns=20, late_from=15, n_sims=50, seed=0)
+    assert sim["mpc_minus_best_fixed"] > 0.02
+    assert sim["mpc_minus_random"] > sim["mpc_minus_best_fixed"]
+
+
+def test_the_binary_simulation_pairs_its_draws():
+    """Common random numbers, checked the way the scalar version is: a seed
+    change must move both policies together, or the gap is the difference of
+    two noise draws rather than of two policies."""
+
+    module = _load()
+    starts = {f"item_{m}": np.eye(4)[m] for m in range(4)}
+    kernel = _saturating_kernel()
+    a = module.simulate_binary_s3_gap(kernel, starts, 3, 2, 20, 15, n_sims=200, seed=0)
+    b = module.simulate_binary_s3_gap(kernel, starts, 3, 2, 20, 15, n_sims=200, seed=1)
+    assert abs(a["mpc_minus_best_fixed"] - b["mpc_minus_best_fixed"]) < 0.02
+
+
+def test_the_binary_verdict_is_read_against_the_design_mde(tmp_path):
+    """The pre-registered rule, as a test: the same simulated gap flips the
+    verdict when and only when the MDE it is compared against moves."""
+
+    module = _load()
+    readout = json.loads(_readout(_synthetic(a=0.6, b=0.10), tmp_path).read_text())
+    common = dict(readout=readout, excluded=[], all_rows=readout["rows"], budgets=(2,),
+                  start_turn=2, n_turns=N_TURNS, late_from=15, simulate_budget=2, n_sims=20, seed=0)
+    strict = module.binary_state_model(mde=1.0, **common)
+    lenient = module.binary_state_model(mde=-1.0, **common)
+    assert strict["verdict"] == "DEGENERACY_SURVIVES_THE_MODEL_CLASS"
+    assert lenient["verdict"] == "CLOSED_LOOP_HAS_HEADROOM"
+    assert strict["s3_gap_simulation"]["mpc_minus_best_fixed"] == pytest.approx(
+        lenient["s3_gap_simulation"]["mpc_minus_best_fixed"])
+
+
+def _memoryless_kernel() -> np.ndarray:
+    """NEGATIVE CONTROL for option (b): the next state does not depend on the
+    current one, so observing the state tells the controller nothing and
+    feedback must buy exactly nothing at equal cost. The threshold objective
+    cannot rescue a system with no state -- if it appeared to, the gap would be
+    the comparison's own arithmetic rather than control."""
+
+    kernel = np.zeros((2, 4, 4))
+    for m in range(4):
+        kernel[0, m] = [0.10, 0.25, 0.35, 0.30]
+        kernel[1, m] = [0.05, 0.15, 0.35, 0.45]
+    return kernel
+
+
+def test_the_threshold_objective_buys_nothing_on_a_memoryless_system():
+    module = _load()
+    starts = {f"item_{m}": np.eye(4)[m] for m in range(4)}
+    out = module.threshold_objective(_memoryless_kernel(), starts, theta=2, start_turn=2,
+                                     n_turns=20, late_from=15, max_k=4,
+                                     lambdas=np.linspace(0.0, 0.2, 21), mde=0.05)
+    assert out["best_matched_cost_point"]["gap_vs_shared"] == pytest.approx(0.0, abs=1e-9)
+    assert out["verdict"] == "DEGENERACY_SURVIVES_THE_OBJECTIVE"
+
+
+def test_the_threshold_objective_finds_the_headroom_a_saturating_system_has():
+    """Positive control. On a kernel where a reminder is worth much more once
+    constraints have slipped, waiting to see whether they did must beat any
+    schedule fixed in advance at the same expected spend."""
+
+    module = _load()
+    starts = {f"item_{m}": np.eye(4)[m] for m in range(4)}
+    out = module.threshold_objective(_saturating_kernel(), starts, theta=2, start_turn=2,
+                                     n_turns=20, late_from=15, max_k=4,
+                                     lambdas=np.linspace(0.0, 0.2, 21), mde=0.02)
+    assert out["best_matched_cost_point"]["gap_vs_shared"] > 0.02
+    assert out["verdict"] == "WORTH_THE_GPU"
+
+
+def test_the_closed_loop_is_never_credited_with_spending_more():
+    """The guard the matched-cost design exists for: at every frontier point
+    the open-loop competitor is priced at the SAME expected number of
+    reminders, and the fixed schedules are enumerated exhaustively, so the gap
+    can never come from the closed loop simply buying more."""
+
+    module = _load()
+    starts = {f"item_{m}": np.eye(4)[m] for m in range(4)}
+    out = module.threshold_objective(_saturating_kernel(), starts, theta=2, start_turn=2,
+                                     n_turns=20, late_from=15, max_k=4,
+                                     lambdas=np.linspace(0.0, 0.2, 21), mde=0.02)
+    shared = out["open_loop_frontier"]["shared"]
+    # spending more never hurts the open loop, so its frontier is monotone ...
+    values = [shared[k]["service_level"] for k in sorted(shared)]
+    assert values == sorted(values)
+    # ... and the oracle, which picks per item, is never below the shared schedule
+    for point in out["frontier"]:
+        assert point["open_loop_oracle_at_same_cost"] >= point["open_loop_shared_at_same_cost"] - 1e-12
+        assert point["expected_reminders"] <= out["max_reminders_enumerated"]
+
+
+def test_the_open_loop_envelope_is_mixed_not_rounded_down():
+    """A fractional expected cost must be met by the chord between two
+    schedules -- a randomised mixture is itself an open-loop policy. Rounding
+    down to the cheaper integer schedule would hand the closed loop a gap it
+    did not earn."""
+
+    module = _load()
+    at, hull = module._upper_envelope([(0.0, 0.0), (1.0, 0.5), (2.0, 0.6), (3.0, 0.6)])
+    assert at(0.5) == pytest.approx(0.25)
+    assert at(1.5) == pytest.approx(0.55)
+    # a dominated point (more cost, no more value) must not extend the hull
+    assert [p[0] for p in hull] == [0.0, 1.0, 2.0]
+
+
+def test_the_threshold_sizing_reports_the_new_primary_not_the_old_one(tmp_path):
+    """Changing the objective changes the primary, and the primary's variance
+    is what prices the design. The sizing must be computed on the indicator,
+    not inherited from mean y -- the 2026-09-10 note ties the arm table, the
+    primary and the MDE together for exactly this reason."""
+
+    module = _load()
+    pilot = module._sibling_module("analyze_sequor_s1_pilot.py")
+    out = module.threshold_sizing(pilot, _sizing_rows()[0], theta=2, late_from=15, n_turns=N_TURNS,
+                                  seeds=len(SEEDS), fraction=0.5, seed=0)
+    assert out["primary"].startswith("share of turns")
+    assert out["status"].startswith("REPORTED, NOT SIGNED")
+    assert 0.0 < out["full_dose_contrast"] <= 1.0
+    assert out["mde_at_current_design"] > 0

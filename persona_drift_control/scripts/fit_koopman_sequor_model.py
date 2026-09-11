@@ -27,6 +27,39 @@ for turn t is injected BEFORE that turn's reply is generated and scored, so
 of last turn's reminder text while calling it the actuator's effect. Both the
 `defense` line and ERGO retracted a verdict over exactly that off-by-one.
 
+OPTION (a), SIGNED 2026-09-11 (screening section 10 item 11). The S3 pre-check
+found the scalar operator's budget-k optimum to be the same k turns for every
+trajectory, while 60-67% of real late turns sit at y = 1 -- a ceiling the
+scalar fit smooths away, and saturation is exactly the mechanism that makes
+optimal timing state dependent. So the same two checks are re-run on the state
+the judge already returns: the per-constraint binary `followed` vector,
+collapsed to the count `m` in {0,1,2,3} with `y = m/3` unchanged. The kernel
+`P(m_(t+1) | m_t, u_t)` is counted, not regressed, so the boundary is
+represented rather than approximated. PRE-REGISTERED verdict, written before
+the numbers were seen: read `mpc_minus_best_fixed` against the SAME MDE the
+scalar check used (G-S2-4's design resolution, 0.0690, signed 2026-09-10). At
+or above it the degeneracy was the model class; below it a model class that
+carries the ceiling explicitly still wants one plan for everyone, and the
+degeneracy belongs to the task. No third reading and no moving the bar. Zero
+GPU: the 9600 rows of `outputs/sequor_s1_arm/` are the input, unchanged.
+
+OPTION (b) ON PAPER, SIGNED 2026-09-11 (screening section 10 item 12). Option
+(a) showed the degeneracy is the objective's shape, not the model class: under
+a FIXED budget over a FIXED window the reminders must all be spent and only
+their placement is free, so the state scales what a reminder is worth without
+moving the argmax over turns. The threshold objective removes exactly that --
+"keep m >= theta, pay for every reminder" makes WHETHER to spend the question,
+and "do I still need one" is a function of the state by construction of the
+task. Before rewriting plan section 6's arm table, the same identified kernel
+is asked on paper: at EQUAL EXPECTED COST, how much more of the late window
+does the feedback policy hold above the threshold than the best fixed
+schedule? Matched cost is what keeps the comparison from being won by
+definition. PRE-REGISTERED: the largest equal-cost gap is read against THIS
+objective's own MDE at the current design, computed from the same paired
+variance components on the new primary. At or above it, the rewrite is worth
+the GPU; below it, the degeneracy survives the objective change too. Zero GPU
+again: same 9600 rows, same kernel, no new arm.
+
 WHAT A WEAK RESULT HERE DOES NOT MEAN (screening section 10 item 9, signed
 2026-09-10): 65% of the judged constraints on this item set lie outside the
 judge's calibration set, and that observation noise biases the state
@@ -171,12 +204,21 @@ def _step(y: float, u: int, op: dict) -> float:
 def _objective(y0: float, schedule: tuple[int, ...], start_turn: int, late_from: int,
                op: dict) -> float:
     """Late-window mean `y` under a schedule -- S3's primary quantity, not the
-    endpoint. Deterministic rollout: this is the planner's own model."""
+    endpoint. Deterministic rollout: this is the planner's own model.
+
+    TURN LABELLING (fixed 2026-09-11, screening section 10 item 12): the start
+    state is turn 1, so the state produced by step `offset` is turn
+    `start_turn + offset` -- with `start_turn=2` and `horizon = n_turns -
+    start_turn + 1` the rollout covers turns 2..20, one decision per reminder
+    slot. The first version wrote `+ 1` here, which labelled that state turn 3
+    and let the rollout run to a turn 21 the arm does not have; the late window
+    then averaged seven states instead of six. Found because option (b) divides
+    by the window length and reported a SHARE of 1.09."""
 
     y, kept = y0, []
     for offset, u in enumerate(schedule):
         y = _step(y, u, op)
-        if start_turn + offset + 1 >= late_from:
+        if start_turn + offset >= late_from:
             kept.append(y)
     return float(np.mean(kept)) if kept else y
 
@@ -270,7 +312,7 @@ def simulate_s3_gap(op: dict, starts: dict, residuals: np.ndarray, budget: int, 
     value = np.zeros((horizon + 1, budget + 1, len(grid)))
     act = np.zeros((horizon, budget + 1, len(grid)), dtype=bool)
     for offset in range(horizon - 1, -1, -1):
-        turn_next = start_turn + offset + 1
+        turn_next = start_turn + offset
         counts = 1.0 if turn_next >= late_from else 0.0
         for k in range(budget + 1):
             for gi, y in enumerate(grid):
@@ -299,7 +341,7 @@ def simulate_s3_gap(op: dict, starts: dict, residuals: np.ndarray, budget: int, 
                 u = policy[offset]
             k -= u
             y = float(np.clip(_step(y, u, op) + noise[offset], 0.0, 1.0))
-            if start_turn + offset + 1 >= late_from:
+            if start_turn + offset >= late_from:
                 kept.append(y)
         return float(np.mean(kept))
 
@@ -339,6 +381,823 @@ def simulate_s3_gap(op: dict, starts: dict, residuals: np.ndarray, budget: int, 
     }
 
 
+BINARY_SPARSE_CELL = 30  # transitions below which a (state, action) cell is flagged, not trusted
+
+
+def binary_transitions(readout: dict, excluded: list[str]) -> list[dict]:
+    """(followed_t, u_t, followed_(t+1)) per adjacent pair on the S1b arms.
+
+    The judge already returns `followed: [b, b, b]` per turn and `y_graded` is
+    their mean -- this reads the vector the scalar fit averaged away. The `u`
+    slot follows `one_step_transitions` exactly: the action credited to a
+    transition is the reminder injected at the NEXT turn, because it lands
+    before that turn's reply is generated. A pair touching an unparsed
+    constraint is dropped whole rather than imputed, the same rule the scalar
+    path uses, so the two models see the same dialogue turns.
+    """
+
+    rows = []
+    for row in readout["rows"]:
+        if row["branch"] not in S1B_ARMS or row["item_id"] in excluded:
+            continue
+        rows.append(row)
+    by_traj: dict[str, list[dict]] = {}
+    for row in rows:
+        by_traj.setdefault(row["trajectory_id"], []).append(row)
+
+    usable = lambda r: r.get("followed") is not None and all(b is not None for b in r["followed"])
+    out = []
+    for traj_rows in by_traj.values():
+        ordered = sorted(traj_rows, key=lambda r: r["turn"])
+        for now, nxt in zip(ordered, ordered[1:]):
+            if not usable(now) or not usable(nxt):
+                continue
+            out.append({
+                "b_now": tuple(bool(b) for b in now["followed"]),
+                "b_next": tuple(bool(b) for b in nxt["followed"]),
+                "u": int(nxt["u_remind"]), "turn": int(nxt["turn"]),
+                "item_id": now["item_id"], "trajectory_id": now["trajectory_id"],
+            })
+    return out
+
+
+def fit_constraint_kernel(transitions: list[dict], seed: int) -> dict:
+    """`P(b_(t+1)=1 | b_t, u_t)` per constraint, pooled over the three slots.
+
+    Four cells, counted rather than regressed: the state is binary, so the
+    conditional mean IS the whole model and a link function would only add an
+    assumption. Pooling over slots is the primary spec because the three
+    constraints of an item are interchangeable by construction (the judge
+    grades them in the order the item lists them, not by kind); the per-slot
+    fit is reported beside it so a slot that behaves differently cannot hide
+    inside the pool.
+
+    The reported contrast is the binary analogue of G-S2-5's `d`:
+    `gain(0) - gain(1)`, where `gain(b) = P(1|b,u=1) - P(1|b,u=0)`. It is
+    bootstrapped over ITEMS for the same reason `B` is -- a dialogue is the
+    independent unit, and three seeds of one item replay the same constraints.
+    """
+
+    items = sorted({t["item_id"] for t in transitions})
+    # counts[item][b][u] = (n, successes)
+    counts = np.zeros((len(items), 2, 2, 2))  # item, b_now, u, (n, successes)
+    index = {item: i for i, item in enumerate(items)}
+    per_slot = np.zeros((3, 2, 2, 2))
+    for t in transitions:
+        i = index[t["item_id"]]
+        for slot, (now, nxt) in enumerate(zip(t["b_now"], t["b_next"])):
+            counts[i, int(now), t["u"], 0] += 1
+            counts[i, int(now), t["u"], 1] += int(nxt)
+            per_slot[slot, int(now), t["u"], 0] += 1
+            per_slot[slot, int(now), t["u"], 1] += int(nxt)
+
+    def rates(block: np.ndarray) -> np.ndarray:
+        n, s = block[..., 0], block[..., 1]
+        with np.errstate(invalid="ignore", divide="ignore"):
+            return np.where(n > 0, s / np.maximum(n, 1), np.nan)
+
+    pooled_counts = counts.sum(axis=0)
+    p = rates(pooled_counts)
+    gain = p[:, 1] - p[:, 0]
+    contrast = float(gain[0] - gain[1])
+
+    rng = np.random.default_rng(seed)
+    draws = []
+    for _ in range(N_BOOTSTRAP_INTERACTION):
+        chosen = rng.choice(len(items), size=len(items), replace=True)
+        block = counts[chosen].sum(axis=0)
+        q = rates(block)
+        g = q[:, 1] - q[:, 0]
+        draws.append(float(g[0] - g[1]))
+    draws = np.array(draws)
+    finite = draws[np.isfinite(draws)]
+    # an empty cell is a real possibility on a thin readout: say so instead of
+    # bootstrapping a NaN into a number nobody can read
+    if len(finite) < 2 or not np.isfinite(contrast):
+        lo = hi = float("nan")
+        sd = float("nan")
+        mde = float("nan")
+    else:
+        lo, hi = np.percentile(finite, [2.5, 97.5])
+        sd = float(np.std(finite, ddof=1))
+        mde = POWER_Z * sd
+
+    slot_rates = rates(per_slot)
+    cells = {}
+    for b in (0, 1):
+        for u in (0, 1):
+            n = int(pooled_counts[b, u, 0])
+            cells[f"b={b},u={u}"] = {"n": n, "p_next_1": float(p[b, u]),
+                                     "sparse": n < BINARY_SPARSE_CELL}
+    return {
+        "is_a_gate": False,
+        "spec": "pooled over the three constraint slots; counts, not a regression",
+        "cells": cells,
+        "gain_when_violated": float(gain[0]), "gain_when_kept": float(gain[1]),
+        "state_dependence_of_the_gain": contrast,
+        "ci": [float(lo), float(hi)], "bootstrap_sd": sd, "mde_at_80pct": mde,
+        "effect_over_mde": abs(contrast) / mde if mde and np.isfinite(mde) else None,
+        "ci_excludes_zero": bool(np.isfinite(lo) and np.isfinite(hi) and lo * hi > 0),
+        "underdetermined": [k for k, v in
+                            {f"b={b},u={u}": pooled_counts[b, u, 0] for b in (0, 1) for u in (0, 1)}.items()
+                            if v == 0],
+        "per_slot": {f"slot_{s}": {f"b={b},u={u}": {"n": int(per_slot[s, b, u, 0]),
+                                                    "p_next_1": float(slot_rates[s, b, u])}
+                                   for b in (0, 1) for u in (0, 1)} for s in range(3)},
+        "reading": "the scalar bilinear `d` and this contrast ask the same question in two state "
+                   "spaces. Here the ceiling is explicit: a constraint already kept can only be "
+                   "held or lost, so `gain(1)` is bounded by `1 - P(1|1,0)` no matter how strong "
+                   "the actuator is -- the censoring the scalar fit smoothed away.",
+    }
+
+
+def count_kernel(transitions: list[dict]) -> dict:
+    """`P(m_(t+1) | m_t, u_t)` on the count state `m = #followed`, empirical.
+
+    This is the kernel the planner runs on, and it is estimated WITHOUT the
+    conditional-independence assumption the per-constraint kernel would need:
+    the three constraints of one turn share a reply, so a reminder that fixes
+    one may well fix all three. `independence_deviation` below reports what
+    that assumption would have cost, rather than making it silently.
+
+    The objective is `y = m / 3`, the same readout every gate on this line is
+    reported on -- not a new quantity.
+    """
+
+    n = np.zeros((2, 4, 4))
+    for t in transitions:
+        m, m_next = sum(t["b_now"]), sum(t["b_next"])
+        n[t["u"], m, m_next] += 1
+    totals = n.sum(axis=2)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        kernel = np.where(totals[..., None] > 0, n / np.maximum(totals[..., None], 1), np.nan)
+    return {"kernel": kernel, "counts": n, "totals": totals}
+
+
+def product_count_kernel(constraint_cells: dict) -> np.ndarray:
+    """The count kernel conditional independence WOULD imply, for comparison."""
+
+    p = np.zeros((2, 2))  # b_now, u -> P(next=1)
+    for b in (0, 1):
+        for u in (0, 1):
+            p[b, u] = constraint_cells[f"b={b},u={u}"]["p_next_1"]
+    kernel = np.zeros((2, 4, 4))
+    for u in (0, 1):
+        for m in range(4):
+            for kept in range(m + 1):  # of the m already-kept constraints
+                for gained in range(3 - m + 1):  # of the (3-m) violated ones
+                    prob = (math.comb(m, kept) * p[1, u] ** kept * (1 - p[1, u]) ** (m - kept)
+                            * math.comb(3 - m, gained) * p[0, u] ** gained
+                            * (1 - p[0, u]) ** (3 - m - gained))
+                    kernel[u, m, kept + gained] += prob
+    return kernel
+
+
+def kernel_diagnostics(counts: dict, product: np.ndarray) -> dict:
+    """What the planner's kernel looks like, and where it is thin.
+
+    `action_value_interaction` is the count-space reading of the same term
+    G-S2-5 measured: regress `E[m_(t+1)] / 3` on `m/3`, `u` and their product
+    over the occupied cells, weighted by cell counts. A scalar-linear operator
+    forces that product term to 0 by construction; if the fitted kernel gives
+    it a large negative value, the state dependence the linear fit could not
+    represent is in the data rather than in the model class.
+    """
+
+    kernel, n, totals = counts["kernel"], counts["counts"], counts["totals"]
+    grid = np.arange(4) / 3.0
+    rows, weights, targets = [], [], []
+    cells = {}
+    for u in (0, 1):
+        for m in range(4):
+            total = float(totals[u, m])
+            expected = float(np.nansum(kernel[u, m] * grid)) if total else float("nan")
+            cells[f"m={m},u={u}"] = {
+                "n": int(total), "sparse": total < BINARY_SPARSE_CELL,
+                "expected_next_y": expected,
+                "distribution": [float(v) for v in kernel[u, m]] if total else None,
+            }
+            if total:
+                rows.append([1.0, grid[m], float(u), grid[m] * u])
+                weights.append(total)
+                targets.append(expected)
+    design = np.array(rows) * np.sqrt(np.array(weights))[:, None]
+    beta = np.linalg.lstsq(design, np.array(targets) * np.sqrt(np.array(weights)), rcond=None)[0]
+
+    occupied = totals > 0
+    deviation = np.abs(kernel - product)[occupied[..., None].repeat(4, axis=-1)]
+    deviation = deviation[np.isfinite(deviation)]
+    return {
+        "is_a_gate": False,
+        "cells": cells,
+        "action_value_interaction": float(beta[3]),
+        "y_coefficient": float(beta[1]), "u_coefficient": float(beta[2]),
+        "independence_deviation_mean_abs": float(np.mean(deviation)) if len(deviation) else None,
+        "independence_deviation_max_abs": float(np.max(deviation)) if len(deviation) else None,
+        "sparse_cells": [k for k, v in cells.items() if v["sparse"]],
+        "reading": "the interaction term is the count-space analogue of G-S2-5's `d`. The "
+                   "independence deviation is what a per-constraint product kernel would have "
+                   "got wrong; the planner does not use the product kernel, this only prices the "
+                   "assumption. Sparse cells are reported because the m=0 state is rare on this "
+                   "readout -- a policy that depends on it is extrapolating.",
+    }
+
+
+def _propagate(dist: np.ndarray, kernel: np.ndarray, u: int) -> np.ndarray:
+    return dist @ kernel[u]
+
+
+def _binary_objective(start: np.ndarray, schedule: tuple[int, ...], start_turn: int,
+                      late_from: int, kernel: np.ndarray) -> float:
+    """Expected late-window mean `y` of a FIXED schedule, propagated exactly.
+
+    An open-loop schedule does not observe the state, so the expectation is
+    computed by pushing the distribution through the kernel rather than by
+    simulating -- no Monte-Carlo error enters the enumeration.
+    """
+
+    dist, kept, grid = start.copy(), [], np.arange(4) / 3.0
+    for offset, u in enumerate(schedule):
+        dist = _propagate(dist, kernel, u)
+        if start_turn + offset >= late_from:
+            kept.append(float(dist @ grid))
+    return float(np.mean(kept)) if kept else float(dist @ grid)
+
+
+def binary_schedule_separability(kernels: dict, starts: dict, budgets: tuple[int, ...],
+                                 start_turn: int, n_turns: int, late_from: int) -> dict:
+    """The same enumeration `schedule_separability` runs, on the count kernel.
+
+    Deliberately the same question and the same output shape, so the two model
+    classes are compared rather than two checks. It carries the same warning
+    too: enumerating FIXED schedules answers "does the best open-loop plan
+    depend on where you start", which is necessary for a closed loop to earn
+    its arm but not sufficient -- `simulate_binary_s3_gap` asks the sufficient
+    version, whether reacting to the realised state beats the best plan made
+    in advance.
+    """
+
+    horizon = n_turns - start_turn + 1
+    out = {}
+    for name, kernel in kernels.items():
+        per_budget = {}
+        for k in budgets:
+            if k > horizon:
+                continue
+            chosen = {}
+            for item, start in starts.items():
+                best, best_value = None, -np.inf
+                for turns in itertools.combinations(range(horizon), k):
+                    schedule = tuple(1 if i in turns else 0 for i in range(horizon))
+                    value = _binary_objective(start, schedule, start_turn, late_from, kernel)
+                    if value > best_value:
+                        best, best_value = turns, value
+                chosen[item] = tuple(sorted(horizon - 1 - t for t in best))
+            counts: dict[tuple, int] = {}
+            for value in chosen.values():
+                counts[value] = counts.get(value, 0) + 1
+            modal, modal_n = max(counts.items(), key=lambda kv: kv[1])
+            per_budget[k] = {
+                "n_items": len(chosen), "n_distinct_schedules": len(counts),
+                "modal_schedule_from_end": list(modal), "modal_share": modal_n / len(chosen),
+                "schedule_counts": {str(list(kk)): v for kk, v in sorted(counts.items(), key=lambda kv: -kv[1])},
+            }
+        out[name] = per_budget
+    distinct = {name: {k: v["n_distinct_schedules"] for k, v in per.items()}
+                for name, per in out.items()}
+    return {
+        "is_a_gate": False, "start_turn": start_turn, "horizon": horizon,
+        "objective": f"expected mean y over t{late_from}..t{n_turns}",
+        "by_operator": out, "distinct_schedules": distinct,
+        "open_loop_optimum_is_state_dependent": any(
+            v > 1 for per in distinct.values() for v in per.values()),
+    }
+
+
+def simulate_binary_s3_gap(kernel: np.ndarray, starts: dict, budget: int, start_turn: int,
+                           n_turns: int, late_from: int, n_sims: int, seed: int) -> dict:
+    """`koopman_mpc` against the best fixed schedule, on the count kernel.
+
+    THE number option (a) was bought to produce. The planner is exact here --
+    the state space is four points, so the DP is the optimal feedback policy
+    rather than an approximation of it, and no discretisation grid can bias
+    the comparison (the failure the scalar simulation had to pin with a
+    zero-noise test).
+
+    Common random numbers: one uniform per (item, sim, offset) drives the
+    transition under EVERY policy, so the gap is a paired difference. The
+    stochasticity is the model's own -- a binary constraint either survives
+    the turn or does not -- rather than bootstrapped residuals bolted onto a
+    deterministic operator.
+    """
+
+    horizon = n_turns - start_turn + 1
+    grid = np.arange(4) / 3.0
+
+    value = np.zeros((horizon + 1, budget + 1, 4))
+    act = np.zeros((horizon, budget + 1, 4), dtype=bool)
+    for offset in range(horizon - 1, -1, -1):
+        counts_toward = 1.0 if start_turn + offset >= late_from else 0.0
+        for k in range(budget + 1):
+            for m in range(4):
+                rewards = counts_toward * grid + value[offset + 1, k]
+                best = float(kernel[0, m] @ rewards)
+                take = False
+                if k > 0:
+                    alt = float(kernel[1, m] @ (counts_toward * grid + value[offset + 1, k - 1]))
+                    if alt > best:
+                        best, take = alt, True
+                value[offset, k, m] = best
+                act[offset, k, m] = take
+
+    cdf = np.cumsum(kernel, axis=2)
+
+    def run(policy, m0: int, draws: np.ndarray) -> float:
+        m, k, kept = m0, budget, []
+        for offset in range(horizon):
+            u = int(act[offset, k, m]) if policy is None else policy[offset]
+            k -= u
+            m = int(np.searchsorted(cdf[u, m], draws[offset]))
+            if start_turn + offset >= late_from:
+                kept.append(grid[m])
+        return float(np.mean(kept))
+
+    mean_start = np.mean(np.vstack(list(starts.values())), axis=0)
+    best_fixed, best_value = None, -np.inf
+    for turns in itertools.combinations(range(horizon), budget):
+        schedule = tuple(1 if i in turns else 0 for i in range(horizon))
+        v = _binary_objective(mean_start, schedule, start_turn, late_from, kernel)
+        if v > best_value:
+            best_fixed, best_value = schedule, v
+
+    rng = np.random.default_rng(seed)
+    gaps_vs_fixed, gaps_vs_random, reminders_used = [], [], []
+    for item, start in starts.items():
+        for _ in range(n_sims):
+            m0 = int(rng.choice(4, p=start))
+            draws = rng.random(horizon)
+            turns = tuple(sorted(rng.choice(horizon, size=budget, replace=False).tolist()))
+            random_schedule = tuple(1 if i in turns else 0 for i in range(horizon))
+            mpc = run(None, m0, draws)
+            gaps_vs_fixed.append(mpc - run(best_fixed, m0, draws))
+            gaps_vs_random.append(mpc - run(random_schedule, m0, draws))
+    return {
+        "is_a_gate": False, "budget": budget, "n_sims_per_item": n_sims,
+        "planner": "exact DP over (turn, remaining budget, m) -- four states, no grid",
+        "best_fixed_schedule_from_end": [horizon - 1 - i for i, u in enumerate(best_fixed) if u],
+        "mpc_minus_best_fixed": float(np.mean(gaps_vs_fixed)),
+        "mpc_minus_best_fixed_sd": float(np.std(gaps_vs_fixed, ddof=1)),
+        "mpc_minus_random": float(np.mean(gaps_vs_random)),
+        "paired_on": "one uniform draw per (item, sim, turn), shared by every policy",
+        "caveat": "a simulation on a kernel estimated from 40 items; it inherits every way that "
+                  "kernel is wrong, and the m=0 row is thin. Use it one-sidedly, as with the "
+                  "scalar version: a gap far below the design's MDE means S3 as specified cannot "
+                  "resolve what its own planner expects.",
+    }
+
+
+def binary_state_model(readout: dict, excluded: list[str], all_rows: list[dict], budgets: tuple[int, ...],
+                       start_turn: int, n_turns: int, late_from: int, simulate_budget: int,
+                       n_sims: int, mde: float, seed: int) -> dict:
+    """Option (a), signed 2026-09-11: refit the state the judge actually
+    returns and re-run the separability check that stopped S3.
+
+    PRE-REGISTERED before the numbers were seen (screening section 10 item 11):
+    the verdict is read off `mpc_minus_best_fixed` against the SAME MDE the
+    scalar check used -- 0.0690, G-S2-4's design resolution signed 2026-09-10.
+    Above it, the degeneracy was the scalar model class and the `koopman_mpc`
+    arm has something to do; below it, a model class that represents the
+    ceiling explicitly still wants one plan for everyone, which makes the
+    degeneracy a property of the task and not of the fit. No third reading,
+    and no re-tuning of the bar after seeing the gap.
+    """
+
+    transitions = binary_transitions(readout, excluded)
+    if not transitions:
+        return {"is_a_gate": False, "verdict": None,
+                "reason": "no usable per-constraint verdicts in this readout"}
+    constraint = fit_constraint_kernel(transitions, seed)
+    counts = count_kernel(transitions)
+    diagnostics = kernel_diagnostics(counts, product_count_kernel(constraint["cells"]))
+
+    first_turn: dict[str, list[int]] = {}
+    for row in all_rows:
+        if row["turn"] != 1 or row.get("followed") is None or any(b is None for b in row["followed"]):
+            continue
+        first_turn.setdefault(row["item_id"], []).append(sum(1 for b in row["followed"] if b))
+    starts = {}
+    for item, values in sorted(first_turn.items()):
+        dist = np.zeros(4)
+        for m in values:
+            dist[m] += 1
+        starts[item] = dist / dist.sum()
+
+    if not starts:
+        return {"is_a_gate": False, "verdict": None,
+                "reason": "no turn-1 row carries a parsed constraint vector: there is no start state"}
+
+    kernel = counts["kernel"]
+    if np.isnan(kernel[counts["totals"] > 0]).any():
+        raise SystemExit("count kernel has a NaN in an occupied cell")
+    planner_kernel = np.nan_to_num(kernel, nan=0.0)
+    for u in (0, 1):
+        for m in range(4):
+            if counts["totals"][u, m] == 0:  # unvisited: hold the state, never invent a transition
+                planner_kernel[u, m] = 0.0
+                planner_kernel[u, m, m] = 1.0
+
+    separability = binary_schedule_separability(
+        {"binary_count": planner_kernel}, starts, budgets, start_turn, n_turns, late_from)
+    pure = {f"m={m}": np.eye(4)[m] for m in range(4)}
+    sweep = binary_schedule_separability(
+        {"binary_count": planner_kernel}, pure, budgets, start_turn, n_turns, late_from)
+    separability["state_sweep"] = {
+        "states": list(pure),
+        "distinct_schedules": sweep["distinct_schedules"]["binary_count"],
+        "by_budget": sweep["by_operator"]["binary_count"],
+        "reading": "the count state has exactly four points, so this sweep is the WHOLE state "
+                   "space, not a sample of it",
+    }
+    simulation = (simulate_binary_s3_gap(planner_kernel, starts, simulate_budget, start_turn,
+                                         n_turns, late_from, n_sims, seed) if n_sims else None)
+
+    gap = simulation["mpc_minus_best_fixed"] if simulation else None
+    verdict = None
+    if gap is not None:
+        verdict = "CLOSED_LOOP_HAS_HEADROOM" if gap >= mde else "DEGENERACY_SURVIVES_THE_MODEL_CLASS"
+    return {
+        "is_a_gate": False,
+        "signed": "2026-09-11, option (a) (screening section 10 item 11)",
+        "state": "per-constraint binary `followed`, collapsed to the count m in {0,1,2,3}; y = m/3",
+        "n_transitions": len(transitions),
+        "n_items": len({t["item_id"] for t in transitions}),
+        "constraint_kernel": constraint,
+        "count_kernel_diagnostics": diagnostics,
+        "schedule_separability": separability,
+        "s3_gap_simulation": simulation,
+        # the planner's own inputs travel with the report: a schedule nobody can
+        # recompute from the artifact is a claim, not a result
+        "planner_kernel": planner_kernel.tolist(),
+        "starting_distributions": {item: [float(v) for v in dist] for item, dist in starts.items()},
+        "mde_used": mde,
+        "verdict": verdict,
+        "decision_rule": (
+            "pre-registered: MPC minus best fixed schedule at or above the design MDE "
+            f"({mde:.4f}) means the scalar model class was the problem and the koopman_mpc arm "
+            "has something to do; below it, a model class that represents the ceiling explicitly "
+            "still wants one plan for everyone and the degeneracy belongs to the task"),
+    }
+
+
+THRESHOLD_MAX_REMINDERS = 6  # open-loop enumeration ceiling; every frontier point above it is absent
+THRESHOLD_LAMBDAS = tuple(np.round(np.linspace(0.0, 0.30, 61), 5))
+
+
+def _late_reward(theta: int, start_turn: int, n_turns: int, late_from: int) -> tuple[np.ndarray, int]:
+    """Per-turn reward vector over m, and the number of late turns it averages."""
+
+    keep = np.array([1.0 if m >= theta else 0.0 for m in range(4)])
+    n_late = sum(1 for turn in range(start_turn, n_turns + 1) if turn >= late_from)
+    return keep / max(n_late, 1), n_late
+
+
+def _binary_objective_threshold(kernel: np.ndarray, starts: dict, theta: int,
+                                schedule: tuple[int, ...], start_turn: int, n_turns: int,
+                                late_from: int) -> float:
+    """Service level of one explicit schedule, averaged over the items' own
+    starting distributions."""
+
+    reward, _ = _late_reward(theta, start_turn, n_turns, late_from)
+    total = 0.0
+    for start in starts.values():
+        dist, value = start.copy(), 0.0
+        for offset, u in enumerate(schedule):
+            dist = _propagate(dist, kernel, u)
+            if start_turn + offset >= late_from:
+                value += float(dist @ reward)
+        total += value
+    return total / len(starts)
+
+
+def fixed_schedule_frontier(kernel: np.ndarray, starts: dict, theta: int, start_turn: int,
+                            n_turns: int, late_from: int, max_k: int) -> dict:
+    """Open loop: the best FIXED schedule at each number of reminders.
+
+    Every schedule's value is linear in the starting distribution, so the
+    backward recursion is run once for all schedules at once and each item is
+    then a dot product. That is what makes an exhaustive enumeration up to
+    `max_k` reminders affordable -- and exhaustive matters, because a fixed
+    schedule chosen badly would hand the closed loop a win it did not earn.
+
+    Two open-loop competitors are reported, not one. `shared` is the single
+    schedule the whole arm would run, which is what S3 actually compares
+    against. `per_item_oracle` lets every item pick its own best schedule in
+    advance -- it cannot be run without knowing each item's starting state, so
+    it is not an arm, but it is the strict competitor: a closed-loop gap that
+    survives it is not just the closed loop rediscovering that items differ.
+    """
+
+    horizon = n_turns - start_turn + 1
+    reward, _ = _late_reward(theta, start_turn, n_turns, late_from)
+    schedules = []
+    for k in range(min(max_k, horizon) + 1):
+        for turns in itertools.combinations(range(horizon), k):
+            schedules.append((k, tuple(1 if i in turns else 0 for i in range(horizon))))
+    actions = np.array([s for _, s in schedules], dtype=bool)  # (S, horizon)
+
+    w = np.zeros((len(schedules), 4))
+    for offset in range(horizon - 1, -1, -1):
+        counts = reward if start_turn + offset >= late_from else np.zeros(4)
+        future = counts + w
+        under_0 = future @ kernel[0].T
+        under_1 = future @ kernel[1].T
+        w = np.where(actions[:, offset][:, None], under_1, under_0)
+
+    ks = np.array([k for k, _ in schedules])
+    mean_start = np.mean(np.vstack(list(starts.values())), axis=0)
+    shared_values = w @ mean_start
+    per_item = np.vstack([w @ start for start in starts.values()])  # (items, S)
+
+    shared, oracle = {}, {}
+    for k in range(min(max_k, horizon) + 1):
+        mask = ks == k
+        best = int(np.argmax(np.where(mask, shared_values, -np.inf)))
+        shared[k] = {
+            "service_level": float(shared_values[best]),
+            "schedule_from_end": [horizon - 1 - i for i, u in enumerate(schedules[best][1]) if u],
+        }
+        oracle[k] = {"service_level": float(np.mean(np.max(per_item[:, mask], axis=1)))}
+    return {"shared": shared, "per_item_oracle": oracle, "max_k": max_k,
+            "n_schedules_enumerated": len(schedules)}
+
+
+def _upper_envelope(points: list[tuple[float, float]]):
+    """Concave upper envelope of (cost, value) points, as a lookup function.
+
+    A randomised mixture of two fixed schedules is itself an open-loop policy
+    and achieves the chord between them, so the honest open-loop competitor at
+    a fractional cost is the envelope, not the lower of the two integer points.
+    Rounding the closed loop's cost down to the next integer schedule would
+    manufacture part of the gap.
+    """
+
+    kept: list[tuple[float, float]] = []
+    best = -np.inf
+    for cost, value in sorted(points):
+        if value <= best:  # a cheaper schedule is already at least this good
+            continue
+        kept.append((cost, value))
+        best = value
+    hull: list[tuple[float, float]] = []
+    for point in kept:
+        while len(hull) >= 2:
+            (x1, y1), (x2, y2) = hull[-2], hull[-1]
+            # concave: slopes must fall. If the middle point sits on or below the
+            # chord, a mixture of its neighbours already dominates it.
+            if (y2 - y1) * (point[0] - x1) <= (point[1] - y1) * (x2 - x1):
+                hull.pop()
+            else:
+                break
+        hull.append(point)
+
+    def at(cost: float) -> float:
+        if cost <= hull[0][0]:
+            return hull[0][1]
+        if cost >= hull[-1][0]:
+            return hull[-1][1]
+        for (x1, y1), (x2, y2) in zip(hull, hull[1:]):
+            if x1 <= cost <= x2:
+                return y1 + (y2 - y1) * (cost - x1) / (x2 - x1)
+        return hull[-1][1]
+
+    return at, hull
+
+
+def threshold_feedback_frontier(kernel: np.ndarray, starts: dict, theta: int, start_turn: int,
+                                n_turns: int, late_from: int, lambdas) -> list[dict]:
+    """Closed loop under objective (b): keep `m >= theta`, pay `lambda` per reminder.
+
+    No budget to spend down -- that is the whole point of changing the
+    objective. Under a fixed budget the reminders must all be used and only
+    their placement is free, which is why timing decoupled from state; here the
+    controller decides WHETHER to spend at all, and "do I still need one" is a
+    function of the state by construction of the task rather than of the
+    planner.
+
+    Each lambda gives one deterministic policy; its expected cost and service
+    level are both computed by propagating the state distribution exactly, so
+    no simulation noise enters the frontier.
+    """
+
+    horizon = n_turns - start_turn + 1
+    reward, _ = _late_reward(theta, start_turn, n_turns, late_from)
+    mean_start = np.mean(np.vstack(list(starts.values())), axis=0)
+
+    out = []
+    for lam in lambdas:
+        value = np.zeros((horizon + 1, 4))
+        act = np.zeros((horizon, 4), dtype=bool)
+        for offset in range(horizon - 1, -1, -1):
+            counts = reward if start_turn + offset >= late_from else np.zeros(4)
+            future = counts + value[offset + 1]
+            for m in range(4):
+                hold = float(kernel[0, m] @ future)
+                remind = float(kernel[1, m] @ future) - lam
+                take = remind > hold
+                value[offset, m] = remind if take else hold
+                act[offset, m] = take
+        dist, service, cost = mean_start.copy(), 0.0, 0.0
+        for offset in range(horizon):
+            u = act[offset].astype(float)
+            cost += float(dist @ u)
+            moved = np.zeros(4)
+            for m in range(4):
+                moved += dist[m] * kernel[int(act[offset, m]), m]
+            dist = moved
+            if start_turn + offset >= late_from:
+                service += float(dist @ reward)
+        out.append({"lambda": float(lam), "expected_reminders": cost, "service_level": service,
+                    "acts_on_state": bool(len({tuple(act[o]) for o in range(horizon)}) > 1
+                                          or any(len(set(act[o])) > 1 for o in range(horizon)))})
+    return out
+
+
+def threshold_objective(kernel: np.ndarray, starts: dict, theta: int, start_turn: int, n_turns: int,
+                        late_from: int, max_k: int, lambdas, mde: float,
+                        measured_full_dose: float | None = None) -> dict:
+    """Option (b) on paper, before any GPU: at EQUAL EXPECTED COST, how much
+    more of the late window does a state-feedback policy hold above the
+    threshold than the best fixed schedule?
+
+    Matched cost is the whole design of this comparison. "Keep m >= theta"
+    rewards acting when the state has slipped, so a closed loop that simply
+    spent MORE reminders would win by definition; pricing every reminder and
+    reading the gap at the same expected spend removes that. The open-loop
+    competitor is the exhaustive best fixed schedule, mixed along its own
+    upper envelope, not a schedule chosen for it.
+    """
+
+    open_loop = fixed_schedule_frontier(kernel, starts, theta, start_turn, n_turns, late_from, max_k)
+    closed = threshold_feedback_frontier(kernel, starts, theta, start_turn, n_turns, late_from, lambdas)
+    shared_at, shared_hull = _upper_envelope(
+        [(float(k), v["service_level"]) for k, v in open_loop["shared"].items()])
+    oracle_at, _ = _upper_envelope(
+        [(float(k), v["service_level"]) for k, v in open_loop["per_item_oracle"].items()])
+
+    points = []
+    for point in closed:
+        if point["expected_reminders"] > max_k:  # off the enumerated frontier: no honest competitor
+            continue
+        points.append({**point,
+                       "open_loop_shared_at_same_cost": shared_at(point["expected_reminders"]),
+                       "open_loop_oracle_at_same_cost": oracle_at(point["expected_reminders"]),
+                       "gap_vs_shared": point["service_level"] - shared_at(point["expected_reminders"]),
+                       "gap_vs_oracle": point["service_level"] - oracle_at(point["expected_reminders"])})
+    # Model check, the one the 2026-09-10 note made mandatory for this operator:
+    # what the model says the FULL dose buys, against what the arms measured.
+    horizon = n_turns - start_turn + 1
+    always = _binary_objective_threshold(kernel, starts, theta, (1,) * horizon, start_turn,
+                                         n_turns, late_from)
+    never = _binary_objective_threshold(kernel, starts, theta, (0,) * horizon, start_turn,
+                                        n_turns, late_from)
+    model_full_dose = always - never
+
+    best = max(points, key=lambda p: p["gap_vs_shared"]) if points else None
+    verdict = None
+    if best is not None:
+        verdict = ("WORTH_THE_GPU" if best["gap_vs_shared"] >= mde
+                   else "DEGENERACY_SURVIVES_THE_OBJECTIVE")
+    return {
+        "is_a_gate": False,
+        "signed": "2026-09-11, option (b) on paper (screening section 10 item 12)",
+        "primary": f"share of turns t{late_from}..t{n_turns} with m >= {theta}",
+        "threshold": theta, "max_reminders_enumerated": max_k,
+        "n_schedules_enumerated": open_loop["n_schedules_enumerated"],
+        "open_loop_frontier": open_loop,
+        "open_loop_shared_hull": [list(p) for p in shared_hull],
+        "frontier": points,
+        "best_matched_cost_point": best,
+        "mde_used": mde,
+        "model_full_dose_contrast": model_full_dose,
+        "measured_full_dose_contrast": measured_full_dose,
+        "model_under_predicts_full_dose_by": (measured_full_dose / model_full_dose
+                                              if measured_full_dose and model_full_dose else None),
+        "sensitivity": "the kernel under-predicts what the full dose buys, as the scalar operator "
+                       "did (2.8x on the endpoint). Scaling the equal-cost gap by that same factor "
+                       "is not an estimate -- it is the crudest way to ask whether the verdict "
+                       "could survive the model being wrong by that much, and it is reported so "
+                       "the answer is visible rather than assumed.",
+
+        "verdict": verdict,
+        "decision_rule": (
+            "pre-registered: the largest equal-cost gap against the SHARED best fixed schedule, "
+            f"read against this objective's own MDE at the current design ({mde:.4f}). At or "
+            "above it, changing the objective buys a closed loop worth running; below it, the "
+            "degeneracy survives the objective change too and no arm table rewrite is warranted"),
+        "why_matched_cost": "the threshold objective rewards acting when the state has slipped, so "
+                            "an unpriced closed loop would win by spending more. Every reminder is "
+                            "priced and the gap is read at equal expected spend.",
+    }
+
+
+def threshold_sizing(pilot, all_rows: list[dict], theta: int, late_from: int, n_turns: int,
+                     seeds: int, fraction: float, seed: int) -> dict:
+    """What objective (b) would cost in design terms: the paired variance and
+    MDE of the NEW primary, computed the same way G-S2-4 computed the old one.
+
+    Reported, not signed. The 2026-09-10 note is explicit that the arm table,
+    the primary, the MDE and G-S2-4's 50% clause move together; this produces
+    the numbers that rewrite would need, and leaves the ruling to the user.
+    """
+
+    rows = []
+    for row in all_rows:
+        followed = row.get("followed")
+        usable = followed is not None and all(b is not None for b in followed)
+        rows.append({**row,
+                     "y_graded": float(sum(1 for b in followed if b) >= theta) if usable else None})
+    late = range(late_from, n_turns + 1)
+    contrast = pilot.per_item_contrast(rows, "constant_remind", "zero_control", late)
+    if len(contrast) < 2:
+        return {"is_a_gate": False, "primary": f"share of turns t{late_from}..t{n_turns} with m >= {theta}",
+                "status": "NOT COMPUTABLE: fewer than two items carry both full-dose arms with a "
+                          "parsed constraint vector"}
+    components = pilot.variance_components(contrast)
+    full_dose = pilot.bootstrap_contrast(contrast, seed)
+    var = components["sd_between_items"] ** 2 + components["sd_within_item_across_seeds"] ** 2 / seeds
+    n_items = len(contrast)
+    mde = POWER_Z * math.sqrt(var / n_items) if n_items else float("nan")
+    target = fraction * full_dose["point"]
+    needed = math.ceil(POWER_Z ** 2 * var / target ** 2) if target else float("inf")
+    return {
+        "is_a_gate": False,
+        "primary": f"share of turns t{late_from}..t{n_turns} with m >= {theta}",
+        "full_dose_contrast": full_dose["point"], "full_dose_ci": full_dose.get("ci"),
+        "sd_between_items": components["sd_between_items"],
+        "sd_within_item_across_seeds": components["sd_within_item_across_seeds"],
+        "n_items": n_items, "seeds": seeds,
+        "mde_at_current_design": mde,
+        "n_items_for_half_the_full_dose": needed,
+        "trajectories_per_arm_for_half": needed * seeds,
+        "within_ceiling": needed * seeds <= S3_TRAJECTORIES_PER_ARM_CEILING,
+        "status": "REPORTED, NOT SIGNED: adopting it means re-signing the arm table, the primary, "
+                  "the MDE and G-S2-4's 50% clause together (results archive, 2026-09-10 note 3)",
+    }
+
+
+def print_threshold_section(th: dict, sizing: dict) -> None:
+    print(f"\n阈值型目标（选项 b 的纸面版，主量 = {th['primary']}）")
+    print(f"  新主量的设计代价（只报不签）: 满剂量差 {sizing['full_dose_contrast']:+.4f}，"
+          f"配对 sd 题间 {sizing['sd_between_items']:.4f} / 题内 {sizing['sd_within_item_across_seeds']:.4f} → "
+          f"本设计 MDE {sizing['mde_at_current_design']:.4f}；"
+          f"分辨满剂量一半需 {sizing['n_items_for_half_the_full_dose']} 题 × {sizing['seeds']} seed "
+          f"= {sizing['trajectories_per_arm_for_half']} 条/臂"
+          f"（{'在' if sizing['within_ceiling'] else '超出'} 150 停止线）")
+    print(f"  枚举 {th['n_schedules_enumerated']} 个固定日程（≤{th['max_reminders_enumerated']} 次提醒），"
+          f"开环上包络 {th['open_loop_shared_hull']}")
+    for p in th["frontier"][::10]:
+        print(f"    λ={p['lambda']:.3f}  闭环代价 {p['expected_reminders']:.2f} 次、服从率 "
+              f"{p['service_level']:.4f}；等代价开环（共享/按题预知）"
+              f"{p['open_loop_shared_at_same_cost']:.4f}/{p['open_loop_oracle_at_same_cost']:.4f}；"
+              f"差 {p['gap_vs_shared']:+.4f}/{p['gap_vs_oracle']:+.4f}")
+    print(f"  模型 vs 实测的满剂量: 模型 {th['model_full_dose_contrast']:+.4f}，"
+          f"实测 {th['measured_full_dose_contrast']:+.4f}"
+          + (f"，低估 {th['model_under_predicts_full_dose_by']:.1f}×"
+             if th["model_under_predicts_full_dose_by"] else ""))
+    best = th["best_matched_cost_point"]
+    if best:
+        print(f"  最大等代价差: {best['gap_vs_shared']:+.4f}（λ={best['lambda']:.3f}，"
+              f"代价 {best['expected_reminders']:.2f} 次），对按题预知的开环 {best['gap_vs_oracle']:+.4f}；"
+              f"本目标自己的 MDE {th['mde_used']:.4f}")
+    print(f"  裁定（预注册）: {th['verdict']}")
+
+
+def print_binary_section(bs: dict) -> None:
+    if bs.get("constraint_kernel") is None:
+        print(f"\n二值约束状态模型（选项 a）: 跳过 — {bs['reason']}")
+        return
+    ck, kd = bs["constraint_kernel"], bs["count_kernel_diagnostics"]
+    print(f"\n二值约束状态模型（选项 a，{bs['n_transitions']} 个转移，{bs['n_items']} 题）")
+    print("  P(next=1 | b, u): " + "  ".join(
+        f"{k} {v['p_next_1']:.4f} (n={v['n']}{', 稀疏' if v['sparse'] else ''})"
+        for k, v in ck["cells"].items()))
+    print(f"  一次提醒的增益: 违反时 {ck['gain_when_violated']:+.4f}，已守住时 "
+          f"{ck['gain_when_kept']:+.4f}；状态依赖 {ck['state_dependence_of_the_gain']:+.4f} "
+          f"CI [{ck['ci'][0]:+.4f}, {ck['ci'][1]:+.4f}] MDE {ck['mde_at_80pct']:.4f}")
+    print(f"  计数核: 交互项 {kd['action_value_interaction']:+.4f}（标量线性算子恒为 0）；"
+          f"独立性偏差 均值 {kd['independence_deviation_mean_abs']} / 最大 "
+          f"{kd['independence_deviation_max_abs']}；稀疏格 {kd['sparse_cells'] or '无'}")
+    bsep = bs["schedule_separability"]
+    print(f"  日程可分性: 按题 {bsep['distinct_schedules']['binary_count']}，"
+          f"全状态空间（m=0..3）{bsep['state_sweep']['distinct_schedules']}")
+    bsim = bs["s3_gap_simulation"]
+    if bsim:
+        print(f"  S3 臂间差模拟（预算 {bsim['budget']}，精确 DP）: MPC − 最优固定日程 "
+              f"{bsim['mpc_minus_best_fixed']:+.4f}（sd {bsim['mpc_minus_best_fixed_sd']:.4f}），"
+              f"MPC − 随机 {bsim['mpc_minus_random']:+.4f}；本设计 MDE {bs['mde_used']:.4f}")
+    print(f"  裁定（预注册）: {bs['verdict']}")
+
+
 def _sibling_module(name: str):
     """Import the sibling script that already defines a criterion rather than
     restating it. The three nulls come from the `defense` line's fit script,
@@ -373,6 +1232,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--s3-target-fraction", type=float, default=0.5,
                    help="G-S2-4's target: the fraction of the full-dose (zero_control vs "
                         "constant_remind) contrast S3 must resolve. 0.5 signed 2026-09-10.")
+    p.add_argument("--threshold", type=int, default=2,
+                   help="Option (b)'s objective: keep at least this many of the three constraints.")
+    p.add_argument("--threshold-max-reminders", type=int, default=THRESHOLD_MAX_REMINDERS,
+                   help="Open-loop schedules are enumerated exhaustively up to this many reminders.")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--exclude-item", action="append", default=[], metavar="ITEM_ID")
     p.add_argument("--contemporaneous-v", action="store_true", required=True,
@@ -846,6 +1709,26 @@ def main() -> None:
                                   args.late_from, args.simulate_n, args.seed)
                   if args.simulate_n else None)
 
+    # Option (a): the same two checks on the state the judge actually returns.
+    # It is sized against G-S2-4's resolution, not a bar of its own.
+    sizing_gate = gate_s2_4(full_dose, sizing, seeds, args.s3_target_fraction, unpaired_sd, b["B"])
+    binary = binary_state_model(
+        readout, args.exclude_item, all_rows, tuple(args.separability_budgets), 2, n_turns,
+        args.late_from, args.simulate_budget, args.simulate_n,
+        sizing_gate["mde_at_current_design"], args.seed)
+
+    # Option (b) on paper: the same kernel under a threshold objective, priced
+    # per reminder so the closed loop cannot win by spending more.
+    threshold_size = threshold_sizing(pilot, all_rows, args.threshold, args.late_from, n_turns,
+                                      seeds, args.s3_target_fraction, args.seed)
+    threshold = (threshold_objective(
+        np.array(binary["planner_kernel"]),
+        {item: np.array(dist) for item, dist in binary["starting_distributions"].items()},
+        args.threshold, 2, n_turns, args.late_from, args.threshold_max_reminders,
+        THRESHOLD_LAMBDAS, threshold_size["mde_at_current_design"],
+        threshold_size.get("full_dose_contrast"))
+        if binary.get("planner_kernel") is not None else None)
+
     report = {
         "arm_dir": str(arm_dir), "provenance": readout.get("provenance"),
         "judge_kind": readout["judge_kind"], "judge_model": readout["judge_model"],
@@ -868,8 +1751,10 @@ def main() -> None:
         "g_s2_1": gate_s2_1(folds, args.folds_to_pass, args.n_folds),
         "g_s2_2": gate_s2_2(b),
         "g_s2_3": gate_s2_3(diagnostics, model.state_dim),
-        "g_s2_4": gate_s2_4(full_dose, sizing, seeds, args.s3_target_fraction,
-                            unpaired_sd, b["B"]),
+        "g_s2_4": sizing_gate,
+        "binary_state_model": binary,
+        "threshold_objective": threshold,
+        "threshold_objective_sizing": threshold_size,
         "gold_coverage": arm_report["gold_coverage"],
         "caveat": (
             f"{arm_report['gold_coverage']['share_outside_calibration_set']:.0%} of the judged "
@@ -929,6 +1814,10 @@ def main() -> None:
               f"MPC − 最优固定日程 {sim['mpc_minus_best_fixed']:+.4f}, "
               f"MPC − 随机 {sim['mpc_minus_random']:+.4f}；"
               f"本设计的 MDE {g4['mde_at_current_design']:.4f}")
+    print_binary_section(report["binary_state_model"])
+    if threshold is not None:
+        print_threshold_section(threshold, threshold_size)
+
     prov = report["state_provenance"]
     print(f"\nstate provenance (diagnostic, not a gate): y_prev coefficient pooled "
           f"{prov['pooled']['y_prev_coefficient']:+.4f} -> item-demeaned "

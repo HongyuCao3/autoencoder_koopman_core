@@ -16,7 +16,7 @@
 
 | 线（代号以 [`NAMING.md`](NAMING.md) 为准） | 状态 | 一句话 | 入口文档（详见下面「实验」一节） |
 |---|---|---|---|
-| `constraint`（SEQUOR） | ⏸ **等裁决** | S0–S2 完成入库；S3 阻塞在三选一，见 `constraint_results.md` §S3 准入前检查 | `constraint_retention_plan.md` |
+| `constraint`（SEQUOR） | ⏸ **等裁决** | S0–S2 完成入库；S3 三选一里 (a) 与 (b) 的纸面版都已执行（2026-09-11，退化挺过换模型类**与**换目标函数），下一步要么换动作/换设定（需新 GPU 臂）要么放弃 `koopman_mpc` 臂，见 `constraint_results.md` §选项 (b) 的纸面版 | `constraint_retention_plan.md` |
 | `gsm8k_sharded`（旧称 ERGO） | ⏸ 挂起 | 算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程 | `ergo_fidelity_restoration_plan.md` |
 | `defense` | ⏸ 收尾 | 辨识成立时挂起；读出没量程（独立 judge 天花板 0.91） | `defense_line_redesign_plan.md` |
 | `stance` | ⏸ 挂起 | 执行器权威两次空结果（SYCON、MMLU） | `mc_sycophancy_screening_pilot.md` |

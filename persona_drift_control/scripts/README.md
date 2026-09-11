@@ -75,7 +75,7 @@
 | `fit_koopman_benign_model.py` | detect | 冻结-复现用 | 检测设计选项3 step1：拟合"良性 regime" Koopman 代理，与已有"攻击 regime"模型配对 |
 | `fit_koopman_defense_model.py` | defense | 冻结-复现用 | Phase C：在 Phase B 开环随机激励轨迹上拟合 Koopman 代理，评估一步/rollout 误差与可控性诊断 |
 | `fit_koopman_ergo_branch_lifted.py` | gsm8k_sharded | 冻结-复现用 | EK-A 反事实分叉臂上的升维（含双线性）Koopman-with-control，正规化版 fit_koopman_ergo_branch.py |
-| `fit_koopman_sequor_model.py` | constraint | 活跃 | S2：在 S1b 反相激励臂上拟合 y_{t+1}=Ay_t+Bu_t+c，跑 G-S2-1..5（含双线性项）、日程可分性检查与 S3 臂间差模拟，CPU-only |
+| `fit_koopman_sequor_model.py` | constraint | 活跃 | S2：在 S1b 反相激励臂上拟合 y_{t+1}=Ay_t+Bu_t+c，跑 G-S2-1..5（含双线性项）、日程可分性检查与 S3 臂间差模拟；另含选项 (a) 的逐约束二值状态模型（计数核 + 精确 DP）与选项 (b) 的阈值型目标等代价前沿，CPU-only |
 | `fit_koopman_ergo_branch.py` | gsm8k_sharded | 冻结-复现用 | EK-A 门 G-EKA-3：在反事实分叉臂上拟合受控算子，用三个平凡零假设按题目不相交折检验 |
 | `fit_koopman_ergo_closeness.py` | gsm8k_sharded | 冻结-复现用 | F2：用 closeness 读出替代 y_task_success 重跑 Phase B 拟合（复用 fit_koopman_ergo_model.py 结构） |
 | `fit_koopman_ergo_model.py` | gsm8k_sharded | 冻结-复现用 | ERGO/Laban 线 Phase B/C：在开环随机激励轨迹（u_reset/y_task_success）上拟合 Koopman 代理 |
