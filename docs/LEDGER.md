@@ -227,10 +227,15 @@ S0 校准 ×2 + S0-0 共 3 个仪器、在 S1 之前就绑住配额；EK-A 当�
 - `scripts/fit_koopman_sequor_model.py`（新，12 条单测）→ `outputs/sequor_s1_arm/s2_koopman_fit_report.json`：
   **G-S2-1 过**（arx 18/20 折，均值一步 MSE 0.0227 vs 最好 null 0.0383）、
   **G-S2-2 过**（`B` +0.01820，CI [+0.00723, +0.03014]，1.11×MDE）、G-S2-3 记录（谱半径 0.634、满秩、
-  Gramian 条件数 2.6e4）、**G-S2-4 NEEDS_RULING**（等预算下臂间差的是提醒位置不是数量，`B` 说不出那个量级）。
+  Gramian 条件数 2.6e4）、**G-S2-4 过**（2026-09-10 签字：目标 = 满剂量差的 50% = 0.0694 → 39 题 × 3 seed = 117 条/臂，在 150 停止线内，**现有 N=40 可直接进 S3**；同时签死「CI 含 0 判 UNDECIDABLE」与「同址写明本设计只分辨得出 ≥0.068 的臂间差」）。同批修掉一个口径 bug：初版用非配对的 late 窗口 sd 0.1632，而 S3 主量是按 (题,seed) 配对——改用配对差的方差分量，旧值保留为 `unpaired_late_window_sd_superseded`。
   诊断：状态项去题均值后从 +0.633 降到 +0.208，**大部分是持久题目难度**；`u` 系数三种规格不动。
   ⚠️ 算子的稳态位移 0.050 外推不到 S1a 的 +0.1389（差 2.8×，late 窗口已贴天花板）——
   **它是辨识结果，不是终点预测器**。
+
+两条判据裁定（G-S1 行数按产物自报维度乘 / G-S2-4 目标效应）记在
+[`constraint_signal_screening.md`](experiments/constraint_signal_screening.md) §十 第 10 条；
+重跑产物 `s1_gates_report_row_clause_signed.json` 与 `s2_koopman_fit_report_paired_sizing.json`，
+初版报告原地保留（S1 闸门两版逐键 diff 只差一个判词字符串）。
 
 结果见 [constraint_results.md](experiments/constraint_results.md) §S1 辨识臂（15772956 / 15772957）。
 旧标题「S1 辨识臂」下那段讲的是 15761810 的重建，已按内容改标题，内容未动。

@@ -13,8 +13,10 @@ CPU only, pure numpy -- run directly, no sbatch.
                         reminder raises `y`.
     G-S2-3 degeneracy   spectral radius in (0.1, 1.05), full controllability
                         rank, Gramian condition < 1e12. RECORDED, not a gate.
-    G-S2-4 sizing       trajectories per arm S3 would need, from this fit's
-                        `B` and the late-window paired sd. > 150 per arm ->
+    G-S2-4 sizing       trajectories per arm S3 needs to resolve half the
+                        full-dose contrast (user ruling 2026-09-10), on the
+                        PAIRED per-(item, seed) difference variance that plan
+                        section 6's primary actually has. > 150 per arm ->
                         stop and report.
 
 The input is S1b (`bernoulli` + `antithetic`) and only S1b: the S1a arms are a
@@ -88,6 +90,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--folds-to-pass", type=int, default=14, help="Plan section 5: 14 of 20.")
     p.add_argument("--controllability-horizon", type=int, default=5)
     p.add_argument("--late-from", type=int, default=15, help="Late window used by G-S2-4's sd.")
+    p.add_argument("--s3-target-fraction", type=float, default=0.5,
+                   help="G-S2-4's target: the fraction of the full-dose (zero_control vs "
+                        "constant_remind) contrast S3 must resolve. 0.5 signed 2026-09-10.")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--exclude-item", action="append", default=[], metavar="ITEM_ID")
     p.add_argument("--contemporaneous-v", action="store_true", required=True,
@@ -304,34 +309,104 @@ def gate_s2_3(diagnostics: dict, state_dim: int) -> dict:
     }
 
 
-def gate_s2_4(b: float, late_paired_sd: float, effects: dict) -> dict:
-    """Trajectories per arm S3 needs, at 80% power, for each candidate effect.
+def s3_sizing_variance(pilot, rows: list[dict], late_from: int, n_turns: int) -> dict:
+    """The variance S3's primary quantity actually has: the sd of the PAIRED
+    per-(item, seed) difference between two schedules, split into a
+    between-item and a within-item-across-seeds part.
 
-    The plan says to back it out "from `B` and the late-window paired sd" but
-    does not say which contrast S3 must resolve -- and under an equal-budget
-    comparison the arms differ in the PLACEMENT of reminders, not their
-    number, so `B` alone does not name that effect. The table is therefore
-    computed for every effect size the design can name, and the choice is
-    marked as a ruling rather than guessed: picking one here would be setting
-    S3's power target from whichever number happens to look affordable.
+    This is the caliber correction signed 2026-09-10. The first version of
+    G-S2-4 used the sd of the late-window mean ACROSS trajectories (0.1632 on
+    this arm), but plan section 6's primary is a bootstrap over differences
+    paired by `(item_id, seed)`, and pairing removes the between-item level
+    that dominates this readout. Sizing an arm comparison on an unpaired sd
+    prices a design nobody is going to run.
+
+    The split matters for the same reason it did when S1 was sized: adding
+    SEEDS shrinks only the within-item term, so a pooled sd would let someone
+    buy seeds expecting power that only items can deliver.
     """
 
-    per_arm = {
-        name: math.ceil((POWER_Z * late_paired_sd / effect) ** 2) if effect else None
-        for name, effect in effects.items()
-    }
-    affordable = {name: (n is not None and n <= S3_TRAJECTORIES_PER_ARM_CEILING)
-                  for name, n in per_arm.items()}
+    contrast = pilot.per_item_contrast(rows, "constant_remind", "zero_control",
+                                       range(late_from, n_turns + 1))
+    components = pilot.variance_components(contrast)
     return {
-        "criterion": f"trajectories per arm at 80% power; > {S3_TRAJECTORIES_PER_ARM_CEILING} per "
-                     f"arm -> stop and report",
-        "late_window_paired_sd": late_paired_sd, "B": b,
-        "candidate_effects": effects, "trajectories_per_arm": per_arm,
-        "within_ceiling": affordable,
-        "needs_a_ruling": "which candidate effect S3 must resolve. Under an equal-budget design "
-                          "the arms differ in reminder PLACEMENT, not count, so B does not name "
-                          "the contrast; the plan leaves it open and this script will not pick.",
-        "verdict": "NEEDS_RULING",
+        "paired_on": "(item_id, seed), plan section 6's primary",
+        "sd_between_items": components["sd_between_items"],
+        "sd_within_item_across_seeds": components["sd_within_item_across_seeds"],
+        "sd_of_item_means": components["sd_of_item_means"],
+        "measured_on": "the S1a arms (constant_remind vs zero_control), the only pair of arms "
+                       "in this data that differ in schedule",
+    }
+
+
+def gate_s2_4(full_dose_contrast: float, sizing: dict, seeds: int, fraction: float,
+              unpaired_late_sd: float, b: float) -> dict:
+    """Trajectories per arm S3 needs at 80% power, against the signed target.
+
+    THE TARGET (user ruling 2026-09-10, option A): S3 must resolve
+    `fraction` x the full-dose contrast -- half of what never-remind vs
+    always-remind buys. The plan said to back the number out of `B`, but S3's
+    three arms spend the SAME budget and differ only in where the reminders
+    land, so `B` (the value of one more reminder) does not name that contrast;
+    and S2 showed the operator under-predicts the sustained endpoint gap by
+    2.8x, so a `B`-derived target would be priced off a quantity the operator
+    itself cannot extrapolate.
+
+    What the ruling costs is recorded with it, not left implicit: at half the
+    full-dose contrast the design is blind to a closed-loop advantage smaller
+    than that, so a CI covering zero in S3 is UNDECIDABLE, never "the closed
+    loop is worth nothing" -- the clause ERGO's pre-closure review had to
+    invent after the fact.
+
+    Other fractions are computed beside it so the cost of the ruling stays
+    visible, and the old unpaired sd is kept as a labelled secondary so the
+    superseded number remains traceable.
+    """
+
+    var = lambda s: sizing["sd_between_items"] ** 2 + sizing["sd_within_item_across_seeds"] ** 2 / s
+    def items_needed(effect: float, s: int) -> int:
+        return math.ceil(POWER_Z ** 2 * var(s) / effect ** 2)
+
+    target = fraction * full_dose_contrast
+    n_items = items_needed(target, seeds)
+    per_arm = n_items * seeds
+    table = {}
+    for frac in (1.0, 0.5, 1 / 3, 0.25):
+        effect = frac * full_dose_contrast
+        n = items_needed(effect, seeds)
+        table[f"{frac:.2f}x_full_dose"] = {
+            "effect": effect, "n_items": n, "trajectories_per_arm": n * seeds,
+            "within_ceiling": n * seeds <= S3_TRAJECTORIES_PER_ARM_CEILING,
+        }
+    n_b = items_needed(abs(b), seeds)
+    table["B_one_reminder"] = {
+        "effect": abs(b), "n_items": n_b, "trajectories_per_arm": n_b * seeds,
+        "within_ceiling": n_b * seeds <= S3_TRAJECTORIES_PER_ARM_CEILING,
+        "note": "the plan's literal reading; it prices S3 off a quantity the operator cannot "
+                "extrapolate, and it does not name an equal-budget contrast at all",
+    }
+    return {
+        "criterion": f"trajectories per arm at 80% power to resolve {fraction:.2f} x the full-dose "
+                     f"contrast; > {S3_TRAJECTORIES_PER_ARM_CEILING} per arm -> stop and report",
+        "signed": "2026-09-10, option A (screening section 10 item 10)",
+        "full_dose_contrast": full_dose_contrast, "target_fraction": fraction,
+        "target_effect": target, "seeds": seeds,
+        "paired_sd_components": sizing,
+        "n_items_required": n_items, "trajectories_per_arm": per_arm,
+        "mde_at_current_design": POWER_Z * math.sqrt(var(seeds) / n_items),
+        "sizing_table": table,
+        "unpaired_late_window_sd_superseded": unpaired_late_sd,
+        "why_superseded": "sd of the late-window mean across trajectories, i.e. an UNPAIRED "
+                          "caliber. Plan section 6 pairs by (item, seed), and pairing removes the "
+                          "between-item level; the paired components above are the right "
+                          "denominator (user ruling 2026-09-10).",
+        "s3_reporting_rules_signed_with_this": [
+            "a CI covering zero in S3 is UNDECIDABLE, not a negative result about the closed loop",
+            f"every S3 number carries: this design resolves arm gaps of "
+            f"{POWER_Z * math.sqrt(var(seeds) / n_items):.4f} or larger, about "
+            f"{fraction:.0%} of the full-dose gain",
+        ],
+        "verdict": "PASS" if per_arm <= S3_TRAJECTORIES_PER_ARM_CEILING else "STOP_AND_REPORT",
     }
 
 
@@ -436,8 +511,16 @@ def main() -> None:
 
     folds = fold_evaluation(defense, rows, config, args.ridge, args.n_folds, args.seed)
     b = bootstrap_b(design, args.ridge, args.seed)
-    sd = late_window_paired_sd(readout, args.exclude_item, args.late_from)
-    s1a_late = 0.1389  # the S1a contrast on this arm, the full-dose ceiling any schedule can buy
+    unpaired_sd = late_window_paired_sd(readout, args.exclude_item, args.late_from)
+
+    pilot = _sibling_module("analyze_sequor_s1_pilot.py")
+    all_rows = [r for r in readout["rows"] if r["item_id"] not in args.exclude_item]
+    n_turns = arm_report["n_turns"]
+    seeds = len(arm_report["seeds"])
+    late = range(args.late_from, n_turns + 1)
+    full_dose = pilot.bootstrap_contrast(
+        pilot.per_item_contrast(all_rows, "constant_remind", "zero_control", late), args.seed)["point"]
+    sizing = s3_sizing_variance(pilot, all_rows, args.late_from, n_turns)
 
     report = {
         "arm_dir": str(arm_dir), "provenance": readout.get("provenance"),
@@ -458,11 +541,8 @@ def main() -> None:
         "g_s2_1": gate_s2_1(folds, args.folds_to_pass, args.n_folds),
         "g_s2_2": gate_s2_2(b),
         "g_s2_3": gate_s2_3(diagnostics, model.state_dim),
-        "g_s2_4": gate_s2_4(b["B"], sd, {
-            "one_reminder_B": abs(b["B"]),
-            "s1a_late_window_contrast": s1a_late,
-            "pilot_target_0.10": 0.10,
-        }),
+        "g_s2_4": gate_s2_4(full_dose, sizing, seeds, args.s3_target_fraction,
+                            unpaired_sd, b["B"]),
         "gold_coverage": arm_report["gold_coverage"],
         "caveat": (
             f"{arm_report['gold_coverage']['share_outside_calibration_set']:.0%} of the judged "
@@ -488,8 +568,17 @@ def main() -> None:
     print(f"G-S2-3 record: spectral radius {g3['spectral_radius']:.4f} (in band {g3['radius_in_band']}), "
           f"rank {g3['controllability_rank']}/{g3['state_dim']}, "
           f"gramian cond {g3['gramian_condition']:.3e}")
-    print(f"G-S2-4 {g4['verdict']}: late paired sd {sd:.4f} -> trajectories/arm "
-          + "  ".join(f"{k}={v}" for k, v in g4["trajectories_per_arm"].items()))
+    print(f"G-S2-4 {g4['verdict']}: full-dose contrast {g4['full_dose_contrast']:+.4f}, target "
+          f"{g4['target_fraction']:.0%} = {g4['target_effect']:.4f} -> {g4['n_items_required']} items "
+          f"x {g4['seeds']} seeds = {g4['trajectories_per_arm']} trajectories/arm "
+          f"(ceiling {S3_TRAJECTORIES_PER_ARM_CEILING})")
+    for name, row in g4["sizing_table"].items():
+        print(f"    {name:<18} effect {row['effect']:.4f} -> {row['n_items']} items, "
+              f"{row['trajectories_per_arm']} traj/arm  "
+              f"{'ok' if row['within_ceiling'] else 'over the ceiling'}")
+    print(f"    paired sd: between-items {sizing['sd_between_items']:.4f}, within-item across "
+          f"seeds {sizing['sd_within_item_across_seeds']:.4f}  "
+          f"(superseded unpaired sd {unpaired_sd:.4f})")
     prov = report["state_provenance"]
     print(f"\nstate provenance (diagnostic, not a gate): y_prev coefficient pooled "
           f"{prov['pooled']['y_prev_coefficient']:+.4f} -> item-demeaned "

@@ -265,7 +265,8 @@ def test_state_provenance_separates_dynamics_from_item_difficulty():
 
 def test_end_to_end_refuses_to_overwrite_and_writes_every_gate(tmp_path, monkeypatch):
     module = _load()
-    path = _readout(_synthetic(a=0.6, b=0.10), tmp_path)
+    # the sizing gate reads the S1a arms, so the end-to-end fixture carries all four
+    path = _readout(_synthetic(a=0.6, b=0.10) + _sizing_rows()[0], tmp_path)
     out = tmp_path / "s2_report.json"
     monkeypatch.setattr("sys.argv", [
         "fit_koopman_sequor_model.py", "--independent-readout", str(path),
@@ -275,7 +276,8 @@ def test_end_to_end_refuses_to_overwrite_and_writes_every_gate(tmp_path, monkeyp
     report = json.loads(out.read_text())
     assert report["g_s2_1"]["verdict"] == "PASS"
     assert report["g_s2_2"]["verdict"] == "PASS"
-    assert report["g_s2_4"]["verdict"] == "NEEDS_RULING"
+    assert report["g_s2_4"]["verdict"] == "PASS"
+    assert report["g_s2_4"]["target_fraction"] == 0.5
     assert report["g_s2_3"]["full_rank"] is True
     assert "does not close" in report["caveat"] or "never used to close" in report["caveat"]
 
@@ -289,3 +291,96 @@ def test_the_self_readout_cannot_feed_the_fit(tmp_path):
     path = _readout(_synthetic(a=0.6, b=0.10), tmp_path, judge_kind="self")
     with pytest.raises(SystemExit, match="judge_kind"):
         gates.load_readout(path, "independent")
+
+
+def _sizing_rows():
+    """Two S1a arms with a known full-dose contrast and a known paired
+    variance: `constant_remind` sits about `gap` above `zero_control` in every
+    late turn, item LEVELS spread widely while the per-item EFFECT barely
+    moves. Pairing removes the level, so the two calibers differ by an order
+    of magnitude -- which is the thing under test."""
+
+    rng = np.random.default_rng(7)
+    gap = 0.20
+    rows = []
+    for item in range(N_ITEMS):
+        # wide spread in LEVEL, narrow spread in the per-item EFFECT: exactly the
+        # shape that makes the paired and unpaired calibers disagree
+        level = 0.1 + 0.04 * item
+        item_gap = gap + 0.02 * ((item % 5) - 2)
+        for s in SEEDS:
+            for arm in ("zero_control", "constant_remind"):
+                for turn in range(1, N_TURNS + 1):
+                    y = level + (item_gap if arm == "constant_remind" else 0.0) + rng.normal(0, 0.01)
+                    rows.append({
+                        "trajectory_id": f"tuple_{item}__{arm}__s{s}", "item_id": f"tuple_{item}",
+                        "turn": turn, "branch": arm, "u_remind": int(arm == "constant_remind" and turn > 1),
+                        "seed": s, "y_graded": float(y),
+                    })
+    return rows, gap
+
+
+def test_sizing_uses_the_paired_caliber_not_the_unpaired_one():
+    """The caliber correction signed 2026-09-10. Between-item spread dominates
+    this readout, so the unpaired sd of late-window means is much larger than
+    the sd of the PAIRED per-(item, seed) difference that plan section 6's
+    primary is built on. Sizing on the unpaired number prices a design nobody
+    runs -- here it would demand an order of magnitude more items."""
+
+    module = _load()
+    pilot = module._sibling_module("analyze_sequor_s1_pilot.py")
+    rows, gap = _sizing_rows()
+    sizing = module.s3_sizing_variance(pilot, rows, late_from=15, n_turns=N_TURNS)
+
+    unpaired = np.std([np.mean([r["y_graded"] for r in rows
+                                if r["item_id"] == f"tuple_{i}" and r["seed"] == s
+                                and r["branch"] == arm and r["turn"] >= 15])
+                       for i in range(N_ITEMS) for s in SEEDS
+                       for arm in ("zero_control", "constant_remind")], ddof=1)
+    paired = np.hypot(sizing["sd_between_items"], sizing["sd_within_item_across_seeds"])
+    assert paired < 0.2 * unpaired, (paired, unpaired)
+
+
+def test_the_signed_target_is_half_the_full_dose_contrast():
+    module = _load()
+    pilot = module._sibling_module("analyze_sequor_s1_pilot.py")
+    rows, gap = _sizing_rows()
+    sizing = module.s3_sizing_variance(pilot, rows, late_from=15, n_turns=N_TURNS)
+    gate = module.gate_s2_4(gap, sizing, seeds=3, fraction=0.5, unpaired_late_sd=0.99, b=0.02)
+
+    assert gate["target_effect"] == pytest.approx(gap / 2)
+    assert gate["verdict"] == "PASS"
+    assert gate["trajectories_per_arm"] == gate["n_items_required"] * 3
+    # the superseded number stays in the artifact, labelled
+    assert gate["unpaired_late_window_sd_superseded"] == 0.99
+    # and the cost of the ruling is recorded with it
+    assert gate["sizing_table"]["0.25x_full_dose"]["n_items"] > gate["n_items_required"]
+    assert any("UNDECIDABLE" in rule for rule in gate["s3_reporting_rules_signed_with_this"])
+
+
+def test_an_unaffordable_target_stops_instead_of_passing():
+    """The ceiling is a stop rule, not a suggestion: a target the design cannot
+    afford must hand back, never quietly size past 150 trajectories per arm."""
+
+    module = _load()
+    pilot = module._sibling_module("analyze_sequor_s1_pilot.py")
+    rows, gap = _sizing_rows()
+    sizing = module.s3_sizing_variance(pilot, rows, late_from=15, n_turns=N_TURNS)
+    sizing = dict(sizing, sd_between_items=sizing["sd_between_items"] * 10)
+    gate = module.gate_s2_4(gap, sizing, seeds=3, fraction=0.5, unpaired_late_sd=0.99, b=0.02)
+    assert gate["verdict"] == "STOP_AND_REPORT"
+    assert gate["trajectories_per_arm"] > module.S3_TRAJECTORIES_PER_ARM_CEILING
+
+
+def test_seeds_buy_less_than_items_in_the_sizing():
+    """Between-item variance does not shrink with seeds. If the sizing ever
+    stopped reflecting that, someone would buy seeds expecting power only
+    items can deliver -- the error S1's own sizing was written to prevent."""
+
+    module = _load()
+    pilot = module._sibling_module("analyze_sequor_s1_pilot.py")
+    rows, gap = _sizing_rows()
+    sizing = module.s3_sizing_variance(pilot, rows, late_from=15, n_turns=N_TURNS)
+    three = module.gate_s2_4(gap, sizing, seeds=3, fraction=0.25, unpaired_late_sd=0.9, b=0.02)
+    nine = module.gate_s2_4(gap, sizing, seeds=9, fraction=0.25, unpaired_late_sd=0.9, b=0.02)
+    assert nine["n_items_required"] >= 0.8 * three["n_items_required"]

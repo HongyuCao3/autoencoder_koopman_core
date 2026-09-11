@@ -126,14 +126,22 @@ def gate_g_s1(arm_report: dict, rows: list[dict], arms: list[str], n_turns: int)
         for seed, check in arm_report["schedule_checks"].items()
     }
     turns_missing_an_action = sorted(t for t, seen in actions_by_turn.items() if seen != {0, 1})
-    # The plan writes this clause as "arms x 40 x 20": it predates the ruling that
-    # moved the line from one greedy pass to 3 sampled seeds (screening section 10
-    # item 5). Seeds multiply the rows; dropping the factor would make the clause
-    # fail on every arm the line has actually run.
+    # The plan writes this clause as "arms x 40 x 20". That product predates the
+    # ruling that moved the line from one greedy pass to 3 sampled seeds
+    # (screening section 10 item 5), so taken literally it fails on every arm
+    # this line has actually run. Signed reading (2026-09-10, screening section
+    # 10 item 10): the expected count is the product of the design dimensions
+    # the ARTIFACT ITSELF declares, so the clause keeps doing its job -- catching
+    # an arm that lost rows -- without expiring again the next time N or the
+    # seed count changes. The declared dimensions are cross-checked against the
+    # rows, because an artifact disagreeing with its own header is the other way
+    # this could go wrong.
     n_seeds = len(arm_report["seeds"])
-    expected_rows = len(arms) * n_items * n_turns * n_seeds
+    declared_items = arm_report.get("n_items", n_items)
+    expected_rows = len(arms) * declared_items * n_turns * n_seeds
     checks = {
         "row_count_matches_design": len(rows) == expected_rows,
+        "declared_item_count_matches_rows": declared_items == n_items,
         "item_sets_identical_across_arms": all(v == reference for v in item_sets.values()),
         "u_mean_in_band_per_seed": all(u_mean_in_band.values()),
         "both_actions_at_every_turn": not turns_missing_an_action,
@@ -144,7 +152,10 @@ def gate_g_s1(arm_report: dict, rows: list[dict], arms: list[str], n_turns: int)
         "criterion": "rows = arms x items x turns x seeds; identical item sets; bernoulli u mean in "
                      f"[{U_BAND[0]}, {U_BAND[1]}] per seed; both actions at every turn t>=2; "
                      f"per ARM, every turn has sd > 0 and >= {MIN_DISTINCT_VALUES} distinct y",
-        "n_rows": len(rows), "n_rows_expected": expected_rows, "n_items": n_items, "n_seeds": n_seeds,
+        "n_rows": len(rows), "n_rows_expected": expected_rows, "n_items": n_items,
+        "n_items_declared": declared_items, "n_seeds": n_seeds,
+        "row_count_reading": "product of the design dimensions the artifact declares "
+                             "(arms x items x turns x seeds), signed 2026-09-10",
         "checks": checks,
         "u_mean_by_seed": {s: c["bernoulli_u_mean"] for s, c in arm_report["schedule_checks"].items()},
         "u_mean_in_band": u_mean_in_band,

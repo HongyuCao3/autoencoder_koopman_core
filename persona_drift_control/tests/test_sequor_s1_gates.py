@@ -142,6 +142,36 @@ def test_row_count_clause_counts_seeds():
     assert not _run(module, truncated)["checks"]["row_count_matches_design"]
 
 
+def test_row_count_reads_the_dimensions_the_artifact_declares():
+    """Signed reading (2026-09-10): the expected count is the product of the
+    dimensions the arm report declares, not a hardcoded 40 x 20. An arm run at
+    a different N must pass without the criterion being edited again -- that is
+    the whole point of the ruling."""
+
+    module = _load()
+    rows = [r for r in _rows() if r["item_id"] != f"tuple_{N_ITEMS - 1}"]
+    arm_report = _arm_report(rows)
+    arm_report["n_items"] = N_ITEMS - 1
+    gate = module.gate_g_s1(arm_report, rows, ARMS, N_TURNS)
+    assert gate["checks"]["row_count_matches_design"]
+    assert gate["verdict"] == "PASS"
+
+
+def test_a_header_that_disagrees_with_its_own_rows_is_caught():
+    """The other way a declared-dimension reading can go wrong: the artifact
+    claims more items than its rows contain. Then the row count fails AND the
+    disagreement is named, so nobody has to infer which half is wrong."""
+
+    module = _load()
+    rows = _rows()
+    arm_report = _arm_report(rows)
+    arm_report["n_items"] = N_ITEMS + 2
+    gate = module.gate_g_s1(arm_report, rows, ARMS, N_TURNS)
+    assert not gate["checks"]["declared_item_count_matches_rows"]
+    assert not gate["checks"]["row_count_matches_design"]
+    assert gate["verdict"] == "FAIL"
+
+
 def test_spread_clause_is_per_arm_and_pooling_would_hide_it():
     """A saturated turn in ONE arm must fail admission even though the pooled
     set over all four arms still has spread at that turn. This is the clause
