@@ -34,23 +34,55 @@ CI [+0.0367, +0.1202]，1.47×MDE，35 题 / 1499 条观测，22 条单测全过
 | **C** 多轮行为读出 | `defense`(judge=self ⚠) · `gsm8k_sharded`(确定性) · `constraint`(judge=indep 14B) |
 
 **指标（每数据集 2 列）**
-- **`Skill_H` ↑** = 1 − MSE_H(model) / MSE_H(最好平凡 null)。`H`：core 取全程 rollout（T−1），行为线取 4（= MPC 规划视界）。
+- **`Skill_H` ↑** = 1 − MSE_H(model) / MSE_H(最好平凡 null)。**`H` 与 `lag` 逐列标注**：
+  每个数据集取「还能留 H≥3 的最深延迟嵌入」（core 的 T=10 用 lag=3 → H=6，T=5 用 lag=1 → H=3；
+  行为线取 H=4 = MPC 规划视界）。`common_seed_turns=4` + `lag=3` 会让 T=5 只剩 **1 步**，
+  而裁决 2 只解禁多步——这是判据，不是口味。
 - **rollout MSE ↓**（读出原生单位，保留绝对尺度）。
 
-**平凡 null（取最好者，角标注明谁赢）**：persistence `ŷ_{t+1}=y_t` / 逐轨迹均值 / **纯外生回归**（喂进全部确定性外生量：`turn`、`shard_frac` 等）。
+**平凡 null（取最好者，角标注明谁赢）**——沿用 `defense` 线 G-K2-1 / `constraint` 线 G-S2-1
+用的那三个，**不另写一份**：`const`（训练集均值）/ `turn_mean`（逐轮均值）/ `stateless`
+（`y ~ 1 + 全部确定性外生量`）。**每个 null 都必须拿到 `turn`**，缺了就 raise。
+外生量是环境事前固定的量（`turn`、core 的 `r`、`gsm8k_sharded` 的 `shard_frac`），
+**不含控制量**——core 的控制是跟踪误差 `r − y_t`，它含状态，喂给"无状态 null"等于把它要扣住的东西漏回去。
 
 **行 block（6 行，全 panel 共用）**
 
 | 行 | 模型类 | 它否掉什么 |
 |---|---|---|
 | 1 | 最好平凡 null | 不看状态也能猜到的部分 |
-| 2 | Markov 线性 + 控制（lag=1） | 不需要记忆 |
-| 3 | 延迟嵌入线性，**无控制** | 执行器没进算子 |
-| 4 | LSTM 代理 | 非线性循环模型更好 |
+| 2 | Markov 线性 + 控制（无记忆，`output_memory=1`） | 不需要记忆 |
+| 3 | 延迟嵌入线性，**扣住控制量** | 执行器没进算子——**仅在动作被随机化过的列上有判别力**，见下 |
+| 4 | LSTM 代理（隐层在 validation 上选） | 非线性循环模型更好 |
 | 5 | AE-Koopman（非线性提升 k=16） | 非线性 lift 值不值 |
 | **6** | **Ours：延迟嵌入受控 Koopman** | — |
 
-**统计口径**：按 (轨迹/题) bootstrap（2000 次）95% CI，11 个数据集**同一套实现**；seed 维度写 `mean ± std (n)`——core 的 n=3 是**训练** seed，行为线的 n=3 是**数据** seed，两者不可混读，脚注写死。
+**统计口径**：**每一行同一种区间**——点估计与 95% CI 都来自按 (轨迹/题) bootstrap（2000 次，
+全部数据集同一套实现）；有训练 seed 的行（AE / LSTM）先把 3 个 seed 的逐行平方误差平均，
+跨 seed 离散度**单独报**，不兼任误差棒。**「两行是否有差别」一律看配对 bootstrap**
+（`ours − baseline`，三列联合重采样），不看两个逐格 CI 是否重叠。
+core 的 n=3 是**训练** seed、行为线的 n=3 是**数据** seed，两者不可混读，脚注写死。
+
+### E2 已测得，三条措辞据此改写（2026-09-12）
+
+数与读法在 [`../experiments/core_surrogate_rows_results.md`](../experiments/core_surrogate_rows_results.md)。
+
+1. **记忆有用是条件性的，不是普遍的。** core 7 个可判任务里 3 个显著支持（+0.603 / +0.312 / +0.235，
+   都是 n≥42）、**1 个显著反对**（`average_word_length_t5` −0.409，n=14）、3 个分不开。
+   正文写「在读出有量程、样本足的任务上成立」，**不写「惯性假设成立」**。
+   与 `ABLATION_STUDY.md` 第五阶段「任务相关、无统一方向」一致。
+2. **非线性买不到东西要用效应量讲。** `ours − AE`、`ours − LSTM` 在所有有信息的任务上都 **|Δ| < 0.03**
+   且符号在任务间翻转；其中两格名义显著（含 `character_length_t5` 上 **LSTM 更好 −0.031**）。
+   配对 bootstrap 精确到能把 0.005 判显著——**显著且可忽略**。
+   写「差别小于 0.03 且方向不一致」，**不写「统计上不可区分」**（后者是错的）。
+3. **第 3 行的判别力只在行为线那三列。** `ours − 扣住控制量` 在 core **七个任务全部跨 0**：
+   core 的 `r` 每条轨迹恒定、不是随机化的动作，延迟嵌入状态已把它编码进去。
+   「执行器进了算子」这条主张由 `defense`（`B`=+0.0825）与 `constraint`（+0.0182）扛，
+   CI 均不含 0，因为那里 `u` 是伯努利随机化的。**core 那三格要读作「本设定无从判别」，不是「执行器无用」。**
+
+**三列没有信息量，但仍进表**（否则等于按结果挑列）：`sentiment_t5`(10 条轨迹)、
+`average_word_length_t5`(14)——ours 的 CI 分别是 [−0.11,+0.78]、[−1.52,+0.40]；
+`even_odd_t5`(4，读出无量程)按用户裁定进附录 A1。前两列在表里如实标「本设计分辨不出来」。
 
 ## 二、Table 2（正文 · RQ3）：等代价下闭环买到了什么
 
@@ -86,12 +118,15 @@ CI [+0.0367, +0.1202]，1.47×MDE，35 题 / 1499 条观测，22 条单测全过
 
 | 行 | core（8 任务） | `defense` | `gsm8k_sharded` | `constraint` |
 |---|---|---|---|---|
-| 1 平凡 null | ✗ 全缺 | ✓ 3 个 | ✓ | ✓ 3 个含 turn |
-| 2 Markov+u | 仅 `sentence_length_t10`（epochs=200，带 E2 caveat） | ✓ | ✗ | ✗ |
-| 3 延嵌无 u | ✗ 全缺（现有 `linear_ridge` 含控制） | ✓ | ✓ | ✓ |
-| 4 LSTM | ✗ 全缺 | ✓ | ✗ | ✗ |
-| 5 AE | ✓ 8/8 早停 3 seed | ✓ | ✗ | ✗ |
-| **6 Ours** | ✓ 8/8（确定性单跑，缺 CI） | ✓ | ✓ EK-A | ✓ S2 |
+| 1 平凡 null | ✓ 8/8（`stateless` 全胜） | ✓ 3 个 | ✓ | ✓ 3 个含 turn |
+| 2 Markov+u | ✓ 8/8 | ✓ | ✗ | ✗ |
+| 3 延嵌无 u | ✓ 8/8 | ✓ | ✓ | ✓ |
+| 4 LSTM | ✓ 8/8（3 seed，隐层在 validation 上选） | ✓ | ✗ | ✗ |
+| 5 AE | ✓ 8/8（3 seed，早停） | ✓ | ✗ | ✗ |
+| **6 Ours** | ✓ 8/8（含 CI + 配对对比） | ✓ | ✓ EK-A | ✓ S2 |
+
+core 侧全部经 `scripts/eval_surrogate_rows.py` 一条路径产出，六行落在逐行相同的评测集上；
+逐行预测存在 `results/surrogate_rows_paired/*_predictions.npz`，以后加对比不必重拟合。
 
 **缺的格子全是 CPU 重拟合，数据已落盘**（`datasets/`、`outputs/ergo_ekA_branch` 759 对、`outputs/sequor_s1_arm` 9600 行）——**Table 1 零 GPU 可填满。**
 
@@ -100,8 +135,12 @@ CI [+0.0367, +0.1202]，1.47×MDE，35 题 / 1499 条观测，22 条单测全过
 | # | 做什么 | 成本（含假设） | 服务哪张表 |
 |---|---|---|---|
 | ~~E0~~ | ~~判定定向提醒试点闸门~~ **已完成 2026-09-12（`79a08c9`）：主量 PASS** | 零 GPU | Table 2 `constraint` 列成立 |
-| E1 | 统一代理评测 harness：一套 `Skill_H` + 三个 null + 统一 bootstrap + 折协议（报告折 ≠ 闸门折）+ 单测 | 1 天 | Table 1 地基 |
-| E2 | core 8 补第 1/2/3/4 行 | **1.5–2 h CPU**（早停实测 118–859 epoch → 1–3 min/run × ~6 run/任务 × 8 任务） | Table 1 |
+| ~~E1~~ | ~~统一代理评测 harness~~ **已完成 2026-09-12**：`src/surrogate_eval/`（用户裁定放 root，不依赖任一体系），17 条单测 + 行为侧 6 条等价性测试 | 零 GPU | Table 1 地基 |
+
+**E1 落地说明**：`skill_h`（`horizon<2` 直接 raise，一步误差进不来）、`trivial_nulls`（`exogenous` 不含 `turn_next` 即 raise）、`best_null`（返回名字，谁赢本身是诊断）、`bootstrap_ci`（按组重采样，行重采样会低估区间）、`seed_aggregate`（`ddof` 无默认值，<3 seed 直接 raise）、`make_folds`（`purpose="gate"|"report"` 派生不同划分，两者重合即 raise）。**三个 null 没有写第四份拷贝**——`fit_koopman_defense_model._null_predictions` 是 G-K2-1/G-S2-1 用的那份，`surrogate_eval` 取同一套算术，行为侧 `test_surrogate_eval_null_equivalence.py` 逐值钉死（`atol=0`），漂移即红。
+| ~~E2~~ | ~~core 8 补第 1/2/3/4 行~~ **已完成 2026-09-12**：`scripts/eval_surrogate_rows.py`，10 条单测；结果档案 [`../experiments/core_surrogate_rows_results.md`](../experiments/core_surrogate_rows_results.md) | 零 GPU | Table 1 core 侧**六行全满** |
+
+**E2 改变了 Table 1 的三条措辞（待落到 §一）**：① 记忆有用是**条件性**的（3/7 显著支持、1/7 显著反对、3/7 分不开）；② 非线性无用要用**效应量**讲（|Δ| < 0.03 且符号翻转），不能讲「统计上不可区分」；③ **第 3 行「执行器进算子」core 一格都撑不住**（`ours − 无 r` 七个任务全部跨 0）——core 的 `r` 每条轨迹恒定、不是随机化动作，这条主张只能由三条行为线扛。**每个数据集的 lag 按「还能留 H≥3 的最深延迟嵌入」定**（T=10 用 lag=3、T=5 用 lag=1），表里逐列标注。
 | E3 | 行为 3 线补 LSTM / AE / Markov 行（已有产物上重拟合） | 数十分钟 CPU | Table 1 |
 | E4 | `defense` Phase J 七臂按 seed 聚合成 `mean ± std (n=5)` | 小时级 CPU | Table 2 |
 | G1 | `defense` `zero_control` + `constant_remind` 扩到 5 seed（续跑） | **2 作业 × ~20 min**（8 攻击 × 3 新 seed = 24 条/臂；Phase E 16 条/11 min → 0.7 min/条；Qwen3-4B、5 轮、沿用 Phase E `max_new_tokens`） | Table 2 `defense` 列补洞 |
@@ -117,9 +156,14 @@ CI [+0.0367, +0.1202]，1.47×MDE，35 题 / 1499 条观测，22 条单测全过
 2. 表内不设任何跨数据集聚合行（禁"平均排名"等序数聚合）。
 3. `constraint` 的 `Skill_H` 曾用作 S3 准入闸门 → 正文格用**另一套事前注册的折划分**重算，闸门折的数进 A7。
 4. core 的误差棒只含训练 seed，不含数据采样；行为线含数据 seed。
-5. **`mean ± std` 的 `std` 两套口径不一致**：`ABLATION_STUDY.md` 的 core 结果用**总体标准差**（ddof=0），
-   `constraint` 线（S1a +0.1389 ± 0.0147、E0 +0.0748 ± 0.0409）用**样本标准差**（ddof=1）。
-   同一张表混用会让误差棒不可比。建议全表统一 ddof=1，正文表里重算 core 的数（`results/*/run.json` 都在，零成本）；
-   **历史文档不改**（`docs.md` → 历史陈述不改）。**待用户签。**
+5. **`mean ± std` 的 `std` 两套口径不一致——⏸ 待定（2026-09-12 用户裁决：等更多数据再决）。**
+   `ABLATION_STUDY.md` 的 core 结果用**总体标准差**（ddof=0），`constraint` 线（S1a +0.1389 ± 0.0147、
+   E0 +0.0748 ± 0.0409）用**样本标准差**（ddof=1）。n=3 时两者恒差 √1.5 = **1.2247 倍**（ddof=1 永远宽 22.5%），
+   **不改变任何排序**，只等比例拉伸每根误差棒。真正的风险有两条：贴边结论会翻；以及**混用会让 core 的误差棒
+   凭空显得比行为线紧 22%**，纯记法差异。
+   **在签字之前，所有产物同时存两套**（`seed_agg_ddof0` / `seed_agg_ddof1`），渲染表时才取其一；
+   `surrogate_eval.seed_aggregate` 的 `ddof` 无默认值，保证没有人能默默选一个。
+   签字时若选 ddof=1：正文表重算 core 的 ±（`results/*/run.json` 都在，零成本），**历史文档不改**
+   （`docs.md` → 历史陈述不改），脚注写明与 `ABLATION_STUDY.md` 的差异来源。
 6. 定向提醒的 +0.0748 伴随 **−0.1059 的连带损失**，任何引用它的地方必须同址带这个数。
 7. `constraint` 的算子**外推不出终点**（稳态位移 0.050 对实测 +0.1389，差 2.8×）——Table 1 的格子是辨识质量，不是终点预测力。
