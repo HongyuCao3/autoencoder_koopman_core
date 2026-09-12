@@ -414,8 +414,9 @@ sizing 必须算在新主量上）。**同时修掉一个 09-10 就在的轮次�
 **闭环的价值集中在提醒稀缺的区段，预算一旦不咬就消失。**
 
 **用户裁决（2026-09-12）：「先按照降到三臂之后的方案执行」→ 砍 `equal_cost_random`，提交。**
-`environment/run_sequor_s3_arm.sbatch`（**方法**，`--time 10:00:00`）+
-`environment/run_sequor_s3_score.sbatch`（**仪器**，`--dependency=afterok`，`--time 03:00:00`）。
+**已提交 2026-09-12**：**15815719** `run_sequor_s3_arm.sbatch`（**方法**，`--time 10:00:00`）+
+**15815720** `run_sequor_s3_score.sbatch`（**仪器**，`--dependency=afterok:15815719`，`--time 03:00:00`）。
+提交时的谱系是 commit `8c75c03`（工作区带 4 条不在 S3 代码路径上的脏路径，见下）。**终态待回填。**
 
 **砍掉的那个臂的代价，写在前面**：`equal_cost_random` 是四个对比里模型唯一预测能舒服分开的
 （+0.0862，1.40×MDE），**砍它等于放弃这次最可能拿到的正结果**；换到的是 3000 次生成、约 2 小时。
