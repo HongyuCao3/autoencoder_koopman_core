@@ -49,6 +49,7 @@
 | `analyze_sequor_fidelity.py` | constraint | 活跃 | 上游保真度臂的判定（预注册）：任一 harness 变体能否把留存曲线拉到基准水平，CPU-only |
 | `analyze_sequor_s0_0_gates.py` | constraint | 活跃 | constraint 线 S0-0 的三条闸门（K1 读出量程、K2 状态超越单轮、K3…），CPU-only |
 | `analyze_sequor_s1_pilot.py` | constraint | 活跃 | 用 S1 试点臂（job 15768661）实测方差重算 S1a 的 MDE 与所需 N，不出裁决 |
+| `analyze_sequor_targeted_branch.py` | constraint | 活跃 | 定向提醒试点的闸门（筛查 §十 第 13 条）：主量 = t−1 被判破的约束在 t 的恢复率，定向 − 整段，按 (题,seed,轮,约束) 配对、按题 bootstrap；次要量 = 未点名约束的保持率 / 净 `y` / 插入代价，CPU-only |
 | `analyze_sequor_s1_gates.py` | constraint | 活跃 | S1 的准入闸门 G-S1（按臂算量程）与跑前签死的 S1a 估计量（t15..t20，按 (题,seed) 配对），CPU-only |
 | `analyze_soft_judge_readout.py` | defense | 冻结-复现用 | F4 Step2：把四条 RC 闸门套用到 y_soft（期望值软安全 judge），判定防御线读出族是否升级 |
 | `analyze_state_action_interaction.py` | defense | 冻结-复现用 | "如何证明 Koopman 动机"路径2：拟合带显式状态-动作交互控制输入的 Koopman 代理，对比 richer_abs_sign |

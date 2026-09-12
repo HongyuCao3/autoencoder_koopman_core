@@ -1,0 +1,102 @@
+# 论文主表设计与填表清单
+
+> **状态**：设计稿（2026-09-12），四条裁决已签，空壳先行（`../../.claude/paper.md` → *论文空壳先行*）。
+> **本文件不是计划文档**，活跃计划仍是 [`../experiments/constraint_retention_plan.md`](../experiments/constraint_retention_plan.md)。
+> 权威序上从属于 [`PAPER_EXECUTION_PLAN.md`](PAPER_EXECUTION_PLAN.md)；数字口径见
+> `../../.claude/global.md` → *报告口径*；术语见 [`../NAMING.md`](../NAMING.md)。
+
+## 零、2026-09-12 四条裁决（用户签字，均在看过证据盘点之后）
+
+| # | 裁决 | 直接影响 |
+|---|---|---|
+| 1 | **闭环打平改框架留正文**，不挪附录 | 正文 RQ3 从"我们的控制器更好"降级为"闭环在什么条件下才买得到东西"。`paper.md` 诚实性红线不变，§1.5 不改写 |
+| 2 | **定向解禁多步 `Skill_H`** 当正文头条数字 | 一步预测误差仍禁（只进附录）。报告用的折划分必须与闸门用的**不同且事前注册**——选择信号不得同时当报告信号 |
+| 3 | **"ours" = 延迟嵌入受控 Koopman（线性）**，AE 降为消融行 | 叙事变成"先验成立且成立得更简单，简单性是被测出来的" |
+| 4 | **先判定向提醒试点闸门（E0）再决定闭环 GPU** | G3（6.2–9.2 GPU-h）不在 E0 之前提交 |
+
+**负面材料的边界（裁决 1 的推论）**：负*对照*与负面*诊断材料*进附录（§三）；**闭环打平本身留正文**，作为条件性结论的证据。
+
+---
+
+## 一、Table 1（正文 · RQ1）：算子质量，10 个数据集
+
+**列 block = 数据集，block 内 2 列 = 指标；行 block 共用同一套 baseline，ours 垫底。**
+
+| Panel | 列 block |
+|---|---|
+| **A** core 标量·样本足 | `sentence_length_t10` · `character_length_t5` · `formality_t5` |
+| **B** core 小样本 + 多变量 | `average_word_length_t5` · `sentiment_t5` · `vector_count_stage1_t10` · `vector_count_stage2_t10` |
+| **C** 多轮行为读出 | `defense`(judge=self ⚠) · `gsm8k_sharded`(确定性) · `constraint`(judge=indep 14B) |
+
+**指标（每数据集 2 列）**
+- **`Skill_H` ↑** = 1 − MSE_H(model) / MSE_H(最好平凡 null)。`H`：core 取全程 rollout（T−1），行为线取 4（= MPC 规划视界）。
+- **rollout MSE ↓**（读出原生单位，保留绝对尺度）。
+
+**平凡 null（取最好者，角标注明谁赢）**：persistence `ŷ_{t+1}=y_t` / 逐轨迹均值 / **纯外生回归**（喂进全部确定性外生量：`turn`、`shard_frac` 等）。
+
+**行 block（6 行，全 panel 共用）**
+
+| 行 | 模型类 | 它否掉什么 |
+|---|---|---|
+| 1 | 最好平凡 null | 不看状态也能猜到的部分 |
+| 2 | Markov 线性 + 控制（lag=1） | 不需要记忆 |
+| 3 | 延迟嵌入线性，**无控制** | 执行器没进算子 |
+| 4 | LSTM 代理 | 非线性循环模型更好 |
+| 5 | AE-Koopman（非线性提升 k=16） | 非线性 lift 值不值 |
+| **6** | **Ours：延迟嵌入受控 Koopman** | — |
+
+**统计口径**：按 (轨迹/题) bootstrap（2000 次）95% CI，11 个数据集**同一套实现**；seed 维度写 `mean ± std (n)`——core 的 n=3 是**训练** seed，行为线的 n=3 是**数据** seed，两者不可混读，脚注写死。
+
+## 二、Table 2（正文 · RQ3）：等代价下闭环买到了什么
+
+**不作为"谁赢"的表读，作为三前提的分层证据读。** 列头额外标注该数据集上前提 (i)/(ii)/(iii) 的判定。
+
+行（共用）：`zero_control` · `constant_remind`(满剂量) · 等代价随机 · **等代价最优固定日程** · 阈值反馈（无模型） · **Ours：Koopman-MPC（等代价）**
+列（每数据集 3 个）：终点读出 `mean ± std (n=seed)` · vs 最优固定日程的配对差 95% CI · 代价（插入次数 / token）
+
+`gsm8k_sharded` 的 MPC 格写"**构造上恒等于 `fixed_last`**"（日程可分性 = 1），不编数。
+
+## 三、附录表（接收全部负对照与负面诊断材料）
+
+| 表 | 内容 |
+|---|---|
+| A1 | `even_odd_t5` 负对照：读出无量程 → 算子正确地报"什么都没有" |
+| A2 | 早停前后对照（`sentiment_t5` 78%→8%、`average_word_length_t5` 方向反转） |
+| A3 | 读出天花板三连（defense 0.91 / gsm8k_sharded IQR=0 / constraint K1） |
+| A4 | `gsm8k_sharded` 停在 S3 的全过程（可分性=1、熵读出 97% 衰减） |
+| A5 | `constraint` 闭环退化诊断（两个模型类 × 两个目标函数都买不到东西） |
+| A6 | 植入式对照单测（有状态依赖时可分性检查器确实报 >1 种日程） |
+| A7 | 一步预测误差全表（裁决 2：正文不报） |
+
+## 四、单元格现状（Table 1）
+
+| 行 | core（8 任务） | `defense` | `gsm8k_sharded` | `constraint` |
+|---|---|---|---|---|
+| 1 平凡 null | ✗ 全缺 | ✓ 3 个 | ✓ | ✓ 3 个含 turn |
+| 2 Markov+u | 仅 `sentence_length_t10`（epochs=200，带 E2 caveat） | ✓ | ✗ | ✗ |
+| 3 延嵌无 u | ✗ 全缺（现有 `linear_ridge` 含控制） | ✓ | ✓ | ✓ |
+| 4 LSTM | ✗ 全缺 | ✓ | ✗ | ✗ |
+| 5 AE | ✓ 8/8 早停 3 seed | ✓ | ✗ | ✗ |
+| **6 Ours** | ✓ 8/8（确定性单跑，缺 CI） | ✓ | ✓ EK-A | ✓ S2 |
+
+**缺的格子全是 CPU 重拟合，数据已落盘**（`datasets/`、`outputs/ergo_ekA_branch` 759 对、`outputs/sequor_s1_arm` 9600 行）——**Table 1 零 GPU 可填满。**
+
+## 五、填表清单
+
+| # | 做什么 | 成本（含假设） | 服务哪张表 |
+|---|---|---|---|
+| **E0** | 判定**定向提醒试点**闸门（15792569/15792580 已 COMPLETED，判据 = 筛查 §十 第 13 条） | 半天 CPU，零 GPU | 决定 Table 2 的 `constraint` 列与 G3 |
+| E1 | 统一代理评测 harness：一套 `Skill_H` + 三个 null + 统一 bootstrap + 折协议（报告折 ≠ 闸门折）+ 单测 | 1 天 | Table 1 地基 |
+| E2 | core 8 补第 1/2/3/4 行 | **1.5–2 h CPU**（早停实测 118–859 epoch → 1–3 min/run × ~6 run/任务 × 8 任务） | Table 1 |
+| E3 | 行为 3 线补 LSTM / AE / Markov 行（已有产物上重拟合） | 数十分钟 CPU | Table 1 |
+| E4 | `defense` Phase J 七臂按 seed 聚合成 `mean ± std (n=5)` | 小时级 CPU | Table 2 |
+| G1 | `defense` `zero_control` + `constant_remind` 扩到 5 seed（续跑） | **2 作业 × ~20 min**（8 攻击 × 3 新 seed = 24 条/臂；Phase E 16 条/11 min → 0.7 min/条；Qwen3-4B、5 轮、沿用 Phase E `max_new_tokens`） | Table 2 `defense` 列补洞 |
+| G3 | `constraint` S3 闭环臂 | **4 臂 ≈ 6.2 / 6 臂 ≈ 9.2 GPU-h**（S1 实测 1.61 s/生成、9600 行 4h22；判分 28800 次 1h51；A100-PCIE-40G，agent+in-loop=4B，报告判=14B） | Table 2 `constraint` 列。**E0 之前不提交**（裁决 4） |
+
+## 六、同址必带的局限（写表时逐条落到 caption）
+
+1. `defense` 列 `judge_kind=self`（`global.md` 具名例外）：自判 = 单向漏检、systematically 低估效应。**例外不外溢到任何其它列。**
+2. 表内不设任何跨数据集聚合行（禁"平均排名"等序数聚合）。
+3. `constraint` 的 `Skill_H` 曾用作 S3 准入闸门 → 正文格用**另一套事前注册的折划分**重算，闸门折的数进 A7。
+4. core 的误差棒只含训练 seed，不含数据采样；行为线含数据 seed。
+5. `constraint` 的算子**外推不出终点**（稳态位移 0.050 对实测 +0.1389，差 2.8×）——Table 1 的格子是辨识质量，不是终点预测力。
