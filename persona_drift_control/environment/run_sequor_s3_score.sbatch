@@ -2,7 +2,7 @@
 #SBATCH --job-name pdc-sequor-s3-score
 #SBATCH --cpus-per-task 8
 #SBATCH --mem 96G
-#SBATCH --time 04:00:00
+#SBATCH --time 03:00:00
 #SBATCH --requeue
 #SBATCH --gpus a100:1
 #SBATCH --output /home/hcao2/autoencoder_koopman_core/persona_drift_control/environment/slurm_logs/sequor-s3-score-%j.out
@@ -21,9 +21,9 @@
 # A SEPARATE JOB on purpose: re-judging is cheap and re-generating is not.
 # Job 15763577 rescued 15761810's 52 GPU-minutes for exactly this reason.
 #
-# RUNTIME ESTIMATE 1.2-1.8 h (--time 04:00:00). ASSUMPTIONS: 12,000 rows x 3
-# constraints = 36,000 judge calls at the 14B's measured 0.11 s/call
-# (15772957, 28,800 calls) -> ~66 min, + ~4 min load. cap 512 is sufficient
+# RUNTIME ESTIMATE 0.9-1.4 h (--time 03:00:00). ASSUMPTIONS: 9,000 rows x 3
+# constraints = 27,000 judge calls at the 14B's measured 0.11 s/call
+# (15772957, 28,800 calls) -> ~50 min, + ~4 min load. cap 512 is sufficient
 # for the 14B (12/2000 truncated at 15739195) and is NOT raised here.
 
 set -euo pipefail

@@ -413,9 +413,13 @@ sizing 必须算在新主量上）。**同时修掉一个 09-10 就在的轮次�
 满剂量的 10% 时 +0.0589、15% +0.0531、20% +0.0443、35% +0.0237、50% +0.0141、75% +0.0125。
 **闭环的价值集中在提醒稀缺的区段，预算一旦不咬就消失。**
 
-**两个 sbatch 已写好、干跑过，等裁决**：
-`environment/run_sequor_s3_arm.sbatch`（**方法**，`--time 14:00:00`）+
-`environment/run_sequor_s3_score.sbatch`（**仪器**，`--dependency=afterok`，`--time 04:00:00`）。
+**用户裁决（2026-09-12）：「先按照降到三臂之后的方案执行」→ 砍 `equal_cost_random`，提交。**
+`environment/run_sequor_s3_arm.sbatch`（**方法**，`--time 10:00:00`）+
+`environment/run_sequor_s3_score.sbatch`（**仪器**，`--dependency=afterok`，`--time 03:00:00`）。
+
+**砍掉的那个臂的代价，写在前面**：`equal_cost_random` 是四个对比里模型唯一预测能舒服分开的
+（+0.0862，1.40×MDE），**砍它等于放弃这次最可能拿到的正结果**；换到的是 3000 次生成、约 2 小时。
+**它换不到精度**——头条 MDE 由题数定，砍臂前后都是 0.0617。
 
 **它改变哪个决定**：RQ3 闭环结果表。主量 = late 窗口 t15..t20 的 `y`，独立判，
 `koopman_mpc − best_fixed_schedule`，按 (题,seed) 配对、按题 bootstrap；MDE **0.0617**
@@ -425,11 +429,26 @@ sizing 必须算在新主量上）。**同时修掉一个 09-10 就在的轮次�
 提交的理由只有两条，都写在 sbatch 头部：同类模型对本线实测量低估过 2.8×；以及那条预算曲线本身
 就是结果，而要报它需要曲线上有一个实测点。**这一条必须由用户裁决，不自行提交。**
 
-**规模与配额**：4 臂 × 50 题 × 20 轮 × 3 seed = 12,000 次生成 + 36,000 次 in-loop 判分。
+**规模与配额**：3 臂 × 50 题 × 20 轮 × 3 seed = **9,000 次生成 + 27,000 次 in-loop 判分**。
 50 题 × 3 seed = **150 条/臂，正好压在已签的 150 停止线上**。
-运行时估计 **6–9 h**（依据逐条写在 sbatch 头部；未实测项是 vLLM 在同一进程里交替长上下文生成与
-短判分 prompt 的调度）。近 10 个作业现为 仪器 4 / 方法 5 / 基建 1；加这两个后仍是 仪器 4 / 方法 5 /
-基建 1，**通过**。
+运行时估计 **4.3–7.0 h**（依据逐条写在 sbatch 头部；未实测项是 vLLM 在同一进程里交替长上下文
+生成与短判分 prompt 的调度）。近 10 个作业现为 仪器 4 / 方法 5 / 基建 1；加这两个后滑窗挤掉
+15761176（仪器）与 15761810（方法）→ 仍是 仪器 4 / 方法 5 / 基建 1，**通过**。
+
+**提交前六条核查（2026-09-12）**：① 用户已裁决（「先按照降到三臂之后的方案执行」）；
+② 运行时估计与逐条假设见上与 sbatch 头部，未实测项已具名；③ `outputs/sequor_s3_arm/` 提交前
+不存在（干跑逐条核过，runner 自身亦拒绝写入已存在目录），`outputs/sequor_s3_design/` 下只有
+拟合报告、不被本作业改写；④ 见本段「它改变哪个决定」；⑤ 配额见上，通过；
+⑥ **两个作业都不做 pip install**（vLLM env 按文件路径加载共享模块），且 score 以 `afterok`
+排在 arm 之后，队列里无其它本项目作业 → 结构上不可能重演 2026-09-08 的并发 editable install 竞态。
+
+**谱系上的一处诚实记录**：提交时工作区**不干净**——`docs/article/MAIN_TABLE_DESIGN.md` 有改动，
+`src/surrogate_eval/`、`tests/test_surrogate_eval.py`、
+`persona_drift_control/tests/test_surrogate_eval_null_equivalence.py` 未跟踪。
+这些来自**另一条并行在动的线**，**不在 S3 的代码路径上**（S3 只用
+`persona_drift.sequor_*` 与 `scripts/run_sequor_s3_arm.py`）。
+`provenance` 会把 `git_dirty=true` 与 `n_dirty_paths` 如实写进产物；记在这里是为了
+日后复现时不必猜这几条脏路径是什么。
 
 新增代码：`src/persona_drift/sequor_controllers.py`（15 条单测）、
 `src/persona_drift/sequor_closed_loop.py`（10 条单测）、`scripts/run_sequor_s3_arm.py`、
