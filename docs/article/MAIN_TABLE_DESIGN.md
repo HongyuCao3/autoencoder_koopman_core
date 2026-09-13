@@ -1,6 +1,6 @@
 # 论文主表设计与填表清单
 
-> **状态**：设计稿（2026-09-12），四条裁决已签，空壳先行（`../../.claude/paper.md` → *论文空壳先行*）。
+> **状态**：设计稿（2026-09-12，2026-09-13 更新 Table 2 与 ddof 签字），四条裁决已签，空壳先行（`../../.claude/paper.md` → *论文空壳先行*）。
 > **本文件不是计划文档**，活跃计划仍是 [`../experiments/constraint_retention_plan.md`](../experiments/constraint_retention_plan.md)。
 > 权威序上从属于 [`PAPER_EXECUTION_PLAN.md`](PAPER_EXECUTION_PLAN.md)；数字口径见
 > `../../.claude/global.md` → *报告口径*；术语见 [`../NAMING.md`](../NAMING.md)。
@@ -124,7 +124,12 @@ core 的 n=3 是**训练** seed、行为线的 n=3 是**数据** seed，两者�
 |---|---|---|---|---|
 | 1–6（全部） | ✓ 8/8 | ✓ | ✓ | ✓ |
 
-**十列六行全满。** core 侧经 `scripts/eval_surrogate_rows.py`、行为侧经
+**十列六行全满。** **Table 2 三列亦全满**（2026-09-13）：`defense` 六行见
+[`../experiments/defense_table2_results.md`](../experiments/defense_table2_results.md)、
+`constraint` 见 `../experiments/constraint_results.md` §S3、`gsm8k_sharded` 的 MPC 格按裁决
+写"构造上恒等于 `fixed_last`"不编数。
+
+core 侧经 `scripts/eval_surrogate_rows.py`、行为侧经
 `persona_drift_control/scripts/eval_surrogate_rows_behavioral.py`，**两侧共用同一个 `surrogate_eval` 打分路径**
 （skill 定义、三个 null、bootstrap、折协议）；模型类各用本侧实现，两套代码体系不互相 import。
 每侧六行都落在逐行相同的评测集上。core 的逐行预测存在 `results/surrogate_rows_paired/*_predictions.npz`。
@@ -149,13 +154,22 @@ core 的 n=3 是**训练** seed、行为线的 n=3 是**数据** seed，两者�
 **E3 不是重新制表，是新测量**：三条线签过的闸门全部是**一步、`nu=1`**（`constraint` 的 S2 配置字面是 `{nu:1, mu:1}`），主表第 6 行从未在任何一条线上被拟合过；第 2 行才对应各线已发表的算子。
 **E3 的三条结果**：① `constraint` 上 `ours − Markov` **+0.234 ★**，至此**四个信息量足够的列全部显著支持延迟嵌入**；② **`ours − 扣住 u` 跨线全部为零**，且 `constraint` 的 `u` 是伯努利随机化的真动作——core 那套「`r` 恒定」的解释在这里不成立；③ 非线性差别 ≤0.05、两个方向都显著，与 core 同形。
 **两列无信息量**：`gsm8k_sharded` 只剩 64 个评测行（nu=4+H=4 要求 ≥9 轮）、`defense` 六行贴 0 且最好 null 是 `const`（读出无量程，与 `even_odd_t5` 同机制）。均如实进表标注，不挑列。
-| E4 | `defense` Phase J 七臂按 seed 聚合成 `mean ± std (n=5)` | 小时级 CPU | Table 2 |
-| G1 | `defense` `zero_control` + `constant_remind` 扩到 5 seed（续跑） | **2 作业 × ~20 min**（8 攻击 × 3 新 seed = 24 条/臂；Phase E 16 条/11 min → 0.7 min/条；Qwen3-4B、5 轮、沿用 Phase E `max_new_tokens`） | Table 2 `defense` 列补洞 |
-| G3 | `constraint` S3 闭环臂（**定向执行器版臂表**） | **5 臂 ≈ 6.3 GPU-h**：4 个开环臂 × 40 题 × 20 轮 × 3 seed = 9600 生成 × 1.61 s ≈ 4.3 h；MPC 臂 2400 × ~1.8 s（生成 + in-loop 4B 判分 0.185 s/行）≈ 1.2 h；报告判 14B 12000 行 × 0.23 s ≈ 0.8 h。A100-PCIE-40G，agent+in-loop=4B，报告判=14B | Table 2 `constraint` 列 |
+| ~~G1~~ | ~~`defense` 两个端点臂扩到 5 seed~~ **已完成 2026-09-13**：15829527 / 15829528，各 27 min，两臂各 200 行、判分失败 0、拒答 0 | 2 GPU 作业（已花） | Table 2 `defense` 列补洞 |
+| ~~E4~~ | ~~`defense` Phase J 七臂按 seed 聚合~~ **已完成 2026-09-13**：`persona_drift_control/scripts/aggregate_table2_defense.py`，12 条单测；结果档案 [`../experiments/defense_table2_results.md`](../experiments/defense_table2_results.md) | 零 GPU | Table 2 `defense` 列**六行全满** |
+| ~~G3~~ | ~~`constraint` S3 闭环臂~~ **已完成 2026-09-12**：砍成**三臂**执行（`8c75c03`），15815719 + 15815720 跑完并判读，判成**干净负结果**（`c094de0`）。主量 `koopman_mpc − best_fixed_schedule` = **+0.0014 ± 0.0145 (n=3)**，0.05×MDE；同批行里提醒本身买到 +0.1163。详见 [`../experiments/constraint_results.md`](../experiments/constraint_results.md) §S3 | 已花 ≈ 7.2 GPU-h | Table 2 `constraint` 列 |
 
-**G3 的前置条件（不满足不提交）**：第 13 条只签了「过了 → 重写计划 §6 臂表」，**没有签新臂表的主量、MDE 与 N**。
-旧的 G-S2-4 定 N（39 题 × 3 seed，满剂量差 50% = 0.0694）是**两动作 + 等次数 + 标量终点**下算的；换成三动作 + 等 token 后
-**主量 / MDE / 50% 口径三样绑在一起，必须整组重签**（前例：选项 (b) 换目标函数时就是这三样一起动）。这是用户动作。
+**E4 / G1 的三条结果**：① **12 天 + 一次重构，seed 0/1 的 160 行逐字节相同**——G1 选择整 5 seed 重跑
+（而非续跑）换来的这次比对证明重构行为等价且环境没动，本线跨 phase 产物可以并排读；
+② **满剂量买得到东西，等代价重分配买不到**：终点从 `zero_control` 0.5500 抬到满剂量 0.7937（+0.244），
+而五个等代价臂全挤在 0.5375–0.7375；③ **Ours 对最优固定日程两个重采样单元下点估计都为负**
+（终点 −0.0688、late −0.0250），按攻击重采样 CI 排除 0、按轨迹跨 0——**方向一致，显著性取决于单元**。
+正文能不看单元就说死的只有一句：**Koopman-MPC 没有打赢最优固定日程，点估计为负。**
+
+**两条待签（渲染正文表之前）**：① **Table 2 的主量是终点还是 late `y`**——§二写的是"终点读出"，
+而 `defense` 线 Phase E–J 一路的预注册主量是 late `y`(t3–5)；两个都已算出且结论方向一致，
+但不要两处各取一个。② **Table 2 配对差的重采样单元**——本次按攻击（继承 Table 1 `defense` 列
+`item_col=attack_id` 的既有实现，早于任何对比被算出），Phase J 记录按轨迹；
+**8 个攻击对聚类 bootstrap 偏少**，这是"Ours 显著为负"那句话唯一的软肋。
 
 ## 六、同址必带的局限（写表时逐条落到 caption）
 
@@ -163,14 +177,17 @@ core 的 n=3 是**训练** seed、行为线的 n=3 是**数据** seed，两者�
 2. 表内不设任何跨数据集聚合行（禁"平均排名"等序数聚合）。
 3. `constraint` 的 `Skill_H` 曾用作 S3 准入闸门 → 正文格用**另一套事前注册的折划分**重算，闸门折的数进 A7。
 4. core 的误差棒只含训练 seed，不含数据采样；行为线含数据 seed。
-5. **`mean ± std` 的 `std` 两套口径不一致——⏸ 待定（2026-09-12 用户裁决：等更多数据再决）。**
-   `ABLATION_STUDY.md` 的 core 结果用**总体标准差**（ddof=0），`constraint` 线（S1a +0.1389 ± 0.0147、
-   E0 +0.0748 ± 0.0409）用**样本标准差**（ddof=1）。n=3 时两者恒差 √1.5 = **1.2247 倍**（ddof=1 永远宽 22.5%），
-   **不改变任何排序**，只等比例拉伸每根误差棒。真正的风险有两条：贴边结论会翻；以及**混用会让 core 的误差棒
-   凭空显得比行为线紧 22%**，纯记法差异。
-   **在签字之前，所有产物同时存两套**（`seed_agg_ddof0` / `seed_agg_ddof1`），渲染表时才取其一；
-   `surrogate_eval.seed_aggregate` 的 `ddof` 无默认值，保证没有人能默默选一个。
-   签字时若选 ddof=1：正文表重算 core 的 ±（`results/*/run.json` 都在，零成本），**历史文档不改**
-   （`docs.md` → 历史陈述不改），脚注写明与 `ABLATION_STUDY.md` 的差异来源。
+5. **`mean ± std` 的 `std` 一律用样本标准差 `ddof=1`——✅ 2026-09-13 用户签字。**
+   `ABLATION_STUDY.md` 的 core 结果用的是**总体标准差**（ddof=0），`constraint` 线（S1a +0.1389 ± 0.0147、
+   E0 +0.0748 ± 0.0409）用的是样本标准差（ddof=1）。两者恒差 √(n/(n−1))，**不改变任何排序**，
+   也**不改变任何判定**——本仓库所有 ★ / PASS / UNDECIDABLE 都来自 bootstrap CI 与 MDE，
+   跨 seed 的 `std` 只进显示字符串（判据见 `analyze_sequor_s3_gates.py` 的 `resolved`）。
+   **签 ddof=1 的决定性理由是这张表混着 seed 数**：`defense` 列 n=5、`constraint` 列 n=3，
+   而 ddof=0 把一列收缩 √((n−1)/n)——**n=3 收缩 18.4%、n=5 只收缩 10.6%**，
+   seed 更少的那一列反而印出更紧的误差棒，正好把误差棒该传达的信息拧反。ddof=1 没有随 n 变的因子。
+   （§六第 5 条此前写的「n=3 时恒差 1.2247 倍」在 G1 把 `defense` 补到 5 seed 之后已不成立。）
+   **落地**：`surrogate_eval.seed_aggregate` 的 `ddof` 仍无默认值，没有人能默默选一个；
+   正文表重算 core 的 ±（`results/*/run.json` 都在，零成本）；**历史文档不改**
+   （`docs.md` → 历史陈述不改），脚注写明与 `ABLATION_STUDY.md` 的差异来源（√1.5 = 1.2247 倍）。
 6. 定向提醒的 +0.0748 伴随 **−0.1059 的连带损失**，任何引用它的地方必须同址带这个数。
 7. `constraint` 的算子**外推不出终点**（稳态位移 0.050 对实测 +0.1389，差 2.8×）——Table 1 的格子是辨识质量，不是终点预测力。

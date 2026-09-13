@@ -101,5 +101,6 @@ vs LSTM **−0.031 ★（LSTM 更好）**。配对 bootstrap 精确到能把 0.0
    这三列只能报「本设计分辨不出来」，不能当结论报。
 2. **误差棒不含数据采样的 seed 维度**：core 的 3 个 seed 是**训练** seed，数据只有一份。
    行为线的 3 个 seed 是数据 seed。两者的 `n=3` 不是同一件事。
-3. **`ddof` 口径未签**（`MAIN_TABLE_DESIGN.md` §六第 5 条），产物同时存 ddof=0 与 ddof=1 两套。
+3. **`ddof` 已签 = 1**（2026-09-13，`MAIN_TABLE_DESIGN.md` §六第 5 条）。产物仍同时存两套；
+   正文表取 ddof=1，与 `ABLATION_STUDY.md` 的 ddof=0 差 √1.5 = 1.2247 倍，**排序与判定均不变**。
 4. LSTM 的隐层大小在 **validation** 上选（8/16/32），report 用 test；**未按任务调过其它超参**。
