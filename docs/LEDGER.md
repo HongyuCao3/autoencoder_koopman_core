@@ -497,3 +497,22 @@ best_fixed_schedule` = +0.0014 ± 0.0145（n=3 seeds）**，CI [−0.0174, +0.01
 新增代码：`src/persona_drift/sequor_controllers.py`（15 条单测）、
 `src/persona_drift/sequor_closed_loop.py`（10 条单测）、`scripts/run_sequor_s3_arm.py`、
 `scripts/fit_sequor_action_model.py`。
+
+### R1：`defense` 读出换成激活投影（2026-09-13，闸门，**待用户裁决**）
+
+| 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
+|---|---|---|---|---|---|
+| 09-13 | 待提交 | `run_zero_control_projection_readout.sbatch`（`zero_control_5seed` 200 行，一行一次前向，**无生成**） | **仪器** | **未提交，等裁决** | **`defense` 这条线是关掉还是换读出重做闭环**。上界分析把所有按 `y` 可测的策略卡在 +0.0063（CI 跨 0），七个文本/元数据信号交叉验证无一越过 0，只剩激活投影没筛。2-seed 试点显示投影在 turn 2 能分 8 类而 `y` 只能分 1 类（信号是真的），但留一攻击交叉是 −0.0417（不迁移）。本作业把试点的 16 条抬到 40 条，并补上试点结构上缺的两样：turn 5 决策点、可用的留一 seed 轴。过 → 换读出重做闭环（≈3.5 GPU-h 主线）；不过 → 关线。闸门三行见 `experiments/adaptivity_ceiling_results.md` §附二。 |
+
+**提交前六条核查（2026-09-13）**：① **尚未提交，等用户裁决**（`.claude/experiments.md` 第 1 条）；
+② 运行时估计 **~2 min**，依据是同一脚本的实测——15506111 跑 320 行用 1m53s、15617737 跑 600 行用 2m12s，
+两次都由模型加载主导；本次 200 行、Qwen3-4B、a100:1、**无生成**，`--time 00:30:00` = 15×；
+③ 产物路径 `outputs/koopman_case_study/zero_control_projection_readout.json` 提交前不存在（已核）；
+④ 见上表；⑤ 配额：最近 10 个作业 **仪器 0 / 方法 8 / 基建 2**，加这一个后仍远低于 5 的上限 → 通过；
+⑥ 单作业，队列里无其它本项目作业，不存在并发 editable install 竞态。
+
+**方向不重新标定**：沿用 `outputs/safety_direction_readout_heldout_excluded`（2026-09-03，layer 18，
+与 8 个评测攻击**零重叠**）。重标会产出第二份与试点数字来源竞争的产物；脚本本身对重叠方向会 raise。
+
+**只跑这一个臂的理由**：开火前的可观测历史**就是** `zero_control` 前缀（前缀等同性守卫 400/400），
+而"第 t 轮开火的结果"已经在盘上（`fixed_t{t}` 的 `y_safety`）。缺的只有条件信号，且只缺在这一个臂上。
