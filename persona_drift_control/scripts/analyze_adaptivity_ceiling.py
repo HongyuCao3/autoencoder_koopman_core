@@ -9,8 +9,9 @@ bad" AND with "there was nothing to win", and those call for opposite next
 moves. This script measures the second one, so the first stops being a
 speculation either side can assert.
 
-WHAT MAKES THE BOUNDS EXACTLY COMPUTABLE. Generation is greedy and seeded,
-and a reminder enters the context only at the turn it is inserted, so every
+WHAT MAKES THE BOUNDS EXACTLY COMPUTABLE. Decoding is sampled (temperature
+0.7) but DETERMINISTIC GIVEN THE SEED -- `agent_seed = seed*1e6 + turn*100 + 1`
+-- and a reminder enters the context only at the turn it is inserted, so every
 `fixed_t{k}` arm is byte-identical to `zero_control` for turns 1..k-1. That is
 checked as a guard below, not assumed: it means the observable history at any
 decision point IS the `zero_control` prefix, and firing at turn t yields
@@ -60,6 +61,10 @@ OBJECTIVES = {
     "terminal": (lambda v: v[-1], +1),
     "mean_all": (lambda v: float(np.mean(v)), +1),
     "mean_t2_5": (lambda v: float(np.mean(v[1:])), +1),
+    # The `defense` line's signed primary (ruling 5, 2026-09-13): the same
+    # late window Phase E-J pre-registered and the same shape as the
+    # `constraint` column's t15-t20.
+    "late_t3_5": (lambda v: float(np.mean(v[2:])), +1),
     "min_any": (lambda v: float(np.min(v)), +1),
     "auc_below_one": (lambda v: float(np.sum([1.0 - x for x in v])), -1),
 }
