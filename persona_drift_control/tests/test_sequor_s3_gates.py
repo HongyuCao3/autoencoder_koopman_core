@@ -79,6 +79,14 @@ def _rows(effect: dict[str, float] | None = None, arms=ARMS) -> list[dict]:
     return rows
 
 
+def _readout_projection(module, rows: list[dict]) -> list[dict]:
+    """What the scorer writes: every row minus the fields that live only in
+    `trajectories.jsonl`. The analyzer has to put them back."""
+
+    return [{k: v for k, v in row.items() if k not in module.BACKFILLED_FROM_TRAJECTORIES}
+            for row in rows]
+
+
 def _arm_report(rows, arms=ARMS, blind=0.0, overspent=None) -> dict:
     return {
         "arms": list(arms), "seeds": SEEDS, "n_turns": N_TURNS, "n_items": N_ITEMS,
@@ -139,7 +147,7 @@ def test_the_estimand_never_reads_the_in_loop_judge(module, pilot):
 
 def test_admission_passes_on_a_well_formed_arm(module):
     rows = _rows()
-    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS)
+    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS, [])
     assert gate["verdict"] == "PASS", gate["checks"]
 
 
@@ -153,7 +161,7 @@ def test_admission_catches_an_open_loop_arm_that_read_the_state(module):
     leaked = next(r for r in rows if r["branch"] == "best_fixed_schedule" and r["turn"] > 1)
     leaked["action_named"] = [1]
     leaked["n_named"] = 1
-    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS)
+    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS, [])
     assert not gate["checks"]["open_loop_arms_never_targeted"]
     assert gate["open_loop_arms_that_targeted"] == ["best_fixed_schedule"]
     assert gate["verdict"] == "FAIL"
@@ -163,7 +171,7 @@ def test_admission_catches_an_action_at_turn_one(module):
     rows = _rows()
     first = next(r for r in rows if r["turn"] == 1)
     first["action_named"], first["n_named"] = [0, 1, 2], 3
-    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS)
+    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS, [])
     assert not gate["checks"]["turn_1_action_free_in_every_arm"]
 
 
@@ -175,14 +183,14 @@ def test_admission_catches_a_closed_loop_target_that_was_not_broken(module):
     row = next(r for r in rows if r["branch"] == "koopman_mpc" and r["turn"] > 1)
     row["state_before_action"] = [True, True, True]
     row["action_named"], row["n_named"] = [0], 1
-    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS)
+    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS, [])
     assert not gate["checks"]["closed_loop_targets_were_broken_constraints"]
 
 
 def test_admission_catches_an_overspent_budget(module):
     rows = _rows()
     report = _arm_report(rows, overspent={"koopman_mpc": [["item0", 0]]})
-    gate = module.gate_g_s3(report, _run_config(), rows, ARMS, N_TURNS)
+    gate = module.gate_g_s3(report, _run_config(), rows, ARMS, N_TURNS, [])
     assert not gate["checks"]["no_arm_overspent_its_budget"]
 
 
@@ -192,9 +200,9 @@ def test_admission_catches_a_controller_that_was_blind_too_often(module):
 
     rows = _rows()
     assert module.gate_g_s3(_arm_report(rows, blind=0.05), _run_config(), rows, ARMS,
-                            N_TURNS)["checks"]["blind_turn_share_under_ceiling"]
+                            N_TURNS, [])["checks"]["blind_turn_share_under_ceiling"]
     assert not module.gate_g_s3(_arm_report(rows, blind=0.30), _run_config(), rows, ARMS,
-                                N_TURNS)["checks"]["blind_turn_share_under_ceiling"]
+                                N_TURNS, [])["checks"]["blind_turn_share_under_ceiling"]
 
 
 def test_admission_catches_a_dead_readout(module):
@@ -205,15 +213,42 @@ def test_admission_catches_a_dead_readout(module):
     for row in rows:
         if row["branch"] == "koopman_mpc" and row["turn"] == 18:
             row["y_graded"] = 1.0
-    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS)
+    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS, [])
     assert not gate["checks"]["spread_at_every_turn_per_arm"]
     assert "18" in gate["turns_failing_spread_by_arm"]["koopman_mpc"]
 
 
 def test_admission_catches_missing_rows(module):
     rows = _rows()[:-1]
-    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS)
+    gate = module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS, [])
     assert not gate["checks"]["row_count_matches_design"]
+
+
+def test_a_named_exclusion_is_subtracted_from_the_expected_row_count(module):
+    """The per-item cap guard's only permitted exit is `--exclude-item`
+    (screening section 10 items 4/6). If the row count still expected the full
+    item set, taking that exit would fail this gate instead -- two signed rules
+    that cannot both be obeyed."""
+
+    rows = [row for row in _rows() if row["item_id"] != "item3"]
+    report = _arm_report(rows)  # still declares n_items = N_ITEMS, as the runner wrote it
+    gate = module.gate_g_s3(report, _run_config(), rows, ARMS, N_TURNS, ["item3"])
+    assert gate["checks"]["row_count_matches_design"]
+    assert gate["n_items_declared"] == N_ITEMS and gate["n_items"] == N_ITEMS - 1
+    assert gate["excluded_items"] == ["item3"]
+    assert gate["verdict"] == "PASS", gate["checks"]
+
+    unexcused = module.gate_g_s3(report, _run_config(), rows, ARMS, N_TURNS, [])
+    assert not unexcused["checks"]["row_count_matches_design"]
+
+
+def test_an_exclusion_that_names_no_item_raises(module):
+    """An id that matches nothing would shrink what the gate expects while
+    dropping no rows -- a typo would buy a pass."""
+
+    rows = _rows()
+    with pytest.raises(SystemExit, match="which no row in this arm carries"):
+        module.gate_g_s3(_arm_report(rows), _run_config(), rows, ARMS, N_TURNS, ["item42"])
 
 
 def _block(point, ci, mde=0.0617):
@@ -301,15 +336,20 @@ def test_end_to_end_through_main_on_a_synthetic_arm(module, tmp_path, monkeypatc
         for row in rows:
             fh.write(json.dumps(row) + "\n")
 
+    # The readout rows are what `score_sequor_trajectories.py` actually writes:
+    # the judge's verdicts, WITHOUT the constraint text or any controller field.
+    # Handing the same dicts to both files makes the join a no-op and hides
+    # exactly the failure this test exists to catch.
+    readout_rows = _readout_projection(module, rows)
     readout = arm_dir / "readout_independent.json"
     readout.write_text(json.dumps({
         "judge_kind": "independent", "mode": "canonical", "arm_dir": str(arm_dir),
         "agent_model": "agent", "judge_model": "judge", "n_rows_unusable": 0,
-        "provenance": {"git_sha": "0" * 40}, "rows": rows}))
+        "provenance": {"git_sha": "0" * 40}, "rows": readout_rows}))
 
     zero_rows = [dict(r, branch="zero_control", trajectory_id=r["trajectory_id"] + "__z",
                       y_graded=max(0.0, r["y_graded"] - 1 / 3))
-                 for r in rows if r["branch"] == "koopman_mpc" and r["item_id"] != "item9"]
+                 for r in readout_rows if r["branch"] == "koopman_mpc" and r["item_id"] != "item9"]
     zero = tmp_path / "zero.json"
     zero.write_text(json.dumps({
         "judge_kind": "independent", "mode": "canonical", "arm_dir": str(tmp_path),
@@ -345,3 +385,70 @@ def test_main_refuses_to_overwrite_an_existing_report(module, tmp_path, monkeypa
         "--out-path", str(out)])
     with pytest.raises(SystemExit, match="refusing to overwrite"):
         module.main()
+
+
+def _stage_arm(module, tmp_path, rows, keep_trajectory_row=lambda row: True) -> pathlib.Path:
+    """Write an arm directory the way the runner does: full rows in
+    `trajectories.jsonl`, the scorer's projection in the readout."""
+
+    import json
+
+    arm_dir = tmp_path / "sequor_s3_arm"
+    arm_dir.mkdir()
+    (arm_dir / "arm_report.json").write_text(json.dumps(_arm_report(rows)))
+    (arm_dir / "run_config.json").write_text(json.dumps(_run_config()))
+    with (arm_dir / "trajectories.jsonl").open("w") as fh:
+        for row in rows:
+            if keep_trajectory_row(row):
+                fh.write(json.dumps(row) + "\n")
+    readout = arm_dir / "readout_independent.json"
+    readout.write_text(json.dumps({
+        "judge_kind": "independent", "mode": "canonical", "arm_dir": str(arm_dir),
+        "agent_model": "agent", "judge_model": "judge", "n_rows_unusable": 0,
+        "provenance": {"git_sha": "0" * 40}, "rows": _readout_projection(module, rows)}))
+    return readout
+
+
+def test_the_join_reaches_every_turn_not_only_the_last(module, tmp_path, monkeypatch):
+    """The planted defect is at turn 1, and turn 1 is the turn a join keyed on
+    `trajectory_id` alone can never reach: one id names N_TURNS rows, so the
+    dict keeps one of them and the turn-1 clause reads a row with no
+    `n_named`. Catching this requires the defect to be in the trajectory rows
+    only -- which is where the real action fields live."""
+
+    import json
+
+    rows = _rows({"koopman_mpc": 1 / 3})
+    for row in rows:
+        if row["turn"] == 1 and row["branch"] == "koopman_mpc" and row["item_id"] == "item0":
+            row["action_named"] = [0]
+            row["n_named"] = 1
+    readout = _stage_arm(module, tmp_path, rows)
+
+    out = tmp_path / "s3_gates_report.json"
+    monkeypatch.setattr("sys.argv", [
+        "analyze_sequor_s3_gates.py", "--independent-readout", str(readout),
+        "--out-path", str(out), "--late-from", str(LATE_FROM)])
+    module.main()
+
+    report = json.loads(out.read_text())
+    assert report["g_s3"]["checks"]["turn_1_action_free_in_every_arm"] is False
+    assert report["g_s3"]["verdict"] == "FAIL"
+
+
+def test_the_join_refuses_when_the_trajectories_do_not_cover_the_readout(module, tmp_path,
+                                                                        monkeypatch):
+    """A join that fills nothing must stop the run, not hand the gates rows
+    with holes in them. Silence here is what let the analyzer pass its tests
+    and crash on the arm."""
+
+    rows = _rows({"koopman_mpc": 1 / 3})
+    readout = _stage_arm(module, tmp_path, rows, keep_trajectory_row=lambda row: row["turn"] != 7)
+
+    out = tmp_path / "s3_gates_report.json"
+    monkeypatch.setattr("sys.argv", [
+        "analyze_sequor_s3_gates.py", "--independent-readout", str(readout),
+        "--out-path", str(out), "--late-from", str(LATE_FROM)])
+    with pytest.raises(SystemExit, match="the join filled"):
+        module.main()
+    assert not out.exists()

@@ -52,6 +52,10 @@ PREDICTED_BY_THE_MODEL = {"koopman_mpc_minus_best_fixed_schedule": 0.0531,
                           "koopman_mpc_minus_greedy_targeted": 0.0430}
 MIN_DISTINCT_VALUES = 3
 BLIND_TURN_CEILING = 0.15  # the in-loop judge measured 5% unparsed (15739196); 3x that is a fault
+# `constraints` lives only in trajectories.jsonl -- the readout rows carry the
+# judge's verdicts, not the item's constraint text -- and `k` is read off it.
+BACKFILLED_FROM_TRAJECTORIES = ("constraints", "n_named", "action_named", "state_before_action",
+                                "followed_inloop", "y_inloop", "budget", "tokens_left_after")
 TREATMENT = "koopman_mpc"
 OPEN_LOOP = ("best_fixed_schedule", "equal_cost_random")
 ZERO_CONTROL = "zero_control"
@@ -81,7 +85,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def gate_g_s3(arm_report: dict, run_config: dict, rows: list[dict], arms: list[str],
-              n_turns: int) -> dict:
+              n_turns: int, excluded: list[str]) -> dict:
     """The design's own properties, checked on the rows that exist.
 
     The action-set clause is the one that could not be checked before this arm
@@ -90,6 +94,15 @@ def gate_g_s3(arm_report: dict, run_config: dict, rows: list[dict], arms: list[s
     state into a schedule -- and the whole comparison would be between two
     closed loops. It is checked on rows, not on the policy code, because the
     policy being right does not prove the runner used it.
+
+    The row count is checked against `n_items` MINUS the items dropped by
+    `--exclude-item`. Screening section 10 items 4/6 make a named exclusion the
+    only way past the per-item cap guard, so a row count that still expects the
+    full item set would make the two signed rules contradict each other: taking
+    the only permitted route out of one gate would fail another. The clause
+    keeps its teeth because the expected count is still the design's own
+    dimensions, and because an excluded id that names no item in the arm raises
+    rather than quietly shrinking what the gate expects.
     """
 
     item_sets = {arm: sorted({r["item_id"] for r in rows if r["branch"] == arm}) for arm in arms}
@@ -131,7 +144,15 @@ def gate_g_s3(arm_report: dict, run_config: dict, rows: list[dict], arms: list[s
     blind = {arm: stats["blind_turn_share"] for arm, stats in spend.items()}
 
     n_seeds = len(arm_report["seeds"])
-    declared_items = arm_report["n_items"]
+    excluded = sorted(set(excluded))
+    known_items = set(arm_report["token_cap_by_item"])
+    unknown = [item for item in excluded if item not in known_items]
+    if unknown:
+        raise SystemExit(
+            f"--exclude-item named {', '.join(unknown)}, which no row in this arm carries. An id "
+            f"that matches nothing would shrink the row count the gate expects while dropping "
+            f"nothing -- check the spelling against arm_report.json.")
+    declared_items = arm_report["n_items"] - len(excluded)
     expected_rows = len(arms) * declared_items * n_turns * n_seeds
     checks = {
         "row_count_matches_design": len(rows) == expected_rows,
@@ -144,12 +165,14 @@ def gate_g_s3(arm_report: dict, run_config: dict, rows: list[dict], arms: list[s
         "spread_at_every_turn_per_arm": all(not s["turns_failing"] for s in spread.values()),
     }
     return {
-        "criterion": f"rows = arms x items x turns x seeds; identical item sets; no action at turn 1; "
+        "criterion": f"rows = arms x (items - {len(excluded)} excluded) x turns x seeds; "
+                     f"identical item sets; no action at turn 1; "
                      f"open-loop arms play only none/blanket; closed-loop targets are constraints the "
                      f"in-loop judge called broken; no arm over budget; blind-turn share "
                      f"<= {BLIND_TURN_CEILING:.0%}; per ARM every turn has sd > 0 and "
                      f">= {MIN_DISTINCT_VALUES} distinct y",
         "n_rows": len(rows), "n_rows_expected": expected_rows, "n_items": len(reference),
+        "n_items_declared": arm_report["n_items"], "excluded_items": excluded,
         "n_seeds": n_seeds, "checks": checks,
         "arms_acting_at_turn_1": turn1_actions,
         "open_loop_arms_that_targeted": leaked,
@@ -314,18 +337,29 @@ def main() -> None:
 
     arms = list(arm_report["arms"])
     n_turns = arm_report["n_turns"]
-    by_id = {row["trajectory_id"]: row for row in readout["rows"]}
+    # (trajectory_id, turn) is the key. A trajectory_id names n_turns rows, one
+    # per turn, so keying on the id alone keeps a single row per trajectory and
+    # leaves every earlier turn without the action fields the gates read -- the
+    # turn-1 clause would then be checking a row that has no `n_named`.
+    by_key = {(row["trajectory_id"], row["turn"]): row for row in readout["rows"]}
+    filled = 0
     with (arm_dir / "trajectories.jsonl").open() as handle:
         for line in handle:
             raw = json.loads(line)
-            row = by_id.get(raw["trajectory_id"])
-            if row is not None and row["turn"] == raw["turn"]:
-                for field in ("n_named", "action_named", "state_before_action", "followed_inloop",
-                              "y_inloop", "budget", "tokens_left_after"):
+            row = by_key.get((raw["trajectory_id"], raw["turn"]))
+            if row is not None:
+                for field in BACKFILLED_FROM_TRAJECTORIES:
                     row[field] = raw[field]
+                filled += 1
+    if filled != len(by_key):
+        raise SystemExit(
+            f"the join filled {filled} of {len(by_key)} readout rows; the rest would reach the "
+            f"gates without their action fields. A join that silently fills nothing is how this "
+            f"analyzer passed its own tests while crashing on the arm -- check that "
+            f"{arm_dir / 'trajectories.jsonl'} covers this readout.")
     rows = [row for row in readout["rows"] if row["item_id"] not in args.exclude_item]
 
-    admission = gate_g_s3(arm_report, run_config, rows, arms, n_turns)
+    admission = gate_g_s3(arm_report, run_config, rows, arms, n_turns, args.exclude_item)
     turns = range(args.late_from, n_turns + 1)
 
     primary = contrast(pilot, rows, TREATMENT, "best_fixed_schedule", turns, args.seed)
