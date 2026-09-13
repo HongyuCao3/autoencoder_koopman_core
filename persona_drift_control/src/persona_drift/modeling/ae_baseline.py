@@ -81,15 +81,24 @@ class AEKoopmanSurrogate:
     `docs/method/koopman_surrogate.md` left for a future baseline whose
     state representation stays in the original `ReducedStateConfig` space.
 
-    `readout(z) = float(z[0])`, matching `core.py`'s
+    `readout(z) = float(z[y_index])`, matching `core.py`'s
     `DeepAugmentedKoopmanAutoencoder.predict_y` (a verbatim slice of the raw
-    state's first component, not a separately learned read-out layer) --
-    valid only under `nu=1` (z[0] is then exactly y_t), same assumption
-    `koopman.abs_sign_extra_features` and the LSTM baseline make.
+    state, not a separately learned read-out layer).
+
+    `y_index` defaults to 0, which is every existing caller's behavior and is
+    correct only under `nu=1` -- `build_reduced_state_pairs` puts the y-block
+    oldest-first, so z[0] is y_t only when the block has one term. Under a
+    delay-embedded state the current reading is z[nu-1], and a reader left at
+    0 would silently score the model against a y from `nu-1` turns ago.
+    `KoopmanSurrogate` does not have this problem (its read-out is a fitted
+    `C`); the LSTM baseline does not either (it carries its own (h, c)).
     """
 
-    def __init__(self, state_dim: int, config: AEKoopmanConfig | None = None):
+    def __init__(self, state_dim: int, config: AEKoopmanConfig | None = None, y_index: int = 0):
         self.state_dim = int(state_dim)
+        if not 0 <= int(y_index) < self.state_dim:
+            raise ValueError(f"y_index={y_index} out of range for state_dim={self.state_dim}")
+        self.y_index = int(y_index)
         self.config = config or AEKoopmanConfig()
         torch.manual_seed(self.config.random_state)
         self.encoder = _make_mlp(
@@ -230,7 +239,7 @@ class AEKoopmanSurrogate:
         """Predict y_t from z_t -- `Predictor.readout`. See class docstring
         for why this is a verbatim slice rather than a learned read-out."""
 
-        return float(np.asarray(z, dtype=float)[0])
+        return float(np.asarray(z, dtype=float)[self.y_index])
 
     def n_params(self) -> int:
         encoder_decoder = sum(p.numel() for p in [*self.encoder.parameters(), *self.decoder.parameters()])

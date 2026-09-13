@@ -146,3 +146,31 @@ def test_train_lstm_surrogate_reduces_train_loss_on_easy_synthetic_data():
     held_out_preds = [rollout_predictions(model, rows, y_col="y_safety") for rows in held_out_rows]
     rollout_mse = mse_from_predictions(held_out_preds, min_turn_index=0)
     assert np.isfinite(rollout_mse)
+
+
+def test_warm_start_with_an_empty_prefix_is_exactly_init_state():
+    """The regression anchor: the new method's zero-length case must be the
+    old behaviour bit for bit, so no existing caller changes."""
+    import numpy as np
+
+    from persona_drift.modeling.lstm_baseline import LSTMSurrogate
+
+    model = LSTMSurrogate(hidden_size=3)
+    np.testing.assert_array_equal(model.warm_start([], []), model.init_state())
+
+
+def test_warm_start_carries_the_observed_prefix_into_the_rollout():
+    """A prefix the model has actually seen must move its state, and the
+    resulting rollout must differ from the cold one -- otherwise the fairness
+    fix is cosmetic."""
+    import numpy as np
+    import pytest
+
+    from persona_drift.modeling.lstm_baseline import LSTMSurrogate
+
+    model = LSTMSurrogate(hidden_size=4)
+    warm = model.warm_start([0.9, 0.8, 0.7], [1.0, 0.0, 1.0])
+    assert not np.allclose(warm, model.init_state())
+    assert model.readout(warm) != pytest.approx(model.readout(model.init_state()))
+    with pytest.raises(ValueError):
+        model.warm_start([0.1, 0.2], [1.0])

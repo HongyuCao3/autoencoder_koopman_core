@@ -59,6 +59,33 @@ class LSTMSurrogate(nn.Module):
     def init_state(self) -> np.ndarray:
         return np.zeros(2 * self.hidden_size, dtype=float)
 
+    def warm_start(self, ys: "list[float]", vs: "list[float]") -> np.ndarray:
+        """Pack the `(h, c)` reached by teacher-forcing an observed prefix.
+
+        `init_state()` assumes no prior knowledge, which is the right default
+        for this module's own rollout (a trajectory scored from turn 0). It is
+        the WRONG contract when the LSTM is compared against a
+        `ReducedStateConfig` surrogate on the same windows: those are seeded
+        from an observed y-window, so scoring the LSTM from an all-zero state
+        hands it strictly less information than its opponent and any verdict
+        about nonlinearity is then about the seeding, not the model class.
+
+        `ys`/`vs` are the prefix pairs the cell should consume, already
+        aligned by the caller exactly as `rollout_predictions` aligns them
+        (i.e. the caller applies `contemporaneous_v`'s shift, not this
+        method). An empty prefix reproduces `init_state()` bit for bit, which
+        is what keeps every existing caller's behavior unchanged: nothing here
+        modifies an existing method.
+        """
+
+        h = torch.zeros(1, self.hidden_size)
+        c = torch.zeros(1, self.hidden_size)
+        with torch.no_grad():
+            for y, v in zip(ys, vs, strict=True):
+                inp = torch.tensor([[float(y), float(v)]], dtype=torch.float32)
+                h, c = self.cell(inp, (h, c))
+        return np.concatenate([h.squeeze(0).numpy(), c.squeeze(0).numpy()]).astype(float)
+
     def _unpack(self, z: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         z = np.asarray(z, dtype=float)
         return z[: self.hidden_size], z[self.hidden_size :]

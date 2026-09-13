@@ -86,3 +86,23 @@ def test_n_params_counts_encoder_decoder_and_dynamics():
     ).fit(dataset)
 
     assert model.n_params() > 0
+
+
+def test_y_index_defaults_to_the_old_behaviour_and_can_follow_a_delay_embedded_state():
+    """Regression for the default plus the new branch.
+
+    `readout` used to be a hard `z[0]`, which is y_t only when the y-block has
+    one term. Under nu>1 `build_reduced_state_pairs` puts the block
+    oldest-first, so the current reading is z[nu-1]; leaving the reader at 0
+    would score the model against a y from nu-1 turns ago without erroring.
+    """
+    import numpy as np
+    import pytest
+
+    from persona_drift.modeling.ae_baseline import AEKoopmanSurrogate
+
+    z = np.array([0.1, 0.2, 0.3, 0.4])
+    assert AEKoopmanSurrogate(state_dim=4).readout(z) == pytest.approx(0.1)
+    assert AEKoopmanSurrogate(state_dim=4, y_index=2).readout(z) == pytest.approx(0.3)
+    with pytest.raises(ValueError, match="out of range"):
+        AEKoopmanSurrogate(state_dim=4, y_index=4)

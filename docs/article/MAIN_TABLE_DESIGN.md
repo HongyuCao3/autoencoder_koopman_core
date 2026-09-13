@@ -75,10 +75,14 @@ core 的 n=3 是**训练** seed、行为线的 n=3 是**数据** seed，两者�
    且符号在任务间翻转；其中两格名义显著（含 `character_length_t5` 上 **LSTM 更好 −0.031**）。
    配对 bootstrap 精确到能把 0.005 判显著——**显著且可忽略**。
    写「差别小于 0.03 且方向不一致」，**不写「统计上不可区分」**（后者是错的）。
-3. **第 3 行的判别力只在行为线那三列。** `ours − 扣住控制量` 在 core **七个任务全部跨 0**：
-   core 的 `r` 每条轨迹恒定、不是随机化的动作，延迟嵌入状态已把它编码进去。
-   「执行器进了算子」这条主张由 `defense`（`B`=+0.0825）与 `constraint`（+0.0182）扛，
-   CI 均不含 0，因为那里 `u` 是伯努利随机化的。**core 那三格要读作「本设定无从判别」，不是「执行器无用」。**
+3. **第 3 行跨十列全部为零——E3 之后这条要改写成正面结论，不是 core 的局限。**
+   `ours − 扣住控制量` 在 core 七个任务全部跨 0，在行为三线也全部跨 0
+   （`constraint` +0.0015、`gsm8k_sharded` +0.057、`defense` +0.012）。
+   **core 那套「`r` 恒定、不是随机化动作」的解释在 `constraint` 上不成立**——那里的 `u` 是伯努利随机化的真动作。
+   与 S1a 的终点权威 +0.1389 并不矛盾：一步增益 `B`=+0.0182，滚 4 步累计约 0.05，小于读出自身波动。
+   **正确表述：执行器对终点有权威，对规划视界内的读出没有预测力。**
+   这正是 Table 2 三条线闭环全部打平的**机制解释**——算子在控制器规划的那个视界上没有动作依赖的结构，
+   用它规划的控制器在原理上就赢不了固定日程。**Table 1 第 3 行与 Table 2 的打平是同一件事的两个观测面。**
 
 **三列没有信息量，但仍进表**（否则等于按结果挑列）：`sentiment_t5`(10 条轨迹)、
 `average_word_length_t5`(14)——ours 的 CI 分别是 [−0.11,+0.78]、[−1.52,+0.40]；
@@ -118,15 +122,14 @@ core 的 n=3 是**训练** seed、行为线的 n=3 是**数据** seed，两者�
 
 | 行 | core（8 任务） | `defense` | `gsm8k_sharded` | `constraint` |
 |---|---|---|---|---|
-| 1 平凡 null | ✓ 8/8（`stateless` 全胜） | ✓ 3 个 | ✓ | ✓ 3 个含 turn |
-| 2 Markov+u | ✓ 8/8 | ✓ | ✗ | ✗ |
-| 3 延嵌无 u | ✓ 8/8 | ✓ | ✓ | ✓ |
-| 4 LSTM | ✓ 8/8（3 seed，隐层在 validation 上选） | ✓ | ✗ | ✗ |
-| 5 AE | ✓ 8/8（3 seed，早停） | ✓ | ✗ | ✗ |
-| **6 Ours** | ✓ 8/8（含 CI + 配对对比） | ✓ | ✓ EK-A | ✓ S2 |
+| 1–6（全部） | ✓ 8/8 | ✓ | ✓ | ✓ |
 
-core 侧全部经 `scripts/eval_surrogate_rows.py` 一条路径产出，六行落在逐行相同的评测集上；
-逐行预测存在 `results/surrogate_rows_paired/*_predictions.npz`，以后加对比不必重拟合。
+**十列六行全满。** core 侧经 `scripts/eval_surrogate_rows.py`、行为侧经
+`persona_drift_control/scripts/eval_surrogate_rows_behavioral.py`，**两侧共用同一个 `surrogate_eval` 打分路径**
+（skill 定义、三个 null、bootstrap、折协议）；模型类各用本侧实现，两套代码体系不互相 import。
+每侧六行都落在逐行相同的评测集上。core 的逐行预测存在 `results/surrogate_rows_paired/*_predictions.npz`。
+
+**跨列可比的是 `Skill_H` 的定义与区间构造，不是拟合器**——这句话要进表注。
 
 **缺的格子全是 CPU 重拟合，数据已落盘**（`datasets/`、`outputs/ergo_ekA_branch` 759 对、`outputs/sequor_s1_arm` 9600 行）——**Table 1 零 GPU 可填满。**
 
@@ -141,7 +144,11 @@ core 侧全部经 `scripts/eval_surrogate_rows.py` 一条路径产出，六行�
 | ~~E2~~ | ~~core 8 补第 1/2/3/4 行~~ **已完成 2026-09-12**：`scripts/eval_surrogate_rows.py`，10 条单测；结果档案 [`../experiments/core_surrogate_rows_results.md`](../experiments/core_surrogate_rows_results.md) | 零 GPU | Table 1 core 侧**六行全满** |
 
 **E2 改变了 Table 1 的三条措辞（待落到 §一）**：① 记忆有用是**条件性**的（3/7 显著支持、1/7 显著反对、3/7 分不开）；② 非线性无用要用**效应量**讲（|Δ| < 0.03 且符号翻转），不能讲「统计上不可区分」；③ **第 3 行「执行器进算子」core 一格都撑不住**（`ours − 无 r` 七个任务全部跨 0）——core 的 `r` 每条轨迹恒定、不是随机化动作，这条主张只能由三条行为线扛。**每个数据集的 lag 按「还能留 H≥3 的最深延迟嵌入」定**（T=10 用 lag=3、T=5 用 lag=1），表里逐列标注。
-| E3 | 行为 3 线补 LSTM / AE / Markov 行（已有产物上重拟合） | 数十分钟 CPU | Table 1 |
+| ~~E3~~ | ~~行为 3 线补行~~ **已完成 2026-09-12**：`persona_drift_control/scripts/eval_surrogate_rows_behavioral.py`；结果档案 [`../experiments/behavioral_surrogate_rows_results.md`](../experiments/behavioral_surrogate_rows_results.md) | 零 GPU | Table 1 **十列全满** |
+
+**E3 不是重新制表，是新测量**：三条线签过的闸门全部是**一步、`nu=1`**（`constraint` 的 S2 配置字面是 `{nu:1, mu:1}`），主表第 6 行从未在任何一条线上被拟合过；第 2 行才对应各线已发表的算子。
+**E3 的三条结果**：① `constraint` 上 `ours − Markov` **+0.234 ★**，至此**四个信息量足够的列全部显著支持延迟嵌入**；② **`ours − 扣住 u` 跨线全部为零**，且 `constraint` 的 `u` 是伯努利随机化的真动作——core 那套「`r` 恒定」的解释在这里不成立；③ 非线性差别 ≤0.05、两个方向都显著，与 core 同形。
+**两列无信息量**：`gsm8k_sharded` 只剩 64 个评测行（nu=4+H=4 要求 ≥9 轮）、`defense` 六行贴 0 且最好 null 是 `const`（读出无量程，与 `even_odd_t5` 同机制）。均如实进表标注，不挑列。
 | E4 | `defense` Phase J 七臂按 seed 聚合成 `mean ± std (n=5)` | 小时级 CPU | Table 2 |
 | G1 | `defense` `zero_control` + `constant_remind` 扩到 5 seed（续跑） | **2 作业 × ~20 min**（8 攻击 × 3 新 seed = 24 条/臂；Phase E 16 条/11 min → 0.7 min/条；Qwen3-4B、5 轮、沿用 Phase E `max_new_tokens`） | Table 2 `defense` 列补洞 |
 | G3 | `constraint` S3 闭环臂（**定向执行器版臂表**） | **5 臂 ≈ 6.3 GPU-h**：4 个开环臂 × 40 题 × 20 轮 × 3 seed = 9600 生成 × 1.61 s ≈ 4.3 h；MPC 臂 2400 × ~1.8 s（生成 + in-loop 4B 判分 0.185 s/行）≈ 1.2 h；报告判 14B 12000 行 × 0.23 s ≈ 0.8 h。A100-PCIE-40G，agent+in-loop=4B，报告判=14B | Table 2 `constraint` 列 |
