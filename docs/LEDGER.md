@@ -125,6 +125,19 @@ ERGO 闭环比较：Phase C（9 臂，09-07）→ append 重跑（3 臂，09-07�
 **K3 闭环臂不提交**；K1(15696221) 跑完归档、K2 拟合是纯 CPU 收尾动作。
 此后 GPU 预算转到 ERGO 线的 EK 相位，且 EK0/EK1 两步都是零 GPU。
 
+### G1：`defense` 线两个端点臂补到 5 seed（2026-09-12，主表 Table 2）
+
+| 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
+|---|---|---|---|---|---|
+| 09-12 23:1x | 15829527 | `run_koopman_defense_phaseE_zero_control_5seed.sbatch`（8 攻击 × **5 seed** × 5 轮 = 40 轨迹） | **方法** | 待回填 | **Table 2 的 `defense` 列能不能出可报告数字**：Phase J 的七个 budget-1 臂都有 5 seed，两个端点臂（`zero_control` 下界、`constant_remind` 满剂量上界）只有 2 seed，而 `.claude/global.md` → *报告口径* 明令禁止 2 seed 作为比较数字。不补 → `defense` 列只能报 budget-1 那一段，缺两个端点就说不出"等代价下闭环买到了什么"。 |
+| 09-12 23:1x | 15829528 | `run_koopman_defense_phaseE_constant_remind_5seed.sbatch`（同上，满剂量臂） | **方法** | 待回填 | 同上行的另一半。满剂量臂同时是 Table 2 的代价轴锚点（每轮插入提醒 = 预算上界）。 |
+
+**偏离设计稿一处，写在前面**：`MAIN_TABLE_DESIGN.md` §五 G1 行写的是「**续跑**」（把 seed 2–4 追加进既有 Phase E 目录，即 Phase J 2026-09-03 的做法）。**本次改为整 5 个 seed 重跑进新目录**，理由是 Phase J 的续跑与被续的那批是**同一天**、且目录里有 `hydra_run_config.json` 供 `run_config_guard` 比对；Phase E 这两个目录是 CLI runner 写的、**没有配置快照**，且间隔 **12 天**。生成路径已逐行核过是行为等价的（turn 循环搬进 `trajectory_runner.run_reminder_gated_trajectory`，`agent_seed = seed*1e6 + turn*100 + 1` 与 judge offset 2 未变；`safety_judge` 的 1–5 解析原样搬进 `judge_scoring.parse_1_to_5_score`；`chat_model.generate` 的 prompt 构造只是抽函数；两侧产物里 `decoding_config` 逐字段相同），**但 Python 环境本身事后无法验证**——`torch`/`transformers` 在 12 天里动没动，续跑会把这个未知折进 `mean ± std (n=5)` 的跨 seed 离散度里且**不可见**。代价是每臂多 16 条轨迹（约 11 min），买到两件事：Table 2 那一格的 5 个 seed 共用**一个** harness 指纹；以及 seed 0/1 变成一次**零 GPU 的仪器漂移测量**（与既有 Phase E 产物逐条比 `agent_message`）。既有 Phase E 产物**一个字节不动**（新目录，`.claude/global.md` → *产物与谱系*：`outputs/` 只增不改）。
+
+**具名例外的边界（提交前先说清）**：这两个作业沿用 `defense` 线的自判（`--judge-model` 默认 = agent，Qwen3-4B 自判），即 `.claude/global.md` 的**具名例外**。本次**不视为「`defense` 线重启」**——它不问新问题、不重开 judge/readout 链，只把一个已签字的臂从 2 seed 抬到口径要求的 ≥3 seed。若用户裁定这构成重启，补救是**另起一个独立重判作业**（与本产物无关，轨迹不受影响），而不是作废这两个作业。**例外的其余义务不变**：引用处同址带局限句 + 标 `judge_kind=self`。
+
+**提交前六条核查（2026-09-12 23:1x）**：① 用户已裁决（「先继续提交需要 GPU 的实验任务」），上述偏离一处已具名上报；② 运行时估计 **30 ± 5 min/臂**，依据逐条写在 sbatch 头部（40 轨迹 × 41 s/轨迹，速率来自 15414045 / 15414046 实测的 16 条 656 s / 625 s；未实测项：`--gpus a100:1` 给 40GB 还是 80GB 对本 runner 的单轨迹延迟有无影响，batch 宽为 1 故预期无），`--time 01:30:00` = 3×；③ `outputs/koopman_defense_phaseE_{zero_control,constant_remind}_5seed` 提交前均不存在（用真实 argparse 干跑逐条核过）；④ 见上表两行；⑤ 配额：加这两个后最近 10 个作业为 **仪器 3 / 方法 6 / 基建 1** → 通过；⑥ 两个作业的 `pip install -e .` 都走 `flock /scratch/hcao2/envs/.locks/persona_drift_pilot.editable.lock`，不可能重演 2026-09-08 的并发 editable install 竞态；队列里无其它本项目作业。
+
 <!-- 追加新行时：先答"它改变了哪个决定"，答不出就不要提交这个作业。 -->
 
 ---
