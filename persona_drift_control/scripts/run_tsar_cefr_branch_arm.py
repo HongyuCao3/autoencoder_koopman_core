@@ -133,6 +133,23 @@ def select_items(items, n_sources, mode):
     return kept, dropped
 
 
+def build_roots(items, cap_of) -> list[dict]:
+    """Depth-0 nodes: the source paragraphs themselves.
+
+    Split out of main() and exercised by --dry-run and by a unit test, because
+    the first submission (15896362) died here after 2m21s of GPU time on
+    `item.source_text` -- TsarItem's field is `original`. A dry run that
+    returns before it touches the bank cannot catch an attribute error, which
+    makes it a check that passes exactly when it is not needed.
+    """
+    return [{"text_id": item.text_id, "source_id": item.source_id,
+             "target_cefr": item.target_cefr, "depth": 0, "path": (),
+             "node_id": f"{item.text_id}|", "parent_id": None,
+             "text_out": item.original,
+             "cap": cap_of(item.original)}
+            for item in items]
+
+
 def expand(llm, sampling_cls, frontier: list[dict], chunk: int) -> list[dict]:
     """One depth of the tree: every frontier node x every action, in order.
 
@@ -206,6 +223,17 @@ def main() -> None:
     print(json.dumps({"kept_items": len(kept), "excluded": dropped, **census},
                      ensure_ascii=False, indent=2), flush=True)
     if args.dry_run:
+        # A word-count proxy for the cap: the real cap needs the model
+        # tokenizer, but every OTHER failure on this path -- missing item
+        # fields, the prompt template, the node-id scheme -- is reachable
+        # without a GPU and is what this dry run exists to reach.
+        roots = build_roots(kept, lambda text: token_cap(len(text.split())))
+        sample = roots[0]
+        print(f"roots built: {len(roots)}; first node_id {sample['node_id']!r}, "
+              f"proxy cap {sample['cap']}")
+        print("--- one rendered user message, first action ---")
+        print(actions.user_message(sample["text_out"], actions.ACTION_NAMES[0],
+                                   sample["target_cefr"])[:400])
         print("dry run: no model loaded, nothing generated")
         return
 
@@ -214,12 +242,7 @@ def main() -> None:
               max_model_len=args.max_model_len, enforce_eager=False)
     tokenizer = llm.get_tokenizer()
 
-    roots = [{"text_id": item.text_id, "source_id": item.source_id,
-              "target_cefr": item.target_cefr, "depth": 0, "path": (),
-              "node_id": f"{item.text_id}|", "parent_id": None,
-              "text_out": item.source_text,
-              "cap": token_cap(len(tokenizer.encode(item.source_text)))}
-             for item in kept]
+    roots = build_roots(kept, lambda text: token_cap(len(tokenizer.encode(text))))
 
     rows, frontier = [], roots
     for _ in range(args.depth):
@@ -232,7 +255,7 @@ def main() -> None:
     print(f"{len(rows)} nodes written before readout", flush=True)
 
     probes = readout.CefrProbes(device=args.readout_device, batch_size=args.readout_batch_size)
-    source_of = {item.text_id: item.source_text for item in kept}
+    source_of = {item.text_id: item.original for item in kept}
     levels = probes.levels([r["text_out"] for r in rows], temperature=args.temperature)
     meanings = probes.meaning([source_of[r["text_id"]] for r in rows],
                               [r["text_out"] for r in rows])
@@ -242,7 +265,7 @@ def main() -> None:
         row["meaning_to_source"] = meaning
         row["fkgl"] = readout.fkgl(row["text_out"])
 
-    source_levels = probes.levels([item.source_text for item in kept], temperature=args.temperature)
+    source_levels = probes.levels([item.original for item in kept], temperature=args.temperature)
     base = {item.text_id: lvl for item, lvl in zip(kept, source_levels)}
     for row in rows:
         row["source_level_expected"] = base[row["text_id"]].level_expected
