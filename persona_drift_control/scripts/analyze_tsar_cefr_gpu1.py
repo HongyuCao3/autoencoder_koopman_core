@@ -64,7 +64,9 @@ import argparse
 import collections
 import importlib.util
 import json
+import math
 import pathlib
+import random
 import statistics
 import sys
 
@@ -78,6 +80,11 @@ DEFAULT_ARM_DIR = PDC_ROOT / "outputs" / "tsar_cefr_gpu1"
 RUNNER = PDC_ROOT / "scripts" / "run_tsar_cefr_excitation_arm.py"
 
 # The user ruling that named the item, recorded beside the number it changes.
+POWER_Z = 2.80                      # two-sided alpha=0.05 at 80% power, as everywhere on this line
+BOOTSTRAP_DRAWS = 10000             # as G-T1 on this line
+BOOTSTRAP_SEED = 20260914           # fixed so the interval reproduces from the artifact
+PAIR_UNIT = "source_id"             # plan section 4.4; the unit G-T1 already fixed for this check
+
 EXCLUSION_RULING = "2026-09-14 user ruling (option 1 of three): named exclusion, zero GPU"
 EXCLUSION_CLAUSE = "plan section 4.1 (cap policy, S1 precedent); S1 precedent = job 15763577"
 
@@ -97,6 +104,9 @@ arm = load_runner()
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--arm-dir", type=pathlib.Path, default=DEFAULT_ARM_DIR)
+    p.add_argument("--gate", choices=["admission", "d2"], default="admission",
+                   help="admission = G-S1; d2 = executor authority, which REFUSES to run "
+                        "unless admission passes on the same rows")
     p.add_argument("--exclude-item", action="append", default=[],
                    help="text_id to drop from the gate. Refused unless the unexcluded "
                         "cap check flagged it. Repeatable.")
@@ -246,6 +256,186 @@ def excluded_item_profile(rows: list[dict], retained: list[dict], item: str) -> 
     }
 
 
+# --------------------------------------------------------------------------
+# D-2: executor authority (plan section 4.4, K3's form)
+# --------------------------------------------------------------------------
+
+def with_input_level(rows: list[dict]) -> list[dict]:
+    """Attach the level of each step's INPUT, so a row carries its own one-step
+    change instead of a pooled mean.
+
+    This is what "at the same state" buys: `level_expected` alone mixes where
+    the trajectory had drifted to with what the action did to it, which is why
+    the pooled per-action mean is not this gate's answer. Step 1's input is the
+    source paragraph; step t's input is step t-1's output, byte-identical by
+    construction of the harness.
+    """
+    by_traj: dict[tuple, dict[int, dict]] = collections.defaultdict(dict)
+    for row in rows:
+        by_traj[(row["text_id"], row["seed"])][row["step"]] = row
+    out = []
+    for steps in by_traj.values():
+        for step, row in sorted(steps.items()):
+            prev = steps.get(step - 1)
+            level_in = prev["level_expected"] if prev else row["source_level_expected"]
+            out.append({**row, "level_in": level_in,
+                        "delta_level": row["level_expected"] - level_in})
+    return out
+
+
+def _bootstrap_ci(clusters: list[list[float]]) -> tuple[float, float, float]:
+    """Resampled over clusters (sources), not rows: a source's steps and seeds
+    are not independent draws."""
+    rng = random.Random(BOOTSTRAP_SEED)
+    n = len(clusters)
+    draws = []
+    for _ in range(BOOTSTRAP_DRAWS):
+        picked = [clusters[rng.randrange(n)] for _ in range(n)]
+        draws.append(statistics.fmean([v for c in picked for v in c]))
+    draws.sort()
+    return (draws[int(0.025 * BOOTSTRAP_DRAWS)], draws[int(0.975 * BOOTSTRAP_DRAWS)],
+            statistics.stdev(draws))
+
+
+def d2_contrast(rows: list[dict], steps: tuple[int, ...] | None = None) -> dict:
+    """`step_down` minus `copy` on the NEXT-STEP change in `ell`, paired inside
+    a source and bootstrapped over sources.
+
+    Signed before the data was read (plan section 4.4, D-2 in
+    kill_criterion.md section 2): RESOLVED needs the CI to exclude zero AND the
+    effect to reach this arm's own MDE. A contrast below the MDE is a point
+    estimate detected at less than 80% power -- the lesson K3 taught this line.
+    """
+    pool = [r for r in rows if steps is None or r["step"] in steps]
+    by_source: dict[str, dict[str, list[float]]] = collections.defaultdict(
+        lambda: collections.defaultdict(list))
+    for row in pool:
+        by_source[row[PAIR_UNIT]][row["action"]].append(row["delta_level"])
+
+    paired: dict[str, float] = {}
+    unpairable = []
+    for source, acts in by_source.items():
+        if acts["step_down"] and acts["copy"]:
+            paired[source] = statistics.fmean(acts["step_down"]) - statistics.fmean(acts["copy"])
+        else:
+            unpairable.append(source)
+
+    if len(paired) < 2:
+        # The caller decides what this means: for the primary it is fatal, for
+        # the confirmatory it is a fact about the excitation draw, recorded and
+        # not allowed to take the primary down with it.
+        return {"computable": False, "n_sources_paired": len(paired),
+                "n_sources_unpairable": len(unpairable), "n_rows": len(pool),
+                "steps_used": "all" if steps is None else list(steps),
+                "reason": "fewer than two sources have both `step_down` and `copy` rows "
+                          "in this window; the random excitation did not draw the pair"}
+
+    clusters = [[v] for v in paired.values()]
+    point = statistics.fmean(paired.values())
+    lo, hi, boot_sd = _bootstrap_ci(clusters)
+    sd_sources = statistics.stdev(paired.values())
+    mde = POWER_Z * sd_sources / math.sqrt(len(paired))
+
+    by_seed: dict[int, dict[str, list[float]]] = collections.defaultdict(
+        lambda: collections.defaultdict(list))
+    for row in pool:
+        by_seed[row["seed"]][row["action"]].append(row["delta_level"])
+    per_seed = {s: statistics.fmean(a["step_down"]) - statistics.fmean(a["copy"])
+                for s, a in sorted(by_seed.items()) if a["step_down"] and a["copy"]}
+    seed_vals = list(per_seed.values())
+
+    return {
+        "computable": True,
+        "quantity": "mean(delta_level | step_down) - mean(delta_level | copy)",
+        "sign_convention": "NEGATIVE is the working direction: step_down should drive "
+                           "`ell` down further than doing nothing",
+        "steps_used": "all" if steps is None else list(steps),
+        "point": point, "ci95": [lo, hi], "bootstrap_sd": boot_sd,
+        "paired_by": PAIR_UNIT, "bootstrap_over": PAIR_UNIT,
+        "draws": BOOTSTRAP_DRAWS, "seed": BOOTSTRAP_SEED,
+        "n_sources_paired": len(paired), "n_sources_unpairable": len(unpairable),
+        "sources_unpairable": sorted(unpairable)[:20],
+        "n_rows": len(pool),
+        "sd_between_sources": sd_sources,
+        "mde_at_80pct_this_arm": mde,
+        "abs_effect_over_mde": abs(point) / mde if mde else None,
+        "ci_excludes_zero": bool(lo * hi > 0),
+        "per_seed": {str(s): v for s, v in per_seed.items()},
+        "reportable": (f"{statistics.fmean(seed_vals):+.4f} +/- "
+                       f"{statistics.stdev(seed_vals):.4f} (n={len(seed_vals)} seeds)")
+        if len(seed_vals) > 1 else None,
+    }
+
+
+def d2_verdict(primary: dict, confirmatory: dict) -> dict:
+    """The pre-registered branch, and nothing else. D-2 fires when the CI
+    contains 0 OR the effect is under this arm's MDE (kill_criterion.md
+    section 2); firing closes the line, and NOT by swapping the judge."""
+    reached = primary["ci_excludes_zero"] and primary["abs_effect_over_mde"] >= 1.0
+    right_way = primary["point"] < 0
+    if reached and right_way:
+        verdict, fires = "RESOLVED", False
+        reason = ("the CI excludes 0 and the effect is at or above this arm's own MDE, "
+                  "in the working direction: the executor has authority over one step")
+    elif reached and not right_way:
+        verdict, fires = "RESOLVED_WRONG_DIRECTION", True
+        reason = ("the CI excludes 0 and the effect reaches the MDE, but step_down drives "
+                  "`ell` UP relative to doing nothing -- authority with the sign reversed "
+                  "is not authority")
+    else:
+        verdict, fires = "UNDECIDABLE", True
+        reason = (f"|{primary['point']:+.4f}| is {primary['abs_effect_over_mde']:.2f}x this "
+                  f"arm's 80%-power MDE {primary['mde_at_80pct_this_arm']:.4f}"
+                  + ("" if primary["ci_excludes_zero"] else "; the CI also crosses 0"))
+    agree = ((primary["point"] < 0) == (confirmatory["point"] < 0)
+             if confirmatory.get("computable") else None)
+    return {"death_condition": "D-2", "verdict": verdict, "fires": fires, "reason": reason,
+            "confirmatory_computable": bool(confirmatory.get("computable")),
+            "confirmatory_agrees_in_sign": agree,
+            "confirmatory_note": "step 1 only: every seed of an item starts from the SAME "
+                                 "source paragraph, so the states being contrasted are "
+                                 "identical rather than merely conditioned on",
+            "consequence_if_fires": "close `tsar_cefr`; do NOT swap the readout "
+                                    "(the one instrument swap is already spent)"}
+
+
+def d2_report(rows: list[dict], excluded: list[str]) -> dict:
+    """D-2 on the retained rows, and only if the gate ahead of it passed.
+
+    The refusal is the point. A death condition computed on rows the admission
+    gate rejected is a number with no standing, and the arm that produced it
+    said so itself (`still_open` in arm_report.json). It is checked here rather
+    than trusted to the operator's memory."""
+    unexcluded = admission(rows)
+    validate_exclusions(excluded, unexcluded, rows)
+    retained = [row for row in rows if row["text_id"] not in set(excluded)]
+    gate = admission(retained)
+    if not gate["admitted"]:
+        failing = [n for n, b in gate["blocks"].items() if not b["passed"]]
+        raise SystemExit(
+            f"refusing to judge D-2: G-S1 does not pass on these rows ({', '.join(failing)}). "
+            f"A death condition computed on rejected rows has no standing.")
+
+    dated = with_input_level(retained)
+    primary = d2_contrast(dated)
+    if not primary.get("computable"):
+        raise SystemExit(f"D-2 has no primary contrast: {primary['reason']}")
+    confirmatory = d2_contrast(dated, steps=(1,))
+    return {
+        "gate": "D-2 executor authority (plan section 4.4, K3's form)",
+        "line": "tsar_cefr", "arm_job_id": "15850523",
+        "admitted_by": "G-S1 on these rows (admission_report_excluded.json)",
+        "exclusion": {"items": sorted(excluded), "n_rows_retained": len(retained),
+                      "n_rows_total": len(rows)},
+        "primary": primary,
+        "confirmatory_step1_only": confirmatory,
+        "verdict": d2_verdict(primary, confirmatory),
+        "still_open": ["D-2.5 causal upper bound"],
+        "provenance": provenance({"gate": "d2", "exclude_item": sorted(excluded),
+                                  "criteria_source": str(RUNNER)}),
+    }
+
+
 def build_report(rows: list[dict], probe_rows: list[dict], excluded: list[str]) -> dict:
     unexcluded = admission(rows)
     validate_exclusions(excluded, unexcluded, rows)
@@ -299,15 +489,41 @@ def print_report(report: dict, out_path: pathlib.Path) -> None:
     print(f"  -> {out_path}")
 
 
+DEFAULT_NAME = {"admission": "admission_report_excluded.json", "d2": "d2_report.json"}
+
+
+def print_d2(report: dict, out_path: pathlib.Path) -> None:
+    v, p = report["verdict"], report["primary"]
+    print(f"D-2 {v['verdict']}  (fires: {v['fires']})")
+    print(f"  {p['quantity']}")
+    print(f"  point {p['point']:+.4f}  CI95 [{p['ci95'][0]:+.4f}, {p['ci95'][1]:+.4f}]  "
+          f"MDE {p['mde_at_80pct_this_arm']:.4f}  ({p['abs_effect_over_mde']:.2f}x)")
+    print(f"  reportable: {p['reportable']}")
+    c = report["confirmatory_step1_only"]
+    if c.get("computable"):
+        print(f"  step-1-only (identical states): {c['point']:+.4f} "
+              f"[{c['ci95'][0]:+.4f}, {c['ci95'][1]:+.4f}]  n={c['n_sources_paired']} sources"
+              f"  sign agrees: {v['confirmatory_agrees_in_sign']}")
+    else:
+        print(f"  step-1-only: not computable ({c['reason']})")
+    print(f"  -> {v['reason']}")
+    print(f"  -> {out_path}")
+
+
 def main() -> None:
     args = parse_args()
-    out_path = args.out_path or (args.arm_dir / "admission_report_excluded.json")
+    out_path = args.out_path or (args.arm_dir / DEFAULT_NAME[args.gate])
     if out_path.exists():
         raise SystemExit(f"refusing to overwrite existing {out_path}")
     rows = read_jsonl(args.arm_dir / "trajectories.jsonl")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if args.gate == "d2":
+        report = d2_report(rows, args.exclude_item)
+        out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        print_d2(report, out_path)
+        return
     probe_rows = read_jsonl(args.arm_dir / "saturation_probe.jsonl")
     report = build_report(rows, probe_rows, args.exclude_item)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     print_report(report, out_path)
 

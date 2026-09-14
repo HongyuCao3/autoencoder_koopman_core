@@ -44,13 +44,23 @@ ACTIONS = ("step_down", "half_step_down", "paraphrase", "copy")
 
 
 def make_rows(n_items=4, seeds=(0, 1, 2), steps=(1, 2, 3, 4, 5, 6)):
-    """A clean arm: balanced actions, range at every step, nothing truncated."""
-    rows = []
+    """A clean arm: balanced actions, range at every step, nothing truncated.
+
+    Step 1's action is keyed on (item, seed) so all four actions reach it --
+    the step-1 confirmatory contrast needs `step_down` and `copy` to coexist
+    there. The remaining steps cycle a counter, which keeps the pooled shares
+    inside the [0.20, 0.30] band the admission gate checks.
+    """
+    rows, counter = [], 0
     for i in range(n_items):
         text_id = f"{i:02d}-a2"
         for seed in seeds:
             for step in steps:
-                action = ACTIONS[(step - 1 + seed) % 4]
+                if step == 1:
+                    action = ACTIONS[(i + seed) % 4]
+                else:
+                    action = ACTIONS[counter % 4]
+                    counter += 1
                 rows.append({
                     "text_id": text_id, "source_id": f"{i:02d}", "target_cefr": "A2",
                     "seed": seed, "step": step, "action": action,
@@ -61,6 +71,16 @@ def make_rows(n_items=4, seeds=(0, 1, 2), steps=(1, 2, 3, 4, 5, 6)):
                     "meaning_to_source": 0.9, "fkgl": 9.0,
                     "source_level_expected": 3.4, "source_fkgl": 10.0,
                 })
+    return rows
+
+
+def with_action_effect(rows, step_down_effect, jitter=0.1):
+    """Levels driven by the action, plus per-item jitter so the range block
+    still passes -- an admission failure would mask what the D-2 test is for."""
+    for row in rows:
+        base = 3.5 + jitter * (int(row["source_id"]) % 7)
+        row["source_level_expected"] = base
+        row["level_expected"] = base + (step_down_effect if row["action"] == "step_down" else 0.0)
     return rows
 
 
@@ -214,3 +234,86 @@ def test_direction_diagnostic_is_labelled_as_not_being_d2():
     diag = report["exclusion"]["profiles"][0]["direction_diagnostic"]
     assert "D-2 pairs by source" in diag["not_the_d2_answer"]
     assert "sign_convention" in diag
+
+
+# --- D-2: the one-step change, and the pre-registered branch ----------------
+
+def test_input_level_is_the_previous_step_output_and_the_source_at_step_one():
+    rows = make_rows(n_items=1, seeds=(0,), steps=(1, 2, 3))
+    for r in rows:
+        r["level_expected"] = {1: 3.0, 2: 2.5, 3: 2.2}[r["step"]]
+        r["source_level_expected"] = 3.4
+    dated = {r["step"]: r for r in ana.with_input_level(rows)}
+    assert dated[1]["level_in"] == 3.4                       # the source
+    assert dated[2]["level_in"] == 3.0                       # step 1's output
+    assert dated[3]["delta_level"] == pytest.approx(-0.3)
+
+
+def test_d2_resolves_when_step_down_drives_the_level_down():
+    rows = with_action_effect(make_rows(n_items=30), step_down_effect=-1.0)
+    d2 = ana.d2_contrast(ana.with_input_level(rows))
+    verdict = ana.d2_verdict(d2, ana.d2_contrast(ana.with_input_level(rows), steps=(1,)))
+    assert d2["point"] < 0
+    assert verdict["verdict"] == "RESOLVED"
+    assert verdict["fires"] is False
+
+
+def test_d2_fires_when_the_effect_is_significant_but_backwards():
+    """Authority with the sign reversed is not authority."""
+    rows = with_action_effect(make_rows(n_items=30), step_down_effect=+1.0)
+    d2 = ana.d2_contrast(ana.with_input_level(rows))
+    verdict = ana.d2_verdict(d2, ana.d2_contrast(ana.with_input_level(rows), steps=(1,)))
+    assert verdict["verdict"] == "RESOLVED_WRONG_DIRECTION"
+    assert verdict["fires"] is True
+
+
+def test_d2_is_undecidable_when_the_effect_sits_under_the_arms_own_mde():
+    """A contrast below the MDE is a point estimate at under 80% power -- the
+    lesson K3 taught this line -- and is pre-registered as UNDECIDABLE."""
+    import random as _r
+    rng = _r.Random(0)
+    rows = with_action_effect(make_rows(n_items=30), step_down_effect=0.0)
+    for r in rows:
+        r["level_expected"] += rng.gauss(0, 0.5)               # noise, no action effect
+    d2 = ana.d2_contrast(ana.with_input_level(rows))
+    verdict = ana.d2_verdict(d2, ana.d2_contrast(ana.with_input_level(rows), steps=(1,)))
+    assert d2["abs_effect_over_mde"] < 1.0
+    assert verdict["verdict"] == "UNDECIDABLE"
+    assert verdict["fires"] is True
+
+
+def test_d2_pairs_and_bootstraps_over_the_unit_the_plan_fixed():
+    rows = make_rows(n_items=30)
+    d2 = ana.d2_contrast(ana.with_input_level(rows))
+    assert d2["paired_by"] == "source_id" == d2["bootstrap_over"]
+    assert d2["n_sources_paired"] <= 30
+
+
+def test_d2_refuses_to_run_when_admission_does_not_pass():
+    """A death condition computed on rejected rows has no standing."""
+    rows = truncate(make_rows(n_items=30), "00-a2", 1)
+    with pytest.raises(SystemExit) as err:
+        ana.d2_report(rows, [])                              # the flagged item NOT excluded
+    assert "refusing to judge D-2" in str(err.value)
+    assert "cap_pressure" in str(err.value)
+
+
+def test_d2_runs_once_the_named_exclusion_makes_admission_pass():
+    rows = truncate(with_action_effect(make_rows(n_items=30), -1.0), "00-a2", 1)
+    report = ana.d2_report(rows, ["00-a2"])
+    assert report["verdict"]["death_condition"] == "D-2"
+    assert report["exclusion"]["n_rows_retained"] == len(rows) - 18
+
+
+def test_step_one_confirmatory_reports_itself_uncomputable_without_taking_d2_down():
+    """The random excitation may never draw `copy` at step 1 for enough sources.
+    That is a fact about the draw, recorded -- not a reason the primary dies."""
+    rows = with_action_effect(make_rows(n_items=30), step_down_effect=-1.0)
+    for r in rows:
+        if r["step"] == 1 and r["action"] == "copy":
+            r["action"] = "paraphrase"                       # no `copy` at step 1 at all
+    report = ana.d2_report(rows, [])
+    assert report["confirmatory_step1_only"]["computable"] is False
+    assert report["verdict"]["confirmatory_computable"] is False
+    assert report["verdict"]["confirmatory_agrees_in_sign"] is None
+    assert report["verdict"]["verdict"] == "RESOLVED"         # the primary still stands
