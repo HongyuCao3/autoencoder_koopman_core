@@ -147,6 +147,14 @@
 
 判据（跑前签死）：① trial 的 **20 源 × 2 目标级 = 40 个 (源, 目标级) 配对**上，分类器期望级别 $\ell$ 的取值 ≥ 10 个且**每个配对内**源–参考差的符号 100% 为负（参考更简单）；② $\ell$ 变化方向与 FKGL 变化方向一致率 ≥ 0.7；③ MeaningBERT 对参考简化的源相似度 sd > 0.03（有量程）。
 
+> ⛔ **判据 ① 的两半均已被取代，本段保留为起草记录。** 前半（取值计数）2026-09-13 重写为
+> 「0.05 分辨率下的取值」（**变严**）；后半（100% 符号为负）2026-09-14 拆成
+> 「方向正确率 ≥ 0.85」+「配对 Δ$\ell$ 均值 95% 自举 CI 上界 < 0」（**变松，事后放宽**）。
+> 权威版本见 [`experiments/tsar_cefr_kill_criterion.md`](experiments/tsar_cefr_kill_criterion.md) §二 D-1；
+> 四条留痕与「为什么原判据错」见
+> [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md) §「判据修订记录（2026-09-14）」。
+> **这一处的责任在本节起草时没有参照 TSAR 官方评测器的发表精度**（F1 0.89 / RMSE 0.34）。
+
 ### 3.3 落盘
 
 `resources/tsar_cefr/`（数据与来源说明、许可）；`persona_drift_control/outputs/tsar_cefr_instruments/`（G-T1 报告 JSON，记 `git rev-parse HEAD`、分类器版本、MeaningBERT 版本）。**只增不改**。
