@@ -8,3 +8,4 @@ slurm/logs/*
 !slurm/logs/.gitkeep
 docs/references/*.pdf
 *.egg-info/
+resources/tsar_cefr/data/
