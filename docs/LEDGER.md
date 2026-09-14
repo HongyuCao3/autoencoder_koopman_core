@@ -574,7 +574,7 @@ GPU-1 为方法 → 通过，仪器轴余量 4 格。
 
 | 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
 |---|---|---|---|---|---|
-| — | — | `environment/run_tsar_cefr_excitation_arm.sbatch`（**写好、干跑验证过，待裁决后提交**） | 方法 | 未提交 | D-0 / D-1② / D-2 / D-2.5 四条死亡条件同时判：本线是进 Phase 3 还是关闭 |
+| 2026-09-13 | **15850523** | `run_tsar_cefr_excitation_arm.sbatch` / `pdc-tsar-cefr-gpu1` | 方法 | 已提交（终态待回填） | D-0 / D-1② / D-2 / D-2.5 四条死亡条件同时判：本线是进 Phase 3 还是关闭 |
 
 **GPU-1 提交前六条核过**（`.claude/experiments.md`）：① 未自行提交 ✅；② 运行时估计
 **0.4–1.0 h**（`--time 3:00:00`，假设写在 sbatch 头：3640 次生成、源段落 p50 102 token /
@@ -585,6 +585,6 @@ runner 拒绝写入已存在目录（干跑核过）✅；④ 本行「它改变
 ⑤ 配额：最近 10 个作业 仪器 1 / 方法 8 / 基建 2，本作业为方法，仪器轴余量 4 格 ✅；
 ⑥ 无 editable install（runner 按文件路径进 `src/`）✅。
 
-**一处待裁决**：被控模型取 `Qwen/Qwen3-4B`（本段与计划签的「conf/task/defense.yaml 同源」，
-该文件写的就是它），而 `constraint` 线近期臂用的是 `Qwen/Qwen3-4B-Instruct-2507`。
-两者都设 `enable_thinking=False`。改这一项只动 sbatch 的一个 flag。
+**被控模型已裁决（2026-09-13，用户）**：取 `Qwen/Qwen3-4B`——本段与计划签的
+「conf/task/defense.yaml 同源」，该文件写的就是它。`constraint` 线近期臂用的
+`Qwen/Qwen3-4B-Instruct-2507` **未采用**。两者都设 `enable_thinking=False`。
