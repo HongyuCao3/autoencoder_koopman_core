@@ -209,8 +209,30 @@ def cost_axes(rows: list[dict], arm: str) -> dict:
     }
 
 
+def check_equal_denominators(terminals: dict) -> None:
+    """Every arm must be scored on the same (text_id, seed) set.
+
+    Arms stop at different steps by design, which is exactly why this has to be
+    checked rather than assumed: an arm that terminates before generating anything
+    would otherwise leave the sample quietly and be compared against the others on a
+    smaller, easier subset.
+    """
+    by_arm: dict[str, set] = collections.defaultdict(set)
+    for arm, text_id, seed in terminals:
+        by_arm[arm].add((text_id, seed))
+    sizes = {arm: len(keys) for arm, keys in by_arm.items()}
+    if len(set(sizes.values())) > 1:
+        reference = max(by_arm, key=lambda a: len(by_arm[a]))
+        missing = {arm: sorted(by_arm[reference] - keys)[:5]
+                   for arm, keys in by_arm.items() if keys != by_arm[reference]}
+        raise SystemExit(
+            f"arms are scored on different samples {sizes}; first missing keys per arm "
+            f"{missing}. Comparing arms on different denominators is not a comparison.")
+
+
 def build_table(rows: list[dict], threshold: float, policy: str) -> dict:
     terminals = terminal_rows(rows)
+    check_equal_denominators(terminals)
     seeds = sorted({seed for _, _, seed in terminals})
     table = {}
     for arm in ARMS:

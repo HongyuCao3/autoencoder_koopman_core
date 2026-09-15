@@ -295,7 +295,26 @@ def main(argv=None) -> None:
                     "done": False,
                 }
 
-    rows = []
+    # A STEP-0 ROW FOR EVERY TRAJECTORY, WRITTEN BEFORE ANY GENERATION.
+    # Without it, `--stop-on-arrival on_copy` silently deletes trajectories: a policy
+    # that picks `copy` at step 1 generates nothing, emits no row, and vanishes from
+    # the analyzer's denominator -- so two arms would be scored on different samples
+    # and nothing would say so. The source paragraph IS the terminal state of such a
+    # trajectory, and this row records it with zero generated tokens.
+    rows = [{
+        "arm": st["arm"], "seed": st["seed"], "step": 0,
+        "text_id": st["text_id"], "source_id": st["source_id"],
+        "target_cefr": st["target_cefr"], "action": "start",
+        "text_in": None, "text_out": st["text"], "n_tokens_out": 0,
+        "hit_token_cap": False,
+        "level_expected": base[st["text_id"]].level_expected,
+        "level_official": base[st["text_id"]].level_official,
+        "meaning_to_source": 1.0,
+        "fkgl": readout.fkgl(st["text"]),
+        "source_level_expected": base[st["text_id"]].level_expected,
+        "source_level_official": base[st["text_id"]].level_official,
+    } for st in live.values()]
+
     for step in range(args.max_steps):
         batch = [st for st in live.values() if not st["done"]]
         if not batch:

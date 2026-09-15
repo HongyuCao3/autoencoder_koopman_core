@@ -265,3 +265,29 @@ def test_canonical_analysis_refuses_without_the_unsigned_threshold(tmp_path):
     with pytest.raises(SystemExit, match="meaning-failure-policy"):
         gates.main(["--rows", str(tmp_path / "x.jsonl"), "--out-dir", str(tmp_path / "o"),
                     "--mode", "canonical", "--meaning-threshold", "0.5"])
+
+
+# =============================================================================
+# EQUAL DENOMINATORS -- the failure `--stop-on-arrival on_copy` would introduce
+# =============================================================================
+
+def test_arms_scored_on_different_samples_are_refused():
+    """A trajectory that stops before generating must not quietly leave the sample."""
+    rows = full_rows({a: "A2" for a in gates.ARMS})
+    rows = [r for r in rows if not (r["arm"] == "koopman_mpc" and r["text_id"] == "00-a2")]
+    with pytest.raises(SystemExit, match="different samples"):
+        gates.build_table(rows, 0.5, "source_level")
+
+
+def test_a_step_zero_row_is_a_valid_terminal():
+    """The source paragraph is the terminal state of a trajectory that never ran."""
+    rows = []
+    for arm in gates.ARMS:
+        for seed in (0, 1, 2):
+            for i in range(4):
+                step = 0 if arm == "one_shot" else 1
+                rows.append(traj_row(arm, f"{i:02d}-a2", seed, step, "B2", tokens=0))
+    table = gates.build_table(rows, 0.5, "source_level")["arms"]
+    assert table["one_shot"]["rmse_mean"] == pytest.approx(2.0)   # B2 = 4 vs A2 = 2
+    assert table["one_shot"]["cost"]["mean_steps_used"] == pytest.approx(0.0)
+    assert table["one_shot"]["cost"]["mean_tokens"] == pytest.approx(0.0)
