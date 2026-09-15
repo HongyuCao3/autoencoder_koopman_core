@@ -148,6 +148,17 @@ export HF_HOME=/scratch/hcao2/hf_cache
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export VLLM_USE_FLASHINFER_SAMPLER=0
 
+# PER-JOB COMPILE CACHES. vLLM's default cache root is ~/.cache/vllm on the shared
+# NFS home, and its key is the model+config hash -- so two concurrent jobs on the
+# same model write the same tree from two nodes and one of them gets ENOSTALE.
+# That is exactly what killed 15943452 at 3m33s while 15943453 survived
+# (node2087 vs node2093, cache writes at 21:26:17 and 21:26:25). Same failure class
+# as the 2026-09-08 concurrent editable install (.claude/experiments.md item 6):
+# two parallel jobs mutating one shared path. Scratch, scoped by job id, is private.
+export VLLM_CACHE_ROOT=/scratch/hcao2/vllm_cache/job_${SLURM_JOB_ID:-local}
+export TORCHINDUCTOR_CACHE_DIR=/scratch/hcao2/inductor_cache/job_${SLURM_JOB_ID:-local}
+mkdir -p "$VLLM_CACHE_ROOT" "$TORCHINDUCTOR_CACHE_DIR"
+
 cd /home/hcao2/autoencoder_koopman_core/persona_drift_control
 
 nvidia-smi -L || true
