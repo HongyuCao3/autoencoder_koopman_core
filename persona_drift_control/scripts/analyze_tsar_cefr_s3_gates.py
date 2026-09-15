@@ -180,9 +180,10 @@ def collapse_by_source(terminals: dict, arm: str, threshold: float, policy: str)
     return {s: sum(v) / len(v) for s, v in acc.items()}
 
 
-def paired_contrast(terminals: dict, threshold: float, policy: str) -> dict:
+def paired_contrast(terminals: dict, threshold: float, policy: str,
+                    reference: str = REFERENCE_ARM) -> dict:
     ours = collapse_by_source(terminals, OURS, threshold, policy)
-    ref = collapse_by_source(terminals, REFERENCE_ARM, threshold, policy)
+    ref = collapse_by_source(terminals, reference, threshold, policy)
     shared = sorted(set(ours) & set(ref))
     if not shared:
         raise SystemExit(f"no source is scored under both {OURS} and {REFERENCE_ARM}")
@@ -190,7 +191,7 @@ def paired_contrast(terminals: dict, threshold: float, policy: str) -> dict:
     mean, sd = mean_std(deltas)
     if sd == 0.0:
         raise SystemExit(
-            f"the paired difference {OURS} - {REFERENCE_ARM} has zero variance across "
+            f"the paired difference {OURS} - {reference} has zero variance across "
             f"{len(shared)} sources: the two arms produced identical terminal levels "
             "everywhere. That is a collapse, not a result -- the two policies are the "
             "same policy. The known ways to get here: dp_path restricted to adjacent "
@@ -205,7 +206,7 @@ def paired_contrast(terminals: dict, threshold: float, policy: str) -> dict:
     lo, hi = means[int(0.025 * BOOTSTRAP_DRAWS)], means[int(0.975 * BOOTSTRAP_DRAWS) - 1]
     mde = MDE_Z * sd / math.sqrt(len(deltas)) if len(deltas) > 1 else float("nan")
     return {
-        "contrast": f"{OURS} - {REFERENCE_ARM}",
+        "contrast": f"{OURS} - {reference}",
         "sign_convention": "RMSE difference; NEGATIVE means Ours is better",
         "n_sources": len(shared),
         "mean": mean,
@@ -355,6 +356,20 @@ def main(argv=None) -> int:
                                            args.meaning_threshold, judged_policy),
         "reporting_obligations": list(REPORTING_OBLIGATIONS),
     }
+    # Every other arm gets the SAME estimator, reported and not judged. The signed
+    # contrast is dp_path; but if dp_path's DP plan degenerates to the ladder (see the
+    # runner's dp_degeneracy) then that contrast is carried by the PROMPT FAMILY --
+    # dp_path names a CEFR level, the relative-action arms do not -- and the contrast
+    # against an arm in Ours' own family is the one that speaks to control.
+    terminals_all = terminal_rows(rows)
+    report["contrasts_not_judged"] = {
+        arm: paired_contrast(terminals_all, args.meaning_threshold, judged_policy, reference=arm)
+        for arm in ARMS if arm not in (OURS, REFERENCE_ARM)
+    }
+    report["contrasts_not_judged"]["why"] = (
+        "same estimator as the signed contrast; reported so the signed one can be read "
+        "against arms that share Ours' prompt family. These do not judge.")
+
     other = "exclude" if judged_policy == "source_level" else "source_level"
     try:
         report["alternative_meaning_policy_not_judged"] = {
