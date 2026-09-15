@@ -56,6 +56,24 @@ BOOTSTRAP_DRAWS = 2000              # plan 5.4
 BOOTSTRAP_SEED = 20260914
 MDE_Z = 2.80                        # the constant D-2 and D-2.5 already use
 
+# D-2.5's numbers, copied once so the anchor pass can be read against them without
+# re-running that gate. Source: outputs/tsar_cefr_d25/d25_report.json, excluded_3bin,
+# leave-one-source-out, 198 cells / 99 sources, horizon 4, greedy, NO meaning gate.
+D25_BOUND_RMSE = 0.7752484124524868          # supremum over bin-measurable closed loop
+D25_GREEDY_REACTIVE_RMSE = 0.7881701093115123  # the hand-written rule, unfitted
+D25_BEST_OPEN_LOOP_RMSE = 0.9320337272260424   # best FITTED open-loop schedule
+D25_EXCLUDED_ITEM = "51-b1"                  # over the 5% cap line in the tree
+D25_COMPARISON_CAVEATS = (
+    "the bound is leave-one-source-out over a POLICY CLASS; an arm is one policy, so "
+    "beating the bound is possible only if that arm is better than the class's LOO "
+    "supremum, which is a strong claim and should be read as such",
+    "the bound carried NO meaning gate, so this comparison must run with none either",
+    "the bound was computed on the counterfactual tree, where every step was generated; "
+    "the anchor matches that with --stop-on-arrival never and exactly 4 steps",
+    "koopman_mpc's operator was fitted on GPU-1's rows, not on these trajectories, so "
+    "it is out-of-sample here -- but it is NOT leave-one-source-out, and the bound is",
+)
+
 REPORTING_OBLIGATIONS = (
     "the readout is a fixed CEFR classifier, not ground truth; carry G-T1's caption "
     "(2 of 40 trial pairs reversed: 03-b1 a classifier misread, 12-b1 a data property, "
@@ -85,7 +103,14 @@ def parse_args(argv=None):
                    help="what a row below the floor scores. source_level: the edit is rejected, "
                         "so the trajectory keeps the SOURCE paragraph's level. exclude: the "
                         "trajectory leaves the denominator. Required in canonical mode.")
-    p.add_argument("--mode", choices=["debug", "canonical"], required=True)
+    p.add_argument("--arms", nargs="+", default=list(ARMS), choices=list(ARMS),
+                   help="anchor mode only; Table 2 needs every arm")
+    p.add_argument("--exclude-items", nargs="*", default=[],
+                   help="anchor mode only; pass 51-b1 to match the cells D-2.5 was computed on")
+    p.add_argument("--mode", choices=["debug", "canonical", "anchor"], required=True,
+                   help="anchor scores the greedy/H=4 comparability pass against D-2.5's "
+                        "bound. It permits a subset of arms, REQUIRES the meaning gate to be "
+                        "off (the bound had none), and refuses to emit Table 2.")
     return p.parse_args(argv)
 
 
@@ -230,18 +255,19 @@ def check_equal_denominators(terminals: dict) -> None:
             f"{missing}. Comparing arms on different denominators is not a comparison.")
 
 
-def build_table(rows: list[dict], threshold: float, policy: str) -> dict:
+def build_table(rows: list[dict], threshold: float, policy: str,
+                arms: tuple = ARMS, min_seeds: int = MIN_SEEDS) -> dict:
     terminals = terminal_rows(rows)
     check_equal_denominators(terminals)
     seeds = sorted({seed for _, _, seed in terminals})
     table = {}
-    for arm in ARMS:
+    for arm in arms:
         by_seed = per_seed_rmse(terminals, arm, threshold, policy)
         if not by_seed:
             raise SystemExit(f"arm {arm!r} has no scored trajectory: Table 2 cannot be filled")
-        if len(by_seed) < MIN_SEEDS:
+        if len(by_seed) < min_seeds:
             raise SystemExit(
-                f"arm {arm!r} has {len(by_seed)} seeds, below the floor of {MIN_SEEDS} "
+                f"arm {arm!r} has {len(by_seed)} seeds, below the floor of {min_seeds} "
                 "(.claude/global.md: a single-seed point estimate is not reportable and "
                 "2 seeds cannot separate arms)")
         mean, sd = mean_std([by_seed[s] for s in sorted(by_seed)])
@@ -260,8 +286,50 @@ def build_table(rows: list[dict], threshold: float, policy: str) -> dict:
     return {"seeds": seeds, "arms": table}
 
 
+def bound_comparison(rows: list[dict], arms: tuple) -> dict:
+    """The anchor's whole job: did Ours reach the number D-2.5 says is the ceiling."""
+    built = build_table(rows, None, "source_level", arms=arms, min_seeds=1)["arms"]
+    ours = built.get(OURS)
+    if ours is None:
+        return {"not_computed": f"{OURS} is not among the scored arms"}
+    return {
+        "koopman_mpc_rmse": ours["rmse_mean"],
+        "d25_bound_rmse": D25_BOUND_RMSE,
+        "gap_to_bound": ours["rmse_mean"] - D25_BOUND_RMSE,
+        "reached_the_bound": ours["rmse_mean"] <= D25_BOUND_RMSE,
+        "d25_greedy_reactive_rmse": D25_GREEDY_REACTIVE_RMSE,
+        "greedy_reactive_here": built.get("greedy_reactive", {}).get("rmse_mean"),
+        "d25_best_open_loop_rmse": D25_BEST_OPEN_LOOP_RMSE,
+        "arms_here": {a: v["rmse_mean"] for a, v in built.items()},
+        "cost": {a: v["cost"] for a, v in built.items()},
+        "caveats": list(D25_COMPARISON_CAVEATS),
+        "judged": False,
+        "note": "NOT Table 2. Reporting this as a headline would be choosing the "
+                "friendlier of two decodings after seeing both.",
+    }
+
+
 def main(argv=None) -> int:
     args = parse_args(argv)
+    if args.mode == "anchor":
+        if args.meaning_threshold is not None:
+            raise SystemExit("anchor mode runs with NO meaning gate: D-2.5's bound had none, "
+                             "and a gate on one side of a comparison is not a comparison")
+        out_dir = pathlib.Path(args.out_dir)
+        if out_dir.exists():
+            raise SystemExit(f"{out_dir} exists; products are append-only, pick a new path")
+        rows = [r for r in load_rows(pathlib.Path(args.rows))
+                if r["text_id"] not in set(args.exclude_items)]
+        report = {"pass": "GPU-2 anchor (greedy, 1 seed, horizon 4, no early stop)",
+                  "excluded_items": list(args.exclude_items),
+                  "n_rows": len(rows),
+                  "bound_comparison": bound_comparison(rows, tuple(args.arms)),
+                  "reporting_obligations": list(REPORTING_OBLIGATIONS)}
+        out_dir.mkdir(parents=True)
+        (out_dir / "anchor_vs_d25_bound.json").write_text(
+            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(json.dumps(report["bound_comparison"], indent=2, ensure_ascii=False))
+        return 0
     if args.mode == "canonical":
         if args.meaning_threshold is None:
             raise SystemExit(
