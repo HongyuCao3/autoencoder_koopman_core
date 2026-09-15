@@ -133,6 +133,21 @@
   📊 结果档案 · `constraint` 线全部结果（S0 / S0-0 三闸门 / 保真度臂 / S1 试点与辨识臂 /
   **S3 准入前检查 ← 当前待裁决项在这里**），从 LEDGER §三·五 拆出。
 
+### `tsar_cefr` 线（可读性定点调节，▶ 活跃——2026-09-15 用户裁决「先继续」）
+
+- [experiments/tsar_cefr_kill_criterion.md](experiments/tsar_cefr_kill_criterion.md) —
+  ▶ 现行判据 · 死亡条件 D-0…D-5 + 命名假设「第 3 行不为零 ⟺ 闭环为正」及其兑现
+  （2026-09-15：两侧同为零，**假设未被否证，但非零侧仍未受检**）。
+- [experiments/tsar_cefr_results.md](experiments/tsar_cefr_results.md) —
+  📊 结果档案 · 本线全部结果：G-T1 换仪器（唯一一次已用掉）/ G-S1 具名剔题 / G-S2 辨识 /
+  D-2 执行器权威 −0.1356 ± 0.0099 (n=3) 3.78×MDE / D-2.5 反事实树上确界 0.7752 /
+  **Table 2 五臂**——签死的主对比过了但 `dp_degeneracy=1.0`，同家族内打平、等代价被开环阶梯支配 ·
+  §Table 2 与 §交还裁决。
+- [experiments/tsar_cefr_surrogate_rows_results.md](experiments/tsar_cefr_surrogate_rows_results.md) —
+  📊 结果档案 · **Table 1 第十一列**（2026-09-15，零 GPU）· 预注册预测落空：第 3 行 +0.0061 CI 含 0
+  → 第 3 行**十一列一致为零**；`ours − Markov` +0.0487 ★；LSTM/AE 都没越过最好的平凡 null（本列是 `stateless`）（样本量不足，
+  不得作为「非线性无用」的证据）。
+
 ### `gsm8k_sharded` 线（分片指令，旧称 ERGO；⏸ 挂起）
 
 - [experiments/ergo_fidelity_restoration_plan.md](experiments/ergo_fidelity_restoration_plan.md) —
@@ -212,6 +227,23 @@
 - [experiments/drift_confirmation_pilot.md](experiments/drift_confirmation_pilot.md) — ⛔ · 10-prompt 功效放大仍是干净空结果；含 scripted-user 方案失败的完整记录。
 - [experiments/pressure_screening_pilot.md](experiments/pressure_screening_pilot.md) — ⛔ · 渐进施压移植到人格域：N=12 方向偏负（10/12 负斜率）但始终不显著（p=0.18），判为统计功效不够。
 - [experiments/surface_features_backfill.md](experiments/surface_features_backfill.md) — ⛔ · CPU 回填表层特征重跑漂移检验：`avg_word_len` 显著下降，`y_probe` 未测到。
+
+### 主表档案（`article/MAIN_TABLE_DESIGN.md` 的结果落点）
+
+- [experiments/core_surrogate_rows_results.md](experiments/core_surrogate_rows_results.md) —
+  📊 结果档案 · Table 1 core 八任务六行（E2）· 记忆有用是**条件性**的（3/7 支持、1/7 反对）；
+  非线性差别 <0.03 且方向不一致；**第 3 行 core 一格都撑不住**。
+- [experiments/behavioral_surrogate_rows_results.md](experiments/behavioral_surrogate_rows_results.md) —
+  📊 结果档案 · Table 1 行为三线六行（E3）· `constraint` 上 `ours − Markov` +0.234 ★；
+  **`ours − 扣住 u` 跨线全部为零**；`gsm8k_sharded` / `defense` 两列无信息量但如实进表。
+  第四条线另有档案，见上面 `tsar_cefr` 段。
+- [experiments/defense_table2_results.md](experiments/defense_table2_results.md) —
+  📊 结果档案 · Table 2 `defense` 列六行（E4 + G1，5 seed）· 满剂量买得到 +0.119、等代价重分配买不到；
+  **Ours 对最优固定日程两个重采样单元下点估计都为负**。⚠️ 该列判分是**自判**，
+  `global.md` 报告口径的具名例外，引用处须同址带局限句。
+- [experiments/adaptivity_ceiling_results.md](experiments/adaptivity_ceiling_results.md) —
+  📊 结果档案 · `defense` 线自适应上界与 R1 闸门（激活投影读出判 **FAIL** → 该线不再找新读出）·
+  读出到第 4–5 轮才分得开轨迹，**重要决策发生在信息到达之前**；附二是 R1 三行。
 
 ### 归档（只读）
 

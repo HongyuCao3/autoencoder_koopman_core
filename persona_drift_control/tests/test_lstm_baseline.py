@@ -174,3 +174,66 @@ def test_warm_start_carries_the_observed_prefix_into_the_rollout():
     assert model.readout(warm) != pytest.approx(model.readout(model.init_state()))
     with pytest.raises(ValueError):
         model.warm_start([0.1, 0.2], [1.0])
+
+
+def test_v_dim_one_matches_scalar():
+    """The default width is bit-identical to the pre-`v_dim` code path.
+
+    Three published Table 1 columns (`constraint` / `gsm8k_sharded` /
+    `defense`) were produced before the action became a vector, so the
+    scalar path has to stay exactly where it was: same `input_size`, same
+    parameter init under the same seed, same tensor build order.
+    """
+    torch.manual_seed(0)
+    model = LSTMSurrogate(hidden_size=3)
+    assert model.v_dim == 1 and model.cell.input_size == 2
+
+    ys = torch.tensor([0.9, 0.8, 0.7, 0.85], dtype=torch.float32)
+    flat = torch.tensor([0.0, 1.0, 1.0, 0.0], dtype=torch.float32)
+    assert torch.equal(model.forward_trajectory(ys, flat),
+                       model.forward_trajectory(ys, flat.reshape(-1, 1)))
+
+    rows = _toy_trajectory(0.9, [0, 1], num_turns=5)
+    assert (rollout_predictions(model, rows, u_col="u_remind")
+            == rollout_predictions(model, rows, u_col=["u_remind"]))
+    assert (teacher_forced_predictions(model, rows, u_col="u_remind")
+            == teacher_forced_predictions(model, rows, u_col=["u_remind"]))
+    assert np.array_equal(model.warm_start([0.9, 0.8], [0.0, 1.0]),
+                          model.warm_start([0.9, 0.8], [[0.0], [1.0]]))
+
+
+def test_vector_action_channels_are_distinguishable():
+    """`tsar_cefr` carries a 3-dof one-hot; the cell must see all three."""
+    torch.manual_seed(0)
+    model = LSTMSurrogate(hidden_size=3, v_dim=3)
+    assert model.cell.input_size == 4
+
+    z = model.init_state()
+    nexts = [model.step(z, np.eye(3)[i]) for i in range(3)]
+    for i in range(3):
+        for j in range(i + 1, 3):
+            assert not np.allclose(nexts[i], nexts[j]), f"channels {i},{j} collapsed"
+
+
+def test_vector_action_trains_and_uses_the_channels():
+    rows_by_traj = []
+    for k, onehot in enumerate([(1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, 0)]):
+        rows, y = [], 3.5
+        for t in range(6):
+            rows.append({"trajectory_id": f"t{k}", "turn": t + 1, "ell": y,
+                         "a0": onehot[0], "a1": onehot[1], "a2": onehot[2]})
+            y = 0.9 * y - 0.5 * onehot[0] - 0.25 * onehot[1]
+        rows_by_traj.append(rows)
+    cols = ["a0", "a1", "a2"]
+    model, info = train_lstm_surrogate(4, rows_by_traj[:3], rows_by_traj[3:],
+                                       y_col="ell", u_col=cols, epochs=40, seed=0)
+    assert model.v_dim == 3
+    assert info["history"][-1]["train_loss"] < info["history"][0]["train_loss"]
+
+
+def test_wrong_action_width_raises():
+    model = LSTMSurrogate(hidden_size=2, v_dim=3)
+    with pytest.raises(ValueError, match="expected v_dim=3"):
+        model.step(model.init_state(), np.array([1.0]))
+    with pytest.raises(ValueError, match="at least one action channel"):
+        LSTMSurrogate(hidden_size=2, v_dim=0)

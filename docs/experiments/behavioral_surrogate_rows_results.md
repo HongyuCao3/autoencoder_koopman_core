@@ -3,6 +3,9 @@
 > **状态（2026-09-12）**：结果档案。core 侧对应档案见
 > [`core_surrogate_rows_results.md`](core_surrogate_rows_results.md)，设计见
 > [`../article/MAIN_TABLE_DESIGN.md`](../article/MAIN_TABLE_DESIGN.md)（E3 行）。
+> **第四条线 `tsar_cefr`（Table 1 第十一列）另有一份平行档案**：
+> [`tsar_cefr_surrogate_rows_results.md`](tsar_cefr_surrogate_rows_results.md)（2026-09-15，
+> MAIN_TABLE_DESIGN 的 E6 行）。本文件的标题与三行表**只覆盖这三条线**，不含它。
 > 术语 [`../NAMING.md`](../NAMING.md)；口径 `../../.claude/global.md` → *报告口径*。
 > **本文件不改任何既有实验文档的结论段。**
 
@@ -49,6 +52,8 @@
 
 **2. 「扣住控制量不花钱」跨线成立，而且 core 的解释在这里不适用。**
 `constraint` 上 `ours − 扣住 u` = **+0.0015**，`gsm8k` +0.057、`defense` +0.012，全部跨 0。
+（**2026-09-15 补记**：第四条线 `tsar_cefr` **+0.0061，CI 含 0**，同样跨 0——那条线的动作是
+真随机化的**四值分类**、且被设计成本条的阳性对照，它没有兑现。第 3 行至此**十一列一致为零**。）
 core 侧可以辩解「`r` 每条轨迹恒定、不是随机化动作」，**但 `constraint` 的 `u` 是伯努利随机化的真动作**。
 随机化的动作被扣住，4 步预测一点不变差。
 这与 S1a 的终点权威 **+0.1389** 不矛盾，但必须同址讲清楚：一步增益 `B` = **+0.0182**，
@@ -72,7 +77,8 @@ core 侧可以辩解「`r` 每条轨迹恒定、不是随机化动作」，**但
 ## 一条把 Table 1 与 Table 2 连起来的结果
 
 三条线的闭环都打不赢等代价固定日程（`defense` 的 periodic 追平、`gsm8k_sharded` 日程可分性=1、
-`constraint` MPC − 最优固定 +0.0008）。**第 3 行的零给了这件事一个机制解释**：
+`constraint` MPC − 最优固定 +0.0008）。**2026-09-15 补记：第四条线同向**——`tsar_cefr` 的
+`koopman_mpc` 对 `fixed_ladder` −0.0073（含 0），等代价轴上花 3.2× token 换一个打平、被支配。**第 3 行的零给了这件事一个机制解释**：
 算子在**控制器规划的那个视界上**根本没有动作依赖的预测结构，
 那么用这个算子去规划的控制器，**在原理上就无法优于一个固定日程**。
 Table 1 第 3 行与 Table 2 的打平不是两件事，是同一件事的两个观测面。

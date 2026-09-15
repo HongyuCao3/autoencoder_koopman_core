@@ -38,23 +38,46 @@ docs/experiments/koopman_case_study_design.md's Phase I.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import torch
 from torch import nn
 
 
 class LSTMSurrogate(nn.Module):
-    """Single `nn.LSTMCell(input_size=2, hidden_size=hidden_size)` reading
-    `[y_t, v_t]` each turn, plus a linear readout `Linear(hidden_size, 1)`
-    playing the role of `KoopmanSurrogate.C`. Trajectories start from an
-    all-zero `(h, c)` (no prior knowledge assumed, the standard `LSTMCell`
-    convention)."""
+    """Single `nn.LSTMCell(input_size=1 + v_dim, hidden_size=hidden_size)`
+    reading `[y_t, v_t...]` each turn, plus a linear readout
+    `Linear(hidden_size, 1)` playing the role of `KoopmanSurrogate.C`.
+    Trajectories start from an all-zero `(h, c)` (no prior knowledge assumed,
+    the standard `LSTMCell` convention).
 
-    def __init__(self, hidden_size: int):
+    `v_dim` (added 2026-09-15, default 1) is the width of the action vector.
+    It exists because `tsar_cefr`'s action is a FOUR-valued categorical
+    carried as a 3-dof one-hot (plan section 5.1), not the binary `u_remind` /
+    `u_reset` the three earlier behavioural lines use. At `v_dim=1`
+    `input_size` is still 2 and every tensor is built in the same order from
+    the same values, so the three published columns are bit-for-bit
+    unchanged -- `tests/test_lstm_baseline.py::test_v_dim_one_matches_scalar`
+    pins that, and `docs/experiments/behavioral_surrogate_rows_results.md`'s
+    artifact was re-derived byte-identically after this change."""
+
+    def __init__(self, hidden_size: int, v_dim: int = 1):
         super().__init__()
+        if v_dim < 1:
+            raise ValueError(f"v_dim={v_dim}: need at least one action channel")
         self.hidden_size = hidden_size
-        self.cell = nn.LSTMCell(input_size=2, hidden_size=hidden_size)
+        self.v_dim = int(v_dim)
+        self.cell = nn.LSTMCell(input_size=1 + self.v_dim, hidden_size=hidden_size)
         self.readout_layer = nn.Linear(hidden_size, 1)
+
+    def _v_row(self, v) -> list[float]:
+        """One turn's action as a length-`v_dim` list, accepting a bare float
+        (the scalar-action callers) or any sequence."""
+        arr = np.asarray(v, dtype=float).reshape(-1)
+        if arr.size != self.v_dim:
+            raise ValueError(f"action has {arr.size} channels, expected v_dim={self.v_dim}")
+        return arr.tolist()
 
     def init_state(self) -> np.ndarray:
         return np.zeros(2 * self.hidden_size, dtype=float)
@@ -82,7 +105,7 @@ class LSTMSurrogate(nn.Module):
         c = torch.zeros(1, self.hidden_size)
         with torch.no_grad():
             for y, v in zip(ys, vs, strict=True):
-                inp = torch.tensor([[float(y), float(v)]], dtype=torch.float32)
+                inp = torch.tensor([[float(y), *self._v_row(v)]], dtype=torch.float32)
                 h, c = self.cell(inp, (h, c))
         return np.concatenate([h.squeeze(0).numpy(), c.squeeze(0).numpy()]).astype(float)
 
@@ -93,8 +116,9 @@ class LSTMSurrogate(nn.Module):
     def forward_trajectory(
         self, ys: torch.Tensor, vs: torch.Tensor, contemporaneous_v: bool = False
     ) -> torch.Tensor:
-        """Teacher-forced forward pass over one trajectory (`ys`/`vs`: 1D
-        tensors of length T, the trajectory's true `y_t`/`v_t`). Returns a
+        """Teacher-forced forward pass over one trajectory (`ys`: a 1D tensor
+        of length T; `vs`: `(T,)` or `(T, v_dim)`, the trajectory's true
+        `y_t`/`v_t`). Returns a
         length-T tensor of predicted `y_t` for t=0..T-1: `preds[0]` is the
         readout of the all-zero initial state (the model's unconditional
         prior, before any input is seen); `preds[t]` for t>=1 is the readout
@@ -110,7 +134,7 @@ class LSTMSurrogate(nn.Module):
         c = torch.zeros(1, self.hidden_size)
         preds = [self.readout_layer(h).reshape(())]
         for t in range(ys.shape[0] - 1):
-            inp = torch.stack([ys[t], vs[t + shift]]).reshape(1, 2)
+            inp = torch.cat([ys[t].reshape(1), vs[t + shift].reshape(-1)]).reshape(1, 1 + self.v_dim)
             h, c = self.cell(inp, (h, c))
             preds.append(self.readout_layer(h).reshape(()))
         return torch.stack(preds)
@@ -122,9 +146,8 @@ class LSTMSurrogate(nn.Module):
 
         h, c = self._unpack(z)
         y_self = self.readout(z)
-        v_val = float(np.asarray(v, dtype=float).reshape(-1)[0])
         with torch.no_grad():
-            inp = torch.tensor([[y_self, v_val]], dtype=torch.float32)
+            inp = torch.tensor([[y_self, *self._v_row(v)]], dtype=torch.float32)
             h_t = torch.tensor(h, dtype=torch.float32).unsqueeze(0)
             c_t = torch.tensor(c, dtype=torch.float32).unsqueeze(0)
             h_next, c_next = self.cell(inp, (h_t, c_t))
@@ -139,11 +162,27 @@ class LSTMSurrogate(nn.Module):
         return float(val.item())
 
 
+def v_columns(u_col: "str | Sequence[str]") -> tuple[str, ...]:
+    """The action column name(s) as a tuple.
+
+    A bare string is one channel -- every caller written before 2026-09-15
+    passes one, and `tsar_cefr` passes the three one-hot dummies of its
+    four-valued action. Callers never build the `(T, v_dim)` block themselves,
+    so there is one place where a column list becomes an action vector.
+    """
+    return (u_col,) if isinstance(u_col, str) else tuple(u_col)
+
+
+def _v_block(traj_rows: list[dict], u_col: "str | Sequence[str]") -> list[list[float]]:
+    cols = v_columns(u_col)
+    return [[float(row[c]) for c in cols] for row in traj_rows]
+
+
 def teacher_forced_predictions(
     model: LSTMSurrogate,
     traj_rows: list[dict],
     y_col: str = "y_safety",
-    u_col: str = "u_remind",
+    u_col: "str | Sequence[str]" = "u_remind",
     contemporaneous_v: bool = False,
 ) -> list[tuple[int, float, float]]:
     """One trajectory's rows (sorted by turn) -> `(turn_index, y_true,
@@ -154,7 +193,7 @@ def teacher_forced_predictions(
     a Koopman model that cannot produce a prediction before that position."""
 
     ys = [float(row[y_col]) for row in traj_rows]
-    vs = [float(row[u_col]) for row in traj_rows]
+    vs = _v_block(traj_rows, u_col)
     with torch.no_grad():
         preds = model.forward_trajectory(
             torch.tensor(ys, dtype=torch.float32),
@@ -168,7 +207,7 @@ def rollout_predictions(
     model: LSTMSurrogate,
     traj_rows: list[dict],
     y_col: str = "y_safety",
-    u_col: str = "u_remind",
+    u_col: "str | Sequence[str]" = "u_remind",
     contemporaneous_v: bool = False,
 ) -> list[tuple[int, float, float]]:
     """One trajectory's rows -> `(turn_index, y_true, y_pred)` for
@@ -181,11 +220,11 @@ def rollout_predictions(
 
     shift = 1 if contemporaneous_v else 0
     ys = [float(row[y_col]) for row in traj_rows]
-    vs = [float(row[u_col]) for row in traj_rows]
+    vs = _v_block(traj_rows, u_col)
     z = model.init_state()
     preds = [model.readout(z)]
     for t in range(len(ys) - 1):
-        z = model.step(z, np.array([vs[t + shift]]))
+        z = model.step(z, np.asarray(vs[t + shift], dtype=float))
         preds.append(model.readout(z))
     return list(zip(range(len(ys)), ys, preds))
 
@@ -210,7 +249,7 @@ def train_lstm_surrogate(
     train_rows_by_traj: list[list[dict]],
     early_stop_rows_by_traj: list[list[dict]],
     y_col: str = "y_safety",
-    u_col: str = "u_remind",
+    u_col: "str | Sequence[str]" = "u_remind",
     epochs: int = 200,
     lr: float = 1e-2,
     patience: int = 20,
@@ -238,13 +277,13 @@ def train_lstm_surrogate(
     docs/experiments/lstm_baseline_plan.md."""
 
     torch.manual_seed(seed)
-    model = LSTMSurrogate(hidden_size=hidden_size)
+    model = LSTMSurrogate(hidden_size=hidden_size, v_dim=len(v_columns(u_col)))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     train_tensors = [
         (
             torch.tensor([float(r[y_col]) for r in rows], dtype=torch.float32),
-            torch.tensor([float(r[u_col]) for r in rows], dtype=torch.float32),
+            torch.tensor(_v_block(rows, u_col), dtype=torch.float32),
         )
         for rows in train_rows_by_traj
     ]

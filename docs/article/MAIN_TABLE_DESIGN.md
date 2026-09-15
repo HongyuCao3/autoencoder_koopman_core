@@ -101,8 +101,17 @@ core 的 n=3 是**训练** seed、行为线的 n=3 是**数据** seed，两者�
    配对 bootstrap 精确到能把 0.005 判显著——**显著且可忽略**。
    写「差别小于 0.03 且方向不一致」，**不写「统计上不可区分」**（后者是错的）。
 3. **第 3 行跨十列全部为零——E3 之后这条要改写成正面结论，不是 core 的局限。**
+   > ⚠️ **2026-09-15：这条「要改写成正面结论」的前提已被证伪，措辞待裁决。**
+   > 「正面结论」指的是拿 `tsar_cefr` 当阳性对照、把零说成条件性的。**该列第 3 行
+   > `ours − 扣住 u` = +0.0061，CI95 [−0.0013,+0.0113]，含 0** ——第 3 行现为**十一列一致为零**，
+   > 且这一列是三项条件（动作写入下一步输入 / 过冲有代价 / 动作真随机化）都满足的那一列。
+   > 命名假设「第 3 行不为零 ⟺ 闭环为正」判据是**同号**，实测**同为零 → 未被否证，
+   > 但非零侧仍未受检**。见
+   > [`../experiments/tsar_cefr_surrogate_rows_results.md`](../experiments/tsar_cefr_surrogate_rows_results.md)
+   > §命名假设的兑现。**本条正文怎么写、以及 `tsar_cefr` 线是否关闭，两者一并交还用户裁决。**
    `ours − 扣住控制量` 在 core 七个任务全部跨 0，在行为三线也全部跨 0
-   （`constraint` +0.0015、`gsm8k_sharded` +0.057、`defense` +0.012）。
+   （`constraint` +0.0015、`gsm8k_sharded` +0.057、`defense` +0.012），
+   在 `tsar_cefr` 上同样跨 0（+0.0061）。
    **core 那套「`r` 恒定、不是随机化动作」的解释在 `constraint` 上不成立**——那里的 `u` 是伯努利随机化的真动作。
    与 S1a 的终点权威 +0.1389 并不矛盾：一步增益 `B`=+0.0182，滚 4 步累计约 0.05，小于读出自身波动。
    **正确表述：执行器对终点有权威，对规划视界内的读出没有预测力。**
@@ -185,14 +194,22 @@ core 的 n=3 是**训练** seed、行为线的 n=3 是**数据** seed，两者�
 
 ## 四、单元格现状（Table 1）
 
-| 行 | core（8 任务） | `defense` | `gsm8k_sharded` | `constraint` |
-|---|---|---|---|---|
-| 1–6（全部） | ✓ 8/8 | ✓ | ✓ | ✓ |
+| 行 | core（8 任务） | `defense` | `gsm8k_sharded` | `constraint` | `tsar_cefr` |
+|---|---|---|---|---|---|
+| 1–6（全部） | ✓ 8/8 | ✓ | ✓ | ✓ | ✓（2026-09-15） |
 
-**十列六行全满。** **Table 2 三列亦全满**（2026-09-13）：`defense` 六行见
+**十一列六行全满。** **Table 2 四列亦全满**：`defense` 六行见
 [`../experiments/defense_table2_results.md`](../experiments/defense_table2_results.md)、
 `constraint` 见 `../experiments/constraint_results.md` §S3、`gsm8k_sharded` 的 MPC 格按裁决
-写"构造上恒等于 `fixed_last`"不编数。
+写"构造上恒等于 `fixed_last`"不编数、`tsar_cefr` 五臂见
+[`../experiments/tsar_cefr_results.md`](../experiments/tsar_cefr_results.md) §Table 2（2026-09-14）。
+
+**`tsar_cefr` 列（第十一列，2026-09-15）**：结果档案
+[`../experiments/tsar_cefr_surrogate_rows_results.md`](../experiments/tsar_cefr_surrogate_rows_results.md)，
+经 `persona_drift_control/scripts/eval_surrogate_rows_tsar_cefr.py`。**它是第三个调用方，不是第三套打分**
+——`surrogate_eval` 同一份；单独写脚本的理由是这一列的动作是四值分类（3 自由度 one-hot），
+行为侧脚本的数据路径只读一个标量动作列。**Table 2 的行在这一列不同**（本线五臂，非
+`zero_control`/满剂量/等代价那套），按该线计划 §5.4；渲染正文表时这一列要单独排版，**待裁决**。
 
 core 侧经 `scripts/eval_surrogate_rows.py`、行为侧经
 `persona_drift_control/scripts/eval_surrogate_rows_behavioral.py`，**两侧共用同一个 `surrogate_eval` 打分路径**
@@ -213,7 +230,7 @@ core 侧经 `scripts/eval_surrogate_rows.py`、行为侧经
 **E1 落地说明**：`skill_h`（`horizon<2` 直接 raise，一步误差进不来）、`trivial_nulls`（`exogenous` 不含 `turn_next` 即 raise）、`best_null`（返回名字，谁赢本身是诊断）、`bootstrap_ci`（按组重采样，行重采样会低估区间）、`seed_aggregate`（`ddof` 无默认值，<3 seed 直接 raise）、`make_folds`（`purpose="gate"|"report"` 派生不同划分，两者重合即 raise）。**三个 null 没有写第四份拷贝**——`fit_koopman_defense_model._null_predictions` 是 G-K2-1/G-S2-1 用的那份，`surrogate_eval` 取同一套算术，行为侧 `test_surrogate_eval_null_equivalence.py` 逐值钉死（`atol=0`），漂移即红。
 | ~~E2~~ | ~~core 8 补第 1/2/3/4 行~~ **已完成 2026-09-12**：`scripts/eval_surrogate_rows.py`，10 条单测；结果档案 [`../experiments/core_surrogate_rows_results.md`](../experiments/core_surrogate_rows_results.md) | 零 GPU | Table 1 core 侧**六行全满** |
 
-**E2 改变了 Table 1 的三条措辞（待落到 §一）**：① 记忆有用是**条件性**的（3/7 显著支持、1/7 显著反对、3/7 分不开）；② 非线性无用要用**效应量**讲（|Δ| < 0.03 且符号翻转），不能讲「统计上不可区分」；③ **第 3 行「执行器进算子」core 一格都撑不住**（`ours − 无 r` 七个任务全部跨 0）——core 的 `r` 每条轨迹恒定、不是随机化动作，这条主张只能由三条行为线扛。**每个数据集的 lag 按「还能留 H≥3 的最深延迟嵌入」定**（T=10 用 lag=3、T=5 用 lag=1），表里逐列标注。
+**E2 改变了 Table 1 的三条措辞（待落到 §一）**：① 记忆有用是**条件性**的（3/7 显著支持、1/7 显著反对、3/7 分不开）；② 非线性无用要用**效应量**讲（|Δ| < 0.03 且符号翻转），不能讲「统计上不可区分」；③ **第 3 行「执行器进算子」core 一格都撑不住**（`ours − 无 r` 七个任务全部跨 0）——core 的 `r` 每条轨迹恒定、不是随机化动作，这条主张只能由行为线扛（当时三条，2026-09-15 起四条；**四条的第 3 行全部跨 0**）。**每个数据集的 lag 按「还能留 H≥3 的最深延迟嵌入」定**（T=10 用 lag=3、T=5 用 lag=1），表里逐列标注。
 | ~~E3~~ | ~~行为 3 线补行~~ **已完成 2026-09-12**：`persona_drift_control/scripts/eval_surrogate_rows_behavioral.py`；结果档案 [`../experiments/behavioral_surrogate_rows_results.md`](../experiments/behavioral_surrogate_rows_results.md) | 零 GPU | Table 1 **十列全满** |
 
 **E3 不是重新制表，是新测量**：三条线签过的闸门全部是**一步、`nu=1`**（`constraint` 的 S2 配置字面是 `{nu:1, mu:1}`），主表第 6 行从未在任何一条线上被拟合过；第 2 行才对应各线已发表的算子。
@@ -222,6 +239,19 @@ core 侧经 `scripts/eval_surrogate_rows.py`、行为侧经
 | ~~G1~~ | ~~`defense` 两个端点臂扩到 5 seed~~ **已完成 2026-09-13**：15829527 / 15829528，各 27 min，两臂各 200 行、判分失败 0、拒答 0 | 2 GPU 作业（已花） | Table 2 `defense` 列补洞 |
 | ~~E4~~ | ~~`defense` Phase J 七臂按 seed 聚合~~ **已完成 2026-09-13**：`persona_drift_control/scripts/aggregate_table2_defense.py`，12 条单测；结果档案 [`../experiments/defense_table2_results.md`](../experiments/defense_table2_results.md) | 零 GPU | Table 2 `defense` 列**六行全满** |
 | ~~G3~~ | ~~`constraint` S3 闭环臂~~ **已完成 2026-09-12**：砍成**三臂**执行（`8c75c03`），15815719 + 15815720 跑完并判读，判成**干净负结果**（`c094de0`）。主量 `koopman_mpc − best_fixed_schedule` = **+0.0014 ± 0.0145 (n=3)**，0.05×MDE；同批行里提醒本身买到 +0.1163。详见 [`../experiments/constraint_results.md`](../experiments/constraint_results.md) §S3 | 已花 ≈ 7.2 GPU-h | Table 2 `constraint` 列 |
+| ~~G4~~ | ~~`tsar_cefr` 闭环五臂~~ **已完成 2026-09-14**：15944416（11m06）+ 锚趟 15943453（8m06）。签死的主对比 `koopman_mpc − dp_path` **−0.0730** [−0.1396,−0.0081] 过了，**但 `dp_degeneracy=1.0`**（199 题 DP 路径全等于相邻阶梯）→ 那个差主要是 prompt 家族不是控制；同家族内对 `fixed_ladder` −0.0073（含 0）、对手写 `greedy_reactive` **+0.0096**（含 0，符号不利），等代价 **3.37 步/322 token 对 1.03 步/100 token** → **被开环阶梯支配**。详见 [`../experiments/tsar_cefr_results.md`](../experiments/tsar_cefr_results.md) §Table 2 | 已花 ≈ 0.3 GPU-h | Table 2 **第四列** |
+| ~~E6~~ | ~~`tsar_cefr` 补 Table 1 六行~~ **已完成 2026-09-15**：`persona_drift_control/scripts/eval_surrogate_rows_tsar_cefr.py`，22 条单测（连 `lstm_baseline` 的 `v_dim` 改动）；结果档案 [`../experiments/tsar_cefr_surrogate_rows_results.md`](../experiments/tsar_cefr_surrogate_rows_results.md) | 零 GPU | Table 1 **十一列全满** |
+
+**E6 的三条结果**：① **预注册预测落空**——该线计划 §7.1 预注册「本列第 3 行显著不为零」，
+实测 **+0.0061，CI 含 0**；第 3 行现为**十一列一致为零**，且这一列三项条件都满足。
+**这是本线从「锦上添花」升级为承重的唯一理由，它没有兑现**（§一 第 3 条已加注）。
+② `ours − Markov` **+0.0487 ★**，至此**五个信息量足够的列全部显著支持延迟嵌入**。
+③ LSTM `Skill_H` **−0.101**、AE **−0.032**，两者都没越过最好的平凡 null（本列是 `stateless`）——**这是样本量不足
+（597 轨迹 × 6 步），不得作为「非线性无用」的证据**；本列与其余十列「差别 <0.03 且方向不一致」
+那句措辞**不同源**，正文不要合并。
+**G4 与 E6 是同一个缺陷的两个读数**：第 3 行说「动作进不了算子」，锚趟说「算子把
+`half_step_down`(−0.0696) 排在 `step_down`(−0.0665) 之前、MPC 一次 `step_down` 都不选」。
+
 
 **E4 / G1 的三条结果**：① **12 天 + 一次重构，seed 0/1 的 160 行逐字节相同**——G1 选择整 5 seed 重跑
 （而非续跑）换来的这次比对证明重构行为等价且环境没动，本线跨 phase 产物可以并排读；
