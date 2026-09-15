@@ -29,54 +29,77 @@
 # beats the open-loop arms has cleared nothing that greedy_reactive had not
 # already cleared without being fitted at all.
 #
-# ===================== RULINGS REQUIRED BEFORE SUBMISSION =====================
-# The runner raises on each of these in canonical mode rather than defaulting,
-# and the `: "${VAR:?}"` lines below make this script die in one second if it is
-# submitted with any of them unset. Fill them in, do not delete the guards.
+# ===================== RULINGS, ALL SIGNED 2026-09-14 =========================
+# The runner still raises on each in canonical mode rather than defaulting; the
+# values below are the signed ones and the reason each was chosen is recorded so
+# a later reader does not have to reconstruct it.
 #
-#   1. DECODING / DECODING_TEMPERATURE. These arms are DETERMINISTIC policies,
-#      so unlike GPU-1 (whose seeds drew action sequences) the seed axis has
-#      nowhere to live except decoding. Greedy decoding with 3 seeds writes 3
-#      byte-identical copies and a standard deviation of exactly 0.
-#      .claude/global.md forbids reporting a single-seed point estimate, so
-#      either decoding is sampled here -- breaking byte-comparability with
-#      GPU-1 and the tree, both greedy -- or Table 2 has no error bars.
-#   2. STOP_ON_ARRIVAL. `never` generates a near-identity `copy` step and stays
-#      comparable with the tree; `on_copy` ends the trajectory, which is what
-#      plan 6.1's own cost estimate assumes. It changes both cost axes.
-#   3. BETA / LAMBDA_COST. The MPC's meaning weight and per-action cost. Plan
-#      5.4 fixes both on the TRIAL 20 sources (selection on trial, reporting on
-#      test). They are not fitted here and not guessed here.
-#   4. MEANING THRESHOLD (for the analyzer, not this job). kill_criterion 2.5
-#      (3) records it as NOT YET SIGNED.
-#   5. DP_PATH. Left out of ARMS below, and the runner refuses it either way.
-#      Its policy is a path of CEFR LEVELS with multi-level jumps; this action
-#      set is relative and names no level. Restricting the DP to adjacent
-#      transitions does NOT rescue it -- the strictly-decreasing path becomes
-#      UNIQUE, so dp_path IS fixed_ladder and the signed contrast
-#      `koopman_mpc - dp_path` loses its reference. The only alternative is a
-#      prompt naming an arbitrary level (tsar_cefr_actions restricts both of its
-#      templates to the two target levels), i.e. a harness change.
+#   1. DECODING = sample, T = 0.7, top_p 0.8, top_k 20. These arms are
+#      DETERMINISTIC policies, so unlike GPU-1 (whose seeds drew action
+#      sequences) the seed axis has nowhere to live except decoding; greedy
+#      with 3 seeds writes 3 byte-identical copies and a standard deviation of
+#      exactly 0, which is a claim of precision that does not exist. The values
+#      are Qwen3-4B's own non-thinking card defaults -- EXTERNAL, not tuned to
+#      make the effect look better, the same discipline that put G-T1's 0.85 on
+#      the published F1. Cost: this breaks byte-comparability with GPU-1 and the
+#      tree, both greedy, which is what the ANCHOR job exists to repair.
+#   2. STOP_ON_ARRIVAL = on_copy. Under `never` every arm spends exactly six
+#      steps and `copy` returns the whole paragraph, so BOTH signed cost axes
+#      (steps, tokens) go flat and plan 5.4's equal-cost comparison carries no
+#      information. on_copy also matches greedy_reactive's own fourth rule.
+#   3. BETA = 1.8333, from the trial 20 sources' human references: mean squared
+#      level error 0.4474 / mean meaning loss 0.2441, i.e. plan 5.4's "official
+#      50/50" read as equal expected contribution. The median gives 1.9282, so
+#      the value is not sensitive to the statistic.
+#      LAMBDA_COST = 0.1156 = 0.34^2, the published self-test RMSE of the TSAR
+#      evaluator squared: do not spend an action chasing an improvement the
+#      readout cannot resolve. Chosen over plan 5.4's literal "calibrate on the
+#      token axis" because that would tune lambda until one arm's cost matched
+#      another's; the two cost axes are reported instead.
+#   4. MEANING THRESHOLD = 0.5436 (analyzer, not this job): the 5th percentile
+#      of the trial human references' MeaningBERT-to-source, i.e. keep at least
+#      as much meaning as the weakest human reference. Anchored on the
+#      references, not on this model's output, so it cannot drift with the
+#      effect. Failures score the SOURCE level (`source_level`), which keeps
+#      every arm on the same denominator; `exclude` is reported beside it and
+#      does not judge.
+#   5. DP_PATH = level_prompt + trial_measured R. Its policy is a path of CEFR
+#      LEVELS with multi-level jumps and the four control actions name no level;
+#      restricting the DP to adjacent transitions does NOT rescue it, because
+#      the strictly-decreasing path is then UNIQUE and dp_path IS fixed_ladder.
+#      So tsar_cefr_actions gained `level_message`, which widens the level set of
+#      a template that already existed; `saturation_message` keeps its A2/B1
+#      contract and its output is byte-identical (regression test). R is
+#      MODEL-DEPENDENT, so it is measured on the trial split with this model by
+#      the published scheme rather than copied from the paper's Llama numbers --
+#      the caption becomes "method reproduced from public code, R measured on
+#      this model", not "parameters reproduced".
+#      KNOWN RISK, COUNTED NOT REPAIRED: after min-max to [0,1] every R is
+#      non-negative, so a SUM over hops rewards longer paths and the published
+#      objective leans toward the ladder. `dp_degeneracy` in run_config.json
+#      reports what share of items got the adjacent path; at 1.0 the arm is
+#      fixed_ladder on this model and the analyzer's zero-variance guard fires.
 # ==============================================================================
 #
-# SCALE with the four runnable arms: 199 items x 4 arms x 3 seeds x <= 6 steps
-# = <= 14,328 generations and the same number of readout texts, plus 199 source
-# readouts. With dp_path unblocked it is <= 17,910.
+# SCALE: 199 items x 5 arms x 3 seeds x <= 6 steps = <= 17,910 generations (on_copy
+# makes the real count lower; plan 6.1 assumes 60-70%), plus <= 800 for the reward
+# probe on trial and 199 source readouts. The ANCHOR job adds 2,388 on top.
 #
-# RUNTIME ESTIMATE 0.6-1.3 h (--time 4:00:00 = ~3x the pessimistic end).
+# RUNTIME ESTIMATE 0.8-1.5 h for THIS job (--time 4:00:00 = ~2.7x the
+# pessimistic end); the anchor job adds ~0.2-0.3 h of its own.
 # ASSUMPTIONS, all rates MEASURED ON GPU-2a (15897788), not carried over from
 # any pre-run estimate -- the LEDGER records that GPU-2a's own generation guess
 # was conservative and its readout guess overran the pessimistic end by 14%:
 #   - GENERATION 0.0128 s/gen: GPU-2a's log sums to 14.4 min over 67,660
-#     generations on an A100. 14,328 x 0.0128 = 3.1 min. Band 0.0128-0.03 ->
-#     3-7 min.
+#     generations on an A100. 18,710 x 0.0128 = 4.0 min. Band 0.0128-0.03 ->
+#     4-9 min.
 #   - READOUT 0.111 s/text: GPU-2a wrote tree_raw.jsonl at 12:41 and tree.jsonl
 #     at 14:46, so ~125 min over 67,859 texts through 3 ModernBERT-base
-#     classifiers + MeaningBERT at batch 32. 14,527 x 0.111 = 27 min. THE BAND
+#     classifiers + MeaningBERT at batch 32. 18,909 x 0.111 = 35 min. THE BAND
 #     IS WIDER HERE FOR A STRUCTURAL REASON: GPU-2a scored one batch of 67,660,
 #     this job scores SIX batches of ~2,400 (the loop is closed, so step t+1
 #     cannot be built before step t is read out). The probe models load once,
-#     but per-batch overhead is paid six times -> 0.111-0.20 s/text -> 27-48 min.
+#     but per-batch overhead is paid six times -> 0.111-0.20 s/text -> 35-63 min.
 #   - MPC PLANNING, CPU: 340 operator rollouts per decision x 199 items x 3
 #     seeds x 6 steps = 1.2M 4x4 updates in Python -> 1-5 min. NOT MEASURED.
 #   - MODEL LOAD + ENGINE INIT ~3 min (GPU-2a: 12:23:58 start, 12:27:06 ready).
@@ -88,7 +111,8 @@
 #
 # QUOTA (item 5): last ten jobs are instrument 3 / method 7 (15833850, 15815720,
 # 15792580 instrument; the rest method). 3 <= 5, so the instrument axis has
-# headroom. This job is METHOD.
+# headroom. This job and the anchor are both METHOD, which cannot raise the
+# instrument count.
 #
 # ARTIFACTS: outputs/tsar_cefr_s3_arm/ does not exist; the runner refuses to
 # write into an existing directory. Nothing reads or rewrites GPU-1's rows, the
@@ -99,12 +123,12 @@
 
 set -euo pipefail
 
-# ---- fill these in; the guards below refuse an unset value -------------------
-# DECODING=sample
-# DECODING_TEMPERATURE=0.7
-# STOP_ON_ARRIVAL=never
-# BETA=
-# LAMBDA_COST=
+# ---- signed 2026-09-14; the guards below still refuse an unset value ---------
+DECODING=sample
+DECODING_TEMPERATURE=0.7
+STOP_ON_ARRIVAL=on_copy
+BETA=1.8333
+LAMBDA_COST=0.1156
 # -----------------------------------------------------------------------------
 : "${DECODING:?ruling 1 unset: greedy|sample -- the seed axis lives only in decoding}"
 : "${STOP_ON_ARRIVAL:?ruling 2 unset: never|on_copy -- it moves both cost axes}"
@@ -131,11 +155,17 @@ nvidia-smi -L || true
 python scripts/run_tsar_cefr_closed_loop_arms.py \
   --agent-model Qwen/Qwen3-4B \
   --split test \
-  --arms one_shot fixed_ladder greedy_reactive koopman_mpc \
+  --arms one_shot fixed_ladder dp_path greedy_reactive koopman_mpc \
   --seeds 0 1 2 \
   --max-steps 6 \
   --decoding "$DECODING" "${TEMP_ARG[@]}" \
   --stop-on-arrival "$STOP_ON_ARRIVAL" \
+  --top-p 0.8 \
+  --top-k 20 \
+  --dp-path-mapping level_prompt \
+  --dp-path-reward trial_measured \
+  --reward-probe-split trial \
+  --reward-probe-depth 2 \
   --beta "$BETA" \
   --lambda-cost "$LAMBDA_COST" \
   --operator outputs/tsar_cefr_phase3/operator_fit.json \

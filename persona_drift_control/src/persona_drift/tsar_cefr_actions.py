@@ -32,6 +32,7 @@ import random
 from dataclasses import dataclass
 
 TARGET_LEVELS = ("A2", "B1")
+CEFR_LEVELS = ("A1", "A2", "B1", "B2", "C1", "C2")
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,37 @@ def user_message(text: str, action: str, target_cefr: str) -> str:
     )
 
 
+def level_message(text: str, level: str) -> str:
+    """Ask for ANY named CEFR level, not only the two task targets.
+
+    Added 2026-09-14 for `dp_path` (plan 5.4), whose policy is a path of CEFR
+    LEVELS with multi-level jumps. The four control actions are relative and
+    name no level, and restricting the DP to adjacent transitions does not
+    help: the strictly-decreasing path then becomes UNIQUE, so `dp_path` would
+    be `fixed_ladder` under another name and the signed contrast
+    `koopman_mpc - dp_path` would lose its subtrahend.
+
+    THE TEMPLATE IS NOT NEW. It is the string `saturation_message` has always
+    produced; only the set of levels it will accept is wider, and
+    `saturation_message` keeps its own A2/B1 restriction by delegating here.
+    For A2 and B1 the output is byte-identical to before, which
+    `tests/test_tsar_cefr_actions.py` pins -- D-0's probe must not move because
+    a baseline needed a wider prompt.
+
+    A BASELINE DOES NOT HAVE TO LIVE IN THE CONTROL ACTION SET. D-2, D-2.5,
+    G-S1 and G-S2 are statements about the four relative actions and are
+    untouched by this; `dp_path` is an opponent, not a control policy.
+    """
+    if level not in CEFR_LEVELS:
+        raise ValueError(f"unexpected CEFR level {level!r}; expected one of {CEFR_LEVELS}")
+    return (
+        f"Rewrite the text so that a reader at CEFR level {level} can read it, "
+        f"and so that it is not simpler than CEFR level {level}.\n\n"
+        f"Text:\n{text}\n\n"
+        "Rewritten text:"
+    )
+
+
 def saturation_message(text: str, target_cefr: str) -> str:
     """The D-0 probe (plan ruling 4): one shot straight at the target level.
 
@@ -86,15 +118,13 @@ def saturation_message(text: str, target_cefr: str) -> str:
     items there is no regulation problem left for a controller to solve, and
     D-0 fires. It is a DIFFERENT prompt from the step template on purpose --
     it is allowed to name the level, because naming it is the whole probe.
+
+    The A2/B1 restriction stays here deliberately: `level_message` widened the
+    template for a baseline, and the probe's contract must not widen with it.
     """
     if target_cefr not in TARGET_LEVELS:
         raise ValueError(f"unexpected target_cefr {target_cefr!r}; expected one of {TARGET_LEVELS}")
-    return (
-        f"Rewrite the text so that a reader at CEFR level {target_cefr} can read it, "
-        f"and so that it is not simpler than CEFR level {target_cefr}.\n\n"
-        f"Text:\n{text}\n\n"
-        "Rewritten text:"
-    )
+    return level_message(text, target_cefr)
 
 
 def draw_actions(seed: int, text_id: str, n_steps: int) -> list[str]:

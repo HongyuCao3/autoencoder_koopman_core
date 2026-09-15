@@ -106,7 +106,7 @@ def test_mpc_horizon_is_the_signed_four():
 def make_args(**over):
     base = dict(mode="canonical", decoding="sample", decoding_temperature=0.7,
                 seeds=[0, 1, 2], stop_on_arrival="on_copy", beta=1.0, lambda_cost=0.05,
-                arms=["greedy_reactive"], dp_path_mapping=None)
+                arms=["greedy_reactive"], dp_path_mapping=None, dp_path_reward=None)
     base.update(over)
     return type("A", (), base)()
 
@@ -137,9 +137,20 @@ def test_dp_path_adjacent_only_is_refused_because_it_collapses_into_fixed_ladder
         arms.check_rulings(make_args(arms=["dp_path"], dp_path_mapping="adjacent_only"))
 
 
-def test_dp_path_level_prompt_is_refused_as_a_harness_change():
-    with pytest.raises(SystemExit, match="harness change"):
+def test_dp_path_level_prompt_still_needs_a_reward_source():
+    with pytest.raises(SystemExit, match="dp-path-reward"):
         arms.check_rulings(make_args(arms=["dp_path"], dp_path_mapping="level_prompt"))
+
+
+def test_the_published_reward_matrix_is_refused_because_it_is_not_in_the_repo():
+    with pytest.raises(SystemExit, match="not in this repo"):
+        arms.check_rulings(make_args(arms=["dp_path"], dp_path_mapping="level_prompt",
+                                     dp_path_reward="published"))
+
+
+def test_dp_path_with_the_signed_pair_of_rulings_is_allowed():
+    arms.check_rulings(make_args(arms=["dp_path"], dp_path_mapping="level_prompt",
+                                 dp_path_reward="trial_measured"))
 
 
 def test_debug_mode_asks_for_nothing():
@@ -291,3 +302,87 @@ def test_a_step_zero_row_is_a_valid_terminal():
     assert table["one_shot"]["rmse_mean"] == pytest.approx(2.0)   # B2 = 4 vs A2 = 2
     assert table["one_shot"]["cost"]["mean_steps_used"] == pytest.approx(0.0)
     assert table["one_shot"]["cost"]["mean_tokens"] == pytest.approx(0.0)
+
+
+# =============================================================================
+# dp_path -- the reward matrix and the plan it produces
+# =============================================================================
+
+def test_reward_scheme_is_the_published_one():
+    assert arms.reward_of("A2", "A2") == pytest.approx(1.0)
+    assert arms.reward_of("A2", "B1") == pytest.approx(0.5)
+    assert arms.reward_of("A2", "A1") == pytest.approx(0.5)
+    assert arms.reward_of("A2", "B2") == pytest.approx(-1.0)
+
+
+def test_reward_matrix_normalises_and_keeps_the_attempt_counts():
+    raw = {("B2", "B1"): [1.0, 1.0], ("B2", "A2"): [-1.0], ("B1", "A2"): [0.5]}
+    got = arms.normalise_rewards(raw)
+    assert got["R"]["B2->B1"] == pytest.approx(1.0)
+    assert got["R"]["B2->A2"] == pytest.approx(0.0)
+    assert 0.0 < got["R"]["B1->A2"] < 1.0
+    assert got["n_attempts"]["B2->B1"] == 2
+
+
+def test_dp_prefers_the_higher_reward_path_over_the_short_one():
+    """C1 -> A2 via B2,B1 scores 3 x 1.0; the direct jump scores 0.0."""
+    R = {"C1->B2": 1.0, "B2->B1": 1.0, "B1->A2": 1.0, "C1->A2": 0.0,
+         "C1->B1": 0.0, "B2->A2": 0.0}
+    plan = arms.dp_plan(R, "C1", "A2", max_steps=6)
+    assert plan["path"] == ["B2", "B1", "A2"]
+    assert plan["unobserved_used"] == 0
+
+
+def test_dp_takes_the_jump_when_the_jump_is_what_works():
+    R = {"C1->B2": 0.0, "B2->B1": 0.0, "B1->A2": 0.0, "C1->A2": 1.0,
+         "C1->B1": 0.0, "B2->A2": 0.0}
+    assert arms.dp_plan(R, "C1", "A2", max_steps=6)["path"] == ["A2"]
+
+
+def test_dp_prefers_a_fully_observed_path_even_at_lower_reward():
+    """A transition this model was never observed making is not plannable."""
+    R = {"C1->B2": 0.2, "B2->B1": 0.2, "B1->A2": 0.2}      # C1->A2 never attempted
+    plan = arms.dp_plan(R, "C1", "A2", max_steps=6)
+    assert plan["path"] == ["B2", "B1", "A2"]
+    assert plan["unobserved_used"] == 0
+
+
+def test_dp_is_empty_when_the_source_is_already_at_or_below_target():
+    assert arms.dp_plan({}, "A2", "A2", max_steps=6)["path"] == []
+    assert arms.dp_plan({}, "A1", "B1", max_steps=6)["path"] == []
+
+
+def test_dp_path_emits_level_actions_then_stops():
+    state = {"step": 0, "dp_plan": {"path": ["B1", "A2"]}, "target_cefr": "A2"}
+    assert arms.next_action("dp_path", state, None, None) == "level:B1"
+    assert arms.next_action("dp_path", {**state, "step": 1}, None, None) == "level:A2"
+    assert arms.next_action("dp_path", {**state, "step": 2}, None, None) == "copy"
+
+
+def test_level_action_renders_the_widened_template():
+    rendered = arms.render("level:B2", "Some text.", "A2")
+    assert "CEFR level B2" in rendered and "CEFR level A2" not in rendered
+
+
+def test_dp_degeneracy_is_counted_not_repaired():
+    """Uniform non-negative R makes the summed objective prefer the longest path."""
+    R = {f"{j}->{i}": 0.5 for j in arms.LEVELS_LOW_TO_HIGH for i in arms.LEVELS_LOW_TO_HIGH
+         if arms.CEFR_CODE[i] < arms.CEFR_CODE[j]}
+    plan = arms.dp_plan(R, "C1", "A2", max_steps=6)
+    assert plan["path"] == plan["adjacent_path"] == ["B2", "B1", "A2"]
+    got = arms.dp_degeneracy({"01-a2": plan})
+    assert got["share"] == pytest.approx(1.0)
+
+
+def test_dp_degeneracy_sees_a_real_jump():
+    R = {"C1->A2": 1.0, "C1->B2": 0.0, "B2->B1": 0.0, "B1->A2": 0.0,
+         "C1->B1": 0.0, "B2->A2": 0.0}
+    plan = arms.dp_plan(R, "C1", "A2", max_steps=6)
+    assert plan["path"] == ["A2"] and plan["adjacent_path"] == ["B2", "B1", "A2"]
+    assert arms.dp_degeneracy({"01-a2": plan})["share"] == pytest.approx(0.0)
+
+
+def test_adjacent_path_walks_one_level_at_a_time():
+    assert arms.adjacent_path("C1", "A2") == ["B2", "B1", "A2"]
+    assert arms.adjacent_path("B1", "A2") == ["A2"]
+    assert arms.adjacent_path("A2", "A2") == []

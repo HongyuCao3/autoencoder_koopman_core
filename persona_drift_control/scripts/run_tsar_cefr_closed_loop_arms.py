@@ -92,6 +92,11 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--beta", type=float, default=None, help="MPC meaning weight; plan 5.4 fixes it on trial.")
     p.add_argument("--lambda-cost", type=float, default=None, help="MPC per-action cost; plan 5.4 calibrates it on the token axis.")
     p.add_argument("--dp-path-mapping", choices=["adjacent_only", "level_prompt"], default=None)
+    p.add_argument("--dp-path-reward", choices=["published", "trial_measured"], default=None)
+    p.add_argument("--reward-probe-split", default="trial", choices=sorted(bank.SPLITS))
+    p.add_argument("--reward-probe-depth", type=int, default=2)
+    p.add_argument("--top-p", type=float, default=0.8, help="Qwen3 non-thinking card default")
+    p.add_argument("--top-k", type=int, default=20, help="Qwen3 non-thinking card default")
     p.add_argument("--n-sources", type=int, default=None, help="debug only")
     p.add_argument("--readout-device", type=int, default=0)
     p.add_argument("--readout-batch-size", type=int, default=32)
@@ -131,11 +136,16 @@ def check_rulings(args: argparse.Namespace) -> None:
             raise SystemExit(
                 "--dp-path-mapping adjacent_only makes the strictly-decreasing path unique, "
                 "so dp_path becomes fixed_ladder and the signed contrast koopman_mpc - dp_path "
-                "loses its reference; choose level_prompt (a harness change) or drop the arm")
-        raise SystemExit(
-            "--dp-path-mapping level_prompt needs a prompt that names an arbitrary CEFR level; "
-            "tsar_cefr_actions restricts both templates to the two target levels. That is a "
-            "harness change and is not taken on this script's authority")
+                "loses its reference; choose level_prompt (ruled 2026-09-14) or drop the arm")
+        if args.dp_path_reward is None:
+            raise SystemExit(
+                "--dp-path-reward is required with dp_path: R is a MODEL-DEPENDENT empirical "
+                "matrix, so copying the published one imports another model's dynamics")
+        if args.dp_path_reward == "published":
+            raise SystemExit(
+                "the published R matrix is not in this repo -- only its filling scheme "
+                "(hit +1, off-by-one +0.5, else -1, min-max to [0,1]). Use trial_measured, "
+                "which applies that same scheme to this model on the trial split")
 
 
 def token_cap(n_source_tokens: int) -> int:
@@ -168,6 +178,137 @@ def greedy_reactive_action(ell: float, target: str) -> str:
 def fixed_ladder_actions(source_ell: float, target: str, max_steps: int) -> list[str]:
     k = max(0, min(max_steps, round(source_ell) - CEFR_CODE[target.upper()]))
     return ["step_down"] * k + ["copy"] * (max_steps - k)
+
+
+LEVELS_LOW_TO_HIGH = actions.CEFR_LEVELS
+REWARD_HIT, REWARD_ADJACENT, REWARD_MISS = 1.0, 0.5, -1.0
+REWARD_PROBE_CAP = 800
+
+
+def reward_of(asked: str, landed: str) -> float:
+    """The published scheme, applied to this model's own transitions."""
+    gap = abs(CEFR_CODE[landed] - CEFR_CODE[asked])
+    return REWARD_HIT if gap == 0 else (REWARD_ADJACENT if gap == 1 else REWARD_MISS)
+
+
+def normalise_rewards(raw: dict[tuple[str, str], list[float]]) -> dict:
+    """Mean per ordered pair, then min-max to [0,1] as the paper does.
+
+    A pair nobody attempted stays ABSENT rather than defaulting to anything: the DP
+    may not plan a transition this model was never observed making.
+    """
+    means = {pair: sum(v) / len(v) for pair, v in raw.items()}
+    lo, hi = min(means.values()), max(means.values())
+    span = hi - lo
+    return {
+        "R": {f"{j}->{i}": (0.5 if span == 0 else (m - lo) / span)
+              for (j, i), m in means.items()},
+        "n_attempts": {f"{j}->{i}": len(raw[(j, i)]) for (j, i) in means},
+        "raw_mean": {f"{j}->{i}": m for (j, i), m in means.items()},
+        "scheme": "hit +1, off-by-one +0.5, else -1; min-max to [0,1]",
+        "unobserved_pairs_are_unavailable_to_the_dp": True,
+    }
+
+
+def adjacent_path(source_level: str, target_level: str) -> list[str]:
+    return [lvl for lvl in reversed(LEVELS_LOW_TO_HIGH)
+            if CEFR_CODE[target_level] <= CEFR_CODE[lvl] < CEFR_CODE[source_level]]
+
+
+def dp_degeneracy(plans: dict) -> dict:
+    """How often the DP's plan is just the ladder -- a property of the OBJECTIVE, not a bug.
+
+    After min-max normalisation every R is non-negative, so a sum over hops rewards
+    LONGER paths: three mediocre transitions (0.5 each) outscore one excellent jump
+    (1.0). The published objective therefore leans toward the adjacent path unless some
+    transition is actively bad. If every plan here is the ladder then `dp_path` IS
+    `fixed_ladder` empirically -- not by the action-set collapse this arm was rebuilt to
+    avoid, but by the method's own arithmetic on this model's measured R. That is a
+    reportable finding and a caption obligation, so it is counted rather than repaired.
+    """
+    same = sum(1 for p in plans.values() if p["path"] == p["adjacent_path"])
+    return {"n_items": len(plans), "n_plans_equal_to_fixed_ladder": same,
+            "share": same / len(plans) if plans else None,
+            "note": "if this share is 1.0, dp_path and fixed_ladder are the same arm on "
+                    "this model and the signed contrast koopman_mpc - dp_path has no "
+                    "independent reference; the analyzer's zero-variance guard will fire"}
+
+
+def dp_plan(R: dict, source_level: str, target_level: str, max_steps: int) -> dict:
+    """The strictly-decreasing level path maximising sum R (plan 5.4 / arXiv 2602.07499).
+
+    Enumerated rather than recursed: between two CEFR levels there are at most 2^4
+    intermediate subsets, so the DP recursion buys nothing here and enumeration cannot
+    silently mis-handle the unavailable-transition case.
+    """
+    src, tgt = CEFR_CODE[source_level], CEFR_CODE[target_level]
+    if src <= tgt:
+        return {"path": [], "adjacent_path": [], "total_reward": 0.0, "unobserved_used": 0,
+                "note": "source already at or below target"}
+    middles = [lvl for lvl in LEVELS_LOW_TO_HIGH if tgt < CEFR_CODE[lvl] < src]
+    best, best_score, best_unobs = None, None, None
+    for mask in range(1 << len(middles)):
+        chosen = [m for k, m in enumerate(middles) if mask >> k & 1]
+        chosen.sort(key=lambda lvl: -CEFR_CODE[lvl])
+        path = chosen + [target_level]
+        if len(path) > max_steps:
+            continue
+        hops = list(zip([source_level] + path[:-1], path))
+        score = sum(R.get(f"{j}->{i}", 0.0) for j, i in hops)
+        unobs = sum(1 for j, i in hops if f"{j}->{i}" not in R)
+        key = (unobs, -score)          # prefer fully observed, then higher reward
+        if best_score is None or key < best_score:
+            best, best_score, best_unobs = path, key, unobs
+    return {"path": best, "adjacent_path": adjacent_path(source_level, target_level),
+            "total_reward": -best_score[1], "unobserved_used": best_unobs}
+
+
+def probe_reward_matrix(llm, sampling_cls, probes, tokenizer, split: str, depth: int) -> tuple[dict, int]:
+    """Fill R on the TRIAL split with this model, by the published scheme.
+
+    SELECTION ON TRIAL, REPORTING ON TEST -- the split .claude/global.md asks for. The
+    probe is GREEDY whatever the arms use: it is a measurement of this model's level
+    transitions, so it should not carry decoding noise into the DP's plan.
+
+    One text per SOURCE, not per item: a level transition does not depend on which of
+    the two task targets the item was written for.
+    """
+    items = bank.load_tsar_bank(bank.fetch(split))
+    seen, texts = set(), []
+    for item in items:
+        if item.source_id not in seen:
+            seen.add(item.source_id)
+            texts.append(item.original)
+    levels = probes.levels(texts, temperature=SIGNED_TEMPERATURE)
+    frontier = [{"text": t, "level": lv.level_official,
+                 "cap": token_cap(len(tokenizer.encode(t)))}
+                for t, lv in zip(texts, levels)]
+    raw: dict[tuple[str, str], list[float]] = collections.defaultdict(list)
+    attempts = 0
+    for _ in range(depth):
+        jobs = [{**node, "asked": lvl} for node in frontier for lvl in LEVELS_LOW_TO_HIGH
+                if CEFR_CODE[lvl] < CEFR_CODE[node["level"]]]
+        if not jobs:
+            break
+        attempts += len(jobs)
+        if attempts > REWARD_PROBE_CAP:
+            raise SystemExit(f"reward probe would issue {attempts} generations, over the "
+                             f"cap of {REWARD_PROBE_CAP}; lower --reward-probe-depth")
+        conversations = [
+            [{"role": "system", "content": actions.SYSTEM_PROMPT},
+             {"role": "user", "content": actions.level_message(job["text"], job["asked"])}]
+            for job in jobs
+        ]
+        params = [sampling_cls(temperature=0.0, max_tokens=job["cap"], seed=0) for job in jobs]
+        outputs = llm.chat(conversations, params, chat_template_kwargs={"enable_thinking": False})
+        produced = [o.outputs[0].text.strip() for o in outputs]
+        landed = probes.levels(produced, temperature=SIGNED_TEMPERATURE)
+        frontier = []
+        for job, text, lvl in zip(jobs, produced, landed):
+            raw[(job["level"], job["asked"])].append(reward_of(job["asked"], lvl.level_official))
+            frontier.append({"text": text, "level": lvl.level_official, "cap": job["cap"]})
+        print(f"  reward probe: {len(jobs)} attempts, {len(raw)} ordered pairs so far", flush=True)
+    return normalise_rewards(raw), attempts
 
 
 class Operator:
@@ -219,6 +360,9 @@ def next_action(arm: str, state: dict, args: argparse.Namespace, op: Operator | 
         return "one_shot_prompt" if state["step"] == 0 else "copy"
     if arm == "fixed_ladder":
         return state["schedule"][state["step"]]
+    if arm == "dp_path":
+        plan = state["dp_plan"]["path"]
+        return f"level:{plan[state['step']]}" if state["step"] < len(plan) else "copy"
     if arm == "greedy_reactive":
         return greedy_reactive_action(state["ell"], state["target_cefr"])
     if arm == "koopman_mpc":
@@ -229,6 +373,8 @@ def next_action(arm: str, state: dict, args: argparse.Namespace, op: Operator | 
 def render(action: str, text: str, target: str) -> str:
     if action == "one_shot_prompt":
         return actions.saturation_message(text, target)
+    if action.startswith("level:"):
+        return actions.level_message(text, action.split(":", 1)[1])
     return actions.user_message(text, action, target)
 
 
@@ -255,15 +401,24 @@ def main(argv=None) -> None:
         item = kept[0]
         cap = token_cap(len(item.original.split()))
         print(f"first item {item.text_id!r}, proxy cap {cap}")
+        # A stand-in R so the DP path is exercised without a GPU. The real one is
+        # measured on the trial split at run time; only its VALUES differ, and every
+        # other failure on this path -- the plan, the level action, the template -- is
+        # reachable here. (GPU-2a died at 2m21s on a field name a narrower dry run
+        # could not reach: a check that passes exactly when it is not needed.)
+        stand_in_R = {f"{j}->{i}": 0.5 for j in LEVELS_LOW_TO_HIGH for i in LEVELS_LOW_TO_HIGH
+                      if CEFR_CODE[i] < CEFR_CODE[j]}
         for arm in args.arms:
-            if arm == "dp_path":
-                print(f"  {arm}: blocked by --dp-path-mapping (see check_rulings)")
-                continue
             state = {"step": 0, "ell": 3.5, "xi": [3.5, 1.0, 3.5, 1.0],
                      "target_cefr": item.target_cefr,
-                     "schedule": fixed_ladder_actions(3.5, item.target_cefr, args.max_steps)}
+                     "schedule": fixed_ladder_actions(3.5, item.target_cefr, args.max_steps),
+                     "dp_plan": dp_plan(stand_in_R, "B2", item.target_cefr, args.max_steps)}
             act = next_action(arm, state, args, op)
-            print(f"  {arm}: first action {act!r}")
+            extra = f"  plan {state['dp_plan']['path']}" if arm == "dp_path" else ""
+            print(f"  {arm}: first action {act!r}{extra}")
+        if "dp_path" in args.arms:
+            print(f"  reward probe: <= {REWARD_PROBE_CAP} generations on the "
+                  f"{args.reward_probe_split} split, depth {args.reward_probe_depth}, greedy")
         print("--- one rendered user message (greedy_reactive, step 1) ---")
         print(render(greedy_reactive_action(3.5, item.target_cefr), item.original,
                      item.target_cefr)[:300])
@@ -275,6 +430,15 @@ def main(argv=None) -> None:
               max_model_len=args.max_model_len, enforce_eager=False)
     tokenizer = llm.get_tokenizer()
     probes = readout.CefrProbes(device=args.readout_device, batch_size=args.readout_batch_size)
+
+    calibration = None
+    if "dp_path" in args.arms:
+        rewards, attempts = probe_reward_matrix(
+            llm, SamplingParams, probes, tokenizer, args.reward_probe_split,
+            args.reward_probe_depth)
+        calibration = {"reward_matrix": rewards, "probe_generations": attempts,
+                       "probe_split": args.reward_probe_split,
+                       "probe_decoding": "greedy (a measurement, not an arm)"}
 
     sources = probes.levels([item.original for item in kept], temperature=SIGNED_TEMPERATURE)
     base = {item.text_id: lvl for item, lvl in zip(kept, sources)}
@@ -292,6 +456,10 @@ def main(argv=None) -> None:
                     "xi": [ell0, 1.0, ell0, 1.0],
                     "cap": token_cap(len(tokenizer.encode(item.original))),
                     "schedule": fixed_ladder_actions(ell0, item.target_cefr, args.max_steps),
+                    "dp_plan": (dp_plan(calibration["reward_matrix"]["R"],
+                                        base[item.text_id].level_official,
+                                        item.target_cefr, args.max_steps)
+                                if arm == "dp_path" else None),
                     "done": False,
                 }
 
@@ -334,11 +502,13 @@ def main(argv=None) -> None:
              {"role": "user", "content": render(a, st["text"], st["target_cefr"])}]
             for st, a in zip(batch, chosen)
         ]
-        params = [
-            SamplingParams(temperature=(args.decoding_temperature if args.decoding == "sample" else 0.0),
-                           max_tokens=st["cap"], seed=st["seed"])
-            for st in batch
-        ]
+        if args.decoding == "sample":
+            params = [SamplingParams(temperature=args.decoding_temperature, top_p=args.top_p,
+                                     top_k=args.top_k, max_tokens=st["cap"], seed=st["seed"])
+                      for st in batch]
+        else:
+            params = [SamplingParams(temperature=0.0, max_tokens=st["cap"], seed=st["seed"])
+                      for st in batch]
         started = time.time()
         outputs = llm.chat(conversations, params, chat_template_kwargs={"enable_thinking": False})
         texts = [o.outputs[0].text.strip() for o in outputs]
@@ -365,6 +535,10 @@ def main(argv=None) -> None:
         print(f"  step {step + 1}: {len(batch)} live in {(time.time() - started) / 60:.1f} min",
               flush=True)
 
+    dp_plans = ({tid: live[("dp_path", tid, args.seeds[0])]["dp_plan"]
+                 for tid in sorted({i.text_id for i in kept})}
+                if "dp_path" in args.arms else None)
+
     args.out_dir.mkdir(parents=True)
     with (args.out_dir / "trajectories.jsonl").open("w", encoding="utf-8") as handle:
         for row in rows:
@@ -373,8 +547,12 @@ def main(argv=None) -> None:
         "mode": args.mode, "arm": "tsar_cefr GPU-2 five closed-loop arms",
         "plan": plan, "excluded_items": dropped, "n_rows": len(rows),
         "rulings": {"decoding": args.decoding, "decoding_temperature": args.decoding_temperature,
+                    "top_p": args.top_p, "top_k": args.top_k,
                     "stop_on_arrival": args.stop_on_arrival, "beta": args.beta,
-                    "lambda_cost": args.lambda_cost, "dp_path_mapping": args.dp_path_mapping},
+                    "lambda_cost": args.lambda_cost, "dp_path_mapping": args.dp_path_mapping,
+                    "dp_path_reward": args.dp_path_reward},
+        "calibration": calibration,
+        "dp_plans": dp_plans, "dp_degeneracy": dp_degeneracy(dp_plans) if dp_plans else None,
         "provenance": provenance({
             "agent_model": args.agent_model, "split": args.split, "arms": list(args.arms),
             "seeds": list(args.seeds), "max_steps": args.max_steps,
