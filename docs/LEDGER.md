@@ -738,7 +738,8 @@ LSTM `Skill_H` **−0.101**、AE **−0.032**，两者都没越过最好的平�
 本线的动作是四值分类、按计划 §5.1 载成 3 自由度 one-hot。压成标量会把第 3 行**朝零缩**，
 即朝与其余十列一致、朝让主张好看的方向缩——这一列唯一不能做的事。
 连带改动 `LSTMSurrogate` 加 `v_dim`（默认 1，`v_dim=1` 时张量逐比特同旧路径，
-单测 `test_v_dim_one_matches_scalar` + 一次独立复核钉住，三条已发表列不受影响）。
+单测 `test_v_dim_one_matches_scalar` + 一次端到端独立复核钉住：三条已发表列重导后
+`rows`/`contrasts` **141 个数值字段最大绝对差 0.0**，顶层唯一不同的 key 是 `provenance`）。
 
 **谱系**：sha `6b16d40`，`git_dirty=true`、4 条脏路径（= 本脚本 + 它的单测 + `lstm_baseline`
 两个文件），跑在交互节点 `node1642`。**不占 GPU 配额**（无 GPU 作业）。

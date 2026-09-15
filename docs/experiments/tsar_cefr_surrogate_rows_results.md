@@ -147,4 +147,10 @@ Table 2 本列（[`tsar_cefr_results.md`](tsar_cefr_results.md) §Table 2）：`
 `rows` 与 `contrasts`。发布产物本身一个字节没动（`.claude/global.md` → *产物与谱系*：
 `outputs/` 只增不改）。
 
-- 复核结论：**[待填]**
+- **复核结论：逐值相同。** 三条线的 `rows` 与 `contrasts` 共 **141 个数值字段，最大绝对差 0.0**；
+  三个文件顶层**唯一不同的 key 是 `provenance`**（sha / 时间戳 / `git_dirty`）。
+  即 `v_dim` 改动对三条已发表列的影响**精确为零**，不是「小到可忽略」。
+  复核跑法：`scripts/eval_surrogate_rows_behavioral.py --out-dir <临时目录>`（2026-09-15，
+  单核交互节点，1h47m；09-12 那趟多核约 45 min，**4× 差是核数不是代码**），
+  比对脚本逐字段遍历两个 `rows`/`contrasts` 块，非数值字段与 `n_items` / `n_seeds` /
+  `best_null_name` / `lag` / `horizon` / `n_folds` 一并比过。
