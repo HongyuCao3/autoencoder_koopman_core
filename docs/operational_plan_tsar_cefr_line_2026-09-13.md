@@ -1,5 +1,14 @@
 # 综合操作计划：双轨推进——诊断型正文 + 新任务线 `tsar_cefr`（2026-09-13）
 
+> **状态（2026-09-15）**：▶ **活跃——本仓库当前唯一的活跃计划**（`.claude/docs.md` → 一次只有一份）。
+> Phase 1–4 已全部跑完，结果见 [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md)；
+> §7.1 预注册的阳性对照**未兑现**（Table 1 第十一列 +0.0061，CI 含 0），交付物已于 2026-09-15
+> 重签为**单向的事前否决判据**。用户同日裁决「这条线先继续」——不关线，但**新 GPU 作业不因此
+> 自动成立**，仍需 `.claude/experiments.md` 六条 + 一个独立正面理由。
+> 四条闭环列的跨列读法见 [`article/CLOSED_LOOP_SYNTHESIS.md`](article/CLOSED_LOOP_SYNTHESIS.md)。
+> **本文件放在 `docs/` 根而非 `docs/experiments/` 是历史遗留**：它被 6 个 `.py`/`.sbatch` 按路径引用，
+> 搬动会触发代码改动，按 [`DOC_CLEANUP_PLAN.md`](DOC_CLEANUP_PLAN.md) §七第 5 条不做。
+
 起草：Hongyu Cao（与 Claude）。
 综合同日三份分析：`main_table_verdict_and_next_experiments`（主表判定）、`finding_a_task_where_control_wins`（五条判据）、
 `benchmark_recommendations`（TSAR 2025 主推）。

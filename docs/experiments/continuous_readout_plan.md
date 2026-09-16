@@ -1,5 +1,10 @@
 # 连续读出（judge token 概率）：执行细则
 
+> **状态（2026-09-15 补记）**：⛔ **已执行完毕并关闭（2026-09-07）**，不要再执行任何一节。
+> G2b/G2c 判 FAIL——96% 的行堆在 {0, 0.5, 1} 的 ±0.02 邻域，token 概率读出饱和，该读出族关闭。
+> 见 [`../NEGATIVE_RESULTS.md`](../NEGATIVE_RESULTS.md) 的 ``defense``（软 judge 读出族）一行。
+> 下文保留立项时的原文。
+
 > **这是执行说明书，不是设计讨论。** 上游依据：
 > [`../feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md`](../feasibility/SYCOPHANCY_KOOPMAN_LOOP_FEASIBILITY.md)
 > 第 5 节第 1 步（零 GPU 成本，排在整条 sycophancy 线最前）、

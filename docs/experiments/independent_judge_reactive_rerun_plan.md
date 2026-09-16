@@ -1,7 +1,8 @@
 # 执行计划：反应式臂的独立 judge 重跑（高优先级）
 
 > 📕 **结果档案**。第四–六节的执行规格**已全部执行完毕**，**不要再执行**。要读结果看
-> 第七、八节。当前的活计划是 [`signal_resolution_plan.md`](signal_resolution_plan.md)。
+> 第七、八节。当前活跃计划见 [`../README.md`](../README.md) → *六条线的当前状态*（**唯一权威**，2026-09-15 起；
+> 此前本行点名的 [`signal_resolution_plan.md`](signal_resolution_plan.md) 已于 2026-09-07 执行完毕）。
 
 **状态**：✅ 已执行完毕（下面这行是立项时的原文，保留不改）。**适用智能体：Sonnet 5**（规格已写死在本文档里，不需要自己做设计判断）。
 **触发来源**：论文 Step 2b 的作废判定（`../../paper/evidence/superseded.md` 事件 E3

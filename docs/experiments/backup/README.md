@@ -4,8 +4,8 @@
 "当时为什么这么决定"，**不是当前要执行的任务**。
 
 > **给接手的会话**：不要执行这里的任何规格、不要修改这里的任何文件、不要把这里的判定
-> 当成当前状态。当前的活计划只有一条（2026-09-10 更新）：
-> `constraint` 线 → [`../constraint_retention_plan.md`](../constraint_retention_plan.md)（S0–S3，S1 已提交）。
+> 当成当前状态。**当前活跃计划见 [`../../README.md`](../../README.md) → *六条线的当前状态*（唯一权威，2026-09-15 起）**——
+> 本行原先点名的 `constraint` 线（[`../constraint_retention_plan.md`](../constraint_retention_plan.md)）已于 2026-09-12 收尾。
 > ERGO 线（[`../ergo_fidelity_restoration_plan.md`](../ergo_fidelity_restoration_plan.md)）与防御线的两份计划
 > （[`../koopman_fast_track_plan.md`](../koopman_fast_track_plan.md) 与
 > [`../defense_line_redesign_plan.md`](../defense_line_redesign_plan.md)）按用户指令**收尾挂起**——

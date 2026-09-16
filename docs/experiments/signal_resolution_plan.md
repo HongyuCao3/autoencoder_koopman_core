@@ -3,8 +3,8 @@
 > 📕 **结果档案。F0–F4 已全部执行完毕（2026-09-07），不要再执行任何一节。**
 > 结果：F0 撤回 ERGO 终止、F1/F2 采纳 `closeness` 读出、F3 的 Phase C 因 `horizon=2`
 > 退化成 `fixed_t2`（逐行完全相同）、F4 软 judge 读出 RC-1/RC-3 不过。
-> **0.5 节的 RC-0..RC-3 四条判据定义仍然有效**，被当前的活计划
-> [`measurement_validity_plan.md`](measurement_validity_plan.md) 沿用。
+> **0.5 节的 RC-0..RC-3 四条判据定义仍然有效**，被 [`measurement_validity_plan.md`](measurement_validity_plan.md) 沿用。
+> 当前活跃计划见 [`../README.md`](../README.md) → *六条线的当前状态*（**唯一权威**，2026-09-15 起）。
 
 **状态**：✅ **F0–F4 全部执行完毕（2026-09-07）**。F0–F3（ERGO 线）结果见
 `ergo_multiturn_reliability_pilot.md`"F0–F3：读出分辨率修正与 Phase C 结果"一节——F0/F1/F2

@@ -4,9 +4,10 @@
 > 已挂起收尾（入口 [`defense_line_redesign_plan.md`](defense_line_redesign_plan.md)），当前活跃
 > 的是 `constraint` 线；不要按本文档重跑或改写。术语基准见 [`NAMING.md`](../NAMING.md)。
 
-> 📓 **运行记录（历史发现，不是待执行的任务）**。当前的活计划是
-> [`signal_resolution_plan.md`](signal_resolution_plan.md)——其中 F4（软 judge 读出）是本线
-> 读出族里唯一还没测过的候选。本文档各节记的是当时的运行，**不要按它们重跑或改写**。
+> 📓 **运行记录（历史发现，不是待执行的任务）**。当前活跃计划见 [`../README.md`](../README.md) → *六条线的当前状态*
+> （**唯一权威**，2026-09-15 起）。**本线（`defense`）已于 2026-09-13 经闸门 R1 关闭**，
+> 此前本行点名的 [`signal_resolution_plan.md`](signal_resolution_plan.md) 已执行完毕，
+> 其 F4（软 judge 读出）判 RC-1/RC-3 不过、读出族关闭。本文档各节记的是当时的运行，**不要按它们重跑或改写**。
 
 和 [adversarial_screening_pilot.md](adversarial_screening_pilot.md) 同一类"供跨会话接续"的
 记录。**新开一次对话想知道"Koopman 防御控制器现在做到哪一步了",看这份文档。**

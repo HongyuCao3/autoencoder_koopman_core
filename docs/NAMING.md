@@ -5,12 +5,12 @@ keyword lattice）都以这份表为准。
 
 | 代号 | 中文名 | 英文名 | 指什么 | 状态 |
 |---|---|---|---|---|
-| `core` | 核心 Koopman 建模 | controlled Koopman modeling of LLM output trajectories | 根目录 `src/koopman_ae/`，8 个标量/多变量轨迹任务，`ABLATION_STUDY.md` 八阶段消融 | 活跃 |
-| `defense` | **抗攻击** | multi-turn attack resistance / safety-erosion defense | 多轮越狱攻击下的安全侵蚀与 channel-A 提醒注入防御；Phase A→J | 活跃（主线） |
-| `stance` | **抗压力** | stance holding under sustained pushback / sycophancy resistance | 用户持续反驳下模型是否放弃正确立场；MMLU "Are You Sure?" 数据源 | 活跃 |
-| `benign` | 良性代价对照 | benign helpfulness cost | Phase F 的 MT-Bench 良性会话代价对照 | 活跃（`defense` 的附属） |
+| `core` | 核心 Koopman 建模 | controlled Koopman modeling of LLM output trajectories | 根目录 `src/koopman_ae/`，8 个标量/多变量轨迹任务，`ABLATION_STUDY.md` 八阶段消融 | ✅ **收尾**（Table 1 的 core 七列已落盘，无待执行步骤） |
+| `defense` | **抗攻击** | multi-turn attack resistance / safety-erosion defense | 多轮越狱攻击下的安全侵蚀与 channel-A 提醒注入防御；Phase A→J | ⛔ **已关闭（2026-09-13）**——闸门 R1 判 FAIL（激活投影留一攻击 −0.0354），按事前签死的第二行关线 |
+| `stance` | **抗压力** | stance holding under sustained pushback / sycophancy resistance | 用户持续反驳下模型是否放弃正确立场；MMLU "Are You Sure?" 数据源 | ⏸ **挂起**——执行器权威两次空结果（SYCON、MMLU） |
+| `benign` | 良性代价对照 | benign helpfulness cost | Phase F 的 MT-Bench 良性会话代价对照 | ⛔ 随 `defense` 关闭 |
 | `detect` | 检测支线 | Koopman-based regime detection | 一步预测残差 / 双 regime 对比 / 内容相似度特征 | 收尾 |
-| `constraint` | **约束保持** | multi-turn constraint retention | **数据集：SEQUOR**（`resources/sequor/`，deep-spin/SEQUOR，COLM 2026，`tuples/3` regime）。多轮约束遵守下的预算内提醒再注入，k=3 分级读出 | **活跃**（唯一活线；S0 判分校准 + 保真 harness 下 S0-0 三门全过，S1 辨识臂 2026-09-10 提交） |
+| `constraint` | **约束保持** | multi-turn constraint retention | **数据集：SEQUOR**（`resources/sequor/`，deep-spin/SEQUOR，COLM 2026，`tuples/3` regime）。多轮约束遵守下的预算内提醒再注入，k=3 分级读出 | ✅ **收尾**（2026-09-12：S3 闭环三臂跑完，判**干净负结果**——主量 +0.0014 ± 0.0145 (n=3)，0.05×MDE） |
 | `gsm8k_sharded` | **分片指令可靠性侵蚀** | multi-turn reliability erosion under sharded instructions | **数据集：Laban et al. 2025 的 sharded instructions**（`microsoft/lost_in_conversation`，MIT；600 条里筛出的 103 条 GSM8K 子集，vendored 成 `resources/ergo_gsm8k_sharded.jsonl`）。执行器是 reset（重述已揭示的 shard）；相位 E0–E6 / R0–R5 / EK0–EK2 | ⏸ **挂起**（2026-09-08：算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程） |
 | `tsar_cefr` | **可读性定点调节** | readability-level regulation via iterative rewriting | **数据集：TSAR 2025 Shared Task**（Readability-Controlled Text Simplification），100 段落 × 目标级 {B1, A2}；读出 = CEFR 分类器**期望级别** $\ell=\sum_k k\,p_k$（非 argmax）+ MeaningBERT 保义分，FKGL 为副读出；执行器 = 逐步改写指令（降一级 / 降半级 / 同义改写 / 不改）；线性 Koopman-MPC 定点调节。死亡条件见 [`experiments/tsar_cefr_kill_criterion.md`](experiments/tsar_cefr_kill_criterion.md) | **活跃**（2026-09-13 开线；Phase 1–4 已跑完：GPU-1 辨识 / GPU-2a 反事实树 / GPU-2 闭环五臂 + Table 1 第十一列。预注册的阳性对照未兑现，**2026-09-15 用户裁决「先继续」不关线**；新 GPU 作业仍需独立正面理由） |
 | `persona_drift` | 人格漂移 | persona drift | 最初的任务线，screening 三问全挂后放弃 | **已放弃，仅作历史术语** |

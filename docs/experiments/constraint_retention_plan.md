@@ -1,5 +1,12 @@
 # 执行计划：`constraint` 线（约束保持）S0–S3
 
+**状态（2026-09-15 更新）**：✅ **收尾**。S3 闭环三臂已于 2026-09-12 跑完并判读为**干净负结果**
+（主量 `koopman_mpc − best_fixed_schedule` = +0.0014 ± 0.0145 (n=3)，0.05×MDE，
+见 [`constraint_results.md`](constraint_results.md) §S3），本线无待执行步骤。
+当前唯一活跃计划是 [`../operational_plan_tsar_cefr_line_2026-09-13.md`](../operational_plan_tsar_cefr_line_2026-09-13.md)。
+跨列读法见 [`../article/CLOSED_LOOP_SYNTHESIS.md`](../article/CLOSED_LOOP_SYNTHESIS.md)。
+**以下是 2026-09-08 立项时的原文，保留不改：**
+
 **状态**：▶ **活跃（2026-09-08 起）**。ERGO 的 EK 相位已出结果并挂起
 （[`ergo_fidelity_restoration_plan.md`](ergo_fidelity_restoration_plan.md)：算子辨识成立，但输入通道与状态解耦，
 闭环退化为固定日程），触发条件"ERGO 出较明确结果"已满足，本线开工。

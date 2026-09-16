@@ -1,5 +1,11 @@
 # `tsar_cefr` 面临关闭：原因复盘与挽回空间评估（2026-09-14）
 
+> **状态（2026-09-15）**：📕 **已被后续结果取代，作为当时权衡的记录保留。** 本文写于 D-2.5 判读之前；
+> 其后 GPU-2a（15897788）测出 D-2.5 **不触发**（+0.2241，CI [+0.1417,+0.3056]），线未关，
+> 五臂与 Table 1 第十一列均已落盘。**不要据本文判断本线现状**——现状见
+> [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md) 与
+> [`article/CLOSED_LOOP_SYNTHESIS.md`](article/CLOSED_LOOP_SYNTHESIS.md)。
+
 起草：Hongyu Cao（与 Claude）。
 依据：仓库 commit `74578b0`（2026-09-13）的 `docs/experiments/tsar_cefr_results.md`（G-T1 两次判读）、
 `tsar_cefr_kill_criterion.md`（D-0…D-5）、`operational_plan_tsar_cefr_line_2026-09-13.md` 签字结果、

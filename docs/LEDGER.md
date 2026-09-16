@@ -536,7 +536,7 @@ best_fixed_schedule` = +0.0014 ± 0.0145（n=3 seeds）**，CI [−0.0174, +0.01
 [`experiments/tsar_cefr_kill_criterion.md`](experiments/tsar_cefr_kill_criterion.md)；
 ② 死亡条件 D-0…D-5 ✅（同上 §二，七条）；③ 论文空壳 3 句 + Table 1/2 列空壳 ✅
 （计划 §2.3）；④ NAMING 登记 ✅ + 本段 ✅。规格：
-[`../operational_plan_tsar_cefr_line_2026-09-13.md`](../operational_plan_tsar_cefr_line_2026-09-13.md)。
+[`operational_plan_tsar_cefr_line_2026-09-13.md`](operational_plan_tsar_cefr_line_2026-09-13.md)。
 
 **这条线要买什么**：三条行为线的 Table 1 第 3 行（`ours − 扣住 u`）跨十列全为零，闭环也全为零
 （`defense` −0.0250 ★、`constraint` +0.0014 打平、ERGO 构造性恒等）。本线是「第 3 行不为零 ⇒ 闭环为正」

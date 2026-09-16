@@ -1,5 +1,8 @@
 # `tsar_cefr` 结果档案
 
+> **状态（2026-09-15）**：现行。本线 Phase 1–4 已跑完，Table 1 第十一列与 Table 2 第四列均已落盘。
+> 跨列读法见 [`../article/CLOSED_LOOP_SYNTHESIS.md`](../article/CLOSED_LOOP_SYNTHESIS.md)。
+
 规格：[`../operational_plan_tsar_cefr_line_2026-09-13.md`](../operational_plan_tsar_cefr_line_2026-09-13.md)。
 死亡条件：[`tsar_cefr_kill_criterion.md`](tsar_cefr_kill_criterion.md)。
 **只填结果，不改既有文档的结论段。**

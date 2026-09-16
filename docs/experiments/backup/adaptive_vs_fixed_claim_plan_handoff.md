@@ -2,7 +2,8 @@
 
 > 🗄 **已归档（只读）**。这是 2026-09-06 会话中断时的交接记录，T0–T3 已全部执行完毕，
 > 交接对象已不存在。**不要执行、不要修改、不要当成当前状态。**
-> 当前的活计划是 [`../signal_resolution_plan.md`](../signal_resolution_plan.md)；
+> 当前活跃计划见 [`../../README.md`](../../README.md) → *六条线的当前状态*（**唯一权威**，2026-09-15 起；
+> 此前本行点名的 [`../signal_resolution_plan.md`](../signal_resolution_plan.md) 已于 2026-09-07 执行完毕）；
 > 结果在 [`../adaptive_vs_fixed_claim_plan.md`](../adaptive_vs_fixed_claim_plan.md) 第十一、十三节。
 
 **写于**：2026-09-06 22:23 EDT，因用户预计离开 6+ 小时、当前会话可能失联而创建。

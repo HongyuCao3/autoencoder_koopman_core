@@ -12,15 +12,20 @@
 `experiments/`（实验记录）、`article/`（论文施工图）、`references/`（PDF 缓存，已 gitignore）。
 跨文档的反引号引用（如 `` `BASELINES.md` ``）是文字引用，不是链接。
 
-## 五条线的当前状态（2026-09-10）
+## 六条线的当前状态（2026-09-15）
 
-| 线（代号以 [`NAMING.md`](NAMING.md) 为准） | 状态 | 一句话 | 入口文档（详见下面「实验」一节） |
+| 线（代号以 [`NAMING.md`](NAMING.md) 为准） | 状态 | 一句话 | 入口文档 |
 |---|---|---|---|
-| `constraint`（SEQUOR） | ⏸ **等裁决** | S0–S2 完成入库；S3 三选一里 (a) 与 (b) 的纸面版都已执行（2026-09-11，退化挺过换模型类**与**换目标函数），下一步要么换动作/换设定（需新 GPU 臂）要么放弃 `koopman_mpc` 臂，见 `constraint_results.md` §选项 (b) 的纸面版 | `constraint_retention_plan.md` |
-| `gsm8k_sharded`（旧称 ERGO） | ⏸ 挂起 | 算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程 | `ergo_fidelity_restoration_plan.md` |
-| `defense` | ⏸ 收尾 | 辨识成立时挂起；读出没量程（独立 judge 天花板 0.91） | `defense_line_redesign_plan.md` |
-| `stance` | ⏸ 挂起 | 执行器权威两次空结果（SYCON、MMLU） | `mc_sycophancy_screening_pilot.md` |
-| `persona_drift` | ⛔ 已放弃 | screening 三问全挂，仅作历史术语 | `NAMING.md` |
+| `tsar_cefr`（可读性定点调节） | ▶ **活跃（唯一活线）** | Phase 1–4 全跑完；Table 2 第四列落盘——签死的主对比过了，但 `dp_degeneracy=1.0`，同家族内 Ours 对开环阶梯打平且花 3.2× token；Table 1 第十一列的**预注册阳性对照未兑现**，2026-09-15 用户裁决「先继续」不关线，新 GPU 作业仍需独立正面理由 | [`operational_plan_tsar_cefr_line_2026-09-13.md`](operational_plan_tsar_cefr_line_2026-09-13.md) · 结果 [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md) |
+| `constraint`（SEQUOR） | ✅ **收尾** | S3 闭环三臂跑完判读：主量 +0.0014 ± 0.0145 (n=3)，0.05×MDE → **干净负结果**，可按结果发表；同批行里提醒本身买到 +0.1163 | [`experiments/constraint_retention_plan.md`](experiments/constraint_retention_plan.md) · 结果 [`experiments/constraint_results.md`](experiments/constraint_results.md) §S3 |
+| `defense`（抗攻击） | ⛔ **已关闭（2026-09-13）** | 闸门 R1 判 FAIL（激活投影留一攻击 −0.0354，两条轴都没抬过 0）→ 按事前签死的第二行关线；Table 2 该列按负结果写死 | [`experiments/defense_table2_results.md`](experiments/defense_table2_results.md) · 上界 [`experiments/adaptivity_ceiling_results.md`](experiments/adaptivity_ceiling_results.md) |
+| `gsm8k_sharded`（旧称 ERGO） | ⏸ 挂起 | 算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程；2026-09-08 熵读出闸门不过，停在 S3，预算转 `constraint` | [`experiments/ergo_fidelity_restoration_plan.md`](experiments/ergo_fidelity_restoration_plan.md) |
+| `stance`（抗压力） | ⏸ 挂起 | 执行器权威两次空结果（SYCON、MMLU） | [`experiments/mc_sycophancy_screening_pilot.md`](experiments/mc_sycophancy_screening_pilot.md) |
+| `persona_drift` | ⛔ 已放弃 | screening 三问全挂，仅作历史术语 | [`NAMING.md`](NAMING.md) |
+
+> **四条闭环列（`defense` / `constraint` / `gsm8k_sharded` / `tsar_cefr`）并排怎么读**——
+> 见 [`article/CLOSED_LOOP_SYNTHESIS.md`](article/CLOSED_LOOP_SYNTHESIS.md)。单列读会得出
+> 「baseline 太强」这个错误诊断。
 
 ## 工作纪律（先读）
 
@@ -51,6 +56,11 @@
   主线锁定 positive / `prior_injection`（Koopman 先验作归纳偏置，再用算子做控制与安全干预）；
   覆盖叙事弧、诚实性红线、Step 0–7 与 I1–I4 的目标/产物/出口闸门、智能体分层、启动语。
   **分工到新会话执行某一步时，先让那个会话读对应 Step。**
+- **[article/CLOSED_LOOP_SYNTHESIS.md](article/CLOSED_LOOP_SYNTHESIS.md) — ★ 跨列综合（2026-09-15）。**
+  Table 2 四列并排的读法：谁打平/压过 Ours、两类 baseline、四条独立证据排除「baseline 太强」、
+  效应量阶梯（动作本身 +0.12～0.18 对重排预算 0.00～0.01）、必须撤的三条 claim、能 present 的三条。
+- [article/MAIN_TABLE_DESIGN.md](article/MAIN_TABLE_DESIGN.md) — Table 1（十一列六行）与 Table 2（四列）
+  的设计稿与填表清单；已签裁决、单元格现状、caption 义务。**不是计划文档。**
 
 ## 任务选型（`task/`）
 
