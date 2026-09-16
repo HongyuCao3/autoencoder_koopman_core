@@ -307,7 +307,42 @@ def greedy_reactive_cost(g: MovingRefGroup, members: np.ndarray) -> float:
     return float(np.mean([g.walk_cost(table, int(i), True) for i in members]))
 
 
-def run_schedule(cells_by_target, name: str, nbins: int, verify: bool) -> dict:
+def plant_step_dependent_cost(g: MovingRefGroup, delta: float, pistar) -> None:
+    """Add a known, step-dependent preference to the cost, in place.
+
+    `pistar(t, b) -> action` names the action the planted term prefers at step
+    `t` (1-based) for decision bin `b`; every other action at that node pays
+    `delta`. The term is a function of (t, bin, action) ONLY, and it is added to
+    the single `cost` array both policy classes are scored on, so neither class
+    is handicapped relative to the other: the myopic class cannot condition on
+    `t` because that is the definition of the class, not because the planting
+    hid anything from it.
+
+    This is the calibration instrument of candidate D (postmortem section 4).
+    Its purpose is to answer what the LOO estimator reports when the TRUE
+    headroom is a known size -- today's constant schedule reads G_plan = -0.0217
+    with a CI excluding zero on a problem whose true headroom is near zero, so
+    the estimator is suspected of a downward bias comparable to the effects it
+    is asked to detect.
+    """
+    for idx in range(N_NODES):
+        d = int(g.depth_of[idx])
+        if d < 1:
+            continue
+        action = (idx - OFFSETS[d]) % N_ACTIONS
+        parent = parent_index(idx, d)
+        for i in range(g.n):
+            if action != pistar(d, int(g.binv[i, parent])):
+                g.cost[i, idx] += delta
+
+
+def run_schedule(cells_by_target, name: str, nbins: int, verify: bool,
+                 plant: tuple | None = None) -> dict:
+    """`plant=None` is the published path and is byte-identical to it.
+
+    When given, `plant` is `(delta, pistar)` and is applied to each group's cost
+    right after construction, before any solver touches it.
+    """
     per_source_my: dict[str, list[float]] = collections.defaultdict(list)
     per_source_an: dict[str, list[float]] = collections.defaultdict(list)
     in_sample = {}
@@ -315,6 +350,8 @@ def run_schedule(cells_by_target, name: str, nbins: int, verify: bool) -> dict:
     tables = {}
     for target, cells in sorted(cells_by_target.items()):
         g = MovingRefGroup(cells, nbins, SCHEDULES[name])
+        if plant is not None:
+            plant_step_dependent_cost(g, plant[0], plant[1])
         sources = sorted({c.source_id for c in cells})
         all_idx = np.arange(g.n)
         pos3, dec = enumerate_prefixes_running(g)
