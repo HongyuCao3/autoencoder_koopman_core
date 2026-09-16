@@ -271,10 +271,19 @@ core 侧经 `scripts/eval_surrogate_rows.py`、行为侧经
 `item_col=attack_id` 的既有实现，早于任何对比被算出），Phase J 记录按轨迹；
 **8 个攻击对聚类 bootstrap 偏少**，这是"Ours 显著为负"那句话唯一的软肋。
 
-**裁决 5 派生的一件待办（E5，零 GPU）**：§二"自适应的上界"那张表印的是**终点**增益，
-主量已签成 late。已算的五个目标函数里最接近的是 t2–5 均值（因果 oracle +0.0047，CI 仍跨 0），
-**结论方向不变**，但 t2–5 ≠ t3–5。渲染正文前在同一批已落盘行上补算 t3–5 一行（回放即可），
-否则伴随论证与主表不同口径。
+| ~~E5~~ | ~~伴随论证补算主量 t3–5 一行~~ **已完成 2026-09-13**：`late_t3_5` 进
+`analyze_adaptivity_ceiling.py` 的 `OBJECTIVES`，产物
+`persona_drift_control/outputs/koopman_case_study/adaptivity_ceiling_late_t3_5.json`，
+结果落 §二 的 ✅ 注与 [`../experiments/adaptivity_ceiling_results.md`](../experiments/adaptivity_ceiling_results.md) §主量 | 零 GPU | Table 2 伴随论证与主表同口径 |
+
+**本行 2026-09-15 曾以"待办"存在于本节、而 §二 同时印着"已补"——同一份文档两处互相矛盾，
+与 09-15 清掉的那批"三代前的活计划"是同一种漂移。** 2026-09-16 按产物核实后合并：
+回放 `--objective late_t3_5` 到新路径与已落盘产物逐字段比对，**102 个字段 0 处不同**，
+§二 引的五个上界逐值对得上（Ours −0.0250、因果 oracle in-sample +0.0063 [−0.0167, +0.0292]、
+留一交叉 −0.0271、按攻击 +0.0375、透视未来 +0.0896）。
+⚠️ 同址记一个缺口：该产物**没有 harness 指纹**（无 `provenance` 字段，与
+`.claude/global.md` → *产物与谱系* 不符）。本次**不重跑覆盖**；下次动这条链时补，
+补的方式是写到新路径、不改已落盘文件。
 
 ## 六、同址必带的局限（写表时逐条落到 caption）
 

@@ -159,6 +159,10 @@
   D-2 执行器权威 −0.1356 ± 0.0099 (n=3) 3.78×MDE / D-2.5 反事实树上确界 0.7752 /
   **Table 2 五臂**——签死的主对比过了但 `dp_degeneracy=1.0`，同家族内打平、等代价被开环阶梯支配 ·
   §Table 2 与 §交还裁决。
+- [experiments/tsar_cefr_moving_reference_probe.md](experiments/tsar_cefr_moving_reference_probe.md) —
+  📊 结果档案 · **候选 B 的 P1 必要条件探针**（2026-09-16，零 GPU）· 判**不过 → 候选 B 关闭**：
+  切换档留一 $G_{\text{plan}}$ = −0.0147 CI 含 0、不过 2×MDE；移动参考的提升 +0.0070 = 0.21×MDE；
+  in-sample 四格全正（最大 +0.0924）留一后翻负 · **三个候选全部出清，本次投稿按诊断型论文收口。**
 - [experiments/tsar_cefr_surrogate_rows_results.md](experiments/tsar_cefr_surrogate_rows_results.md) —
   📊 结果档案 · **Table 1 第十一列**（2026-09-15，零 GPU）· 预注册预测落空：第 3 行 +0.0061 CI 含 0
   → 第 3 行**十一列一致为零**；`ours − Markov` +0.0487 ★；LSTM/AE 都没越过最好的平凡 null（本列是 `stateless`）（样本量不足，
