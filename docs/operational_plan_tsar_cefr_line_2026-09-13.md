@@ -1,7 +1,12 @@
 # 综合操作计划：双轨推进——诊断型正文 + 新任务线 `tsar_cefr`（2026-09-13）
 
-> **状态（2026-09-15）**：▶ **活跃——本仓库当前唯一的活跃计划**（`.claude/docs.md` → 一次只有一份）。
-> Phase 1–4 已全部跑完，结果见 [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md)；
+> **状态（2026-09-15 更新）**：✅ **已执行完毕——Phase 1–4 全部跑完，无待执行步骤。**
+> **活跃计划已交棒**给 [`tsar_cefr_postmortem_and_next_tasks_2026-09-16.md`](tsar_cefr_postmortem_and_next_tasks_2026-09-16.md)
+> ——它对本文件 §7.1 的预注册预测做了事后审计，并把事前判据从 D-2.5「反馈 vs 开环」
+> 换成 $G_{\text{plan}}$「规划 vs 贪心」。当前活跃计划以 [`README.md`](README.md) →
+> *六条线的当前状态* 为**唯一权威**（2026-09-15 起，不再在各文档内点名）。
+> **本文件保留为规格出处，只读不改**：Phase 1–4 的命令、预注册判据与闸门签署都在这里。
+> 结果见 [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md)；
 > §7.1 预注册的阳性对照**未兑现**（Table 1 第十一列 +0.0061，CI 含 0），交付物已于 2026-09-15
 > 重签为**单向的事前否决判据**。用户同日裁决「这条线先继续」——不关线，但**新 GPU 作业不因此
 > 自动成立**，仍需 `.claude/experiments.md` 六条 + 一个独立正面理由。

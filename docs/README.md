@@ -16,7 +16,7 @@
 
 | 线（代号以 [`NAMING.md`](NAMING.md) 为准） | 状态 | 一句话 | 入口文档 |
 |---|---|---|---|
-| `tsar_cefr`（可读性定点调节） | ▶ **活跃（唯一活线）** | Phase 1–4 全跑完；Table 2 第四列落盘——签死的主对比过了，但 `dp_degeneracy=1.0`，同家族内 Ours 对开环阶梯打平且花 3.2× token；Table 1 第十一列的**预注册阳性对照未兑现**，2026-09-15 用户裁决「先继续」不关线，新 GPU 作业仍需独立正面理由 | [`operational_plan_tsar_cefr_line_2026-09-13.md`](operational_plan_tsar_cefr_line_2026-09-13.md) · 结果 [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md) |
+| `tsar_cefr`（可读性定点调节） | ▶ **活跃（唯一活线）** | Phase 1–4 全跑完、闭环为零；**2026-09-15 复盘定根因**：任务是全观测一阶积分器（每步精确观测 + 动作一步兑现 + `copy` 91% 恒等），贪心已收满 98%，**规划余量 $G_{\text{plan}}$ 只有 0.0130 对 MDE 0.095**——不是算子拟合坏。事前判据换成 $G_{\text{plan}}$（规划 vs 贪心），本次投稿按**诊断型论文**写 | ▶ 现行计划 [`tsar_cefr_postmortem_and_next_tasks_2026-09-16.md`](tsar_cefr_postmortem_and_next_tasks_2026-09-16.md) · 规格出处（✅已执行完）[`operational_plan_tsar_cefr_line_2026-09-13.md`](operational_plan_tsar_cefr_line_2026-09-13.md) · 结果 [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md) |
 | `constraint`（SEQUOR） | ✅ **收尾** | S3 闭环三臂跑完判读：主量 +0.0014 ± 0.0145 (n=3)，0.05×MDE → **干净负结果**，可按结果发表；同批行里提醒本身买到 +0.1163 | [`experiments/constraint_retention_plan.md`](experiments/constraint_retention_plan.md) · 结果 [`experiments/constraint_results.md`](experiments/constraint_results.md) §S3 |
 | `defense`（抗攻击） | ⛔ **已关闭（2026-09-13）** | 闸门 R1 判 FAIL（激活投影留一攻击 −0.0354，两条轴都没抬过 0）→ 按事前签死的第二行关线；Table 2 该列按负结果写死 | [`experiments/defense_table2_results.md`](experiments/defense_table2_results.md) · 上界 [`experiments/adaptivity_ceiling_results.md`](experiments/adaptivity_ceiling_results.md) |
 | `gsm8k_sharded`（旧称 ERGO） | ⏸ 挂起 | 算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程；2026-09-08 熵读出闸门不过，停在 S3，预算转 `constraint` | [`experiments/ergo_fidelity_restoration_plan.md`](experiments/ergo_fidelity_restoration_plan.md) |
@@ -132,19 +132,25 @@
 格式：`文档 — 状态 · 一句结论 · 结果在哪`。状态图标：▶ 活跃 / ⏸ 挂起或收尾 / ✅ 已执行完 /
 📊 结果档案（冻结）/ 📝 设计稿未执行 / ⛔ 已放弃线。
 
-### `constraint` 线（▶ 活跃）
+### `constraint` 线（✅ 收尾）
 
-- **[experiments/constraint_retention_plan.md](experiments/constraint_retention_plan.md) —
-  ▶ **当前唯一的活计划**（2026-09-08 立项）· S0–S3：SEQUOR 多轮约束遵守 + 预算内提醒再注入，
-  `y` 是 3 条验证通道的计数（4 档），动作有时机也有**方向** · 结果见 `constraint_results.md`。**
+- [experiments/constraint_retention_plan.md](experiments/constraint_retention_plan.md) —
+  ✅ **收尾**（2026-09-08 立项，S3 于 09-12 判干净负结果，无待执行步骤）· S0–S3：SEQUOR
+  多轮约束遵守 + 预算内提醒再注入，`y` 是 3 条验证通道的计数（4 档），动作有时机也有**方向**
+  · 结果见 `constraint_results.md`。
 - [experiments/constraint_signal_screening.md](experiments/constraint_signal_screening.md) —
-  ▶ 活跃 · 开线前信号筛查（S0-0）与**死亡条件**；§十 是判据修订记录 · 闸门数字见 `constraint_results.md`。
+  ✅ 已执行完（判据定义仍现行，被后续线沿用）· 开线前信号筛查（S0-0）与**死亡条件**；
+  §十 是判据修订记录 · 闸门数字见 `constraint_results.md`。
 - [experiments/constraint_results.md](experiments/constraint_results.md) —
   📊 结果档案 · `constraint` 线全部结果（S0 / S0-0 三闸门 / 保真度臂 / S1 试点与辨识臂 /
   **S3 准入前检查 ← 当前待裁决项在这里**），从 LEDGER §三·五 拆出。
 
 ### `tsar_cefr` 线（可读性定点调节，▶ 活跃——2026-09-15 用户裁决「先继续」）
 
+- **[tsar_cefr_postmortem_and_next_tasks_2026-09-16.md](tsar_cefr_postmortem_and_next_tasks_2026-09-16.md) —
+  ▶ **现行计划**（2026-09-15 交棒）· §一–§三 是对 09-13 五条判据的事后审计（两条方向写反、
+  一条落地时丢了）、§四 是改后的筛选判据 P1–P3 与两个候选、§五 是对论文的后果 ·
+  取代 [`operational_plan_tsar_cefr_line_2026-09-13.md`](operational_plan_tsar_cefr_line_2026-09-13.md)（✅已执行完，保留为规格出处）。**
 - [experiments/tsar_cefr_kill_criterion.md](experiments/tsar_cefr_kill_criterion.md) —
   ▶ 现行判据 · 死亡条件 D-0…D-5 + 命名假设「第 3 行不为零 ⟺ 闭环为正」及其兑现
   （2026-09-15：两侧同为零，**假设未被否证，但非零侧仍未受检**）。

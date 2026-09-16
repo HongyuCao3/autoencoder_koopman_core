@@ -3,7 +3,7 @@
 **状态（2026-09-15 更新）**：✅ **收尾**。S3 闭环三臂已于 2026-09-12 跑完并判读为**干净负结果**
 （主量 `koopman_mpc − best_fixed_schedule` = +0.0014 ± 0.0145 (n=3)，0.05×MDE，
 见 [`constraint_results.md`](constraint_results.md) §S3），本线无待执行步骤。
-当前唯一活跃计划是 [`../operational_plan_tsar_cefr_line_2026-09-13.md`](../operational_plan_tsar_cefr_line_2026-09-13.md)。
+当前活跃计划见 [`../README.md`](../README.md) → *六条线的当前状态*（**唯一权威**，2026-09-15 起）。
 跨列读法见 [`../article/CLOSED_LOOP_SYNTHESIS.md`](../article/CLOSED_LOOP_SYNTHESIS.md)。
 **以下是 2026-09-08 立项时的原文，保留不改：**
 

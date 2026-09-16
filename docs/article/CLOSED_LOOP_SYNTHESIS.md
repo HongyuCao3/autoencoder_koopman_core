@@ -64,7 +64,7 @@ Ours 也不是靠更便宜换的打平：只有 `defense` 那列 Ours 花得更�
 
 | # | 证据 | 数 | 它说什么 |
 |---|---|---|---|
-| 1 | Table 1 第 3 行 `ours − 扣住 u` | **十一列全部跨 0**（core 7 列全跨；`constraint` +0.0015、`gsm8k_sharded` +0.057、`defense` +0.012、`tsar_cefr` +0.0061 [−0.0013,+0.0113]） | 算子在规划视界上**没有动作依赖结构**；拿它规划，原理上赢不了固定日程 |
+| 1 | Table 1 第 3 行 `ours − 扣住 u` | **十一列全部跨 0**（core 7 列全跨；`constraint` +0.0015、`gsm8k_sharded` +0.057、`defense` +0.012、`tsar_cefr` +0.0061 [−0.0013,+0.0113]） | 算子在规划视界上**没有可被利用的动作依赖结构**；拿它规划赢不了固定日程。⚠️ **单向判据**：零 ⇒ 别投闭环；**零不蕴含「执行器无权威」**——见下方灵敏度注 |
 | 2 | `defense` 因果 oracle 上界（回放已落盘轨迹，零 GPU） | **+0.0063** [−0.0167,+0.0292] 跨 0；**五个目标函数下全部跨 0** | 拿同样的可观测量，**完美控制器**也赢不了 `fixed_t5` |
 | 3 | 日程可分性 | `gsm8k_sharded` = 1（构造上）、`constraint` = 1（S2 两次实测） | 最优日程对所有题相同，**反馈没有可分的东西** |
 | 4 | `tsar_cefr` D-2.5 反事实树上确界 | 闭环上确界 **0.7752**，手写 `greedy_reactive` **0.7882**，**headroom 0.0130** | 反馈能买的已被三条 if-else 收满 |
@@ -73,6 +73,14 @@ Ours 也不是靠更便宜换的打平：只有 `defense` 那列 Ours 花得更�
 `MAIN_TABLE_DESIGN.md` §二「自适应的上界」；#1 → 三份代理行档案
 （[core](../experiments/core_surrogate_rows_results.md) / [行为三线](../experiments/behavioral_surrogate_rows_results.md) /
 [`tsar_cefr`](../experiments/tsar_cefr_surrogate_rows_results.md)）；#4 → `tsar_cefr_results.md` §D-2.5。
+
+> **#1 的灵敏度注（2026-09-15 补，来源 [`../tsar_cefr_postmortem_and_next_tasks_2026-09-16.md`](../tsar_cefr_postmortem_and_next_tasks_2026-09-16.md) §2.4）**：
+> 第 3 行量的是动作在 `Skill_H` 里的**方差份额**。在 `tsar_cefr` 上做数量级核算——
+> 四步动作引入的 $\ell$ 方差 $\approx 4\times0.13^2\times0.19\approx0.013$ 对题间方差 $0.25$，
+> **份额仅约 5%**——所以第 3 行为零与同一列 D-2 执行器权威 **3.78×MDE** 并不矛盾。
+> 四条线的题间异质性都占主导，**第 3 行因此是一个低灵敏度的检验**：它作为
+> **单向否决**判据可用，但**零侧「11/11 有实例」里有一部分是仪器灵敏度，不全是任务性质**。
+> 引用 #1 的任何地方必须同址带这句。
 
 **#2 还排除了「读出太粗」这条退路**：激活投影在每个决策点都能把 40 条轨迹完全区分开
 （turn 2 有 40 个不同取值，而 `y` 只有 1 个），上界仍然是 0。**分辨力不是瓶颈，可迁移的预测结构才是。**
