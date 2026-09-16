@@ -159,6 +159,10 @@
   D-2 执行器权威 −0.1356 ± 0.0099 (n=3) 3.78×MDE / D-2.5 反事实树上确界 0.7752 /
   **Table 2 五臂**——签死的主对比过了但 `dp_degeneracy=1.0`，同家族内打平、等代价被开环阶梯支配 ·
   §Table 2 与 §交还裁决。
+- [experiments/tsar_cefr_headroom_calibration.md](experiments/tsar_cefr_headroom_calibration.md) —
+  📊 结果档案 · **候选 D：判据的标定**（2026-09-16，零 GPU）· 判**过**：留一估计量单调跟踪真余量，
+  但小余量处低读——真值 +0.0168 处读出 −0.0217（偏倚 −0.0385 > MDE）；检出门槛 **0.0795 < $\delta^\star$ ≤ 0.1953** ·
+  **后果：五个零读数改写成「真余量低于检出门槛」，负读数不得读成「反向余量」。**
 - [experiments/tsar_cefr_moving_reference_probe.md](experiments/tsar_cefr_moving_reference_probe.md) —
   📊 结果档案 · **候选 B 的 P1 必要条件探针**（2026-09-16，零 GPU）· 判**不过 → 候选 B 关闭**：
   切换档留一 $G_{\text{plan}}$ = −0.0147 CI 含 0、不过 2×MDE；移动参考的提升 +0.0070 = 0.21×MDE；
