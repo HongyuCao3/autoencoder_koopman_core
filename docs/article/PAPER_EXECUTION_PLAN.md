@@ -554,10 +554,10 @@ I1/I2/I3/I4 全程可并行，I1+I2 需在 Step 5 之前就位
 |---|---|---|---|
 | 0 | 安装 skill | ◐ 2026-09-06 软链已建，待新会话验证 skill 列表 | — |
 | 1 | 主线锁定 | ☑ 2026-09-06 | Opus 5 |
-| 2a | 证据抽取 | ☑ 2026-09-06 533 条（core 57/defense 227/operator 73/sycophancy 30/readout 92/baseline 54），10 条抽查全部对得上出处 | Sonnet 5 ×6 |
+| 2a | 证据抽取 | ☑ 2026-09-06 533 条（core 57/defense 227/operator 73/sycophancy 30/readout 92/baseline 54），10 条抽查全部对得上出处。**2026-09-17 补录 578 条**（Opus 5）：Step 2a 抽取停在 09-06，而主表实际要引的测量时代（09-12 起的代理行协议、09-16/17 的 A1/M1/M2 副实验）一条都不在，claim_ledger 无 `current` id 可引。补录后 **1111 条**（current 575 / caveated 419 / superseded 117）。四个新前缀 `n_main_`（Table 1 十一列 + even_odd_t5 附录 A1）/ `n_loop_`（Table 2 四列 + 自适应上界伴随论证）/ `n_abl_`（A1 两个口径两个锚）/ `n_mech_`（M1 算子画像、M2 题目截距）——**前缀必须纯字母**，`check_claim_evidence.py` 的 `\bn_[a-z]+_\d+\b` 匹配不到含数字的前缀，那样的 id 会被闸门静默跳过。全部机械读落盘 json（Step 2a 第 4 条），不重拟合、不写 outputs/；10 条回查出处 10/10 对得上；legacy 533 条逐条未动 | Sonnet 5 ×6 → Opus 5 |
 | 2b | 作废判定 | ☑ 2026-09-06 533 条全部裁决（current 244 / caveated 172 / superseded 117）；十次事件记于 `paper/evidence/superseded.md`（计划点名的 5 次 + 另查出 5 次，其中 E7 为本次新发现）；`status` 改为三值，见该文件第一节 | Opus 5 |
-| 3 | 方程定稿 | ◐ 2026-09-06 Sonnet 半段（`paper/equations_pseudocode.md`，8 项全覆盖）已完成，待 Opus 定稿 `equations.tex` | Sonnet 5 → Opus 5 |
-| 4 | Tier 1 契约 | ☐ | Opus 5 |
+| 3 | 方程定稿 | ☑ **2026-09-17** `paper/equations.tex` 落地（Opus 5）：8 个方程 17 条 label、9 条 `equation_operation`，14 处代码引用逐条核到函数定义行。四处「代码与自述不符」按以代码为准写进方程下的 note：E2 docstring 的左乘顺序不是执行的张量布局；E3 截距列的 ridge 罚被置零而求解器附近无任何注释提及；E4 joint 四项走两套 optimizer 时间表，没有单个标量被单步下降；E7 `C(I+A)(B_1+B_2 y)` 是特例不是控制器的决策规则 | Sonnet 5 → Opus 5 |
+| 4 | Tier 1 契约 | ◐ **2026-09-17** `paper/contract.yaml` 落地（Opus 5）：九个顶层 key 全满，5 个 design choice / 9 条 claim（scoped 5・strong 3・observation 1）/ 18 个符号 / 8 个方程 / 4 条机制 / 2 条先验 + 1 个 anchor + 3 条具名假设 / **8 条 non-claim**。contract.md §Validation gates 八道全过；`check_claim_evidence.py` **退出码 0**（9 条 claim、无 superseded 引用、9 对 caveated 引用全部带 notes）。⚠️ **两处待用户裁决**：① `narrative_arc` 的 beat 3 / beat 5 偏离 09-06 锁定的 §1.3，依据是 §1 自带的 09-15 校正注记所路由的 `CLOSED_LOOP_SYNTHESIS.md` §五/§六（句 3 改成效应量措辞、句 5 的 RQ3 落点改成 Table 2 四列并排 + 单向判据）；② 标题按 main.tex 注记仍是 PROVISIONAL。**待 4' 冷审** | Opus 5 |
 | 4' | Tier 1 冷审 | ☐ | Opus 5（新会话） |
 | 5 | Tier 2/3 逐节 | ☐ | Opus 5 / Fable 5.1 |
 | 6 | 审计与分流 | ☐ | Opus 5 为主 |

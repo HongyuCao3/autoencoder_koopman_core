@@ -1,0 +1,293 @@
+% =====================================================================================
+% Step 3 output (docs/article/PAPER_EXECUTION_PLAN.md). Opus 5 pass, 2026-09-17.
+%
+% Front half (pseudocode extraction from code, Sonnet 5) is paper/equations_pseudocode.md.
+% This file is the LaTeX definition of record. Rule A5: every equation carries an
+% `equation_operation` line stating what the equation ACTUALLY computes, derived from the
+% executed code rather than from a docstring or a textbook formulation, plus the file and
+% line it was read off. Line numbers verified against the working tree on 2026-09-17.
+%
+% Where the code and its own documentation disagree, the code wins and the disagreement is
+% recorded in the note under the equation. Four such gaps survive into the write-up:
+%   E2  the docstring's left-multiplication order is not the executed tensor layout;
+%   E3  the intercept column's ridge penalty is zeroed, which no comment near the solver says;
+%   E4  the "joint loss" is descended on two different optimizer schedules, so no single
+%       scalar is literally minimized;
+%   E7  C(I+A)(B_1+B_2 y) is a special case, not the controller's decision rule.
+%
+% This file defines no macros and loads no packages; main.tex already provides amsmath and
+% amssymb. It is not \input by main.tex -- it is the source the Method section draws from.
+% =====================================================================================
+
+% -------------------------------------------------------------------------------------
+% E1. Delay-embedded state construction (Markov / Memory-L / Augmented-L)
+% code: src/koopman_ae/core.py:169 (_state_at_turn), :180 (build_augmented_state_dataset)
+%       scripts/train.py:98 (_state_config) selects the variant
+% equation_operation: concatenate a fixed number of lagged readout values, and for the
+%   augmented family an equal number of lagged control values formed as the tracking error
+%   r - y_t, into one delay-embedded state vector; the number of terms is set per variant
+%   outside the state builder (markov = 1 term regardless of lag, memory-L and augmented-L
+%   = L+1 terms).
+% -------------------------------------------------------------------------------------
+\begin{align}
+  u_t &= \phi\!\left(r - y_t\right), &
+  \phi(e) &=
+  \begin{cases}
+    e, & \text{control\_mode} = \texttt{error},\\[2pt]
+    \bigl[\,e,\ \lvert e\rvert,\ \operatorname{sign}(e)\,\bigr], & \text{control\_mode} = \texttt{error\_abs\_sign},
+  \end{cases}
+  \label{eq:control-from-error}\\[4pt]
+  z_t &= \bigl[\,y_t,\ y_{t-1},\ \dots,\ y_{t-(L_y-1)},\ u_t,\ u_{t-1},\ \dots,\ u_{t-(L_u-1)}\,\bigr],
+  \label{eq:delay-state}
+\end{align}
+%
+\noindent with $(L_y, L_u) = (1,0)$ for \textsc{markov}, $(L+1, 0)$ for \textsc{memory-}$L$,
+and $(L+1, L+1)$ for \textsc{augmented-}$L$. A row enters the design matrix only when
+$t \ge \max(L_y, L_u)$, when turn $t{+}1$ exists, and when every lagged turn the state needs
+is present.
+
+\paragraph{Note (structural, carried into Limitations).}
+On the \texttt{core} tasks $r$ is one fixed vector per trajectory, so by
+\eqref{eq:control-from-error} the control $u_t$ is an exact affine function of the state's
+own leading block $y_t$. The design matrix $[Z \mid R \mid 1]$ is therefore rank deficient on
+all eight \texttt{core} tasks ($R^2 = 1.0$ recovering $u_t$ from $z_t$), and no quantity that
+requires separating the action's effect from the state's is identifiable on that line.
+
+% -------------------------------------------------------------------------------------
+% E2. Autoencoder lift and latent linear dynamics
+% code: src/koopman_ae/core.py:514 (_latent_step_tensor), :999 (encode), :1005 (decode),
+%       :1011 (predict_next_latent), :1021 (predict_next_z)
+% equation_operation: encode the delay-embedded state into a latent vector, advance that
+%   latent vector one step by an affine map driven by the per-trajectory target vector r,
+%   decode back to state space, and read the observable off a FIXED slice of the decoded
+%   state -- the readout is a projection, not a learned head.
+% -------------------------------------------------------------------------------------
+\begin{align}
+  \xi_t &= \mathcal{E}_\theta(z_t), &
+  \xi_{t+1} &= K\,\xi_t + B\,r + c, &
+  \hat z_{t+1} &= \mathcal{D}_\theta(\xi_{t+1}), &
+  \hat y_{t+1} &= \bigl[\hat z_{t+1}\bigr]_{1:d_y}.
+  \label{eq:ae-koopman}
+\end{align}
+%
+\noindent A horizon-$H$ rollout iterates the middle map $H$ times from a single encode, with
+$r$ held fixed throughout, and decodes at every step.
+
+\paragraph{Note (code vs.\ docstring).}
+The class docstring writes \eqref{eq:ae-koopman} in the left-multiplication order above; the
+executed line is \texttt{xi @ K.T + r @ B.T + c}, a batched row-vector convention. The two are
+the same map once transposes are accounted for. \eqref{eq:ae-koopman} is written in the
+column-vector convention because that is what the surrounding prose uses; any shape claim in
+the text must be stated for that convention and not read off the tensor code.
+
+% -------------------------------------------------------------------------------------
+% E3. Two-stage estimator: reconstruction by gradient descent, then closed-form ridge
+% code: src/koopman_ae/core.py:39 (_ridge_solve), :712 (_fit_latent_ridge),
+%       :730 (fit, the training_mode == "reconstruction_then_ridge" branch)
+% equation_operation: fit the encoder and decoder by gradient descent on reconstruction loss
+%   ALONE, then freeze the encoder and solve one ridge least-squares problem in closed form
+%   for (K, B, c) against the augmented design [xi_t, r, 1], with the appended constant
+%   column's own ridge coefficient forced to zero so the intercept is unpenalized while K and
+%   B are shrunk.
+% -------------------------------------------------------------------------------------
+\begin{align}
+  \theta^{\mathrm{ae}} &= \arg\min_{\theta}\ \lambda_{\mathrm{rec}}\,
+    \bigl\lVert \mathcal{D}_\theta(\mathcal{E}_\theta(z)) - z \bigr\rVert_2^2,
+  \label{eq:stage-one}\\[4pt]
+  X &= \bigl[\ \Xi_t \ \big|\ R \ \big|\ \mathbf{1}\ \bigr], \qquad
+  \Lambda = \alpha\,\mathrm{diag}(1,\dots,1,0),
+  \label{eq:stage-two-design}\\[4pt]
+  \bigl[\,K^\top;\ B^\top;\ c^\top\,\bigr]
+    &= \bigl(X^\top X + \Lambda\bigr)^{+} X^\top\, \Xi_{t+1}.
+  \label{eq:stage-two-solve}
+\end{align}
+%
+\noindent $\Xi_t = \mathcal{E}_{\theta^{\mathrm{ae}}}(Z_t)$ is a no-grad forward pass through
+the frozen encoder, $(\cdot)^{+}$ is the pseudoinverse, and the final $0$ on $\Lambda$'s
+diagonal is the unregularized intercept.
+
+\paragraph{Note (undocumented in code).}
+The zeroed intercept penalty, $\Lambda_{dd}=0$, appears nowhere in the solver's comments or
+docstrings. It matters: with a penalized intercept the fitted dynamics absorb the latent mean
+into $K$, and the estimator is no longer the one described here. State it in the Method text
+rather than leaving a reader to infer it.
+
+% -------------------------------------------------------------------------------------
+% E4. The joint objective's four terms, and the two schedules that descend them
+% code: src/koopman_ae/core.py:845-892 (per-batch loss and the separate per-epoch step),
+%       :977 (_multi_step_loss), :517 (_eval_loss restates the same arithmetic no-grad)
+% equation_operation: weight four mean-squared-error terms -- state reconstruction, one-step
+%   prediction in state space, one-step prediction in latent space, and a multi-step latent
+%   rollout -- but descend them on TWO schedules: the first three take one gradient step per
+%   minibatch, the fourth takes one additional gradient step per epoch. No single scalar is
+%   minimized by a single step; the logged "loss" is the weighted sum for early stopping only.
+% -------------------------------------------------------------------------------------
+\begin{align}
+  \mathcal{L}_{\mathrm{batch}}
+    &= \lambda_{\mathrm{rec}} \bigl\lVert \mathcal{D}(\mathcal{E}(z_t)) - z_t \bigr\rVert^2
+     + \lambda_{\mathrm{pred}} \bigl\lVert \mathcal{D}(K\mathcal{E}(z_t)+Br+c) - z_{t+1} \bigr\rVert^2
+     \nonumber\\
+    &\qquad + \lambda_{\mathrm{lat}} \bigl\lVert K\mathcal{E}(z_t)+Br+c - \mathcal{E}(z_{t+1}) \bigr\rVert^2,
+  \label{eq:joint-batch}\\[4pt]
+  \mathcal{L}_{\mathrm{multi}}
+    &= \lambda_{\mathrm{multi}}\,
+       \frac{1}{|\mathcal{S}|}\sum_{s \in \mathcal{S}} \frac{1}{H_s}\sum_{k=1}^{H_s}
+       \bigl\lVert \mathcal{D}\bigl(\Phi^k(\mathcal{E}(z_0^{s}), r^{s})\bigr) - z_k^{s} \bigr\rVert^2,
+  \label{eq:joint-multi}
+\end{align}
+%
+\noindent where $\Phi^k$ is $k$ applications of the affine latent map of
+\eqref{eq:ae-koopman}. Each epoch takes $n_{\mathrm{batches}}$ gradient steps on
+\eqref{eq:joint-batch} and exactly one on \eqref{eq:joint-multi}.
+
+\paragraph{Note (why this is not one objective).}
+$\lambda_{\mathrm{multi}}$ is therefore not the only knob controlling the multi-step term's
+influence: that term receives $1/(n_{\mathrm{batches}}+1)$ of the epoch's steps, and
+$n_{\mathrm{batches}}$ scales with dataset size. The same $\lambda_{\mathrm{multi}}$ means
+different things on datasets of different size, so a cross-task sweep over it confounds
+$\lambda$ with $n$. This is the stated reason the multi-step ablation is not reported: the
+paper claims only that the multi-step term was never swept at comparable strength.
+
+% -------------------------------------------------------------------------------------
+% E5. Behavioral-line state schema and its lifted linear dynamics
+% code: persona_drift_control/src/persona_drift/modeling/dataset.py:33 (ReducedStateConfig),
+%       :163 (build_reduced_state_pairs);
+%       .../modeling/koopman.py:105 (_psi), :114 (fit), :139 (step), :146 (readout)
+% equation_operation: build a delay-embedded reduced state from nu readout lags (including
+%   the current one) and mu control lags (excluding the current slot), lift it through an
+%   optional feature dictionary, and fit an affine one-step map plus a SEPARATE ridge readout
+%   by ridge normal equations -- two independent least-squares problems, not one joint fit.
+% -------------------------------------------------------------------------------------
+\begin{align}
+  z_t &= \bigl[\,y_{t-\nu+1},\dots,y_t,\ v_{t'-\mu},\dots,v_{t'-1},\ a_t\,\bigr],
+        \qquad t' = t + \mathbb{1}[\text{contemporaneous}],
+  \label{eq:beh-state}\\[4pt]
+  \eta_t &= \psi(z_t) = \bigl[\,z_t,\ \varphi(z_t)\,\bigr],
+  \label{eq:beh-lift}\\[4pt]
+  \eta_{t+1} &= A\,\eta_t + B\,v_t + b,
+  \qquad
+  \hat y_t = C\,\eta_t.
+  \label{eq:beh-dynamics}
+\end{align}
+%
+\noindent $a_t$ collects auxiliary columns when configured, and $\varphi$ is the empty map for
+the ARX variant. $(A,B,b)$ solve
+$\min \lVert [\Psi \mid V \mid \mathbf{1}]\,\Theta - \Psi_{+}\rVert^2 + \rho\lVert\Theta\rVert^2$;
+$C$ solves its own ridge problem $\min \lVert \Psi C^\top - Y\rVert^2 + \rho \lVert C \rVert^2$.
+
+\paragraph{Interaction-lifted variant.}
+% code: .../modeling/interaction_lift.py:39 (augment_with_interaction), :62 (step)
+% equation_operation: replace the scalar control by the two-column control [v, v*y_t] so the
+%   fitted action effect is state-dependent, i.e. the same reminder buys a different amount
+%   depending on where the trajectory already is.
+The control column is replaced by $\bigl[\,v_t,\ v_t\,y_t\,\bigr]$, so
+\eqref{eq:beh-dynamics} becomes
+\begin{equation}
+  \eta_{t+1} = A\,\eta_t + B_1 v_t + B_2\,\bigl(v_t\,y_t\bigr) + b.
+  \label{eq:beh-interaction}
+\end{equation}
+
+\paragraph{Note (two ridge implementations).}
+This line solves its normal equations directly, while \eqref{eq:stage-two-solve} uses a
+pseudoinverse. They are separate implementations in separate packages, deliberately not
+shared. Nothing in the paper may describe them as one estimator.
+
+% -------------------------------------------------------------------------------------
+% E6. The closed-loop objective, and the budget as tree pruning
+% code: persona_drift_control/src/persona_drift/control.py:253 (_current_state),
+%       :274 (_remaining_budget), :287 (_planning_steps), :301 (_simulate),
+%       :312 (next_u_remind)
+% equation_operation: enumerate the full binary action tree of depth equal to the planning
+%   horizon, score every branch by the summed predicted readout minus a per-reminder repeat
+%   penalty, and emit the first action of the best branch; the budget is enforced by PRUNING
+%   -- once the allowance is spent, every deeper node's admissible set collapses to {0}.
+% -------------------------------------------------------------------------------------
+\begin{align}
+  V\bigl(z, a, k, \beta\bigr)
+    &= C\,\psi\bigl(f(z,a)\bigr) - \kappa\,\mathbb{1}[a = 1]
+     + \max_{a' \in \mathcal{A}(\beta - a)} V\bigl(f(z,a),\, a',\, k-1,\, \beta - a\bigr),
+  \label{eq:mpc-value}\\[4pt]
+  \mathcal{A}(\beta) &=
+  \begin{cases}
+    \{0, 1\}, & \beta \ge 1,\\
+    \{0\}, & \beta < 1,
+  \end{cases}
+  \qquad
+  u_t = \arg\max_{a \in \{0,1\}} V\bigl(z_t, a, k_t - 1, \beta_t\bigr),
+  \label{eq:mpc-budget}
+\end{align}
+%
+\noindent with $V(\cdot,\cdot,0,\cdot)$ terminating at the leading term, $f$ the one-step map
+of \eqref{eq:beh-dynamics}, $\kappa$ the repeat penalty, $\beta_t$ the reminders still
+unspent, and $k_t = \min(\text{horizon},\ T - t + 1)$.
+
+\paragraph{Note (do not write this as a constrained program).}
+\eqref{eq:mpc-budget} is the whole of the constraint mechanism. There is no Lagrangian, no
+projection and no relaxation: writing the objective as
+$\max \sum_t \hat y_t \ \text{s.t.}\ \sum_t u_t \le \beta$ would misdescribe the executed
+controller. At $\beta = 1$ the recursion reduces to a two-way comparison, spending now
+against saving the allowance, because choosing $a=1$ forces the entire remaining subtree to
+the all-zeros branch.
+
+% -------------------------------------------------------------------------------------
+% E7. Marginal benefit of acting, and the threshold it implies
+% code: NOT executed anywhere. Derived in
+%       docs/experiments/koopman_phaseI_policy_closed_form.md and cross-checked there
+%       against control.py:301 (_simulate) on a saved fitted-model JSON.
+% equation_operation: evaluate, under the interaction-lifted surrogate, the one-step gain in
+%   predicted readout from reminding rather than not, as an affine function of the current
+%   readout, and solve its zero crossing for the readout level at which the controller is
+%   indifferent.
+% -------------------------------------------------------------------------------------
+\begin{align}
+  m_1(y) &= C\,(I + A)\,\bigl(B_1 + B_2\,y\bigr),
+  \qquad
+  y^{\star}_{\text{1-step}} = -\,\frac{C(I+A)B_1}{C(I+A)B_2}.
+  \label{eq:margin-closed-form}
+\end{align}
+
+\paragraph{Note (this is a special case, not the decision rule).}
+\eqref{eq:margin-closed-form} equals the controller's actual margin
+$V(z,1,\cdot,\cdot) - V(z,0,\cdot,\cdot)$ from \eqref{eq:mpc-value} only when both branches'
+optimal second-step action is $0$, which was verified at a single observed grid point. The
+numbers differ: $y^{\star}_{\text{1-step}} = 0.8036$ against $y^{\star}_{\text{actual}} =
+0.7881$ from the two-step recursion. They are operationally identical here only because the
+readout lives on a $\{0, 0.25, 0.5, 0.75, 1.0\}$ grid with no point between them, so both
+imply "remind iff $y_{t-1} \le 0.75$". A related derivation is outright wrong and must not
+appear: iterating the fixed point $y \leftarrow C(I-A)^{-1}(b + B_1 + B_2 y)$ for the
+$v \equiv 1$ steady state diverges, because the augmented control $[1, y]$ is state dependent
+and not a constant input. The correct steady state folds the interaction into the system
+matrix, $\tilde A = A + B_2 e_1^\top$, before inverting $(I - \tilde A)$.
+
+% -------------------------------------------------------------------------------------
+% E8. Finite-horizon controllability matrix and Gramian
+% code: src/koopman_ae/core.py:45 (controllability_diagnostics); an independently duplicated,
+%       field-identical copy at .../modeling/koopman.py:50, deliberately not shared
+% equation_operation: build the finite-horizon controllability matrix by repeated
+%   multiplication by A, take its rank and singular values, and separately accumulate the
+%   finite-horizon Gramian and its eigenvalues and condition number, alongside the spectrum
+%   and spectral radius of A alone.
+% -------------------------------------------------------------------------------------
+\begin{align}
+  \mathcal{C}_H &= \bigl[\,B,\ AB,\ A^2B,\ \dots,\ A^{H-1}B\,\bigr],
+  \qquad
+  W_H = \sum_{k=0}^{H-1} \bigl(A^k B\bigr)\bigl(A^k B\bigr)^{\!\top},
+  \label{eq:ctrb}\\[4pt]
+  \rho(A) &= \max_i \lvert \lambda_i(A) \rvert,
+  \qquad
+  t_{1/2} = \frac{\ln 2}{-\ln \rho(A)}.
+  \label{eq:spectral}
+\end{align}
+
+\paragraph{Note (reporting discipline).}
+Every quantity in \eqref{eq:ctrb} and \eqref{eq:spectral} is a fit diagnostic. Under the
+project's reporting rule none of them may carry a cross-arm comparison; they appear only
+beside a task-level result. Two further limits were measured rather than assumed. First,
+$t_{1/2}$ does not co-sign with whether memory pays: one task has half-life $11.5$ turns and
+no measurable gain from delay embedding, another has half-life $0.82$ and a large one. The
+quantity that does track it is the older lag's loading in $A$. Second, the impulse-response
+norm $\lVert C A^{k-1} B \rVert$ measures the effect still present at step $k$, not the effect
+arriving at step $k$; on a synthetic one-step action into an integrator it still reports a
+response length of $4$. On any task with a persistent state it can return only one answer, so
+it cannot decide whether an action cashes out in one step, and the paper does not use the
+action channel's time structure as mechanism evidence.

@@ -1,0 +1,668 @@
+# Tier 1 contract. Built 2026-09-17 (Opus 5), Phase A / Step 4 of
+# docs/article/PAPER_EXECUTION_PLAN.md. Schema: neurips-write-tiered/references/contract.md.
+#
+# Evidence ids point at paper/evidence/numbers.yaml (1111 entries). Any claim citing a
+# `caveated` id carries the caveat in its own `notes` field, per the Step 4 mechanical gate.
+# Equation ids and operation names are taken from paper/equations.tex, which was finalized
+# first (rule A5). Terminology follows docs/NAMING.md's English-name column.
+
+meta:
+  paper_title: "A Pre-Investment Criterion for Closed-Loop Control of Multi-Turn LLM Behavior"
+  acronym: null
+  venue: NeurIPS
+  page_limit: 9
+  subfield: "multi-turn LLM behavior control and safety"
+  arc_type: prior_injection
+
+# ---------------------------------------------------------------------------------------
+# NARRATIVE ARC -- working hypothesis, finalized after Method + Experiments (rule A9).
+#
+# ATTENTION, needs user sign-off at the Tier-1 cold review. The five beats the user locked
+# on 2026-09-06 (PAPER_EXECUTION_PLAN section 1.3) have two beats that later evidence
+# overturned, and that document's own 2026-09-15 correction note says so and routes the
+# rewrite to CLOSED_LOOP_SYNTHESIS.md sections 5 and 6 rather than rewriting in place.
+# These five beats are built from that routed authority, not from section 1.3 verbatim.
+# What changed against the 2026-09-06 lock:
+#   beat 3  "nonlinear AE lifting buys no gain" -> stated as an effect-size claim with a
+#           sign that flips across tasks, because two cells are nominally significant and
+#           one of them favours the LSTM. (section 5 item, section 6 boundary)
+#   beat 5  the RQ3 landing site is no longer gsm8k_sharded's closed loop (that line was
+#           suspended 2026-09-08). It is Table 2's four columns side by side, all flat or
+#           negative, and the deliverable is a ONE-DIRECTIONAL criterion. (section 5 item 1)
+# ---------------------------------------------------------------------------------------
+narrative_arc:
+  - "Behavior drift over a multi-turn LLM interaction is a dynamical phenomenon, yet the
+     interventions deployed against it are stateless: a per-turn classifier, a fixed template,
+     or a one-shot system prompt."
+  - "We inject a prior from control theory: model the trajectory of a scalar behavioral readout
+     as a linear operator with an explicit action channel, so that the control input is the
+     intervention an operator can actually issue."
+  - "The prior holds, and it holds toward simplicity: delay embedding is measurably required on
+     every column with the range to tell, while a learned nonlinear lifting and a sequence model
+     move the fit by less than the paired bootstrap's own resolution, in a direction that is not
+     even consistent across tasks."
+  - "The action channel is where the prior stops paying: across four multi-turn settings no
+     closed-loop controller beats an equal-cost fixed schedule, and four independent measurements
+     return that same zero, two of which never touch our controller at all."
+  - "What the paper delivers is therefore a criterion rather than a controller: before spending
+     closed-loop compute, measure whether withholding the action changes the operator's fit at
+     all; a zero there says do not invest. The criterion is one-directional, and we say so."
+
+# ---------------------------------------------------------------------------------------
+# DESIGN CHOICES -- one per planned Method subsection.
+# ---------------------------------------------------------------------------------------
+design_choice_lattice:
+  - id: choice_1
+    choice_name: "Delay-Embedded Controlled State"
+    why_keyword: "a per-turn readout is not a state; the operator needs a fixed window of past
+      readouts and the actions taken alongside them, or the fit is measuring persistence it
+      cannot separate from dynamics"
+    equation_operation: "concatenate a fixed number of lagged readout values, and for the
+      augmented family an equal number of lagged control values formed as the tracking error,
+      into one delay-embedded state vector"
+    equation_id: eq_1
+    rq_id: rq1
+    finding_keyword: "delay embedding required on every column with range to tell it; depth is
+      one tap on the core tasks under the matched window, four turns on constraint"
+    intro_bullet_keyword: "a state construction whose necessity is measured rather than assumed"
+    conclusion_takeaway_keyword: "memory is needed; the depth is shallower than the modeling
+      convention assumes"
+    source: "code:src/koopman_ae/core.py:169"
+    intuition_refs: [prior_1, as_1]
+    notes: "On the core line the control is an exact affine function of the state, so this
+      subsection must state the rank deficiency where it introduces the augmented family."
+
+  - id: choice_2
+    choice_name: "Linear Operator with an Explicit Action Channel"
+    why_keyword: "the action must enter the fitted map as its own regressor, because that is the
+      only way withholding it becomes a measurable ablation rather than a modeling opinion"
+    equation_operation: "lift the reduced state through an optional feature dictionary and fit an
+      affine one-step map plus a separate ridge readout, two independent least-squares problems"
+    equation_id: eq_5
+    rq_id: rq2
+    finding_keyword: "ours minus control-withheld is zero on all eleven columns, including the
+      one column pre-registered to be non-zero"
+    intro_bullet_keyword: "an action channel that can be switched off and measured"
+    conclusion_takeaway_keyword: "the action channel carries no fit-relevant structure in any of
+      these settings"
+    source: "code:persona_drift_control/src/persona_drift/modeling/koopman.py:114"
+    intuition_refs: [as_2]
+    notes: ""
+
+  - id: choice_3
+    choice_name: "Reconstruction-Then-Ridge Estimation"
+    why_keyword: "separating representation fitting from dynamics fitting keeps the dynamics
+      estimate closed-form and lets the intercept stay unpenalized, so the operator is not
+      shrunk toward a latent mean that the ridge term would otherwise absorb"
+    equation_operation: "fit encoder and decoder by gradient descent on reconstruction alone,
+      then freeze the encoder and solve one ridge least-squares problem for the latent dynamics,
+      with the appended constant column's ridge coefficient forced to zero"
+    equation_id: eq_3
+    rq_id: rq4
+    finding_keyword: "the learned lifting does not beat the linear operator on any column by more
+      than the bootstrap resolution"
+    intro_bullet_keyword: "a two-stage estimator whose dynamics half is closed-form"
+    conclusion_takeaway_keyword: "the nonlinear half of the model is the half that does not pay"
+    source: "code:src/koopman_ae/core.py:712"
+    intuition_refs: []
+    notes: "The zeroed intercept penalty is undocumented in the code; the Method text states it.
+      Secondary equations for this subsection: eq_2 (the lift and latent dynamics it estimates) and
+      eq_4 (the joint objective it is the alternative to). The schema carries one equation_id, so
+      those two are recorded here rather than left as orphans."
+
+  - id: choice_4
+    choice_name: "Budget-Pruned Action Search"
+    why_keyword: "a reminder budget is a hard count, not a soft cost, so the admissible action
+      set shrinks as the budget is spent and the constraint is enforced by pruning the search
+      rather than by a penalty that could be traded away"
+    equation_operation: "enumerate the binary action tree to the planning horizon, score each
+      branch by summed predicted readout minus a repeat penalty, and emit the first action of
+      the best branch, with spent budget collapsing every deeper node to the null action"
+    equation_id: eq_6
+    rq_id: rq3
+    finding_keyword: "no column beats its equal-cost fixed schedule; two of three flat columns
+      cost more than the schedule they tie"
+    intro_bullet_keyword: "a closed-loop controller built to be beaten honestly by open loop"
+    conclusion_takeaway_keyword: "closed loop does not pay at equal cost in any of these settings"
+    source: "code:persona_drift_control/src/persona_drift/control.py:301"
+    intuition_refs: [as_2]
+    notes: "Must not be written as a constrained program; the constraint IS the pruning.
+      Secondary equation: eq_7, the closed-form margin, which is a special case of this search and
+      not the decision rule; equations.tex records why."
+
+  - id: choice_5
+    choice_name: "Operator Diagnostics as a Pre-Investment Test"
+    why_keyword: "the same fit that would drive a controller already answers whether a controller
+      could buy anything, and it answers before the closed-loop compute is spent"
+    equation_operation: "build the finite-horizon controllability matrix and Gramian, take rank,
+      singular values, eigenvalues and condition number, alongside the spectrum of the transition
+      matrix alone"
+    equation_id: eq_8
+    rq_id: rq3
+    finding_keyword: "the withheld-action contrast predicted every closed-loop zero in advance,
+      on all four lines, at zero GPU cost"
+    intro_bullet_keyword: "a pre-investment criterion derived from the identification fit alone"
+    conclusion_takeaway_keyword: "a zero in the withheld-action contrast is a reason not to invest;
+      the non-zero side of the criterion is untested"
+    source: "code:src/koopman_ae/core.py:45"
+    intuition_refs: [as_3]
+    notes: "One-directional. The pre-registered positive control did not fire; see nc_2."
+
+# RQ set (bodies are written in Tier 2 section Experiments; their MEANING is fixed here so the
+# rq_id references above and the tested_by references below cannot drift apart):
+#   rq1  Is delay-embedded memory required, and how deep?
+#   rq2  Does the action channel carry any structure the operator's fit can see?
+#   rq3  Does closed-loop control beat an equal-cost fixed schedule, and does rq2 predict it?
+#   rq4  Does a learned nonlinear lifting or a sequence model beat the linear operator?
+#   rq5  What does the memory gain decompose into, once item identity is given to the baseline?
+#
+# ---------------------------------------------------------------------------------------
+# CLAIM LEDGER
+# ---------------------------------------------------------------------------------------
+claim_ledger:
+  - id: c1
+    claim: "Delay-embedded memory is required: on every column whose readout has the range to
+      resolve it, the delay-embedded operator beats a memoryless state by a margin whose paired
+      bootstrap interval excludes zero."
+    strength: scoped
+    evidence: [n_main_013, n_main_045, n_main_077, n_main_132, n_main_180]
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "the readout carries history the current turn does not"
+    notes: "SCOPED, not strong, for two reasons that must appear in the same sentence as the
+      claim. First, one core column runs the other way with an interval excluding zero
+      (n_main_061, average_word_length_t5, -0.409 on 14 groups). Second, the word 'informative'
+      is doing real work: gsm8k_sharded and defense are excluded as having no range, and that
+      exclusion must be stated, not implied. The abstract's phrase 'in every informative
+      comparison' needs an explicit definition of informative or tsar_cefr becomes a
+      counterexample once the matched window is applied (see c2)."
+
+  - id: c2
+    claim: "Part of what the delay embedding buys is a training-window artifact, not dynamics:
+      under a window matched across depths the core gains shrink by factors of 1.3 to 5.5, one
+      column flips sign, and tsar_cefr collapses from a significant +0.0487 to +0.0053 crossing
+      zero. The constraint line is unaffected."
+    strength: strong
+    evidence: [n_abl_124, n_abl_184, n_abl_238, n_abl_262]
+    appears_in: [experiments, conclusion]
+    driver_keyword: "shallow states are trainable from earlier transitions than deep ones"
+    notes: "This is our own negative finding about our own headline. It is STRONG because it was
+      measured directly with a matched-window companion under the same folds and bootstrap. It
+      constrains c1's wording everywhere c1 appears."
+
+  - id: c3
+    claim: "A learned nonlinear lifting and an LSTM do not beat the linear operator: on the
+      informative columns the difference in Skill_H never exceeds 0.031 in absolute value, and its
+      sign is not consistent across tasks."
+    strength: scoped
+    evidence: [n_main_015, n_main_016, n_main_080]
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "simplicity measured rather than assumed"
+    notes: "Must not be written as 'statistically indistinguishable'. Two cells are nominally
+      significant and on one of them the LSTM is better by -0.031 (n_main_080,
+      character_length_t5). The tsar_cefr cells (n_main_182 +0.668, n_main_183 +0.599) are NOT
+      evidence for this claim and must not be pooled with the other ten columns: neither
+      baseline cleared the trivial null there, which is a sample-size fact (597 trajectories x
+      6 steps), not a statement about nonlinearity."
+
+  - id: c4
+    claim: "Putting the action into the operator buys nothing measurable: the contrast between
+      the fitted operator and the same operator with the control withheld contains zero on all
+      eleven main-table columns."
+    strength: scoped
+    evidence: [n_main_133, n_main_181, n_main_014, n_main_030, n_main_046]
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "the action channel carries no fit-relevant structure"
+    notes: "Cites caveated ids. Two caveats travel with them and must be in the same sentence.
+      (a) On the core columns (n_main_014, n_main_030, n_main_046) the control is an exact
+      affine function of the state, so those columns cannot estimate an independent action
+      effect at all; they are not independent confirmations and the claim rests on the
+      behavioral lines. (b) tsar_cefr (n_main_181) is the column where all three qualifying
+      conditions hold and it was PRE-REGISTERED to be non-zero; it came in at +0.0061 with the
+      interval containing zero. That failed positive control is the reason c7 is one-directional."
+
+  - id: c5
+    claim: "Closed-loop control does not beat an equal-cost fixed schedule in any of the four
+      settings: two columns are flat with intervals containing zero, one is negative, and the fourth
+      is identical to its open-loop baseline by construction."
+    strength: strong
+    evidence: [n_loop_048, n_loop_060, n_loop_061, n_loop_040]
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "no state-dependent structure in the timing of the action"
+    notes: "Cites one caveated id, n_loop_040 (defense, -0.0250). Three caveats in the same
+      sentence: the defense column is self-judged under the project's single named exception,
+      its significance depends on the resampling unit (per-attack excludes zero, per-trajectory
+      contains it, with only 8 attacks clustering the bootstrap), and it has two data seeds.
+      Wording red line: outside the defense column no baseline WON. The honest form is 'tied,
+      and ours cost more'. Writing 'a simple baseline beat Koopman-MPC' exceeds the data."
+
+  - id: c6
+    claim: "The closed-loop zero is a property of these task families rather than a tuning
+      failure: an oracle that sees each attack's best intervention turn in hindsight gains only
+      +0.0375, a causal oracle cross-fitted across attacks gains nothing, and a clairvoyant
+      oracle that sees the future gains +0.0896 -- so even a perfect controller measurable
+      against this readout has almost nothing to win."
+    strength: scoped
+    evidence: [n_loop_044, n_loop_046, n_loop_047, n_loop_045]
+    appears_in: [experiments, conclusion]
+    driver_keyword: "the ceiling on adaptivity, not the controller, is what is small"
+    notes: "All four ids are caveated. The bounds are self-judged (defense line) AND they bound
+      only policies measurable with respect to the y readout; a controller reading raw text or
+      activations is not bounded by them. Both statements travel with every quotation. SCOPED
+      because the ceiling was measured on one of the four lines, not all four."
+
+  - id: c7
+    claim: "The withheld-action contrast works as a pre-investment test: on all four lines it
+      returned zero before the closed-loop experiments ran, and the closed-loop experiments then
+      returned zero."
+    strength: scoped
+    evidence: [n_main_133, n_main_181, n_loop_048, n_loop_060]
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "the identification fit already answers whether control can pay"
+    notes: "ONE-DIRECTIONAL, and the paper says so in the same breath. The criterion has been
+      checked only on its zero side. Its positive side would need a task family where the
+      contrast is genuinely non-zero and the closed loop then pays; no such family exists here.
+      The pre-registered positive control (tsar_cefr, n_main_181) was supposed to supply exactly
+      that and did not fire. See nc_2. This is also why the title is provisional: it promises
+      marginally more than the evidence delivers, and the abstract's closing sentence is the
+      scope anchor that must not be cut."
+
+  - id: c8
+    claim: "Most of what the delay embedding buys is persistent item-level heterogeneity rather
+      than cross-turn dynamics: giving the memoryless baseline a per-item intercept absorbs 81
+      percent of the gain on constraint and 67 percent on the strongest core column, and what
+      survives is significant on two columns only."
+    strength: scoped
+    evidence: [n_mech_059, n_mech_056]
+    appears_in: [experiments, conclusion]
+    driver_keyword: "item identity, not turn-to-turn propagation"
+    notes: "Any sentence that says the delay embedding carries cross-turn dynamics must carry
+      this share in the same place. tsar_cefr (n_mech_068, caveated) is NOT a third supporting
+      column and must not be pooled: there the intercept ate nothing because under the matched
+      window there was no gain left to decompose, and that line's seed state is a synthetic
+      value that makes an item intercept nearly free."
+
+  - id: c9
+    claim: "Choosing the instruction family matters more than choosing the action sequence: on
+      the readability line the gap between two prompt families is 0.0395 while the full range
+      across three control policies inside one family is 0.0129."
+    strength: observation
+    evidence: [n_loop_058, n_loop_060, n_loop_061]
+    appears_in: [experiments]
+    driver_keyword: "the prompt family is the larger free parameter"
+    notes: "OBSERVATION, not a claim: it comes from one line. The signed main contrast n_loop_058
+      is caveated and every quotation of it must carry dp_degeneracy = 1.0 in the same sentence,
+      because all 199 DP paths equal the adjacent ladder, so that contrast is mostly a
+      prompt-family effect rather than a control effect."
+
+# ---------------------------------------------------------------------------------------
+# SYMBOLS -- from paper/equations.tex
+# ---------------------------------------------------------------------------------------
+symbol_lattice:
+  - id: s1
+    symbol: "y_t"
+    gloss: "the scalar behavioral readout at turn t"
+    first_defined: problem_formulation
+    scope: "always the independently judged readout, never the controller's in-loop signal"
+    appears_in: [problem_formulation, method, experiments]
+  - id: s2
+    symbol: "z_t"
+    gloss: "the delay-embedded state"
+    first_defined: problem_formulation
+    scope: "concatenated lagged readouts plus lagged controls"
+    appears_in: [problem_formulation, method]
+  - id: s3
+    symbol: "u_t"
+    gloss: "the control input on the core tasks, formed from the tracking error"
+    first_defined: problem_formulation
+    scope: "core line only; the behavioral lines use v_t"
+    appears_in: [problem_formulation, method]
+  - id: s4
+    symbol: "v_t"
+    gloss: "the intervention actually issued at turn t on the behavioral lines"
+    first_defined: problem_formulation
+    scope: "behavioral lines; binary for reminders, four-valued for rewriting"
+    appears_in: [problem_formulation, method, experiments]
+  - id: s5
+    symbol: "r"
+    gloss: "the per-trajectory target the core controller tracks"
+    first_defined: problem_formulation
+    scope: "constant within a trajectory, which is why it cannot randomize the action"
+    appears_in: [problem_formulation, method]
+  - id: s6
+    symbol: "L_y, L_u"
+    gloss: "the number of lagged readout and control terms in the state"
+    first_defined: method
+    scope: "set per variant outside the state builder"
+    appears_in: [method, experiments]
+  - id: s7
+    symbol: "\\xi_t"
+    gloss: "the latent state after the autoencoder lift"
+    first_defined: method
+    scope: "AE-Koopman baseline only"
+    appears_in: [method]
+  - id: s8
+    symbol: "K, B, c"
+    gloss: "latent transition matrix, control matrix and intercept"
+    first_defined: method
+    scope: "AE-Koopman latent dynamics; distinct from the behavioral line's A, B, b"
+    appears_in: [method]
+  - id: s9
+    symbol: "\\eta_t"
+    gloss: "the lifted state on the behavioral lines"
+    first_defined: method
+    scope: "equals the state itself when the feature dictionary is empty"
+    appears_in: [method]
+  - id: s10
+    symbol: "A, B, b, C"
+    gloss: "transition, control, intercept and readout matrices of the behavioral operator"
+    first_defined: method
+    scope: "fitted by two separate ridge problems, not one joint fit"
+    appears_in: [method, experiments]
+  - id: s11
+    symbol: "\\Lambda"
+    gloss: "the ridge penalty matrix with a zeroed entry for the intercept column"
+    first_defined: method
+    scope: "two-stage estimator only"
+    appears_in: [method]
+  - id: s12
+    symbol: "\\beta"
+    gloss: "the intervention budget still unspent"
+    first_defined: method
+    scope: "a hard count; drives the pruning, not a penalty weight"
+    appears_in: [method, experiments]
+  - id: s13
+    symbol: "\\kappa"
+    gloss: "the repeat penalty charged for issuing an intervention"
+    first_defined: method
+    scope: "controller objective only"
+    appears_in: [method]
+  - id: s14
+    symbol: "\\mathcal{C}_H, W_H"
+    gloss: "finite-horizon controllability matrix and Gramian"
+    first_defined: method
+    scope: "diagnostics; never a cross-arm comparison"
+    appears_in: [method, experiments]
+  - id: s15
+    symbol: "\\rho(A), t_{1/2}"
+    gloss: "spectral radius and the state half-life it implies"
+    first_defined: method
+    scope: "diagnostic; does not co-sign with whether memory pays"
+    appears_in: [method, experiments]
+  - id: s16
+    symbol: "H"
+    gloss: "the rollout horizon each column is scored over"
+    first_defined: problem_formulation
+    scope: "fixed per column; comparisons across different H are not made"
+    appears_in: [problem_formulation, experiments]
+  - id: s17
+    symbol: "\\mathrm{Skill}_H"
+    gloss: "one minus the ratio of rollout error to the best trivial null's rollout error"
+    first_defined: problem_formulation
+    scope: "the reported quantity everywhere; not comparable across columns"
+    appears_in: [problem_formulation, experiments]
+  - id: s18
+    symbol: "\\lambda_{\\mathrm{rec}}, \\lambda_{\\mathrm{pred}}, \\lambda_{\\mathrm{lat}}, \\lambda_{\\mathrm{multi}}"
+    gloss: "the four loss weights of the joint objective"
+    first_defined: method
+    scope: "AE-Koopman baseline; the fourth is on a different optimizer schedule"
+    appears_in: [method]
+
+# ---------------------------------------------------------------------------------------
+# EQUATIONS -- ids and operation names taken from paper/equations.tex (rule A5)
+# ---------------------------------------------------------------------------------------
+equation_lattice:
+  - id: eq_1
+    label: "eq:delay-state"
+    operation_name: "concatenate a fixed number of lagged readout values and, for the augmented
+      family, an equal number of lagged control values into one delay-embedded state vector"
+    rhs_symbols: [s1, s2, s3, s5, s6]
+    in_section: problem_formulation
+    has_gloss: false
+    role: definition
+  - id: eq_2
+    label: "eq:ae-koopman"
+    operation_name: "encode the state, advance the latent vector by an affine map driven by the
+      per-trajectory target, decode, and read the observable off a fixed slice of the decode"
+    rhs_symbols: [s2, s5, s7, s8]
+    in_section: method
+    has_gloss: false
+    role: definition
+  - id: eq_3
+    label: "eq:stage-two-solve"
+    operation_name: "fit encoder and decoder on reconstruction alone, then freeze the encoder and
+      solve one ridge least-squares problem for the latent dynamics with the intercept column's
+      ridge coefficient forced to zero"
+    rhs_symbols: [s7, s8, s11, s5]
+    in_section: method
+    has_gloss: false
+    role: definition
+  - id: eq_4
+    label: "eq:joint-batch"
+    operation_name: "weight four mean-squared-error terms but descend them on two different
+      optimizer schedules, so no single scalar is minimized by a single step"
+    rhs_symbols: [s2, s7, s8, s18]
+    in_section: method
+    has_gloss: false
+    role: definition
+  - id: eq_5
+    label: "eq:beh-dynamics"
+    operation_name: "lift the reduced state through an optional feature dictionary and fit an
+      affine one-step map plus a separate ridge readout, two independent least-squares problems"
+    rhs_symbols: [s4, s9, s10]
+    in_section: method
+    has_gloss: false
+    role: mechanism_probe
+  - id: eq_6
+    label: "eq:mpc-value"
+    operation_name: "enumerate the binary action tree to the planning horizon, score each branch
+      by summed predicted readout minus a repeat penalty, emit the first action of the best branch,
+      and prune every deeper node to the null action once the budget is spent"
+    rhs_symbols: [s4, s9, s10, s12, s13]
+    in_section: method
+    has_gloss: false
+    role: definition
+  - id: eq_7
+    label: "eq:margin-closed-form"
+    operation_name: "evaluate the one-step gain in predicted readout from acting, as an affine
+      function of the current readout, and solve its zero crossing for an indifference threshold"
+    rhs_symbols: [s1, s10]
+    in_section: method
+    has_gloss: false
+    role: mechanism_probe
+  - id: eq_8
+    label: "eq:ctrb"
+    operation_name: "build the finite-horizon controllability matrix and Gramian, take their rank,
+      singular values, eigenvalues and condition number, and separately take the spectrum and
+      spectral radius of the transition matrix alone"
+    rhs_symbols: [s10, s14, s15]
+    in_section: method
+    has_gloss: false
+    role: distribution_diagnostic
+
+# ---------------------------------------------------------------------------------------
+# MECHANISMS
+# ---------------------------------------------------------------------------------------
+mechanism_lattice:
+  - id: m1
+    mechanism: "The behavioral readout is persistent: what a trajectory is doing at turn t
+      constrains turn t+1, so a state that carries past readouts fits better than one that does
+      not. This is why memory pays."
+    supports_claim: [c1]
+    appears_in_method: true
+    appears_in_experiments: true
+    notes: "The mechanism quantity that tracks this is the older lag's loading in A, not the
+      state half-life; half-life and whether memory pays do not co-sign."
+  - id: m2
+    mechanism: "Most of that persistence is a property of the item rather than of the trajectory:
+      hard items stay hard across all their turns, so a per-item intercept reproduces most of
+      what the delay embedding was credited with."
+    supports_claim: [c8, c1]
+    appears_in_method: true
+    appears_in_experiments: true
+    notes: "This is the mechanism paragraph in section 5.x. It replaces the operator-spectrum
+      mechanism figure, which was proposed and did not pass its own pre-signed criterion."
+  - id: m3
+    mechanism: "The intervention's authority is large but its timing is not state-dependent: the
+      action moves the readout by an order of magnitude more than any rescheduling of the same
+      budget does, so a controller that only chooses when to spend has nothing left to win."
+    supports_claim: [c5, c6, c4]
+    appears_in_method: true
+    appears_in_experiments: true
+    notes: "This is the paper's transferable negative result. Bounded to these four task
+      families, which are all 'a text property pushed by a reminder or a rewrite'."
+  - id: m5
+    mechanism: "A shallow state is estimable from earlier transitions than a deep one, so under the
+      default caliber the memoryless arm is fitted on a strictly smaller and later slice of each
+      trajectory. Part of what looked like the value of depth is the value of those extra rows."
+    supports_claim: [c2, c1]
+    appears_in_method: false
+    appears_in_experiments: true
+    notes: "Drives the ablation's driver sentence. It is why the matched-window companion exists."
+  - id: m6
+    mechanism: "The readout trajectories are close to linear in the delay-embedded state over the
+      horizons scored here, so a learned lifting has almost nothing left to model and spends its
+      extra capacity on variance instead."
+    supports_claim: [c3]
+    appears_in_method: true
+    appears_in_experiments: true
+    notes: "Stated as the reason the effect sizes are small AND sign-inconsistent. Sign inconsistency
+      is the signature of variance, not of a missing nonlinearity."
+  - id: m7
+    mechanism: "The instruction family fixes which actions are even expressible, so it moves the
+      outcome more than any policy choosing among actions inside one family."
+    supports_claim: [c9]
+    appears_in_method: false
+    appears_in_experiments: true
+    notes: "Observation-strength, one line only."
+  - id: m4
+    mechanism: "Because the action's effect on the fit is what a controller would exploit,
+      measuring that effect at identification time predicts whether closed-loop control can pay,
+      without running the closed loop."
+    supports_claim: [c7]
+    appears_in_method: true
+    appears_in_experiments: true
+    notes: "One-directional; the mechanism licenses the negative inference only."
+
+# ---------------------------------------------------------------------------------------
+# INTUITION LATTICE -- required non-empty under prior_injection.
+# Extracted from docs/, not invented here; recorded_at is honest.
+# ---------------------------------------------------------------------------------------
+intuition_lattice:
+  priors:
+    - id: prior_1
+      statement: "How a conversation is behaving right now tells you something about how it will
+        behave next, in the same way a physical system's present state constrains its future."
+      borrowed_authority: []
+      recorded_at: L3
+      source: "docs/article/PAPER_EXECUTION_PLAN.md#1.1"
+    - id: prior_2
+      statement: "If a system's future is a function of its state, then the fitted description of
+        that system is also a description of what any controller could hope to do to it."
+      borrowed_authority: []
+      recorded_at: L3
+      source: "docs/article/CLOSED_LOOP_SYNTHESIS.md#6.3"
+  anchor_example:
+    id: ex_1
+    instance: "A reader asked to simplify a paragraph one step at a time: the level it sits at now
+      is what decides whether the next instruction should push it down a full level, half a level,
+      or leave it alone."
+    illustrates: [prior_1, prior_2]
+    home: problem_formulation_entrance
+    covers_both_sides: true
+    recorded_at: post_hoc
+    source: "author_decision, built on docs/NAMING.md's tsar_cefr line description"
+    notes: "Covers both sides: the state constrains the next action (the prior pays) and the
+      instruction's effect does not depend on when it is issued (the prior stops paying)."
+  failure_instances:
+    - id: fx_1
+      instance: "a fixed schedule that ignores the conversation ties the controller"
+      homes: [abstract, intro]
+      quantified_by: rq3
+      recorded_at: L3
+      source: "docs/article/CLOSED_LOOP_SYNTHESIS.md#1"
+  named_assumptions:
+    - id: as_1
+      name: "Assumption 1 (Readout Persistence)"
+      plain_statement: "A window of past readouts carries information about the next readout that
+        the current turn alone does not."
+      formal_pointer: eq_1
+      strength: tendency
+      tested_by: rq1
+      recorded_at: L3
+      source: "docs/experiments/core_surrogate_rows_results.md"
+    - id: as_2
+      name: "Assumption 2 (Action Identifiability)"
+      plain_statement: "The intervention varies independently enough of the state that its effect
+        on the next state can be estimated separately from the state's own evolution."
+      formal_pointer: eq_5
+      strength: approximate
+      tested_by: rq2
+      recorded_at: L3
+      source: "docs/experiments/core_multiobjective_planning_headroom.md"
+      notes: "Measured false on the core line by construction and measured to buy nothing on all
+        eleven columns. Stating it as an assumption and then reporting that it fails is the
+        paper's second finding, not a defect in the framing."
+    - id: as_3
+      name: "Assumption 3 (Identification Predicts Control)"
+      plain_statement: "If withholding the action does not change how well the operator fits, then
+        no controller built on that operator can beat an equal-cost fixed schedule."
+      formal_pointer: eq_8
+      strength: tendency
+      tested_by: rq3
+      recorded_at: L3
+      source: "docs/article/CLOSED_LOOP_SYNTHESIS.md#6.3"
+      notes: "Checked on its zero side on four lines. The non-zero side is untested, so this
+        assumption licenses a negative inference only. See c7 and nc_2."
+
+# ---------------------------------------------------------------------------------------
+# NON-CLAIMS -- required under prior_injection, and this project has a lot of them.
+# ---------------------------------------------------------------------------------------
+non_claim_ledger:
+  - id: nc_1
+    statement: "That a simple baseline beats Koopman-MPC."
+    reason: "Outside the defense column no baseline won. Three columns tie with intervals
+      containing zero, and on two of them ours costs more. 'Tied, and ours cost more' is the
+      supported statement; 'beaten' is not."
+    appears_in: [experiments, conclusion]
+  - id: nc_2
+    statement: "That a non-zero withheld-action contrast predicts closed-loop control will pay."
+    reason: "The criterion has only been checked on its zero side. The pre-registered positive
+      control was the readability column, signed to be non-zero, and it came in at +0.0061 with
+      the interval containing zero. Without a task family where the contrast is genuinely
+      non-zero and the closed loop then pays, the positive direction is untested."
+    appears_in: [conclusion]
+  - id: nc_3
+    statement: "That closed-loop control of multi-turn LLM behavior does not work in general."
+    reason: "Four task families, all of the same shape: a text property pushed by a reminder or a
+      rewrite. The result is about these four settings and the three preconditions we name, not
+      about LLM control."
+    appears_in: [conclusion]
+  - id: nc_4
+    statement: "That nonlinearity is useless for this problem."
+    reason: "The effect sizes are small and sign-inconsistent, which is a different statement. On
+      one column the LSTM is better with an interval excluding zero, and on the readability column
+      neither nonlinear baseline cleared the trivial null, which is a sample-size fact."
+    appears_in: [experiments, conclusion]
+  - id: nc_5
+    statement: "That the action's effect cashes out in one step, which is why rescheduling cannot
+      buy anything."
+    reason: "The statistic that would support this measures whether an effect is still present at
+      step k, not whether it is arriving at step k, and on a synthetic one-step action it still
+      reads long. The paper does not use the action channel's time structure as mechanism
+      evidence."
+    appears_in: [conclusion]
+  - id: nc_6
+    statement: "That the multi-step term in the joint objective was shown not to help."
+    reason: "It was never swept at comparable strength: it receives one gradient step per epoch
+      against one per minibatch for the other terms, so its weight confounds with dataset size."
+    appears_in: [conclusion]
+  - id: nc_7
+    statement: "That the defense line's precondition was refuted."
+    reason: "It could not be asked. At a 9.8 percent base rate the design has no power, which is
+      not the same as a negative result, and the two must not share wording."
+    appears_in: [experiments, conclusion]
+  - id: nc_8
+    statement: "That the adaptivity bounds constrain any controller."
+    reason: "They bound only policies measurable with respect to the scalar readout. A controller
+      reading raw text or activations is not bounded by them."
+    appears_in: [experiments, conclusion]
