@@ -920,6 +920,27 @@ MDE 就地从配对 per-source 差导出。不确定度按 `source_id` 自举 20
 **且每个必须带同 harness 的 Qwen3-4B 对照臂**——保真度 <1.0 时已落盘 Qwen 列不是合法对照，
 backbone 效应会与打分器效应混在一起（先例：G1 选整 5 seed 重跑而非续跑，买的就是同一个 harness 指纹）。
 
+### B0 的补丁：协议的第三条腿（反馈规则），2026-09-17
+
+B0 只验了前两条腿（轮结构、打分器）。第三条腿 **(measured, target, topic) → 下一条 user 消息**
+没做——而没有它，第二个 backbone 从第 2 轮起就驱动不了。已用
+`scripts/reconstruct_core_feedback.py` 补上，判准沿用 B0 对分词规则那条（**逐字节复现才算恢复**）：
+
+| 任务 | 逐字节复现 |
+|---|---|
+| `sentence_length_t10` | **2268/2268 = 1.0000** |
+| `character_length_t5` | **1440/1440 = 1.0000** |
+| `average_word_length_t5` | **336/336 = 1.0000** |
+| `even_odd_t5` | **96/96 = 1.0000** |
+| `vector_count_stage1_t10` | **2592/2592 = 1.0000** |
+
+容差与方向规则是拟合出来的：字数 `|m−t| ≤ 1`（1→True、2→False 都有见证）、`stage1` 平均词长
+`|m−t| ≤ 0.25`（带内最大恰 0.25、带外最小 0.2593）、`character_length` 的 `within_tolerance ≡ (m==t)`。
+
+⚠️ **一个保真度看不见的失败模式**：**落盘数据里从未触发的分支无法从它恢复。**
+`even_odd_t5` 的 96 条反馈全是「Your answer was correct」，答错分支没有见证。
+**用户 2026-09-17 裁决：照跑，builder 对该分支直接 raise，不猜**——撞上就如实报「该任务在本组不可重放」。
+
 **core 的第 3 行结构性为零，换 backbone 也还是零**（`NAMING.md` core 行 2026-09-15 补记：
 控制量是跟踪误差、是状态的精确仿射函数，八任务 $R^2=1.0$）→ core 的第二 backbone 只支持第 1/2/4/5/6 行。
 
@@ -927,7 +948,11 @@ backbone 效应会与打分器效应混在一起（先例：G1 选整 5 seed 重
 
 | 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
 |---|---|---|---|---|---|
-| 2026-09-17 | **16018827** | `run_tsar_cefr_excitation_arm_gemma4.sbatch` / `pdc-tsar-cefr-gemma4` | **方法** | ⏳ **已提交 2026-09-17 14:47（用户裁决「提交」）**，`--time 4:00:00`，估 **0.4–1.0 h**。提交时 sha `3b4fe28`、`git_dirty=false`、队列内无其它本项目作业。命令行与 Qwen 臂 15850523 **逐行相同，只差 `--agent-model` 与 `--out-dir`**——温度仍是 G-T1 的 6.5（**未为本 backbone 重拟**，重拟会让两列不可比），读出侧 CEFR 分类器与 MeaningBERT 是同一批固定模型，**只有被控对象换了**。**本臂不需要 cap 标定作业**（另两条行为线需要）：`token_cap()` 是用 agent 自己的 tokenizer 按源长 1.5× 现算的，runner 再按题自查 5% 预注册阈值。**COMPLETED 00:10:48**——**比估计下界还快 2.2×**（估 0.4–1.0 h，实测 0.18 h）。估错的那条假设是「gemma E4B 取 Qwen 臂的 2–4×」，实测只有 **1.5×**（7m11 → 10m48）：权重 2.1× 与 vocab 1.7× **没有按比例进入吞吐**。下一条行为线的估计据此收紧到 1.5–2×。 **G-S1 准入四项全过，无剔题**：行数 3600/3600；四个动作份额 0.2475–0.2553（带 [0.2,0.3]）；**cap 触顶 0 题、pooled 0.0000**（Qwen 臂当初有 1 题 0.0556 要你裁决具名剔题，**gemma 侧这个问题不存在**）；逐步取值 distinct 35–40、sd 0.354–0.402。**D-0 不触发**（一步命中 0.70 < 0.80，但注意 Qwen 侧是 0.350——**gemma 一步到位的频率是 Qwen 的 2×**，仍在阈下，这个差本身要进表注）；**D-1② 不触发**。跨 seed 重复动作序列 1 条（与 Qwen 臂一致）。产物 `outputs/tsar_cefr_gemma4_gpu1/`（3,600 行 + 40 探针）。**六行代理拟合（零 GPU）待签** | **Table 1 的结论是不是 Qwen3-4B 专属**：本臂是三条行为线里第一条（最便宜、且 `tsar_cefr` 是 NAMING 里唯一活线）。过 → 接着提 `gsm8k_sharded`；读出无量程 → 该列如实标「本设计分辨不出来」，不调参不换 judge |
+| 2026-09-17 | **16018827** | `run_tsar_cefr_excitation_arm_gemma4.sbatch` / `pdc-tsar-cefr-gemma4` | **方法** | ⏳ **已提交 2026-09-17 14:47（用户裁决「提交」）**，`--time 4:00:00`，估 **0.4–1.0 h**。提交时 sha `3b4fe28`、`git_dirty=false`、队列内无其它本项目作业。命令行与 Qwen 臂 15850523 **逐行相同，只差 `--agent-model` 与 `--out-dir`**——温度仍是 G-T1 的 6.5（**未为本 backbone 重拟**，重拟会让两列不可比），读出侧 CEFR 分类器与 MeaningBERT 是同一批固定模型，**只有被控对象换了**。**本臂不需要 cap 标定作业**（另两条行为线需要）：`token_cap()` 是用 agent 自己的 tokenizer 按源长 1.5× 现算的，runner 再按题自查 5% 预注册阈值。**COMPLETED 00:10:48**——**比估计下界还快 2.2×**（估 0.4–1.0 h，实测 0.18 h）。估错的那条假设是「gemma E4B 取 Qwen 臂的 2–4×」，实测只有 **1.5×**（7m11 → 10m48）：权重 2.1× 与 vocab 1.7× **没有按比例进入吞吐**。下一条行为线的估计据此收紧到 1.5–2×。 **G-S1 准入四项全过，无剔题**：行数 3600/3600；四个动作份额 0.2475–0.2553（带 [0.2,0.3]）；**cap 触顶 0 题、pooled 0.0000**（Qwen 臂当初有 1 题 0.0556 要你裁决具名剔题，**gemma 侧这个问题不存在**）；逐步取值 distinct 35–40、sd 0.354–0.402。**D-0 不触发**（一步命中 0.70 < 0.80，但注意 Qwen 侧是 0.350——**gemma 一步到位的频率是 Qwen 的 2×**，仍在阈下，这个差本身要进表注）；**D-1② 不触发**。跨 seed 重复动作序列 1 条（与 Qwen 臂一致）。产物 `outputs/tsar_cefr_gemma4_gpu1/`（3,600 行 + 40 探针）。**六行代理拟合（零 GPU）待签** |
+| 2026-09-17 | **16019470** | `run_ergo_cap_smoke_gemma4.sbatch` / `pdc-ergo-cap-smoke-gemma4` | **基建** | **COMPLETED 00:05:28**（估 5–15 min）。20 行、4 题 × 1 seed，其余 flag 逐字抄自产出已发表 Qwen 列的 `run_ergo_upB_random_excite.sbatch`。**判：Qwen 的 cap 512 在 gemma 上不成立**——1 行正好落在 512，`ergo_GSM8K_214` 的按题截顶份额 **0.200 > 预注册 0.05**（中位 87、p90 480）。⇒ 触发测量趟 2（下一行）。**同时撞出一个看起来更糟、实际不是问题的读数**：`judge_parse_failure_rate` **0.30 对 Qwen 臂的 0.018（16.6×）**。逐行看了失败样本：是 gemma 在早期 shard 上写 `Current answer: None` / `Unable to determine`，而 Qwen 会猜一个数；拒答率两边相当（0.15 对 0.167）。**harness 本来就把解析不了的答案映射成 `y_task_success = 0.0`**（两臂落盘行上逐行核过，无丢行、无 NaN）——这正是该指标的含义。⇒ **这是 backbone 的行为差异、读出已经承载了它，不是仪器故障，不动解析器**（动它等于改一个已发表列的读出） |
+| 2026-09-17 | **16019471** | `run_sequor_cap_smoke_gemma4.sbatch` / `pdc-sequor-cap-smoke-gemma4` | **基建** | **COMPLETED 00:14:12**（估 5–20 min）。`--mode debug`，2 题 × 20 轮 × 2 臂 = 80 行，取 `zero_control` 与 `constant_remind` 两个长度极端。**判：Qwen 的 cap 2048 在 gemma 上成立**——`cap: 0/80 (0.0%) overall; items over the 5% criterion: none`。⇒ 放行 constraint 正臂 |
+| 2026-09-17 | **16021852** | `run_ergo_cap_smoke2_gemma4.sbatch` / `pdc-ergo-cap-smoke2-gemma4` | **基建** | ⏳ 测量趟 2：同 4 题在 **cap 2048** 下重测长度分布。**被打到的 cap 量不出回复本来想要多长**，所以趟 1 只能判「512 不够」、判不出「够多少」。臂按本趟测出的值提交，**这就是计划允许的那一次标定**；臂跑完若仍 >5%/题，`gsm8k_sharded` 退出本组（计划 §六 死亡条件 3），**不再抬第二次**。⚠️ 本作业首次提交（16021843）漏打了 `--agent-max-new-tokens 2048` 补丁（heredoc 里 `python` 不在 PATH，补丁静默没生效），**已 scancel，未产生任何产物**，重提为 16021852 |
+| 2026-09-17 | **16021868** | `run_sequor_s1_arm_gemma4.sbatch` / `pdc-sequor-s1-arm-gemma4` | **方法** | ⏳ constraint 列的 gemma 辨识臂，9,600 行（40 题 × 20 轮 × 3 seed × 4 臂），flag 逐字抄自 `run_sequor_s1_arm.sbatch`，只差 `--agent-model` 与 `--out-dir`。估 **5.5–8.5 h**（依据：Qwen 同配置实测 4h22m × gemma 实测 1.5× = 6.5 h，±30%），`--time 12:00:00`。**cap 2048 由 16019471 在本 backbone 上实测，不是继承**。⚠️ **解码跟着 backbone 一起变，用户 2026-09-17 裁决保持 `model_default`**：Qwen3-4B-Instruct-2507 是 temp 0.7 / top_p 0.80 / top_k 20，gemma-4-E4B-it 是 1.0 / 0.95 / 64；本线不做配对 Qwen 对照臂（对照是已发表的 Qwen 列），**所以这一列测的是「另一个 backbone 在它自己的默认解码下」，不是「同一解码换权重」——每一处引用同址带这句**。判分是另一个作业（判分失败不能赔上生成），只跑独立 Qwen3-14B 那份（可报告的那份） | **Table 1 的结论是不是 Qwen3-4B 专属**：本臂是三条行为线里第一条（最便宜、且 `tsar_cefr` 是 NAMING 里唯一活线）。过 → 接着提 `gsm8k_sharded`；读出无量程 → 该列如实标「本设计分辨不出来」，不调参不换 judge |
 
 **提交前六条核查（`pdc-tsar-cefr-gemma4`，2026-09-17）**：① **未裁决，故未提交**；
 ② 运行时估计 **0.4–1.0 h**（依据：Qwen 臂 15850523 实测 00:07:11、同一份 schedule；gemma E4B 权重 2.1×、

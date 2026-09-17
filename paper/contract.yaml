@@ -112,10 +112,13 @@ design_choice_lattice:
     conclusion_takeaway_keyword: "the nonlinear half of the model is the half that does not pay"
     source: "code:src/koopman_ae/core.py:712"
     intuition_refs: []
-    notes: "The zeroed intercept penalty is undocumented in the code; the Method text states it.
-      Secondary equations for this subsection: eq_2 (the lift and latent dynamics it estimates) and
-      eq_4 (the joint objective it is the alternative to). The schema carries one equation_id, so
-      those two are recorded here rather than left as orphans."
+    notes: "Moved to the appendix on 2026-09-17 under the page budget (user decision): this choice
+      estimates the BASELINE this paper compares against, not the operator the paper is about, so it
+      had the weakest claim on main-text space among the five. It remains a design choice the paper
+      defends and rq4 still tests it; its prose home is app:estimator, named once in the Method
+      overview. Secondary equations eq_2 (the lift it estimates) and eq_4 (the joint objective it is
+      the alternative to) move with it. The zeroed intercept penalty is undocumented in the released
+      code, and the appendix text states it."
 
   - id: choice_4
     choice_name: "Budget-Pruned Action Search"
@@ -342,17 +345,17 @@ symbol_lattice:
     gloss: "the number of lagged readout and control terms in the state"
     first_defined: problem_formulation
     scope: "set per variant outside the state builder"
-    appears_in: [method, experiments]
+    appears_in: [problem_formulation, method, experiments]
   - id: s7
     symbol: "\\xi_t"
     gloss: "the latent state after the autoencoder lift"
-    first_defined: method
+    first_defined: appendix
     scope: "AE-Koopman baseline only"
     appears_in: [method]
   - id: s8
     symbol: "K, B, c"
     gloss: "latent transition matrix, control matrix and intercept"
-    first_defined: method
+    first_defined: appendix
     scope: "AE-Koopman latent dynamics; distinct from the behavioral line's A, B, b"
     appears_in: [method]
   - id: s9
@@ -370,7 +373,7 @@ symbol_lattice:
   - id: s11
     symbol: "\\Lambda"
     gloss: "the ridge penalty matrix with a zeroed entry for the intercept column"
-    first_defined: method
+    first_defined: appendix
     scope: "two-stage estimator only"
     appears_in: [method]
   - id: s12
@@ -412,7 +415,7 @@ symbol_lattice:
   - id: s18
     symbol: "\\lambda_{\\mathrm{rec}}, \\lambda_{\\mathrm{pred}}, \\lambda_{\\mathrm{lat}}, \\lambda_{\\mathrm{multi}}"
     gloss: "the four loss weights of the joint objective"
-    first_defined: method
+    first_defined: appendix
     scope: "AE-Koopman baseline; the fourth is on a different optimizer schedule"
     appears_in: [method]
 
@@ -433,7 +436,7 @@ equation_lattice:
     operation_name: "encode the state, advance the latent vector by an affine map driven by the
       per-trajectory target, decode, and read the observable off a fixed slice of the decode"
     rhs_symbols: [s2, s5, s7, s8]
-    in_section: method
+    in_section: appendix
     has_gloss: false
     role: definition
   - id: eq_3
@@ -442,7 +445,7 @@ equation_lattice:
       solve one ridge least-squares problem for the latent dynamics with the intercept column's
       ridge coefficient forced to zero"
     rhs_symbols: [s7, s8, s11, s5]
-    in_section: method
+    in_section: appendix
     has_gloss: false
     role: definition
   - id: eq_4
@@ -450,7 +453,7 @@ equation_lattice:
     operation_name: "weight four mean-squared-error terms but descend them on two different
       optimizer schedules, so no single scalar is minimized by a single step"
     rhs_symbols: [s2, s7, s8, s18]
-    in_section: method
+    in_section: appendix
     has_gloss: false
     role: definition
   - id: eq_5
@@ -475,7 +478,7 @@ equation_lattice:
     operation_name: "evaluate the one-step gain in predicted readout from acting, as an affine
       function of the current readout, and solve its zero crossing for an indifference threshold"
     rhs_symbols: [s1, s10]
-    in_section: method
+    in_section: appendix
     has_gloss: false
     role: mechanism_probe
   - id: eq_8
@@ -649,7 +652,7 @@ non_claim_ledger:
       control was the readability column, signed to be non-zero, and it came in at +0.0061 with
       the interval containing zero. Without a task family where the contrast is genuinely
       non-zero and the closed loop then pays, the positive direction is untested."
-    appears_in: [conclusion]
+    appears_in: [method, conclusion]
   - id: nc_3
     statement: "That closed-loop control of multi-turn LLM behavior does not work in general."
     reason: "Four task families, all of the same shape: a text property pushed by a reminder or a
@@ -674,7 +677,7 @@ non_claim_ledger:
     statement: "That the multi-step term in the joint objective was shown not to help."
     reason: "It was never swept at comparable strength: it receives one gradient step per epoch
       against one per minibatch for the other terms, so its weight confounds with dataset size."
-    appears_in: [conclusion]
+    appears_in: [method, conclusion]
   - id: nc_7
     statement: "That the defense line's precondition was refuted."
     reason: "It could not be asked. At a 9.8 percent base rate the design has no power, which is

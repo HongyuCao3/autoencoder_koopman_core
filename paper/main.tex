@@ -10,6 +10,8 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{hyperref}
+% Rule 18's Q&A bookend underlines the answer; normalem keeps \emph italic rather than underlined.
+\usepackage[normalem]{ulem}
 
 % Title: user decision 2026-09-17, replacing the 2026-09-16 provisional choice.
 % The earlier title named a "pre-investment criterion", which reads as two-sided: it would tell a
@@ -36,6 +38,9 @@
 \input{sections/04_experiments.tex}
 \input{sections/05_conclusion.tex}
 \input{sections/06_related_work.tex}
+
+\appendix
+\input{sections/A1_estimator.tex}
 
 \bibliographystyle{plain}
 \bibliography{main}

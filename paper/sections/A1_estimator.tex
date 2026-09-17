@@ -1,0 +1,29 @@
+\section{Reconstruction-Then-Ridge Estimation of the Learned-Lifting Baseline}
+\label{app:estimator}
+
+\textbf{Why two stages, and why the intercept escapes the penalty.} A learned lifting is the
+alternative a reader will reach for, so it has to be fitted well enough that a null result is
+about the data. Fitting the encoder and the dynamics together lets one absorb the other's
+error: a lifting free to move can make almost any dynamics look adequate, which turns the
+comparison into a statement about optimization. Fitting the lifting first and solving the
+dynamics in closed form afterwards removes that freedom. The intercept escapes the ridge
+penalty for a separate reason: a penalized intercept is pulled toward zero, the dynamics block
+absorbs the latent mean to compensate, and the estimator is no longer the one we describe.
+\uline{Reconstruction-then-ridge therefore separates the two fits so that the learned lifting
+cannot rescue a weak dynamics estimate, and leaves the intercept unpenalized so that the
+dynamics block is not shrunk into carrying the mean.}
+
+\textbf{Lift and solve.} Equation~\eqref{eq:ae-koopman} gives the lift and the latent map,
+where $\xi_t$ is the lifted state and $K$, $B$, $c$ are its transition, control and intercept.
+Equation~\eqref{eq:stage-two-solve} gives the second stage, where $\Lambda$ is the ridge
+penalty and $\lambda_{\mathrm{rec}}$ weights the reconstruction term of the first.
+
+\textbf{Two stages in order.} Stage one descends the reconstruction loss alone, leaving the
+latent dynamics untouched. Stage two freezes the encoder, pushes every training pair through it
+once, and solves for the latent dynamics in closed form. The ridge penalty carries a zero in the
+position of the appended constant column, which is the unpenalized intercept; no comment in the
+released code marks that zero, and a reader assuming a uniform penalty is reading a different
+estimator. Appendix~\ref{app:joint} states the joint objective that descends reconstruction,
+one-step and multi-step terms together. We report no ablation of its multi-step term, which
+takes one gradient step per epoch against one per minibatch for the others, so its weight
+confounds with dataset size and was never swept at comparable strength.

@@ -1,0 +1,132 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Framework Overview}
+
+Figure~\ref{fig:framework} shows the pipeline in four stages. In Stage 1, the
+\textbf{Delay-Embedded Controlled State} turns judged scores and issued interventions into one
+vector per turn. In Stage 2, the \textbf{Linear Operator with an Explicit Action Channel} fits
+a one-step map on those vectors with the intervention as its own regressor, so that removing it
+changes the fit rather than the model class. In Stage 3, \textbf{Reconstruction-Then-Ridge
+Estimation} fits the learned-lifting alternative in two stages, keeping its dynamics half
+closed-form; Appendix~\ref{app:estimator} gives it, since it estimates the baseline rather than
+the operator this paper is about. Stage 4 reads the fitted operator in one of two ways: \textbf{Budget-Pruned Action
+Search} spends a fixed budget against it, and \textbf{Operator Diagnostics as a Pre-Investment
+Test} asks whether spending that budget can pay at all. This section answers where in that
+pipeline the control-theoretic prior stops carrying its weight.
+
+\subsection{Delay-Embedded Controlled State}
+
+\textbf{Why a window of past readouts, with the action inside the same vector.} A single
+judged score is a measurement, not a state: it says where the conversation stands and nothing
+about where it is heading, so a map fitted on it can only regress the next score on the current
+one. Assumption 1 says a window of past scores carries what the current turn omits, and the
+window is how we give the map access to that. The action belongs in the same vector rather than
+in a side input for a different reason. Once the intervention sits beside the scores as another
+coordinate, removing it leaves a strictly smaller state whose fit can be compared against the
+full one on the same rows. A side input, by contrast, could be dropped by rewriting the model
+class, and the comparison would then measure the rewrite.
+\uline{The delay-embedded controlled state therefore does two jobs: the window gives the
+operator the history that one turn withholds, and putting the action inside the same vector
+makes withholding it an ablation the same estimator can score.}
+
+\textbf{State construction.} Equation~\eqref{eq:delay-state} of Section~\ref{sec:problem}
+gives the state, with $L_y$ readout terms and $L_u$ control terms. A turn contributes a row only
+when every lagged term exists and the next turn is observed, so deepening the window shortens
+the usable stretch of each trajectory. On the trajectory-tracking tasks the control is the
+tracking error against a target constant within a trajectory, which makes it a function of the
+state's own leading block; that line cannot separate what the action did from what the state was
+already doing, and we report its action-channel cells as undefined rather than zero. One
+competing account of the window's value survives this construction: scores may persist because
+the item is hard, not because one turn propagates into the next. Section~\ref{sec:experiments}
+separates the two by giving the memoryless baseline a per-item intercept.
+
+\subsection{Linear Operator with an Explicit Action Channel}
+
+\textbf{Why a linear map whose action is a separate regressor.} The operator has one job in
+this paper, which is to say how much of the next state the present state and the issued
+intervention account for. A linear map is the weakest model class that can carry both terms at
+once, and a class that cannot beat its own trivial baselines is reporting something about the
+data rather than about itself. Assumption 2 asks more than linearity: it asks that the
+intervention vary enough on its own that its column is not a rewriting of the state columns.
+When that holds, the action has a coefficient of its own, and a fit with the column removed is
+the same estimator answering the same question with one fewer input.
+\uline{The operator is linear so that a shortfall cannot be blamed on capacity. Its action
+enters as a separate regressor so that withholding the action produces a comparison rather than
+a different model.}
+
+\textbf{Operator and readout.} Equation~\eqref{eq:beh-dynamics} gives the fitted map. The
+lifted state $\eta_t$ is the state passed through a feature dictionary, which is the identity
+map in the variant we report, and $A$, $B$, $b$ are the transition, control and intercept
+blocks of one ridge least-squares solve. The intervention $v_t$ enters as its own column of
+that solve. The readout matrix $C$ comes from a second ridge problem fitted on the same lifted
+states, not from the same solve as $A$, $B$ and $b$. One variant replaces the single control
+column by the intervention and its product with the current score, which lets the same action
+carry a different effect depending on where the trajectory already sits.
+
+\textbf{The withheld-action variant.} Dropping the control column and refitting gives an
+operator of the same class on the same rows, and the gap between the two fits in
+Equation~\eqref{eq:skill} is what Section~\ref{sec:experiments} reports for every column. The
+same construction applies to the learned-lifting estimator of Appendix~\ref{app:estimator}, so
+the two model classes are compared on the ablation as well as on the fit.
+
+\subsection{Budget-Pruned Action Search}
+
+\textbf{Why search over sequences, and why the budget prunes instead of penalizing.} An
+intervention issued now changes what the next state will be, so the value of acting at this
+turn depends on what acting later would have bought, and a rule that scores turns one at a time
+cannot see that. Searching over sequences is the smallest construction that can. The budget is
+a count of interventions an operator is willing to spend, not a price they are willing to pay,
+and the difference decides how it enters: a penalty can always be outweighed by a large enough
+predicted gain, which would let the controller overspend whenever it is confident. Pruning the
+admissible set cannot be outweighed. The comparison this controller is built to face is the
+equal-cost fixed schedule of Section~\ref{sec:problem}, which spends the same count without
+reading the conversation.
+\uline{The action search therefore ranges over sequences so that the value of acting now
+includes what acting later would have bought, and enforces the budget by pruning so that no
+predicted gain can buy a step the budget does not allow.}
+
+\textbf{Search objective.} Equation~\eqref{eq:mpc-value} gives the value of a branch, where
+$\beta$ is the count of interventions still unspent and $\kappa$ is the penalty charged for
+issuing one. The intervention $v_t$ is the action the branch commits to at the current turn.
+
+\textbf{Enumeration and pruning.} The controller enumerates the binary action tree to its
+planning horizon, scores each branch by the predicted readout summed along it minus the repeat
+penalty, and emits the first action of the best branch. The budget enters at every node: once
+the count reaches zero, the admissible set at every deeper node is the null action alone. That
+collapse is the entire constraint mechanism, and calling this controller a constrained program,
+a Lagrangian relaxation or a projection would describe a method we did not run. With a budget of
+one the recursion reduces to spending the allowance now against holding it while the rest of the
+horizon stays idle. Appendix~\ref{app:threshold} gives a closed-form threshold for the
+interaction variant; it agrees with the search only when both branches leave the second step
+idle, so we treat it as a remark and not as the decision rule.
+
+\subsection{Operator Diagnostics as a Pre-Investment Test}
+
+\textbf{Why the identification fit answers the investment question, and answers it early.}
+A controller that chooses when to act can only exploit structure the operator has already
+found; if withholding the action leaves the fit unchanged, there is no such structure for any
+policy to trade on, whatever search runs on top. Assumption 3 states that implication, and its
+value is that the fit is available before any closed-loop run: the same data that identifies
+the operator answers whether closing the loop can pay. We check one direction. A fit that does
+not change when the action is withheld licenses the decision not to invest; a fit that does
+change licenses nothing here, because we have no task family where that happened and the closed
+loop then paid.
+\uline{The identification fit therefore answers the investment question because a controller
+can only exploit what the fit can see, and answers it before the closed-loop compute is spent,
+in one direction only.}
+
+\textbf{Reachability diagnostics.} Equation~\eqref{eq:ctrb} gives the finite-horizon
+controllability matrix $\mathcal{C}_H$ and Gramian $W_H$, and Equation~\eqref{eq:spectral}
+gives the spectral radius $\rho(A)$ and the state half-life $t_{1/2}$ it implies. Every
+quantity here is a diagnostic of one fit. None is compared across arms or across columns, and
+each appears in Section~\ref{sec:experiments} beside a task-level result rather than in place
+of one.
+
+\textbf{What the five stages deliver.} The state, the operator and its two estimators exist to
+make one contrast well posed, between a fit that sees the action and a fit that does not, while
+the action search exists to be measured against an equal-cost schedule on the same task.
+\uline{Section~\ref{sec:experiments} asks whether the window pays (Section~\ref{sec:problem}'s
+Assumption 1), whether the action channel carries anything (Assumption 2), whether a learned
+lifting beats the linear operator, and whether the identification answer predicted the
+closed-loop one (Assumption 3).}
