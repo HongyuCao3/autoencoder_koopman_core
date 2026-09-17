@@ -234,6 +234,16 @@ core 八列与行为三列**只登记了相对值**。绝对值已从既有产�
 ③ `even_odd_t5` 的 `Skill_H` 无定义而绝对值存在（null 6.9e-32、线性行 ~1e-15、非线性行 ~1e-6），
 **附录 A1 的实际内容是这三个数量级**。
 
+**跨 seed 离散度已登记（2026-09-17，零 GPU，只读产物）。** §一 规定有训练 seed 的行「跨 seed 离散度**单独报**、
+不兼任误差棒」，此前只在产物里（`rows.*.seed_spread_ddof{0,1}`），文档只给了指针。ddof=1（§六第 5 条已签）
+的十四格数已印进 [`../experiments/core_surrogate_rows_results.md`](../experiments/core_surrogate_rows_results.md)
+§跨 seed 离散度。**这个量只覆盖 core 七列 × AE / LSTM 两行**——`Ours` / `Markov` / `延嵌无 r` 是闭式 ridge，
+无随机种子，离散度构造上为 0；`even_odd_t5` 的逐 seed `skill_h` 因 `DegenerateNullError` 全为 `None`，无定义；
+**行为三线与 `tsar_cefr` 的任何行都没有这个量**，那边 3 个 seed 是拟合前就池化的**数据** seed（与裁决 6 一致）。
+**登记买的不是新证据**：`mean` 那一半与行点估计逐位相同（残差 ≤2.2e-16，`Skill_H` 对 MSE 线性），
+新信息只有 `± std`；且它**不得印成 Table 1 的区间**（区间一律按轨迹 bootstrap，混印过一次，
+见结果档案「两个 bug」第 2 条）。
+
 **缺的格子全是 CPU 重拟合，数据已落盘**（`datasets/`、`outputs/ergo_ekA_branch` 759 对、`outputs/sequor_s1_arm` 9600 行）——**Table 1 零 GPU 可填满。**
 
 ## 五、填表清单

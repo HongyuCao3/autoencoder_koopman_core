@@ -70,7 +70,56 @@
 2. **绝对列没有区间。** 产物里的 bootstrap 建在 `Skill_H` 上，`rollout_mse` 是点估计。
    **"两行有没有差别"一律仍看配对 bootstrap**（下一节），不得拿两个绝对数直接比大小下结论。
 3. **AE / LSTM 行是 3 个训练 seed 平均后的逐行平方误差**（与 `Skill_H` 同一套口径，不是 seed 均值的 MSE）；
-   跨 seed 离散度仍单独报，见产物 `seed_spread_ddof{0,1}`。
+   跨 seed 离散度仍单独报，见下节「跨 seed 离散度」与产物 `seed_spread_ddof{0,1}`。
+
+## 跨 seed 离散度（`mean ± std`，ddof=1，n=3 训练 seed）
+
+上两节的点估计与 CI 都建在**跨 seed 平均后的逐行平方误差**上，跨 seed 离散度按
+`MAIN_TABLE_DESIGN.md` §一 单独报、不兼任误差棒。本节把它从产物
+`results/surrogate_rows_paired/{task}.json` 的 `rows.*.seed_spread_ddof1` 登记下来
+（2026-09-17，零 GPU，只读产物，未重拟合）。`ddof=1` 是 2026-09-13 签过的报告口径
+（`MAIN_TABLE_DESIGN.md` §六第 5 条）；产物里 `seed_spread_ddof0` 同址保留，n=3 时两者恒差
+√(3/2) = **1.224745**（实测十四格逐格吻合到 1e-6）。
+
+| 任务 | lag/H | n轨迹 | LSTM | AE |
+|---|---|---:|---|---|
+| `sentence_length_t10` | 3/6 | 42 | +0.7500 ± 0.0218 | +0.7518 ± 0.0020 |
+| `vector_count_stage2_t10` | 3/6 | 90 | +0.8083 ± 0.0041 | +0.8212 ± 0.0002 |
+| `vector_count_stage1_t10` | 3/6 | 48 | +0.6338 ± 0.0095 | +0.6266 ± 0.0025 |
+| `character_length_t5` | 1/3 | 60 | +0.3007 ± 0.0190 | +0.2393 ± 0.0254 |
+| `formality_t5` | 1/3 | 42 | +0.3725 ± 0.0042 | +0.3852 ± 0.0022 |
+| `sentiment_t5` | 1/3 | **10** | +0.4231 ± 0.0795 | +0.3956 ± 0.0151 |
+| `average_word_length_t5` | 1/3 | **14** | −0.0715 ± **0.3077** | −0.3994 ± 0.0051 |
+| `even_odd_t5` | 1/3 | **4** | 无定义 | 无定义 |
+
+逐 seed 原值在产物的 `seed_spread_ddof1.per_seed`。`even_odd_t5` 的三个 seed 的 `skill_h`
+全是 `None`（null MSE 6.9e-32 → `DegenerateNullError`），所以该列**没有** `seed_spread_*` 字段
+——不是缺填，是无定义，与上两节同一个机制。
+
+**只有这两行有这个量，其余四行没有——是构造上没有，不是漏填。**
+`Ours（延嵌+r）`、`Markov`、`延嵌无 r` 都是闭式 ridge（`AugmentedKoopmanModel(alpha=1e-6)`，
+`scripts/eval_surrogate_rows.py` 的 seed 循环只跑 `families=("ae_koopman","lstm")`），
+没有随机种子，跨训练 seed 的离散度对它们恒为 0。旁证：`results/` 下 `linear_ridge-k0`
+的 run 目录没有 `-seedN` 后缀，`k16` 的每个配置都有三份。
+**行为三线与 `tsar_cefr` 四列的任何行都没有这个量**：那边的 3 个 seed 是**数据** seed，
+在拟合前就并进一个池子（产物顶层只有 `n_seeds=3`），不是复制单元——与
+`MAIN_TABLE_DESIGN.md` 裁决 6 对 Table 1 的定性一致。
+
+**三条不得逾越的读法**：
+
+1. **这不是误差棒，不能当 Table 1 的区间印。** Table 1 每一格的区间一律是按轨迹 bootstrap
+   （`MAIN_TABLE_DESIGN.md` §一：同一种区间）。把两个量印在同一列正是本文件
+   「执行中抓到的两个 bug」第 2 条——当时 AE 看起来比旁边的线性拟合精确 100 倍。
+2. **不得跨列聚合。** 与 `Skill_H` / 绝对值两节同一条：禁求平均、排名、取最好。
+3. **两列小样本任务的 ± 大到足以吞掉点估计，要如实读。** `average_word_length_t5` 的 LSTM
+   是 −0.0715 ± 0.3077（n=14，逐 seed −0.426 / +0.127 / +0.085，**符号都不一致**），
+   `sentiment_t5` 的 LSTM 是 ±0.0795（n=10）。这两列在 `Skill_H` 表里已标「本设计分辨不出来」，
+   本节是同一件事的第二个观测面，**不构成新证据**。
+
+**`mean` 那一半不是新数——它与上表的行点估计逐位相同**（十四格实测残差 ≤2.2e-16）。
+`Skill_H = 1 − MSE/MSE_null` 对 MSE 是线性的，而平均后的逐行平方误差的均值就是逐 seed MSE 的均值，
+所以「逐 seed `Skill_H` 的均值」＝「跨 seed 平均 SE 算出的 `Skill_H`」是代数恒等式。
+**本节唯一的新信息是 `± std` 那一半。**
 
 ## 配对 bootstrap（`ours − baseline`，正 = ours 更好，★ = CI 排除 0）
 
