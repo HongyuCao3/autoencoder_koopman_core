@@ -927,7 +927,7 @@ backbone 效应会与打分器效应混在一起（先例：G1 选整 5 seed 重
 
 | 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
 |---|---|---|---|---|---|
-| 2026-09-17 | **未提交** | `run_tsar_cefr_excitation_arm_gemma4.sbatch` / `pdc-tsar-cefr-gemma4` | **方法** | ⏸ **已写好、已干跑、等用户裁决**（`.claude/experiments.md` item 1） | **Table 1 的结论是不是 Qwen3-4B 专属**：本臂是三条行为线里第一条（最便宜、且 `tsar_cefr` 是 NAMING 里唯一活线）。过 → 接着提 `gsm8k_sharded`；读出无量程 → 该列如实标「本设计分辨不出来」，不调参不换 judge |
+| 2026-09-17 | **16018827** | `run_tsar_cefr_excitation_arm_gemma4.sbatch` / `pdc-tsar-cefr-gemma4` | **方法** | ⏳ **已提交 2026-09-17 14:47（用户裁决「提交」）**，`--time 4:00:00`，估 **0.4–1.0 h**。提交时 sha `3b4fe28`、`git_dirty=false`、队列内无其它本项目作业。命令行与 Qwen 臂 15850523 **逐行相同，只差 `--agent-model` 与 `--out-dir`**——温度仍是 G-T1 的 6.5（**未为本 backbone 重拟**，重拟会让两列不可比），读出侧 CEFR 分类器与 MeaningBERT 是同一批固定模型，**只有被控对象换了**。**本臂不需要 cap 标定作业**（另两条行为线需要）：`token_cap()` 是用 agent 自己的 tokenizer 按源长 1.5× 现算的，runner 再按题自查 5% 预注册阈值——若超标，处置是具名 `--exclude`，**不是抬 cap**。终态待回填 | **Table 1 的结论是不是 Qwen3-4B 专属**：本臂是三条行为线里第一条（最便宜、且 `tsar_cefr` 是 NAMING 里唯一活线）。过 → 接着提 `gsm8k_sharded`；读出无量程 → 该列如实标「本设计分辨不出来」，不调参不换 judge |
 
 **提交前六条核查（`pdc-tsar-cefr-gemma4`，2026-09-17）**：① **未裁决，故未提交**；
 ② 运行时估计 **0.4–1.0 h**（依据：Qwen 臂 15850523 实测 00:07:11、同一份 schedule；gemma E4B 权重 2.1×、

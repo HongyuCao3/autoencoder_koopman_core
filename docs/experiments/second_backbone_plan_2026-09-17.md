@@ -1,6 +1,7 @@
 # 第二 backbone 组（Table 1 稳健性）：计划
 
-> **状态**：计划稿（2026-09-17）。**未提交任何 GPU 作业**，等用户裁决。
+> **状态**：进行中（2026-09-17）。闸门 B0 判过；§八 第 2 步 `tsar_cefr` gemma-4 激励臂**已于 14:47 提交**
+> （job **16018827**，用户裁决「提交」），终态见 [`../LEDGER.md`](../LEDGER.md) §6。其余作业仍未提交。
 > 口径 `../../.claude/global.md` → *报告口径*；提交规则 `../../.claude/experiments.md`；
 > 术语 [`../NAMING.md`](../NAMING.md)；主表设计 [`../article/MAIN_TABLE_DESIGN.md`](../article/MAIN_TABLE_DESIGN.md)。
 > **outline 由 agent 起草**（`../../.claude/docs.md` 要求 outline 由用户写）——这一条是偏离，请一并裁。
