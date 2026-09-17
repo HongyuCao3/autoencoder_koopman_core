@@ -7,7 +7,7 @@
 # first (rule A5). Terminology follows docs/NAMING.md's English-name column.
 
 meta:
-  paper_title: "A Pre-Investment Criterion for Closed-Loop Control of Multi-Turn LLM Behavior"
+  paper_title: "When Not to Close the Loop: A One-Sided Criterion for Multi-Turn LLM Behavior Control"
   acronym: null
   venue: NeurIPS
   page_limit: 9
@@ -17,18 +17,25 @@ meta:
 # ---------------------------------------------------------------------------------------
 # NARRATIVE ARC -- working hypothesis, finalized after Method + Experiments (rule A9).
 #
-# ATTENTION, needs user sign-off at the Tier-1 cold review. The five beats the user locked
-# on 2026-09-06 (PAPER_EXECUTION_PLAN section 1.3) have two beats that later evidence
-# overturned, and that document's own 2026-09-15 correction note says so and routes the
-# rewrite to CLOSED_LOOP_SYNTHESIS.md sections 5 and 6 rather than rewriting in place.
-# These five beats are built from that routed authority, not from section 1.3 verbatim.
-# What changed against the 2026-09-06 lock:
+# SIGNED by the user 2026-09-17. The five beats locked on 2026-09-06 (PAPER_EXECUTION_PLAN
+# section 1.3) had two beats that later evidence overturned; that document's own 2026-09-15
+# correction note says so and routes the rewrite to CLOSED_LOOP_SYNTHESIS.md sections 5 and 6
+# rather than rewriting section 1.3 in place. These five beats are built from that routed
+# authority, not from section 1.3 verbatim. What changed against the 2026-09-06 lock:
 #   beat 3  "nonlinear AE lifting buys no gain" -> stated as an effect-size claim with a
 #           sign that flips across tasks, because two cells are nominally significant and
 #           one of them favours the LSTM. (section 5 item, section 6 boundary)
 #   beat 5  the RQ3 landing site is no longer gsm8k_sharded's closed loop (that line was
 #           suspended 2026-09-08). It is Table 2's four columns side by side, all flat or
 #           negative, and the deliverable is a ONE-DIRECTIONAL criterion. (section 5 item 1)
+#
+# TITLE, also signed 2026-09-17. The earlier title ("A Pre-Investment Criterion for ...") was
+# marked PROVISIONAL in main.tex because it promised a two-sided criterion while only the zero
+# side has been checked. The Tier-1 cold review reached the same place independently and gave
+# two options: add a held-out line, or stop letting the criterion carry the title. A held-out
+# line is out of reach before the deadline and CLOSED_LOOP_SYNTHESIS.md section 6.3 forbids
+# manufacturing one by re-calibrating the instrument. The title now states the one-sidedness,
+# so the scope survives page-limit compression instead of resting on one abstract sentence.
 # ---------------------------------------------------------------------------------------
 narrative_arc:
   - "Behavior drift over a multi-turn LLM interaction is a dynamical phenomenon, yet the
@@ -262,9 +269,11 @@ claim_ledger:
       checked only on its zero side. Its positive side would need a task family where the
       contrast is genuinely non-zero and the closed loop then pays; no such family exists here.
       The pre-registered positive control (tsar_cefr, n_main_181) was supposed to supply exactly
-      that and did not fire. See nc_2. This is also why the title is provisional: it promises
-      marginally more than the evidence delivers, and the abstract's closing sentence is the
-      scope anchor that must not be cut."
+      that and did not fire. See nc_2. The title was changed on 2026-09-17 to state this
+      one-sidedness rather than leave it to the abstract: the criterion is what the paper sells, so
+      the scope belongs where it cannot be cut for space. The cold review's alternative fix, a
+      held-out task family where the contrast is non-zero and the closed loop then pays, does not
+      exist and must not be manufactured by re-calibrating the identification caliber."
 
   - id: c8
     claim: "Most of what the delay embedding buys is persistent item-level heterogeneity rather
