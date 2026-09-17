@@ -291,3 +291,34 @@ arriving at step $k$; on a synthetic one-step action into an integrator it still
 response length of $4$. On any task with a persistent state it can return only one answer, so
 it cannot decide whether an action cashes out in one step, and the paper does not use the
 action channel's time structure as mechanism evidence.
+
+% -------------------------------------------------------------------------------------
+% E9. The reported quantity: skill against the best trivial null
+% code: src/surrogate_eval/skill.py:25 (skill_from_squared_errors), :58 (skill_h),
+%       src/surrogate_eval/nulls.py:22 (trivial_nulls), :64 (best_null)
+% equation_operation: score a model by how much of the best trivial null's H-step rollout
+%   error it removes, where the null is selected per column as the best of three fitted on
+%   the training split, and refuse to return a number at all when that null's error is at
+%   floor, because the readout then has no range and skill is undefined rather than zero.
+% -------------------------------------------------------------------------------------
+\begin{align}
+  \mathrm{Skill}_H &= 1 - \frac{\mathrm{MSE}_H(\text{model})}{\mathrm{MSE}_H(\text{null}^{\star})},
+  \qquad
+  \text{null}^{\star} = \arg\min_{n \in \mathcal{N}} \mathrm{MSE}_H(n),
+  \label{eq:skill}\\[4pt]
+  \mathcal{N} &= \bigl\{\, \text{const},\ \text{turn-mean},\ \text{stateless}\,\bigr\}.
+  \label{eq:nulls}
+\end{align}
+%
+\noindent The three nulls are the training-split mean, the training-split mean per turn index,
+and a least-squares fit on the deterministic environment-fixed columns. Every null is given the
+turn index: a null denied it can be beaten by a surrogate that has learned only the ramp, and
+that verdict would be an artifact.
+
+\paragraph{Note (two refusals built into the metric).}
+The implementation raises rather than returning a number in two cases, and both are load-bearing
+for how the tables read. First, $H < 2$ is rejected outright: one-step error is barred as a
+headline number and appears only in the appendix. Second, when
+$\mathrm{MSE}_H(\text{null}^{\star})$ falls to floor the readout has no range on those rows and
+the metric is undefined, not zero. That is what the negative-control column reports, and the
+distinction between an undefined cell and a zero cell is the whole content of that control.

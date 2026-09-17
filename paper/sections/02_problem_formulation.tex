@@ -1,0 +1,83 @@
+\section{Problem Formulation}
+\label{sec:problem}
+
+We study a multi-turn exchange in which one scalar property of a language model's behavior is
+tracked over time and a controller may issue one intervention per turn under a fixed budget.
+An independent judge scores every reply on that property, and that judged score is the only
+readout this paper reports; a controller may act on its own in-loop signal, but no reported number
+comes from it. Every result is measured against an equal-cost fixed schedule, which spends the
+same budget at turn positions chosen without reading the conversation. Our four task families
+share one shape, a text property pushed by a reminder or a rewrite, so the results below speak to
+those settings and the preconditions we name, not to multi-turn control in general.
+
+\subsection*{Formalization Entrance}
+
+Consider a reader who asks for a paragraph to be simplified one step at a time. Where the
+paragraph sits now decides whether the next instruction should push it down a full level, down
+half a level, or leave it alone, so the instruction sequence cannot be fixed in advance. Yet an
+instruction that moves the text down a level moves it down that level whether it arrives at the
+second request or the fifth. The first half of this picture makes a state worth tracking; the
+second makes the timing of an action worth less than it appears.
+
+\textbf{Assumption 1 (Readout Persistence).} A window of past readouts carries information about
+the next readout that the current turn alone does not. This is a tendency over a task family,
+not an identity on every trajectory.
+
+\textbf{Assumption 2 (Action Identifiability).} The intervention varies independently enough of
+the state that its effect on the next state can be estimated separately from the state's own
+evolution. We state it as an approximation, and we state it rather than dropping it because
+Section~\ref{sec:experiments} reports that it fails on every column we can test.
+
+\textbf{Assumption 3 (Identification Predicts Control).} If withholding the action does not
+change how well the fitted operator predicts the trajectory, then no controller built on that
+operator beats an equal-cost fixed schedule. This is a tendency, and we check one of its two
+directions: a zero licenses the negative inference, while the non-zero side stays untested for
+the reason given in Section~\ref{sec:conclusion}.
+
+\subsection*{Definitions}
+
+\textbf{Readout and Intervention.} The readout $y_t \in \mathbb{R}$ is the judged score at turn
+$t$, and the intervention $v_t$ is what the controller issues there, binary for the reminder
+settings and four-valued for the rewriting setting. On the trajectory-tracking tasks the control
+is instead $u_t = \phi(r - y_t)$, the error against a per-trajectory target $r$ held fixed for
+the whole trajectory, with $\phi$ either the identity or the map appending the error's magnitude
+and sign.
+
+\textbf{Delay-Embedded State.} A single readout is not a state. Formalizing Assumption 1, we
+collect $L_y$ past readouts and $L_u$ past controls into one vector,
+%
+\begin{equation}
+  z_t = \bigl[\,y_t,\ y_{t-1},\ \dots,\ y_{t-(L_y-1)},\ u_t,\ u_{t-1},\ \dots,\ u_{t-(L_u-1)}\,\bigr],
+  \label{eq:delay-state}
+\end{equation}
+%
+where $L_y$ counts readout terms and $L_u$ control terms. Setting $(L_y, L_u) = (1,0)$ gives the
+memoryless baseline, and every deeper setting adds one term of each. A turn contributes a row
+only when its lagged terms all exist and turn $t+1$ is observed. The row count therefore falls
+as the window deepens, and Section~\ref{sec:experiments} shows that this bookkeeping carries a
+share of what depth appears to buy.
+
+\textbf{Reported Quantity.} We score a model by how much of a trivial baseline's $H$-step rollout
+error it removes,
+%
+\begin{equation}
+  \mathrm{Skill}_H = 1 - \frac{\mathrm{MSE}_H(\text{model})}{\mathrm{MSE}_H(\text{null}^\star)},
+  \qquad
+  \text{null}^\star = \arg\min_{n \in \{\text{const},\, \text{turn-mean},\, \text{stateless}\}} \mathrm{MSE}_H(n),
+  \label{eq:skill}
+\end{equation}
+%
+where $H$ is the rollout horizon and $\text{null}^\star$ is the best of three trivial baselines
+fitted on the training split and detailed in Section~\ref{sec:experiments}. Each receives the turn
+index, since a baseline denied that index can be beaten by a model that has learned only the ramp.
+
+Equation~\eqref{eq:skill} returns no number in two cases, and both carry content. It rejects
+$H < 2$, which keeps one-step prediction error out of every headline. It also leaves
+$\mathrm{Skill}_H$ undefined, rather than zero, when $\mathrm{MSE}_H(\text{null}^\star)$ sits at
+floor: the readout then has no range, so the operator has nothing to be skillful about, and a
+zero would read as a failure of the model instead of an absence in the data. Our negative-control
+column is this case. Because each column normalizes against its own baseline, $\mathrm{Skill}_H$
+does not compare across columns, and no table here carries a row that averages or ranks over them.
+
+Section~\ref{sec:method} formalizes Assumption 2 in the operator's action channel and
+Assumption 3 in the diagnostics built on the fitted operator.

@@ -340,7 +340,7 @@ symbol_lattice:
   - id: s6
     symbol: "L_y, L_u"
     gloss: "the number of lagged readout and control terms in the state"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "set per variant outside the state builder"
     appears_in: [method, experiments]
   - id: s7
@@ -407,7 +407,7 @@ symbol_lattice:
     symbol: "\\mathrm{Skill}_H"
     gloss: "one minus the ratio of rollout error to the best trivial null's rollout error"
     first_defined: problem_formulation
-    scope: "the reported quantity everywhere; not comparable across columns"
+    scope: "the reported quantity everywhere; not comparable across columns; defined by eq_9"
     appears_in: [problem_formulation, experiments]
   - id: s18
     symbol: "\\lambda_{\\mathrm{rec}}, \\lambda_{\\mathrm{pred}}, \\lambda_{\\mathrm{lat}}, \\lambda_{\\mathrm{multi}}"
@@ -491,6 +491,16 @@ equation_lattice:
 # ---------------------------------------------------------------------------------------
 # MECHANISMS
 # ---------------------------------------------------------------------------------------
+  - id: eq_9
+    label: "eq:skill"
+    operation_name: "score a model by how much of the best trivial null's H-step rollout error it
+      removes, selecting that null per column as the best of three fitted on the training split,
+      and refuse to return a number when the null's error is at floor"
+    rhs_symbols: [s1, s16, s17]
+    in_section: problem_formulation
+    has_gloss: false
+    role: quality_claim
+
 mechanism_lattice:
   - id: m1
     mechanism: "The behavioral readout is persistent: what a trajectory is doing at turn t
