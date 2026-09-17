@@ -880,3 +880,63 @@ MDE 就地从配对 per-source 差导出。不确定度按 `source_id` 自举 20
 （格点数 × 单趟实测），跑完回填实测。
 
 **硬放弃线 2026-09-20**：到期未出结果就丢掉，正文按现有措辞收口。
+
+---
+
+## 六、campaign：`backbone2`（第二 backbone 组，2026-09-17 开）
+
+计划 [`experiments/second_backbone_plan_2026-09-17.md`](experiments/second_backbone_plan_2026-09-17.md) ·
+术语 [`NAMING.md`](NAMING.md) 的 `backbone2` 行。
+
+**它不是新任务线**，所以 `.claude/experiments.md` → *开一条新任务线* 的四步按「Table 1 的一个轴」适配：
+死亡条件三条写在计划 §6，论文位置是「Table 1 的第二 backbone 组（新增表）」，代号与本段即第 4 步。
+
+**backbone 选型（2026-09-17 用户签字）**：`google/gemma-4-E4B-it`。可用性在登录节点实测：不 gated、
+`transformers` 5.16.1 与 `vllm` 0.28.0 均注册 `Gemma4ForConditionalGeneration`、权重 16.02 GB 已落
+`hf_cache`、chat template 支持多轮与 `system` 角色、`enable_thinking` 被接受并忽略。
+**「同 4B 级」是有效参数口径**：E4B 总参 7.996 B / 16 GB，是 Qwen3-4B 的 2.1×；Gemma 4 无稠密 4B。
+
+### B0：core 协议重建保真闸门（零 GPU，只读，不写 `outputs/`）
+
+按 `.claude/experiments.md` → *什么时候可以先跑、后补三行*：本闸门三条全满足（零 GPU / 只读已落盘产物 /
+不写 `outputs/`），**三行与本行为当天补记**。
+
+| 字段 | 内容 |
+|---|---|
+| 过了 → | 提交 `tsar_cefr` + `gsm8k_sharded` 的 gemma-4 激励臂（主线动作：辨识数据） |
+| 不过 → | core 七列退出本组，缩成行为三列，**不找第三种重建法** |
+| 它填论文哪张图/表 | Table 1 的第二 backbone 组（新增表） |
+
+**已判（`scripts/verify_core_protocol_reconstruction.py`，24 条单测）**：
+① **轮结构三条约定在八个任务、12,840 个 turn-pair 上 100% 成立**（历史 append-only / assistant 轮 =
+`raw_generation` / user 轮 = 上一行 `feedback_text`）→ turn-1 prompt 可逐字回放，不需要重建；
+② 打分器逐行保真：5 个字段 **1.0000**（`sentence_length_t10` / `character_length_t5` /
+`average_word_length_t5` / `even_odd_t5` / `stage1.word_count`），`stage1.awl` 0.9927、
+`stage2` 三个字段 0.9693–1.0000；③ 两个外部打分器任务（`formality_t5` isotonic 标定不在仓库、
+`sentiment_t5` Cardiff）**未定**。
+→ **`vector_count_stage2_t10` 与两个外部打分器任务暂不进本组**；其余五个 core 任务进，
+**且每个必须带同 harness 的 Qwen3-4B 对照臂**——保真度 <1.0 时已落盘 Qwen 列不是合法对照，
+backbone 效应会与打分器效应混在一起（先例：G1 选整 5 seed 重跑而非续跑，买的就是同一个 harness 指纹）。
+
+**core 的第 3 行结构性为零，换 backbone 也还是零**（`NAMING.md` core 行 2026-09-15 补记：
+控制量是跟踪误差、是状态的精确仿射函数，八任务 $R^2=1.0$）→ core 的第二 backbone 只支持第 1/2/4/5/6 行。
+
+### GPU 作业
+
+| 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
+|---|---|---|---|---|---|
+| 2026-09-17 | **未提交** | `run_tsar_cefr_excitation_arm_gemma4.sbatch` / `pdc-tsar-cefr-gemma4` | **方法** | ⏸ **已写好、已干跑、等用户裁决**（`.claude/experiments.md` item 1） | **Table 1 的结论是不是 Qwen3-4B 专属**：本臂是三条行为线里第一条（最便宜、且 `tsar_cefr` 是 NAMING 里唯一活线）。过 → 接着提 `gsm8k_sharded`；读出无量程 → 该列如实标「本设计分辨不出来」，不调参不换 judge |
+
+**提交前六条核查（`pdc-tsar-cefr-gemma4`，2026-09-17）**：① **未裁决，故未提交**；
+② 运行时估计 **0.4–1.0 h**（依据：Qwen 臂 15850523 实测 00:07:11、同一份 schedule；gemma E4B 权重 2.1×、
+vocab 1.7×、MatFormer 结构不适用稠密 4B 成本模型 → 取 2–4× 并留上界余量），`--time 4:00:00` = 4× 悲观端；
+③ `outputs/tsar_cefr_gemma4_gpu1/` 提交前不存在（已核；runner 自身亦拒绝写入已存在目录），
+Qwen 臂 `outputs/tsar_cefr_gpu1/` 一个字节不动；④ 见上表本行；⑤ 本作业记**方法**；
+⑥ 本 runner 不做 `pip install`（按文件路径加载 `src/`），结构上不可能重演 2026-09-08 的并发 editable install 竞态。
+
+**干跑已过**：600 轨迹 × 6 步 = 3,600 次生成 + 40 次饱和探针，跨 seed 重复动作序列 1 条
+（与 Qwen 臂实测的 1 条一致），prompt 构造正常，未写任何文件。
+**零 GPU 补测，关掉了一半的未实测项**：两个 tokenizer 在这 100 段上给出几乎相同的预算——
+源 token p50 103→104、max 175→176，派生 cap p50 155→156、max 263→264，总量 16,191→16,210（+0.12%）。
+**cap 不会在 262144 词表下悄悄缩水或爆掉**，所以截顶压力只是 gemma 自身啰嗦程度的问题，不是 tokenizer 错配。
+`token_cap()` 本就用 agent 自己的 tokenizer 算（`1.5×` 源长度），且 runner 按题自查 5% 预注册阈值。
