@@ -16,12 +16,19 @@
 
 | 线（代号以 [`NAMING.md`](NAMING.md) 为准） | 状态 | 一句话 | 入口文档 |
 |---|---|---|---|
-| `tsar_cefr`（可读性定点调节） | ▶ **活跃（唯一活线）** | Phase 1–4 全跑完、闭环为零；**2026-09-15 复盘定根因**：任务是全观测一阶积分器（每步精确观测 + 动作一步兑现 + `copy` 91% 恒等），贪心已收满 98%，**规划余量 $G_{\text{plan}}$ 只有 0.0130 对 MDE 0.095**——不是算子拟合坏。事前判据换成 $G_{\text{plan}}$（规划 vs 贪心），本次投稿按**诊断型论文**写 | ▶ 现行计划 [`tsar_cefr_postmortem_and_next_tasks_2026-09-16.md`](tsar_cefr_postmortem_and_next_tasks_2026-09-16.md) · 规格出处（✅已执行完）[`operational_plan_tsar_cefr_line_2026-09-13.md`](operational_plan_tsar_cefr_line_2026-09-13.md) · 结果 [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md) |
+| `tsar_cefr`（可读性定点调节） | ▶ **活跃（唯一活线）** | Phase 1–4 全跑完、闭环为零；**2026-09-15 复盘定根因**：任务是全观测一阶积分器（每步精确观测 + 动作一步兑现 + `copy` 91% 恒等），贪心已收满 98%，**规划余量 $G_{\text{plan}}$ 只有 0.0130 对 MDE 0.095**——不是算子拟合坏。事前判据换成 $G_{\text{plan}}$（规划 vs 贪心），本次投稿按**诊断型论文**写 | ✅ 复盘与判词出处（已完成）[`tsar_cefr_postmortem_and_next_tasks_2026-09-16.md`](tsar_cefr_postmortem_and_next_tasks_2026-09-16.md) · 规格出处（✅已执行完）[`operational_plan_tsar_cefr_line_2026-09-13.md`](operational_plan_tsar_cefr_line_2026-09-13.md) · 结果 [`experiments/tsar_cefr_results.md`](experiments/tsar_cefr_results.md) |
 | `constraint`（SEQUOR） | ✅ **收尾** | S3 闭环三臂跑完判读：主量 +0.0014 ± 0.0145 (n=3)，0.05×MDE → **干净负结果**，可按结果发表；同批行里提醒本身买到 +0.1163 | [`experiments/constraint_retention_plan.md`](experiments/constraint_retention_plan.md) · 结果 [`experiments/constraint_results.md`](experiments/constraint_results.md) §S3 |
 | `defense`（抗攻击） | ⛔ **已关闭（2026-09-13）** | 闸门 R1 判 FAIL（激活投影留一攻击 −0.0354，两条轴都没抬过 0）→ 按事前签死的第二行关线；Table 2 该列按负结果写死 | [`experiments/defense_table2_results.md`](experiments/defense_table2_results.md) · 上界 [`experiments/adaptivity_ceiling_results.md`](experiments/adaptivity_ceiling_results.md) |
 | `gsm8k_sharded`（旧称 ERGO） | ⏸ 挂起 | 算子辨识成立，但输入通道与状态解耦，闭环退化为固定日程；2026-09-08 熵读出闸门不过，停在 S3，预算转 `constraint` | [`experiments/ergo_fidelity_restoration_plan.md`](experiments/ergo_fidelity_restoration_plan.md) |
 | `stance`（抗压力） | ⏸ 挂起 | 执行器权威两次空结果（SYCON、MMLU） | [`experiments/mc_sycophancy_screening_pilot.md`](experiments/mc_sycophancy_screening_pilot.md) |
 | `persona_drift` | ⛔ 已放弃 | screening 三问全挂，仅作历史术语 | [`NAMING.md`](NAMING.md) |
+
+> **论文副实验（2026-09-16，✅ 当日执行完）**：计划
+> [`paper_side_experiments_plan_2026-09-16.md`](paper_side_experiments_plan_2026-09-16.md)、结果
+> [`experiments/paper_side_experiments_results.md`](experiments/paper_side_experiments_results.md)。
+> A1 记忆深度扫描判**过**（深度浅，并暴露 Table 1 第 2 行在 `core` 上的训练窗口混杂）、
+> M1 谱/脉冲响应判**不过**（机制图不画）、M2 题目截距替代判**过**（两列，但题目身份吃掉 2/3–4/5）。
+> **仓库当前没有活跃计划；剩余动作是写作。**
 
 > **四条闭环列（`defense` / `constraint` / `gsm8k_sharded` / `tsar_cefr`）并排怎么读**——
 > 见 [`article/CLOSED_LOOP_SYNTHESIS.md`](article/CLOSED_LOOP_SYNTHESIS.md)。单列读会得出

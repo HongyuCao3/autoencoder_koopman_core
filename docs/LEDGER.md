@@ -847,3 +847,36 @@ MDE 就地从配对 per-source 差导出。不确定度按 `source_id` 自举 20
 **本线连续第三次估运行时，前两次分别估错 3 倍与一个量级，本次估法（格点数 × 单趟留一实测）对了，沿用。**
 
 结果档案 [`experiments/tsar_cefr_headroom_calibration.md`](experiments/tsar_cefr_headroom_calibration.md)。
+
+---
+
+## 九、campaign：论文副实验（消融 A1 + 机制 M1/M2，2026-09-16 签字开跑）
+
+**来源**：[`paper_side_experiments_plan_2026-09-16.md`](paper_side_experiments_plan_2026-09-16.md)
+（现行计划，接替候选 D 收尾后的 `tsar_cefr` 复盘）。
+**三行事前签**（用户 2026-09-16 裁决：`results/` 与 `outputs/` 同等按「写产物」处理，
+一律事前签，不走 09-16 那条「零 GPU + 只读 + 不写产物」的先跑后补口子）。
+**分类：方法**（消融 / 辨识数据分析）。**零 GPU，无 sbatch**，不占仪器配额。
+三件的第三行都是具体图表（Table 3 panel 1/3、§5.x 机制图），**没有一件填「不填」**。
+
+### 零 GPU 记录（2026-09-16 起）
+
+| 日期 | 件 | 判 | 产物 | 它改变了哪个决定 |
+|---|---|---|---|---|
+| 2026-09-16 | A1 记忆深度扫描 | **过** | `results/ablation_memory_depth{,_matched}/` + `outputs/ablation_memory_depth{,_matched}_behavioral/` | **Table 1 第 2 行怎么写。已答：「记忆需要，但深度浅」**——同窗口口径下 `core` 曲线在 lag 1 就平（+0.112/+0.110/+0.109），`constraint` 到 nu=4 仍在买（+0.147★/+0.061★/+0.027★）。**并暴露一个训练窗口混杂**：浅状态多吃了早期转移，对齐后 `sentence_length_t10` 的 `ours − Markov` 从 **+0.603★ 缩到 +0.109★**、`character_length_t5` **翻号**、`constraint` **几乎不变（+0.234→+0.231）** |
+| 2026-09-16 | M1 谱 + 脉冲响应 | **不过** | `outputs/mechanism_operator_profile_behavioral_fixed/` + `results/mechanism_operator_profile/` | **§5.x 画不画机制图。已答：不画。** 触发的是第二行的第二个条件——三条行为线脉冲响应长度都 ≥2（`gsm8k_sharded` 峰值在**第 2 步**）而四列闭环仍全部打平，**「动作一步兑现」这个机制说法不成立**。⚠️ 阈值事前未签，换成「第 1 步占比」读数 0.554/0.577/0.190，**判词随统计量翻转，措辞交用户裁决** |
+| 2026-09-16 | M2 题目截距替代 | **过**（两列） | `results/mechanism_item_effect/` + `outputs/mechanism_item_effect_behavioral/` | **论文唯一正面主张的解读。已答：需要加限定。** `constraint` +0.0445★、`vector_count_stage2_t10` +0.075★ 两列在给了 Markov 题目截距之后仍显著为正 ⇒ 记忆确实携带动力学；**但截距吃掉 81% / 67%**，其余列全部被吃光。引用「延迟嵌入被测出来需要」处必须同址带这个份额 |
+
+**两份已作废产物，原地保留不覆盖、不得引用**：`results/mechanism_spectrum/`（M1 第一版，无 tap loading）；
+`outputs/mechanism_operator_profile_behavioral/`（行为线 M1 第一版，**tap 读了 `C`，而该代码体系的 `C` 恒为选择向量 ⇒ 该量恒等于 `[1,0,…]`**，单测已补 `_readout_taps` 的语义钉死）。
+
+**实测运行时**：A1 core **3m17s**、A1 matched core 同量级、M1 core **22 s**、M2 core **1m23s**、行为线三件各 **5–20 s**；
+**合计 < 10 min**，事前估 35–55 min ⇒ **本次是高估**（前三次是低估 3 倍与一个量级）。估法按候选 D 的「格点数 × 单趟实测」，
+偏差来源是把 2000 次 bootstrap 的单格成本估成了秒级而实际是毫秒级。
+
+**运行时估计（事前给，假设写在计划 §七）**：A1 <20 min、M1 <5 min、M2 10–30 min，
+串行 CPU；最可能估错的是 M2 的留出估计（若按 seed × fold 重复则到 1–1.5 h）。
+**本线最近三次估运行时错了两次（3 倍、一个量级）**，本次沿用候选 D 那套估法
+（格点数 × 单趟实测），跑完回填实测。
+
+**硬放弃线 2026-09-20**：到期未出结果就丢掉，正文按现有措辞收口。
