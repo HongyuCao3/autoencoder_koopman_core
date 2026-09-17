@@ -223,6 +223,17 @@ core 侧经 `scripts/eval_surrogate_rows.py`、行为侧经
 
 **跨列可比的是 `Skill_H` 的定义与区间构造，不是拟合器**——这句话要进表注。
 
+**两列指标现已全部登记（2026-09-17，零 GPU，只读产物）。** §一 规定每个数据集 2 列
+（`Skill_H` 相对 + rollout MSE 绝对），但此前只有 `tsar_cefr` 列的档案印了绝对值，
+core 八列与行为三列**只登记了相对值**。绝对值已从既有产物的 `rows.*.rollout_mse` 补进
+[`../experiments/core_surrogate_rows_results.md`](../experiments/core_surrogate_rows_results.md) §绝对值
+与 [`../experiments/behavioral_surrogate_rows_results.md`](../experiments/behavioral_surrogate_rows_results.md) §绝对值
+——**同一批产物、未重拟合**，`Skill_H = 1 − MSE/MSE_null` 在列内代数等价，绝对列买的是尺度不是新证据。
+**绝对列的三条边界**：① **跨列不可比**（读出尺度不同，禁求平均/排名/取最好，同 §六第 2 条）；
+② **绝对列没有区间**（bootstrap 建在 `Skill_H` 上），"两行有没有差别"一律仍看配对 bootstrap；
+③ `even_odd_t5` 的 `Skill_H` 无定义而绝对值存在（null 6.9e-32、线性行 ~1e-15、非线性行 ~1e-6），
+**附录 A1 的实际内容是这三个数量级**。
+
 **缺的格子全是 CPU 重拟合，数据已落盘**（`datasets/`、`outputs/ergo_ekA_branch` 759 对、`outputs/sequor_s1_arm` 9600 行）——**Table 1 零 GPU 可填满。**
 
 ## 五、填表清单
