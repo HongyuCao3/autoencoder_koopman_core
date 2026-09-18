@@ -5,24 +5,26 @@ https://docs.rcd.clemson.edu/palmetto/. This file only covers what's needed
 to debug and run `scripts/run_signal_screening.py`.
 
 **Update 2026-08-27: validated end to end.** The write-code sandbox this
-project was authored in has `sbatch`/`squeue` (they reach the real Slurm
-controller) but no working `module`/`conda`/`python`/`scontrol`/`srun --pty`
-(missing shared libs in that specific container - `sacctmgr` and `scontrol`
-fail with `libhistory.so.7` errors, `srun` fails loading MPI/http_parser
-plugins; none of that reflects your own login/OnDemand shell, which is a
-normal cluster environment). From there we still submitted two real jobs:
+project was authored in has working `sbatch`/`squeue` (they reach the real
+Slurm controller), but `module`/`conda`/`python`/`scontrol`/`srun --pty`
+don't work there — that specific container is missing shared libs
+(`sacctmgr` and `scontrol` fail with `libhistory.so.7` errors, `srun` fails
+loading MPI/http_parser plugins). **This is a quirk of that sandbox
+container, not of the cluster**: your own login/OnDemand shell is a normal
+cluster environment and won't hit these errors.
+
+From that sandbox we still submitted two real jobs:
 - a trivial 1-CPU probe job, to confirm `sbatch` actually reaches the
   scheduler and a job comes back with real output;
 - `environment/run_smoke_test.sbatch` (checked into this repo), which
   loaded `anaconda3`, activated `/scratch/hcao2/envs/persona_drift_pilot`,
   got an A100 80GB (`--gpus a100:1` on the default `work1` partition, no
-  `--account` needed), downloaded Qwen3-4B into
-  `/scratch/hcao2/hf_cache`, and ran a real (tiny) self-chat + probe-scoring
-  pass through `run_signal_screening.py` - `trajectories.jsonl` and
-  `screening_report.md` came out with the expected schema. `overall_pass`
-  was `False`, which is expected and uninformative at that scale (1 prompt,
-  2 turns, 1 probe repeat - not the real gate questions), not a signal
-  about the real run.
+  `--account` needed), downloaded Qwen3-4B into `/scratch/hcao2/hf_cache`,
+  and ran a real (tiny) self-chat + probe-scoring pass through
+  `run_signal_screening.py`. `trajectories.jsonl` and `screening_report.md`
+  came out with the expected schema. `overall_pass` was `False` — expected
+  and uninformative at that scale (1 prompt, 2 turns, 1 probe repeat, not
+  the real gate questions), not a signal about the real run.
 
 One finding from reading that smoke-test output, now fixed:
 `selfchat._looks_like_refusal`'s `"as an ai"` marker fired on a response
@@ -49,12 +51,13 @@ allocation doesn't have it).
 ## 1. Interactive debug (do this first, not a batch job)
 
 Get a GPU shell and run the pilot directly so you see errors immediately
-instead of waiting on a queued batch job + log file. (This `salloc` path
-itself wasn't testable from the sandbox above - only `sbatch` reaches the
-scheduler there - but `environment/run_smoke_test.sbatch` exercises the same
-commands as a batch job and is confirmed working; use whichever fits, `sbatch
-environment/run_smoke_test.sbatch` is the fastest way to re-check the pilot
-still runs.)
+instead of waiting on a queued batch job + log file.
+
+This `salloc` path itself wasn't testable from the sandbox above — only
+`sbatch` reaches the scheduler there. But `environment/run_smoke_test.sbatch`
+exercises the same commands as a batch job and is confirmed working. Use
+whichever fits you; `sbatch environment/run_smoke_test.sbatch` is the fastest
+way to re-check the pilot still runs.
 
 ```bash
 salloc --cpus-per-task 8 --mem 32G --time 01:00:00 --gpus a100:1
