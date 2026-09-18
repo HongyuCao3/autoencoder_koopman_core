@@ -402,6 +402,13 @@ def main() -> None:
     parser.add_argument("--rows", type=pathlib.Path, default=DEFAULT_ROWS_PATH)
     parser.add_argument("--out-dir", type=pathlib.Path, default=DEFAULT_OUT_DIR)
     args = parser.parse_args()
+    # Resolve at the CLI boundary, where it costs nothing. `run()` records the
+    # rows path relative to the repo root AFTER the whole fit, so a relative
+    # --rows used to raise there and discard the run: one 75-minute gemma fit
+    # died on that line with every number already computed and nothing written.
+    # The defaults are absolute, so this changes no existing invocation.
+    args.rows = args.rows.resolve()
+    args.out_dir = args.out_dir.resolve()
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out = args.out_dir / "tsar_cefr.json"
     if out.exists():

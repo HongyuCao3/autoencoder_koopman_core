@@ -83,7 +83,34 @@ LINES = {
         "judge": "self (Qwen3-4B) -- global.md's named exception; carry the one-sided-miss caveat wherever this column is cited",
         "note": "T=5 only, so nu=2/H=3.",
     },
+    # SECOND BACKBONE (google/gemma-4-E4B-it), plan
+    # docs/experiments/second_backbone_plan_2026-09-17.md. Same fit, same
+    # readout, same judge, same folds as the line above it -- the ONLY thing
+    # that differs is which model wrote the text. `defense` has no gemma twin
+    # by the 2026-09-17 user ruling (its judge is the agent itself, so swapping
+    # the backbone would swap agent and judge at once).
+    "constraint_gemma4": {
+        "readout": "outputs/sequor_s1_arm_gemma4/readout_independent_qwen3_14b.json",
+        "item_col": "item_id", "y_col": "y_graded", "u_col": "u_remind",
+        "branches": ("bernoulli", "antithetic"),
+        "judge": "independent (Qwen/Qwen3-14B) -- the judge does NOT move with the backbone",
+        "note": "gemma-4-E4B-it arm 16021868, decoding model_default (1.0/0.95/64) against the "
+                "Qwen column's 0.7/0.80/20: this column is 'another backbone under its own "
+                "default decoding', not 'the same decoding with other weights'.",
+    },
+    "gsm8k_sharded_gemma4": {
+        "trajectories": "outputs/ergo_upB_random_excite_gemma4/trajectories.jsonl",
+        "item_col": "item_id", "y_col": "closeness", "u_col": "u_reset",
+        "branches": None,
+        "judge": "deterministic closeness (no judge)",
+        "note": "gemma-4-E4B-it arm 16025913 at cap 2048, calibrated on this backbone by the two "
+                "smoke passes 16019470/16021852; the Qwen column's cap 512 does not hold here.",
+    },
 }
+
+# The published three, so `--lines` with no argument still runs exactly what it
+# ran before the gemma entries existed.
+DEFAULT_LINES = ("constraint", "gsm8k_sharded", "defense")
 
 
 def provenance() -> dict:
@@ -374,7 +401,7 @@ def run_line(name: str, *, bootstrap_seed: int = 0) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--lines", nargs="*", default=list(LINES))
+    parser.add_argument("--lines", nargs="*", default=list(DEFAULT_LINES))
     parser.add_argument("--out-dir", type=pathlib.Path, default=REPO / "outputs" / "surrogate_rows_behavioral")
     args = parser.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)

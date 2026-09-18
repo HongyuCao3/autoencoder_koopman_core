@@ -120,3 +120,25 @@ assistant 轮 = `raw_generation` / user 轮 = 上一行的 `feedback_text`。
 2. `tsar_cefr` 臂（最便宜、唯一活线）→ 判读 → 3. `gsm8k_sharded` → 4. core 对照臂对 → 5. `constraint`。
 
 **每一步跑完回填 `../LEDGER.md` §3，失败作业要么重提、要么写明为什么不重提。**
+
+## 九、六行代理拟合的三行事前签（2026-09-17，用户裁决「三件都做」）
+
+生成臂落盘之后，Table 1 的数字出在这一步，不在臂上。**零 GPU、写 `outputs/`，故按
+`../../.claude/experiments.md` 事前签**；三条 gemma 列共用同一份签字，因为是同一个测量。
+
+| 字段 | 内容 |
+|---|---|
+| 过了 → | 三条 gemma 列各出六行 `Skill_H` + 配对 bootstrap ⇒ 落「第二 backbone 组」新增表，与现 Table 1 并排。**不是再开闸门。** |
+| 不过 → | 某列读出无量程（最好 null 是 `const`、或六行全贴 0）⇒ 该列如实标「本设计分辨不出来」，按 §六 死亡条件 1 **不调参、不换 judge**；两列以上如此则本组关闭。 |
+| 它填论文哪张图/表 | 第二 backbone 组新增表的第 1/2/4/5/6 行（core 的第 3 行结构性为零，见 §四）。非「不填」。 |
+
+**拟合口径不动**：`tsar_cefr` 走 `scripts/eval_surrogate_rows_tsar_cefr.py` 的既有
+`--rows` / `--out-dir`，代码一个字节不改；两条行为线在
+`scripts/eval_surrogate_rows_behavioral.py` 的 `LINES` 里加 gemma 条目，`--lines` 默认值
+另立 `DEFAULT_LINES` 保住已发表三列的旧行为，注册表由
+`tests/test_eval_surrogate_rows_behavioral_lines.py` 钉死（gemma 条目必须读不同产物、
+判分列相同、judge 不是 agent 自己）。
+
+**产物三条新建**（2026-09-17 核过不存在）：`outputs/surrogate_rows_tsar_cefr_gemma4/`、
+`outputs/surrogate_rows_behavioral_gemma4/`。**运行时估计 <10 min**（依据：Qwen 侧同脚本
+同规模实测分钟级，`tsar_cefr` 597 轨迹、`gsm8k_sharded` 666 行、`constraint` 9600 行）。

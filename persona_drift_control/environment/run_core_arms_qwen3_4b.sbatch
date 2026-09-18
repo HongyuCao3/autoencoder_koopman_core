@@ -63,6 +63,13 @@ module load anaconda3
 source activate /scratch/hcao2/envs/sequor_vllm
 
 export HF_HOME=/scratch/hcao2/hf_cache
+# 16021887/16021888 both died here at engine init: vLLM's default sampler path
+# JIT-builds flashinfer, and the compute nodes have no nvcc
+# ("Could not find nvcc and default cuda_home='/usr/local/cuda' doesn't exist").
+# The three vLLM jobs that DID run today (16018827, 16021868) carry both of these.
+# Nothing else about the arm changes.
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+export VLLM_USE_FLASHINFER_SAMPLER=0
 
 cd /home/hcao2/autoencoder_koopman_core
 
