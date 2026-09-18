@@ -9,3 +9,14 @@ slurm/logs/*
 docs/references/*.pdf
 *.egg-info/
 resources/tsar_cefr/data/
+
+# LaTeX build byproducts (paper/**)
+paper/**/*.aux
+paper/**/*.log
+paper/**/*.out
+paper/**/*.synctex.gz
+paper/**/*.fls
+paper/**/*.fdb_latexmk
+paper/**/*.bbl
+paper/**/*.blg
+paper/**/*.pdf
