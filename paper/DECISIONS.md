@@ -17,7 +17,9 @@
 | D7 | 2026-09-18 | 暂不加参考文献。prose 里用 `% CITE: <key>` 行注释标位置，正文不出现 `\cite`。 | — |
 | D8 | 2026-09-18 | 句子硬约束：单句 ≤ 30 个单词；逻辑转折 ≤ 2 次（Rule 9 的 token 表）。每章编译通过后用户审核，实验章每小节审一次。 | 比 skill 更严 |
 | D9 | 2026-09-18 | 允许叙述与实验之间的小幅不严谨，登记在 `story_framework_2026-09-18.md` §八，之后再修，不阻塞写作。 | — |
-| D10 | — | **待定**：方法名。见下方"待裁决"。 | skill Rule 6 要求 acronym |
+| D10 | 2026-09-18 | 方法名 **KOMPAS** = **KO**opman **M**odel-**P**redictive **A**lignment at the prompt **S**tep。标题改为 *KOMPAS: Koopman Model-Predictive Alignment at the Prompt Step*。 | 满足 skill Rule 6 |
+| D11 | 2026-09-18 | Tier-1 冷审 f1：接受"**控制实验即命令通道的检验**"这个口径。`choice_2` 改挂 rq1，不补 no-command 消融。同时加 `nc_1` / `nc_8` 两条不声称，正文不得声称预测实验支持命令通道。 | 覆盖冷审 f1 的"补实验"建议 |
+| D12 | 2026-09-18 | Tier-1 冷审 f2：**Intro 带一句限定，Abstract 不带**。`nc_3.appears_in` 扩到 abstract/intro；Abstract 只给增幅、不写 measured，Intro 一个从句说明是三个公开基准上的点估计，实验章与结论章再展开。 | 细化 D3 |
 
 ## 已执行的操作性裁决（不进表，但有约束力）
 
@@ -39,12 +41,21 @@ contract 抽取，**不新增任何 claim**。第二，Phase 3 实验章写完�
 
 ## 待裁决
 
-### D10 方法名
+### （D10 已裁决，见上表）
 
-skill Rule 6 要求给方法一个 acronym。故事框架未命名。Phase 0.5 由 Opus 提候选，用户选定后
-写入 `contract.yaml: meta.acronym` 并在上表补一行。
+命名时排除了 TEMPO 和 PACE：arXiv 上两者都已被多篇 LLM 论文占用。KOMPAS 未搜到 ML 领域同名方法
+（websearch，2026-09-18）。acronym 按 `rhetoric_patterns.md` §1 只在 Abstract Move 4 和 Introduction P4
+各揭示一次，其余位置直接写 KOMPAS。
 
-### D11 及以后
+### 仍然悬着的两件事
+
+1. **c7 的 driver 缺机制**。LSTM 在 character_length 和 constraint 两列赢且 CI 不含 0，目前没有解释。
+   Rule 1 要求每个数字跟一句 driver。CP3c 之前要么查清楚，要么这两列不带 driver 报出来。
+   登记在 `story_framework_2026-09-18.md` §12。
+2. **同事数据的来源**。一旦同事补齐 seed / 区间 / 指标定义，`numbers_benchmark.yaml` 的 `ci` 与
+   `supersede_reason` 要同步更新，D3 与 D12 的限定措辞可以放宽。
+
+### D13 及以后
 
 用户在 checkpoint 审核时给出的意见，若属于**规则性裁决**，由 Opus 逐条抄进上表；若属于
 **具体修改意见**，落在 `audit/user_notes_<CP>.md`，不进本文件。两类都不留在对话里。

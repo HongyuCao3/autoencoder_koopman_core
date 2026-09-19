@@ -1,0 +1,620 @@
+# Tier 1 contract — ICLR 2027 positive-result draft.
+# Rebuilt 2026-09-18 (Phase 0.4) from story_framework_2026-09-18.md, the colleague's
+# sections/02_method.tex, and the two evidence ledgers. Nothing here was invented at
+# writing time: every claim points at an id in evidence/numbers.yaml (self-built tasks)
+# or evidence/numbers_benchmark.yaml (colleague benchmark results).
+#
+# Four numbers in the story framework did not survive the recount in tools/build_tables.py.
+# They are corrected here and listed in DECISIONS.md's open items. Search "RECOUNT" below.
+#
+# IDs are immutable once Tier 2 references them. Renaming needs a sweep:
+#   grep -rnE '\b(choice_2|c3|eq_koopman_model)\b' paper/
+
+meta:
+  paper_title: "KOMPAS: Koopman Model-Predictive Alignment at the Prompt Step"
+  acronym: KOMPAS               # D10, user decision 2026-09-18.
+                                # Expansion, capitals form the name (rhetoric_patterns.md §1):
+                                #   KOopman Model-Predictive Alignment at the prompt Step
+                                # Reveal once in Abstract Move 4 and once in Introduction P4, bold
+                                # inline; plain KOMPAS everywhere after that.
+                                # Collision check: websearch "KOMPAS method acronym machine learning
+                                # arxiv" (2026-09-18) returned no ML method of this name.
+  venue: ICLR
+  page_limit: 9
+  subfield: "test-time alignment and multi-turn behavior control of frozen LLMs"
+  arc_type: challenge_driven    # deployment gaps -> contributions; beat 2 carries the access gap,
+                                # beat 3 carries both the stateless gap and the missing-model gap
+
+narrative_arc:
+  - "Multi-turn interaction makes a frozen LLM's reply attributes a trajectory, and that trajectory drifts."
+  - "Every existing controller acts inside the network and needs white-box access at every token, while the lever a deployment actually holds is one instruction per turn against a black-box API."
+  - "Prompt-level interventions today are stateless, so they overshoot or undershoot; what is missing is a dynamics model at the interaction level."
+  - "We learn a finite-memory, command-conditioned Koopman predictor of prompt-response dynamics and use it to score candidate instructions before any of them is sent."
+  - "The controller raises constraint satisfaction by about fifteen points over an uncontrolled model and by about five over two white-box latent controllers, with no extra LLM call per candidate."
+
+design_choice_lattice:
+  - id: choice_1
+    choice_name: "Finite-Memory Interaction State"
+    why_keyword: "a single attribute reading hides the trend that decides what the next instruction does, and a short window of past readings exposes level and direction without touching hidden activations"
+    equation_operation: "stack of the last L+1 attribute readings, with a selector row that reads the current one back out"
+    equation_id: eq_memory_state
+    rq_id: rq2a
+    finding_keyword: "history beyond the current turn is needed on 5 of 7 columns; the paired difference against a last-turn state excludes zero there"
+    intro_bullet_keyword: "a finite-memory state over observable attributes, no hidden-state access"
+    conclusion_takeaway_keyword: "a window of past readings, not the current one, is what makes the next step predictable"
+    source: "code:src/koopman_ae/core.py"
+    intuition_refs: [prior_1, ex_1, as_1]
+    notes: "The colleague's Method already carries the both-directions example; it is ex_1's single home."
+
+  - id: choice_2
+    choice_name: "Command-Conditioned Koopman Operator"
+    why_keyword: "the effect of an instruction has to be a readable parameter rather than a regression on text, and an affine latent transition makes multi-step lookahead a matrix power instead of another generation"
+    equation_operation: "affine map of the encoded memory plus a command-scaled column and a bias"
+    equation_id: eq_koopman_model
+    rq_id: rq1
+    finding_keyword: "selecting over commands in the learned latent space raises satisfaction by +14.5 and +14.8 points, which is what the command column is for"
+    intro_bullet_keyword: "a command-conditioned operator whose linear delay-embedded special case is the instance we report"
+    conclusion_takeaway_keyword: "the command enters as one column of the operator, which is what makes lookahead cheap"
+    source: "code:src/koopman_ae/core.py"
+    intuition_refs: [prior_2, as_2]
+    notes: >-
+      D2: the reported Ours row is the special case E_phi = D_psi = id.
+      Tier-1 cold review f1 (2026-09-18): this choice was first filed under rq2b, which
+      actually tests the lifting, not the command channel. It is now filed under rq1,
+      because the control experiment is the only place the command varies and therefore
+      the only place the channel does any work. No experiment isolates the command column
+      against a no-command ablation on the prediction task, and nc_1 and nc_8 say so.
+
+  - id: choice_3
+    choice_name: "Joint Reconstruction and Prediction Objective"
+    why_keyword: "the observable space has to stay informative about the memory state and has to support an affine one-step transition, so the objective carries a reconstruction term and a latent-consistency term, with an output-space prediction term tying the transition back to the quantity being read out"
+    equation_operation: "weighted sum of a reconstruction, a latent-consistency and a next-state prediction squared error"
+    equation_id: eq_training_objective
+    rq_id: rq2b
+    finding_keyword: "the learned lifting this objective trains does not improve on the identity lifting on any column with an interval excluding zero"
+    intro_bullet_keyword: "a joint training objective for the observable space, trained offline on recorded trajectories"
+    conclusion_takeaway_keyword: "the objective is what keeps the observable space informative, though the identity lifting already suffices here"
+    source: "code:src/koopman_ae/core.py"
+    intuition_refs: [as_2]
+    notes: >-
+      Honest tension: this choice's own ablation says the simpler member of the family is
+      enough. Story framework §8.1. Tier-1 cold review f5 (2026-09-18): the earlier
+      why_keyword asserted that all three loss terms are jointly necessary, which no
+      ablation in this paper tests. The rationale is now stated as a design argument; the
+      necessity claim moved to nc_7.
+
+  - id: choice_4
+    choice_name: "Predictive Candidate Selection"
+    why_keyword: "scoring a candidate instruction by its predicted trajectory rather than its immediate effect is what removes overshoot, and doing the scoring in the latent space is what keeps the extra cost off the LLM"
+    equation_operation: "argmin over candidate commands of a horizon-weighted squared deviation from the target"
+    equation_id: eq_selection
+    rq_id: rq1
+    finding_keyword: "+14.5 and +14.8 points over an uncontrolled model, +5.2 and +5.7 over the stronger white-box controller, best in all 22 cells"
+    intro_bullet_keyword: "model-predictive selection of the next instruction, black-box and with no extra generation per candidate"
+    conclusion_takeaway_keyword: "planning one instruction ahead in a learned latent space beats steering inside the network"
+    source: "code:src/koopman_ae/core.py"
+    intuition_refs: [prior_3, fx_1]   # as_3 removed: A10 forbids a contribution leaning on an untested assumption (cold review f4)
+    notes: "rq3 also reads on this choice, for the cost side."
+
+claim_ledger:
+  # --- Control line (colleague benchmark data; user decision D3 treats it as reliable) ---
+  - id: c1
+    claim: "Predictive control over prompt-level commands raises constraint satisfaction over the same frozen model with no control, by 14.5 points on Qwen3-4B and 14.8 points on Qwen3-8B averaged over eleven subtasks."
+    strength: scoped
+    evidence:
+      - "table_cell:tab_control:R{Qwen3-4B,Base}:C{all 11} (n_bench_001 n_bench_002 n_bench_003 n_bench_004 n_bench_005 n_bench_006 n_bench_007 n_bench_008 n_bench_009 n_bench_010 n_bench_011)"
+      - "table_cell:tab_control:R{Qwen3-4B,KOMPAS}:C{all 11} (n_bench_012 n_bench_013 n_bench_014 n_bench_015 n_bench_016 n_bench_017 n_bench_018 n_bench_019 n_bench_020 n_bench_021 n_bench_022)"
+      - "table_cell:tab_control:R{Qwen3-8B,Base}:C{all 11} (n_bench_045 n_bench_046 n_bench_047 n_bench_048 n_bench_049 n_bench_050 n_bench_051 n_bench_052 n_bench_053 n_bench_054 n_bench_055)"
+      - "table_cell:tab_control:R{Qwen3-8B,KOMPAS}:C{all 11} (n_bench_056 n_bench_057 n_bench_058 n_bench_059 n_bench_060 n_bench_061 n_bench_062 n_bench_063 n_bench_064 n_bench_065 n_bench_066)"
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "candidate scoring happens on the predicted trajectory, so a command that differs from the target can be chosen when the trajectory is still moving"
+    notes: "Point estimates as printed by the colleague. No seeds, no intervals, metric definition still pending. The prose must say this in the same subsection (D3), and the Conclusion limitation list repeats it."
+
+  - id: c2
+    claim: "The same controller exceeds two latent-space controllers that require white-box access, by 5.2 points on Qwen3-4B and 5.7 on Qwen3-8B on average, with a smallest per-subtask margin of 2.4 and 2.7."
+    strength: scoped
+    evidence:
+      - "table_cell:tab_control:R{Qwen3-4B,RE-Control}:C{all 11} (n_bench_034 n_bench_035 n_bench_036 n_bench_037 n_bench_038 n_bench_039 n_bench_040 n_bench_041 n_bench_042 n_bench_043 n_bench_044)"
+      - "table_cell:tab_control:R{Qwen3-8B,RE-Control}:C{all 11} (n_bench_078 n_bench_079 n_bench_080 n_bench_081 n_bench_082 n_bench_083 n_bench_084 n_bench_085 n_bench_086 n_bench_087 n_bench_088)"
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "the comparison is not access-matched, and the weaker access is ours"
+    notes: "TMPC and RE-Control are colleague reproductions, not author-run baselines. Same no-interval caveat as c1."
+
+  - id: c3
+    claim: "Across the two models and eleven subtasks, the predictive controller is the best of the four methods in every one of the twenty-two cells."
+    strength: scoped
+    evidence:
+      - "table_cell:tab_control:all-cells (n_bench_012 n_bench_022 n_bench_056 n_bench_066)"
+    appears_in: [experiments]
+    driver_keyword: "the margin is largest where the constraint is hardest to satisfy in one shot"
+    notes: "Same point-estimate caveat. A sweep of 22 cells with no intervals is weaker evidence than it looks; the prose reports it as a count, not as a significance statement."
+
+  - id: c4
+    claim: "Evaluating a candidate command costs a latent propagation and a decode, and adds no query to the target model."
+    strength: strong
+    evidence:
+      - "equation:eq_closed_form_rollout"
+      - "equation:eq_rollout"
+    appears_in: [abstract, intro, method, experiments, conclusion]
+    driver_keyword: "the closed form makes the h-step latent state a matrix power applied to the current encoding"
+    strength_basis: theoretical
+    notes: "Structural property of the model, not a measurement. Cold review f7: `strong` here means the derivation is exact, not that a large effect was measured. Any cost of building candidates or scoring responses still counts and the prose says so."
+
+  # --- Prediction line (self-built tasks) ---
+  - id: c5
+    claim: "A window of past attribute readings predicts better than the current reading alone on five of seven tasks, with paired bootstrap intervals excluding zero."
+    strength: scoped
+    evidence:
+      - "figure_panel:fig_memory_forest:all (n_main_013 n_main_045 n_main_029 n_main_077 n_main_093 n_main_132 n_main_180)"
+    appears_in: [intro, experiments, conclusion]
+    driver_keyword: "the window exposes the direction of travel, which a single reading cannot carry"
+    notes: "RECOUNT: five of seven, not all. vector_count_stage1 has an interval containing zero (+0.246, [-0.023, +0.415]); formality is negative and not separated from zero (-0.035). The prose names the two exceptions."
+
+  - id: c6
+    claim: "A learned nonlinear lifting does not predict better than the identity lifting on any of the seven tasks, and predicts worse on four of them with intervals excluding zero."
+    strength: scoped
+    evidence:
+      - "table_cell:tab_prediction:R{KOMPAS (learned lifting)}:C{all 7} (n_main_010 n_main_042 n_main_026 n_main_074 n_main_090 n_main_129 n_main_177)"
+      - "table_cell:tab_prediction:R{KOMPAS (linear)}:C{all 7} (n_main_004 n_main_036 n_main_020 n_main_068 n_main_084 n_main_131 n_main_179)"
+      - "figure_panel:fig_lifting_contrast:all (n_main_015 n_main_047 n_main_031 n_main_079 n_main_095 n_main_135 n_main_183)"
+    appears_in: [experiments, conclusion]
+    driver_keyword: "the attribute readouts are already low-dimensional, so a lifting has little structure left to expose"
+    notes: "RECOUNT: the story framework said the gap was at most 0.031 with signs flipping. The CEFR column is +0.599 in favour of the linear case, which is not a tie. The claim is stated as 'no gain from lifting', not as 'equivalent'."
+
+  - id: c7
+    claim: "Against an LSTM sequence baseline neither model dominates: the linear operator wins two columns and loses two, each with intervals excluding zero."
+    strength: observation
+    evidence:
+      - "figure_panel:fig_lstm_contrast:all (n_main_016 n_main_048 n_main_032 n_main_080 n_main_096 n_main_134 n_main_182)"
+    appears_in: [experiments]
+    driver_keyword: "no mechanism established for the two losses"
+    notes: >-
+      RECOUNT and reversal. The story framework said no column favoured the LSTM. Two do:
+      character length (-0.031, [-0.052, -0.001]) and constraint (-0.027, [-0.037, -0.015]).
+      Stated as an observation, not a claim of superiority. Cold review f8 (2026-09-18): the
+      first draft of this row asserted a random-walk explanation for the two losses with
+      nothing behind it. Registered instead as an open data question in
+      story_framework_2026-09-18.md §8; Rule 1 requires a driver sentence, so either the
+      question gets answered before CP3c or the two losses are reported without one.
+
+  - id: c8
+    claim: "On free-running prediction skill the linear special case ranks first on four of seven tasks, second on one, and third on two."
+    strength: scoped
+    evidence:
+      - "table_cell:tab_prediction:all-cells (n_main_004 n_main_036 n_main_020 n_main_068 n_main_084 n_main_131 n_main_179)"
+    appears_in: [experiments]
+    driver_keyword: "the two third places are the two columns where a recurrent baseline fits the residual better"
+    notes: "RECOUNT: the story framework said four firsts and the rest seconds. The rest are one second and two thirds."
+
+  - id: c9
+    claim: "If the rollout residuals and the readout are bounded, the selected command's held-command cost is within twice the cost-estimation error of the best candidate."
+    strength: strong
+    evidence:
+      - "equation:eq_prediction_bound"
+      - "equation:eq_cost_bound"
+      - "equation:eq_selection_bound"
+    appears_in: [method, experiments, conclusion]
+    driver_keyword: "the predicted and actual rollouts start from the same encoding, so their gap accumulates only through the dynamics residual"
+    strength_basis: theoretical
+    notes: "Cold review f7: `strong` means the derivation is exact under its stated assumptions, which are themselves untested (as_3). Conditional statement about one held-command comparison. It says nothing about the replanned closed loop and the prose keeps that boundary."
+
+symbol_lattice:
+  # The colleague's notation is authoritative. The old draft's z_t, u_t, v_t are retired.
+  - id: s_x
+    symbol: 'x'
+    gloss: "task input the dialogue starts from"
+    first_defined: method
+    scope: "fixed within one trajectory"
+    appears_in: [method]
+  - id: s_ptheta
+    symbol: 'p_{\theta}'
+    gloss: "the frozen language model"
+    first_defined: method
+    scope: "parameters never updated"
+    appears_in: [method, experiments]
+  - id: s_r
+    symbol: 'r'
+    gloss: "desired value of the output attribute"
+    first_defined: method
+    scope: "the objective, distinct from the command actually applied"
+    appears_in: [method, experiments]
+  - id: s_hist
+    symbol: '\mathcal{H}_t'
+    gloss: "dialogue history before step t"
+    first_defined: method
+    scope: "text, not the memory vector"
+    appears_in: [method]
+  - id: s_u
+    symbol: 'u_t'
+    gloss: "the textual intervention sent at step t"
+    first_defined: method
+    scope: "built by the prompting protocol from a numerical command"
+    appears_in: [method]
+  - id: s_o
+    symbol: 'o_{t+1}'
+    gloss: "the generated reply"
+    first_defined: method
+    scope: "text, distinguished from its measured attribute"
+    appears_in: [method]
+  - id: s_y
+    symbol: 'y_t'
+    gloss: "measured attribute of the reply at step t"
+    first_defined: method
+    scope: "scalar; one attribute at a time"
+    appears_in: [method, experiments]
+  - id: s_V
+    symbol: 'V'
+    gloss: "task-specific verifier that measures the attribute"
+    first_defined: method
+    scope: "runs on a whole reply, never on a partial generation"
+    appears_in: [method, experiments]
+  - id: s_P
+    symbol: '\mathcal{P}'
+    gloss: "prompting protocol that turns a command into a prompt"
+    first_defined: method
+    scope: "fixed and known; the paper does not claim coverage of arbitrary text interventions"
+    appears_in: [method]
+  - id: s_c
+    symbol: 'c_t'
+    gloss: "numerical command chosen by the controller at step t"
+    first_defined: method
+    scope: "selected from a finite candidate set; equals the target only in ordinary target-following"
+    appears_in: [method, experiments]
+  - id: s_Cset
+    symbol: '\mathcal{C}_t'
+    gloss: "admissible candidate commands at step t"
+    first_defined: method
+    scope: "finite and nonempty"
+    appears_in: [method]
+  - id: s_s
+    symbol: 's_t'
+    gloss: "memory state, the stack of the last L+1 attribute readings"
+    first_defined: method
+    scope: "observable attributes only; no hidden activations"
+    appears_in: [method, experiments]
+  - id: s_L
+    symbol: 'L'
+    gloss: "number of past readings retained"
+    first_defined: method
+    scope: "window length; the ablation in appendix A1 varies it"
+    appears_in: [method, experiments]
+  - id: s_C
+    symbol: 'C'
+    gloss: "selector row that reads the current attribute out of the memory state"
+    first_defined: method
+    scope: "the row vector with a leading one; do not confuse with the candidate set"
+    appears_in: [method]
+  - id: s_Kop
+    symbol: '\mathcal{K}_{c}'
+    gloss: "command-conditioned Koopman operator on observables"
+    first_defined: method
+    scope: "the population object; K is its finite-dimensional approximation"
+    appears_in: [method]
+  - id: s_E
+    symbol: 'E_{\phi}'
+    gloss: "encoder from memory state to observable space"
+    first_defined: method
+    scope: "the identity in the reported special case"
+    appears_in: [method, experiments]
+  - id: s_D
+    symbol: 'D_{\psi}'
+    gloss: "decoder from observable space back to memory state"
+    first_defined: method
+    scope: "the identity in the reported special case"
+    appears_in: [method, experiments]
+  - id: s_xi
+    symbol: '\xi_t'
+    gloss: "encoded memory state"
+    first_defined: method
+    scope: "the space the rollout happens in"
+    appears_in: [method]
+  - id: s_K
+    symbol: 'K'
+    gloss: "latent transition matrix"
+    first_defined: method
+    scope: "shared across commands"
+    appears_in: [method, experiments]
+  - id: s_B
+    symbol: 'B'
+    gloss: "command column, the gain of one unit of command"
+    first_defined: method
+    scope: "one column, since the command is scalar"
+    appears_in: [method, experiments]
+  - id: s_b
+    symbol: 'b'
+    gloss: "latent bias"
+    first_defined: method
+    scope: "absorbs any command held constant across a trajectory"
+    appears_in: [method]
+  - id: s_g
+    symbol: 'g_{\psi}'
+    gloss: "attribute readout, the decoder followed by the selector"
+    first_defined: method
+    scope: "need not be linear"
+    appears_in: [method]
+  - id: s_H
+    symbol: 'H'
+    gloss: "prediction horizon in interactions"
+    first_defined: method
+    scope: "truncated by the remaining interaction budget"
+    appears_in: [method, experiments]
+  - id: s_w
+    symbol: 'w_h'
+    gloss: "nonnegative weight on the h-step deviation"
+    first_defined: method
+    scope: "part of the scoring rule, not learned"
+    appears_in: [method]
+  - id: s_Jhat
+    symbol: '\widehat{J}_t'
+    gloss: "predicted cost of holding a candidate command"
+    first_defined: method
+    scope: "the quantity the controller minimizes"
+    appears_in: [method]
+  - id: s_eps
+    symbol: '\varepsilon_{\mathrm{dyn}}, \varepsilon_{\mathrm{rec}}'
+    gloss: "uniform bounds on the latent residual and on the readout residual"
+    first_defined: method
+    scope: "assumed, not measured"
+    appears_in: [method]
+  - id: s_kappa
+    symbol: '\kappa'
+    gloss: "bound on the spectral norm of the latent transition"
+    first_defined: method
+    scope: "no contraction is assumed"
+    appears_in: [method]
+  - id: s_Lg
+    symbol: 'L_g'
+    gloss: "Lipschitz constant of the readout on the relevant region"
+    first_defined: method
+    scope: "local, not global"
+    appears_in: [method]
+  - id: s_Delta
+    symbol: '\Delta_h'
+    gloss: "h-step attribute prediction error bound"
+    first_defined: method
+    scope: "grows with the horizon unless the transition contracts"
+    appears_in: [method, experiments]
+  - id: s_deltaJ
+    symbol: '\delta_J'
+    gloss: "bound on the gap between predicted and actual held-command cost"
+    first_defined: method
+    scope: "the quantity that doubles in the selection bound"
+    appears_in: [method]
+  - id: s_skill
+    symbol: '\mathrm{Skill}_H'
+    gloss: "one minus the ratio of rollout error to the best trivial null's rollout error"
+    first_defined: experiments
+    scope: "reported metric for the prediction tasks; zero means no better than the null"
+    appears_in: [experiments]
+
+equation_lattice:
+  - id: eq_interaction
+    label: "eq:interaction"
+    operation_name: "sampling a reply from the frozen model and measuring its attribute"
+    rhs_symbols: [s_ptheta, s_x, s_hist, s_u, s_V, s_o]
+    in_section: method
+    has_gloss: true
+    role: definition
+  - id: eq_prompt_protocol
+    label: "eq:prompt_protocol"
+    operation_name: "construction of the prompt from a numerical command and the dialogue"
+    rhs_symbols: [s_P, s_x, s_hist, s_c]
+    in_section: method
+    has_gloss: true
+    role: definition
+  - id: eq_memory_state
+    label: "eq:memory_state"
+    operation_name: "stack of the last L+1 attribute readings, with a selector row reading the current one back"
+    rhs_symbols: [s_y, s_L, s_C, s_s]
+    in_section: method
+    has_gloss: true
+    role: definition
+  - id: eq_koopman_operator
+    label: "eq:koopman_operator"
+    operation_name: "conditional expectation of an observable one step ahead, given state and command"
+    rhs_symbols: [s_Kop, s_s, s_c]
+    in_section: method
+    has_gloss: true
+    role: definition
+  - id: eq_koopman_model
+    label: "eq:koopman_model"
+    operation_name: "affine map of the encoded memory plus a command-scaled column and a bias"
+    rhs_symbols: [s_E, s_D, s_xi, s_K, s_B, s_b, s_C]
+    in_section: method
+    has_gloss: true
+    role: mechanism_probe
+  - id: eq_training_transition
+    label: "eq:training_transition"
+    operation_name: "one-step latent prediction from an encoded state and the applied command"
+    rhs_symbols: [s_K, s_E, s_B, s_c, s_b]
+    in_section: method
+    has_gloss: true
+    role: definition
+  - id: eq_training_objective
+    label: "eq:training_objective"
+    operation_name: "weighted sum of a reconstruction, a latent-consistency and a next-state prediction squared error"
+    rhs_symbols: [s_E, s_D, s_s]
+    in_section: method
+    has_gloss: true
+    role: mechanism_probe
+  - id: eq_rollout
+    label: "eq:rollout"
+    operation_name: "recursive latent propagation of a held candidate command with decoding at each step"
+    rhs_symbols: [s_K, s_B, s_b, s_g, s_H, s_E]
+    in_section: method
+    has_gloss: true
+    role: mechanism_probe
+  - id: eq_closed_form_rollout
+    label: "eq:closed_form_rollout"
+    operation_name: "matrix power of the transition applied to the current encoding, plus a geometric sum of the command and bias term"
+    rhs_symbols: [s_K, s_E, s_B, s_b]
+    in_section: method
+    has_gloss: true
+    role: mechanism_probe
+  - id: eq_selection
+    label: "eq:selection"
+    operation_name: "argmin over candidate commands of a horizon-weighted squared deviation from the target"
+    rhs_symbols: [s_w, s_r, s_H, s_Cset, s_Jhat]
+    in_section: method
+    has_gloss: true
+    role: quality_claim
+  - id: eq_residual_assumptions
+    label: "eq:residual_assumptions"
+    operation_name: "uniform bounds on the latent transition residual and the readout residual"
+    rhs_symbols: [s_K, s_B, s_b, s_g, s_eps]
+    in_section: method
+    has_gloss: true
+    role: definition
+  - id: eq_prediction_bound
+    label: "eq:prediction_bound"
+    operation_name: "geometric accumulation of the latent residual through the readout Lipschitz constant"
+    rhs_symbols: [s_eps, s_Lg, s_kappa, s_Delta]
+    in_section: method
+    has_gloss: true
+    role: mechanism_probe
+  - id: eq_cost_bound
+    label: "eq:cost_bound"
+    operation_name: "difference-of-squares bound on the predicted versus actual held-command cost"
+    rhs_symbols: [s_w, s_Delta, s_deltaJ]
+    in_section: method
+    has_gloss: true
+    role: mechanism_probe
+  - id: eq_selection_bound
+    label: "eq:selection_bound"
+    operation_name: "two applications of the cost bound around the argmin, giving twice the cost gap"
+    rhs_symbols: [s_deltaJ, s_Cset]
+    in_section: method
+    has_gloss: true
+    role: quality_claim
+
+mechanism_lattice:
+  - id: m1
+    mechanism: "A single attribute reading is consistent with two opposite trends, so a memoryless rule issues the same command in situations whose next step differs; a window of readings separates them."
+    supports_claim: [c5]
+    appears_in_method: true
+    appears_in_experiments: true
+    notes: "This is the colleague's own example in the Finite-Memory subsection; it is also ex_1."
+  - id: m2
+    mechanism: "Because the latent transition is affine and the command enters as one column, an h-step lookahead is a matrix power rather than another generation, so scoring many candidates costs no LLM calls."
+    supports_claim: [c4, c1]
+    appears_in_method: true
+    appears_in_experiments: true
+    notes: "The cost argument and the control argument share this mechanism."
+  - id: m3
+    mechanism: "Scoring a candidate on its predicted trajectory rather than its immediate effect lets the controller issue a command different from the target when the attribute is still moving, which is what removes overshoot."
+    supports_claim: [c1, c2]
+    appears_in_method: true
+    appears_in_experiments: true
+    notes: "The driver sentence behind the headline numbers."
+  - id: m4
+    mechanism: "The attribute readouts are already one-dimensional, so a learned lifting has little extra structure to expose and mainly adds estimation variance on trajectories that number in the tens or hundreds."
+    supports_claim: [c6]
+    appears_in_method: false
+    appears_in_experiments: true
+    notes: "Kept out of Method: Rule 21 bans results-shaped reasoning there."
+  - id: m5
+    mechanism: "On the seven attribute-tracking tasks the applied command is the tracking error itself, an exact affine function of the memory state, so the command column carries no information the state does not already carry and the prediction design cannot see an action effect at all."
+    supports_claim: []
+    appears_in_method: false
+    appears_in_experiments: true
+    notes: "This is why nc_1 exists. It is a property of how those trajectories were collected, not a result. It belongs in the analysis subsection, as the reason the prediction table is silent about the command channel."
+
+intuition_lattice:
+  priors:
+    - id: prior_1
+      statement: "What a model wrote in the last few turns carries into what it writes next, so reply attributes have inertia rather than being drawn fresh each turn."
+      borrowed_authority: [li2024instability, driftnomore2025, attractorstates2025]
+      recorded_at: L3
+      source: "story_framework_2026-09-18.md#2.1; supported in-repo by the last-turn row beating the stateless row on 6 of 7 columns"
+    - id: prior_2
+      statement: "In deployment the only lever a caller holds is the text it sends, because the weights and the activations belong to someone else."
+      borrowed_authority: []
+      recorded_at: post_hoc
+      source: "story_framework_2026-09-18.md#2.2 Gap 1; a framing decision, not a measurement"
+    - id: prior_3
+      statement: "The thing being controlled is a property of a whole reply, so the natural clock tick is one exchange and not one token."
+      borrowed_authority: []
+      recorded_at: post_hoc
+      source: "story_framework_2026-09-18.md#2.3; follows from the verifier running on complete replies"
+  anchor_example:
+    id: ex_1
+    instance: "the same sentence length can occur while successive revisions are becoming longer or while they are becoming shorter"
+    illustrates: [prior_1, as_1]
+    home: method_finite_memory_entrance   # cold review f3: this paper has no separate Problem
+                                          # Formulation section; the formalization entrance is the
+                                          # first paragraph of the Finite-Memory subsection, which is
+                                          # where the colleague's text already places this example
+    covers_both_sides: true
+    recorded_at: L3
+    source: "sections/02_method.tex, Finite-Memory Koopman Dynamics, first paragraph (colleague's wording, kept verbatim)"
+  failure_instances:
+    - id: fx_1
+      instance: "a rewrite pushed past the level it was aiming for"
+      homes: [abstract, intro]
+      quantified_by: rq1
+      recorded_at: L3
+      source: "the tsar_cefr overshoot observed in the self-built control runs; story_framework_2026-09-18.md#2.2 Gap 2"
+  named_assumptions:
+    - id: as_1
+      name: "Assumption 1 (Finite-Memory Closure)"
+      plain_statement: "A short window of recent attribute readings carries enough of the conversation to predict the next reading."
+      formal_pointer: eq_memory_state
+      strength: approximate
+      tested_by: rq2a
+      recorded_at: L3
+      source: "sections/02_method.tex states it as an approximation, not an exact reconstruction"
+    - id: as_2
+      name: "Assumption 2 (Affine Latent Transition)"
+      plain_statement: "In the learned observable space the next state is an affine function of the current state and the applied command."
+      formal_pointer: eq_koopman_model
+      strength: approximate
+      tested_by: rq2b
+      recorded_at: L3
+      source: "sections/02_method.tex calls the shared transition and affine command dependence modeling restrictions"
+    - id: as_3
+      name: "Assumption 3 (Bounded Residuals and Lipschitz Readout)"
+      plain_statement: "Over the candidate rollouts the model's one-step error and the readout error stay below fixed levels, and the readout does not amplify small latent differences without bound."
+      formal_pointer: eq_residual_assumptions
+      strength: approximate
+      tested_by: motivational_only
+      recorded_at: L3
+      source: "sections/02_method.tex, Prediction Error and Intervention Selection"
+
+non_claim_ledger:
+  - id: nc_1
+    statement: "That putting the command into the operator improves prediction."
+    reason: "The prediction experiment gives no evidence either way. On the five core columns the applied command equals the tracking error, an exact affine function of the state, so that design cannot estimate an independent action effect at all (n_main_014 n_main_046 n_main_030 n_main_078 n_main_094, all status caveated for this reason). On the two columns where it can be estimated the paired difference is +0.0015 and +0.0061 with intervals containing zero (n_main_133 n_main_181). The command channel is exercised at control time, where the command varies, and that is where c1 and c2 test it."
+    appears_in: [experiments, conclusion]
+  - id: nc_2
+    statement: "That closed-loop control beats an equal-cost fixed schedule on the four self-built behavioral tasks."
+    reason: "It does not. On those tasks the closed loop ties the best fixed schedule while spending more, which is reported in appendix A4 as a boundary on where planning has headroom."
+    appears_in: [experiments, conclusion]
+  - id: nc_3
+    statement: "That the benchmark numbers carry intervals, seed counts, or an independently specified metric."
+    reason: >-
+      They are point estimates supplied by a colleague with no raw logs in this repository
+      (user decision D3). Cold review f2 (2026-09-18): c1 and c2 appear in the abstract and
+      the introduction, so the scope has to travel with them. The abstract states the gain
+      without an interval and without the word measured; the introduction carries one clause
+      naming the numbers as point estimates on three public benchmarks.
+    appears_in: [abstract, intro, experiments, conclusion]
+  - id: nc_4
+    statement: "That the language model admits an exact finite-dimensional Koopman representation."
+    reason: "The model is a finite-dimensional approximation on a finite-memory state; the Method says so directly."
+    appears_in: [method, conclusion]
+  - id: nc_5
+    statement: "That the closed loop converges, or that the candidate set always contains a command able to reach the target."
+    reason: "The bound is a one-step held-command comparison. Re-observation resets the rollout's initial error but removes neither model mismatch nor the limits of the candidate set."
+    appears_in: [method, conclusion]
+  - id: nc_7
+    statement: "That each of the three terms in the training objective is necessary."
+    reason: "No term-removal ablation was run for this paper. The argument for the three terms is a design argument stated in the Method, not a measured one."
+    appears_in: [method]
+  - id: nc_8
+    statement: "That the size of the command column has been measured against a no-command operator on the prediction tasks."
+    reason: "See nc_1. The control results test whether selecting over commands helps; they do not decompose the operator."
+    appears_in: [experiments]
+  - id: nc_6
+    statement: "That the linear operator is a better sequence model than an LSTM."
+    reason: "Two of seven columns favour the LSTM with intervals excluding zero (n_main_080 n_main_134). The paper claims cheap lookahead and a readable command channel, not universal predictive superiority."
+    appears_in: [experiments]

@@ -1,0 +1,283 @@
+# Tier-1 cold-reviewer audit of paper/contract.yaml
+# Persona: NeurIPS/ICLR-tier reviewer, expert in MPC, Koopman operator theory,
+# instruction-following benchmarks, activation steering. Has NOT read this
+# project's docs; anything not stated in contract.yaml is unknown to this reviewer.
+# Audited: contract.yaml (2026-09-18 rebuild) cross-checked against
+# tables/_build_report.json (recomputed numbers).
+date: "2026-09-18"
+audited_file: "paper/contract.yaml"
+cross_checked_against: "paper/tables/_build_report.json"
+
+findings:
+  - id: f1
+    severity: blocker
+    what_is_wrong: >
+      choice_2 ("Command-Conditioned Koopman Operator") names command-conditioning
+      as its defining architectural contribution and points to rq2b as the test,
+      but the only evidence cited under rq2b (fig_lifting_contrast /
+      tab_prediction "nonlinear lifting" vs "linear, ours") is a test of
+      linear-vs-nonlinear E_phi/D_psi lifting -- that is choice_3's axis, not
+      whether conditioning the operator on the command helps. nc_1 states
+      explicitly, in the contract's own words, that the prediction experiment
+      "gives no evidence either way" on the command channel, because on 5 of 7
+      columns the applied command is an exact affine function of the state
+      (n_main_014, n_main_046, n_main_030, n_main_078, n_main_094 all
+      caveated), and on the 2 columns where it is estimable the effect is
+      +0.0015 / +0.0061 with intervals containing zero (n_main_133, n_main_181).
+      No experiment anywhere in the lattice -- prediction or control -- isolates
+      the causal contribution of command-conditioning against an uncommanded
+      dynamics model. Narrative_arc beat 4 ("a finite-memory, command-conditioned
+      Koopman predictor") and choice_2's intro_bullet_keyword therefore present
+      as a validated design decision a feature the contract's own non_claim_ledger
+      says cannot be evaluated by the reported experiments.
+    why_it_matters: >
+      This is the exact anti-pattern contract.md names as a "referee magnet":
+      a §Method subsection commits to a design choice with an rq_id attached
+      (formally satisfying the L4 gate) but no experiment that actually speaks
+      to what the choice claims. A reviewer who knows Koopman/MPC theory will
+      ask directly "did you ablate the command term?" -- the honest answer,
+      already written into nc_1, is no. Because this feature is named in the
+      narrative arc's central methods beat, the gap propagates to the paper's
+      elevator-test summary, not just one subsection.
+    recommended_fix_tier: T1
+    suggested_fix: >
+      Either (a) add a genuine ablation isolating command-conditioning -- e.g.
+      a B=0 / command-held-out variant evaluated at least on the two columns
+      nc_1 says are estimable, or a synthetic held-out-command test -- and give
+      choice_2 its own rq_id distinct from choice_3's rq2b; or (b) demote
+      choice_2's framing to "an affine Koopman operator extended with a command
+      term, whose marginal contribution to prediction accuracy this work does
+      not isolate" and let the command-conditioning claim rest solely on the
+      control-level outcome (c1/c2), rewriting intro_bullet_keyword and
+      narrative_arc beat 4 to match that narrower scope.
+
+  - id: f2
+    severity: blocker
+    what_is_wrong: >
+      c1/c2/c3 -- the paper's single most important empirical result (+14.5 /
+      +14.8 pp over the uncontrolled model, +5.2 / +5.7 pp over two white-box
+      controllers, best in all 22 cells) -- rest entirely on point estimates
+      supplied by a colleague with no raw logs, no seeds, and no confidence
+      intervals (nc_3). The claim strings are written in unhedged, precise
+      language matching contract.md's own "strong" style example ("outperforms
+      by +9.1 pp") even though labeled "scoped," and nc_3 -- the non-claim entry
+      that is the only place the "no seeds/intervals/third-party" caveat is
+      recorded -- has appears_in: [experiments, conclusion], while c1 and c2
+      themselves have appears_in: [abstract, intro, experiments, conclusion].
+      The caveat that makes "scoped" the correct label never structurally
+      reaches the sections where the headline number will actually be stated.
+    why_it_matters: >
+      report.md lists "multi-seed missing for a result the paper calls
+      significant/substantial" as a blocker-class defect by definition, not a
+      major one. Here it is the abstract's headline number. A Tier-1 reviewer
+      cannot assume Tier 3 prose will spontaneously import a caveat that lives
+      in a different section's non-claim entry; the contract as wired lets the
+      abstract state a precise double-digit-point win with no visible hedge
+      anywhere near it.
+    recommended_fix_tier: T1
+    suggested_fix: >
+      Either obtain seeds/intervals for the benchmark numbers before submission
+      (recommended_fix_tier: data), or (i) rewrite c1/c2/c3's claim strings to
+      carry the hedge inline (e.g. "...a point-estimate difference of 14.5 pp,
+      from a single colleague-run benchmark with no seeds or intervals
+      available"), and (ii) add abstract and intro to nc_3.appears_in so the
+      disclosure is required wherever the number is stated, not only in
+      Experiments/Conclusion.
+
+  - id: f3
+    severity: blocker
+    what_is_wrong: >
+      intuition_lattice.anchor_example.home is declared
+      "problem_formulation_entrance," but the entry's own source
+      ("sections/02_method.tex, Finite-Memory Koopman Dynamics, first
+      paragraph") and choice_1's notes ("The colleague's Method already
+      carries the both-directions example; it is ex_1's single home") both
+      place the verbatim example inside a Method subsection, not a Problem
+      Formulation section. Independently, every one of the ~30 entries in
+      symbol_lattice has first_defined: method -- none is first_defined in a
+      problem-formulation section -- which is consistent with this paper not
+      having a distinct Problem Formulation section at all.
+    why_it_matters: >
+      The anchor-example rule exists specifically to lock the example to ONE
+      prose occurrence and protect it from paraphrase drift. A home field that
+      names a section the paper structurally may not have (or that contradicts
+      the location given two sentences later in the same entry) will cause
+      Tier 2 to either duplicate the example across two homes -- violating the
+      "at most one anchor example / one occurrence" gate -- or to place new
+      prose in a section that does not exist in this draft.
+    recommended_fix_tier: T1
+    suggested_fix: >
+      Confirm whether the paper has (or will have) a section distinct from
+      Method that plays the "problem formalization entrance" role. If not,
+      change anchor_example.home to reflect the actual single location (the
+      Finite-Memory Interaction State subsection's first paragraph) and update
+      the schema comment accordingly; if a Problem Formulation section is
+      intended, move the verbatim example there and remove it from the Method
+      draft so it keeps exactly one occurrence.
+
+  - id: f4
+    severity: major
+    what_is_wrong: >
+      as_1 (Assumption 3, "Bounded Residuals and Lipschitz Readout") has
+      tested_by: motivational_only, yet it is listed in choice_4's
+      intuition_refs, and choice_4 carries an intro_bullet_keyword -- a
+      contribution-facing field per the schema. The theoretical guarantee c9
+      (which formalizes as_3's residual-boundedness premise via
+      eq_prediction_bound / eq_cost_bound / eq_selection_bound) appears in the
+      conclusion as a takeaway, riding on an assumption the contract itself
+      marks untested.
+    why_it_matters: >
+      This is the literal anti-pattern contract.md names under A10: "A
+      named_assumption with tested_by: motivational_only cited by a
+      contribution bullet -- contributions may only lean on tested
+      assumptions." A reviewer versed in MPC theory will look for exactly this
+      kind of boundedness/Lipschitz assumption to be at least empirically
+      characterized (e.g. observed residual ranges); finding it declared
+      motivational_only while still feeding a contribution-facing field reads
+      as a rigor gap in the paper's one purely theoretical contribution.
+    recommended_fix_tier: T1
+    suggested_fix: >
+      Either add a lightweight empirical characterization of the residuals
+      used in experiments (report the observed range of the one-step latent
+      and readout residuals) and change as_3.tested_by to point at that
+      measurement, or remove as_3 from choice_4.intuition_refs and rewrite
+      choice_4's intro_bullet_keyword / the conclusion takeaway so the bound is
+      presented as a conditional theoretical property, not a load-bearing
+      contribution claim.
+
+  - id: f5
+    severity: major
+    what_is_wrong: >
+      choice_3's why_keyword argues all three loss terms are jointly
+      necessary ("latent consistency alone admits a constant encoding...
+      reconstruction alone does not ask the representation to support
+      prediction... only the two together with an output-space prediction term
+      pin down a usable observable space"), but the only ablation attached via
+      rq2b (linear vs. nonlinear lifting) tests architecture, not term removal.
+      No RQ in the lattice drops the reconstruction or latent-consistency term
+      individually. The cited finding is in fact a negative result about
+      nonlinearity (the identity lifting suffices, per choice_3's own honest
+      notes), which is compatible with the why_keyword's three-way necessity
+      claim but does not test it.
+    why_it_matters: >
+      The Why-X paragraph (Rule 24) will assert a three-term necessity
+      argument that the paired Findings sentence does not actually speak to; a
+      careful reviewer comparing the two will see the evidence answering a
+      different question than the one the rationale poses.
+    recommended_fix_tier: T1
+    suggested_fix: >
+      Either add a term-ablation RQ (drop reconstruction; drop
+      latent-consistency, holding the rest fixed) so the three-way necessity
+      claim has a matching test, or narrow why_keyword to argue only for the
+      necessity of the prediction term specifically, which is what the
+      identity-suffices finding is actually consistent with.
+
+  - id: f6
+    severity: minor
+    what_is_wrong: >
+      meta.arc_type's inline comment describes "three deployment gaps ->
+      three contributions," but narrative_arc names two explicit gaps (beat 2:
+      white-box access vs. black-box lever; beat 3: stateless prompt
+      interventions) against four design choices, not three-to-three.
+    why_it_matters: >
+      Purely a documentation mismatch (the comment is not schema-validated),
+      but it will mislead whoever drafts the Introduction's contribution list
+      about how many gaps to open with.
+    recommended_fix_tier: T1
+    suggested_fix: >
+      Either add a third explicit gap sentence to narrative_arc, or correct
+      the comment to "two deployment gaps -> four design choices" so Tier 2
+      allocation is not planned against a miscount.
+
+  - id: f7
+    severity: minor
+    what_is_wrong: >
+      claim_ledger.strength's three-value taxonomy (strong/scoped/observation)
+      is used for both empirically-measured claims (c1-c8) and purely
+      mathematical/conditional claims (c4, c9). Both kinds land on "strong,"
+      but "strong" per contract.md's own guidance means "directly measured,
+      large effect... precise wording allowed" -- a description built for
+      empirical claims, not theorems.
+    why_it_matters: >
+      Low risk since c4/c9 are legitimately exact given their premises, but
+      Tier 3 generation may reach for the same confident empirical phrasing
+      ("+9.1 pp"-style precision) for a conditional theorem as for a measured
+      effect, blurring the reader's sense of which "strong" claims carry
+      statistical risk and which are analytic.
+    recommended_fix_tier: T1
+    suggested_fix: >
+      Add a one-line note on c4 and c9 (or a schema convention) marking them
+      as "strong (structural/theoretical)" so downstream prose distinguishes
+      "strong, measured" from "strong, given stated assumptions."
+
+  - id: f8
+    severity: minor
+    what_is_wrong: >
+      c3, c7, and c8 have driver_keyword text that functions as a mechanism
+      explanation ("the margin is largest where the constraint is hardest to
+      satisfy in one shot"; "the two losses are the two columns where the
+      attribute is close to a random walk..."; "the two third places are the
+      two columns where a recurrent baseline fits the residual better") but no
+      matching entry in mechanism_lattice lists these claim ids under
+      supports_claim.
+    why_it_matters: >
+      Minor L6 gap. Low severity because c3 is essentially a corollary of
+      c1/c2 (already covered by m3) and c7/c8 are observation/scoped-level
+      claims about mixed results, not the paper's central mechanism claims.
+    recommended_fix_tier: T1
+    suggested_fix: >
+      Optionally add c3 to m3.supports_claim, and add one or two short
+      mechanism_lattice entries (e.g. m6, m7) promoting the c7/c8
+      driver_keyword text, for completeness rather than necessity.
+
+  - id: f9
+    severity: minor
+    what_is_wrong: >
+      choice_4.equation_operation ("argmin over candidate commands of a
+      horizon-weighted squared deviation of the predicted attribute from the
+      target") and eq_selection.operation_name ("argmin over candidate commands
+      of a horizon-weighted squared deviation from the target") differ by the
+      clause "of the predicted attribute," present in the design-choice field
+      but not the equation field.
+    why_it_matters: >
+      Purely lexical; the missing clause is implied by context and does not
+      change what the equation computes, so this is not a Rule 14 math-prose
+      mismatch of the kind L5 is built to catch (no normalization-vocabulary
+      risk here). Flagged only for exactness.
+    recommended_fix_tier: T3
+    suggested_fix: >
+      Align the two strings verbatim, or accept the minor phrasing difference
+      as harmless.
+
+sound_sections:
+  - "Symbol coverage (L7): every rhs_symbols entry across all 14 equations resolves to an id present in symbol_lattice; no undefined symbols found."
+  - "Equation-id references (design_choice_lattice.equation_id): all four choices reference an equation_lattice id that exists (eq_memory_state, eq_koopman_model, eq_training_objective, eq_selection)."
+  - "equation_operation vs equation_lattice.operation_name (L5): choice_1/2/3's strings match their equations near-verbatim; no normalization/cosine-style vocabulary mismatch found anywhere in the lattice."
+  - "why_keyword facet coverage (Rule 24): all four choice_names' facets (finite-memory + observable state; command-conditioning + affine operator; reconstruction + consistency + prediction; predictive + candidate + selection) are each integrated into their why_keyword; no single-facet why_keyword found."
+  - "Validation gate 7 (anchor/failure-instance economy): exactly one anchor_example (ex_1, scalar); fx_1.quantified_by is rq1, not null, so the failure-instance hook is cashed."
+  - "Non-claim ledger, four of six entries (nc_2, nc_4, nc_5, nc_6) do real scoping work and are each tied to a specific claim they bound (c7/c9/self-built control results) rather than absorbing an unaddressed problem; see f1/f2 for the two that are not (nc_1, nc_3)."
+  - "ID uniqueness: manual scan across design_choice_lattice, claim_ledger, symbol_lattice, equation_lattice, mechanism_lattice, and intuition_lattice ids found no duplicates."
+  - "Numbers cross-check against tables/_build_report.json: c1, c2 (control_deltas incl. smallest per-subtask margins 2.4/2.7), c3 (22-cell sweep), c5 (5-of-7 with the two named exceptions), c6 (4-of-7 excludes-zero, none reversed), c7 (2 LSTM-favoring columns named correctly) all match the recomputed numbers exactly."
+
+reviewer_summary:
+  believable_result: >
+    Yes, provisionally: the control-line numbers (c1/c2) read as a real,
+    non-trivial win for a black-box-only controller against white-box
+    baselines, but "believe" and "trust" diverge here, since that entire
+    result rests on unaudited, seed-free, interval-free third-party numbers
+    (see f2), and the paper's stated architectural novelty
+    (command-conditioning) is not independently supported by any experiment
+    (see f1).
+  three_weakest_links:
+    - "choice_2's command-conditioning is the named architectural contribution but is the one thing in the whole lattice nc_1 explicitly says cannot be evaluated (f1)."
+    - "c1/c2/c3, the paper's headline abstract numbers, are single-run point estimates from a third party with no seeds or intervals, and the disclosure of that fact does not reach the abstract (f2)."
+    - "anchor_example.home names a section (problem_formulation_entrance) that contradicts the entry's own noted location and may not exist in this paper's structure at all (f3)."
+  choices_and_claims_mutually_consistent: >
+    Partially. choice_1 is cleanly tested by c5, and choice_4 is well tested by
+    c1/c2/c3/c9. choice_2 and choice_3, however, both point to the same rq2b
+    evidence (linear-vs-nonlinear lifting), which substantively answers only
+    choice_3's question; choice_2's own defining feature (conditioning the
+    operator on the command) has no positive experimental result anywhere in
+    the ledger, only an explicit non-claim (nc_1) that it cannot be evaluated
+    here. As currently wired, the four design choices and nine claims are not
+    fully mutually consistent.

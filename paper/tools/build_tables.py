@@ -32,8 +32,8 @@ ROW_ORDER = [
     ("Markov state + control", "Last-turn"),
     ("delay-embedded state, control withheld", "Memory w/o action"),
     ("LSTM sequence baseline", "LSTM"),
-    ("AE-Koopman lifted operator", "Koopman (nonlinear lifting)"),
-    ("delay-embedded linear operator with control", "Koopman (linear, ours)"),
+    ("AE-Koopman lifted operator", "KOMPAS (learned lifting)"),
+    ("delay-embedded linear operator with control", "KOMPAS (linear)"),
 ]
 
 # Seven columns that carry a conclusion (story framework §6). The four small-sample
@@ -332,8 +332,8 @@ def build_control(grid, method_name):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--method-name", default="Koopman (ours)",
-                    help="display name of the proposed method in Table 1; set after decision D10")
+    ap.add_argument("--method-name", default="KOMPAS",
+                    help="display name of the proposed method in Table 1 (decision D10)")
     args = ap.parse_args()
 
     main_entries = load(os.path.join(PAPER, "evidence", "numbers.yaml"))
@@ -365,7 +365,7 @@ def main():
         fh.write(app_tex)
 
     # How many of the seven columns does the linear special case win outright?
-    ours = "Koopman (linear, ours)"
+    ours = "KOMPAS (linear)"
     wins = sum(
         1 for col_key, _ in PRED_COLUMNS
         if pred_report[ours][col_key] is not None

@@ -52,15 +52,27 @@ def collect_ids(value) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--contract", type=pathlib.Path, default=pathlib.Path("paper/contract.yaml"))
-    parser.add_argument("--numbers", type=pathlib.Path, default=pathlib.Path("paper/evidence/numbers.yaml"))
+    parser.add_argument(
+        "--numbers",
+        type=pathlib.Path,
+        nargs="+",
+        default=[
+            pathlib.Path("paper/evidence/numbers.yaml"),
+            pathlib.Path("paper/evidence/numbers_benchmark.yaml"),
+        ],
+        help="one or more evidence ledgers; ids are merged across them",
+    )
     args = parser.parse_args()
 
-    for path in (args.contract, args.numbers):
+    for path in [args.contract, *args.numbers]:
         if not path.exists():
             print(f"cannot run: {path} does not exist", file=sys.stderr)
             return 2
 
-    entries = {e["id"]: e for e in yaml.safe_load(args.numbers.read_text())}
+    entries = {}
+    for path in args.numbers:
+        for e in yaml.safe_load(path.read_text()) or []:
+            entries[e["id"]] = e
     contract = yaml.safe_load(args.contract.read_text()) or {}
     claims = contract.get("claim_ledger") or []
     if not claims:
@@ -76,7 +88,8 @@ def main() -> int:
         for nid in cited:
             entry = entries.get(nid)
             if entry is None:
-                failures.append(f"{cid}: cites {nid}, which is not in {args.numbers}")
+                where = ", ".join(str(p) for p in args.numbers)
+                failures.append(f"{cid}: cites {nid}, which is in none of {where}")
                 continue
             status = entry.get("status")
             if status == "superseded":
