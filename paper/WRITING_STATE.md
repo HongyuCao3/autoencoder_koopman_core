@@ -1,36 +1,52 @@
 # WRITING_STATE
 
 updated: 2026-09-19   by: opus session 01UHUsmU
-phase: 0   checkpoint: CP0   status: awaiting_user_review (contract 第二轮修订中)
+phase: 1   checkpoint: CP1   status: awaiting_user_review
 last_commit: (见本次提交)
-artifacts_ready: contract.yaml (Tier 1, 冷审后已 triage), tools/{sentence_gate.py,mech_audit.sh,build_tables.py}, tables/{tab_control,tab_prediction,tab_prediction_small}.tex
-current_target: (等用户签 contract)
-gates: sentence_gate=pass (02_method.tex)  mech_audit=fail 3 处副词 (留给 Phase 2)  compile=pass (build/main_phase0_2026-09-18.pdf)  evidence_check=pass (9 claims)
-cold_review: audit/contract_T1_2026-09-18.yaml — 3 blocker / 2 major / 4 minor，全部已 triage，见下
-user_verdict_on_previous: (Phase 0 是第一个阶段)
-next_action: 用户通读 contract_zh_2026-09-19.md 并签字 → Phase 1（先为 Introduction 建 Tier 2，再派 Sonnet 生成 01_introduction.tex）
-open_questions_for_user: (1) contract 是否签字；(2) c3 两列失利的机制解释是否要在 CP3b 之前查
+artifacts_ready: contract.yaml (Tier 1, 用户 2026-09-19 签字 D20), semantic.md §Introduction (approved CP1), sections/01_introduction.tex (CP1 草稿)
+current_target: sections/01_introduction.tex
+gates: sentence_gate=pass  equation_gate=pass (0 公式)  mech_audit=pass (全部五关)  compile=pass (build/main_CP1_2026-09-19.pdf, 6 页)
+cold_review: audit/intro_T2_2026-09-19.yaml (0/2/2) 与 audit/intro_T3_2026-09-19.yaml (0/3/2)，全部已 triage
+user_verdict_on_previous: contract 已签字（D20）
+next_action: 等用户对 CP1 的审核结论（approved / revise:<cosmetic|structural> / redo）；approve 后进 Phase 2（Method 改造，先建 Tier 2）
+open_questions_for_user: (1) CP1 是否通过；(2) c3 两列失利的机制解释是否要在 CP3b 之前查
 
-## 2026-09-19 第二轮修订（用户反馈七条）
+## CP1 做了什么
 
-| 反馈 | 处理 | 裁决 |
+六步走完：建 Tier 2 → 冷审 Tier 2 → 生成 Tier 3 → 机械闸门 → 编译 → 交用户审核。
+
+| 步 | 产出 | 结果 |
 |---|---|---|
-| 标题只强调建模，要用 dynamics modeling 且必须提 control | 标题与 acronym 展开同步改写 | D14 |
-| 控制线 claim 不需要更强，之后会同步数据 | 保持 scoped | D13 |
-| 叙事第一句"轨迹会漂"要给候选成因 | 改为"指令要和之后累积的每一轮竞争"；加 `prior_4` 与 `nc_9` | D15 |
-| 四个设计选择太多，只够讲三个 | 共识扫描后：联合训练目标降进附录 A1；三个幸存 Why 段改成论证"实例化"而非论证机制 | D19 |
-| claim 改成先预测线再控制线 | 重排并重编号：c1–c4 预测、c5–c8 控制、c9 桥；实验章 03b 预测 / 03c 控制 | D17 |
-| 不声称的不要显式写进正文 | 全部改为 `mode: audit_only` + `candidate_explicit`；D3/D12 的点估计口径改挂 `c5.notes` / `c6.notes` | D16 |
-| 主表要两张不是三张 | Table 1 建模、Table 2 控制；小样本表明确标为附录 A2 | D18 |
-| 每个公式前要直觉、后要变量解释 | 新增 `tools/equation_gate.py`，接进 `mech_audit.sh` 第 2 关 | — |
+| B | `semantic.md` 的 §Introduction 块，5 段（motivation / gap / intuition / bridge / contributions） | Sonnet 建，Opus 收 |
+| 审 Tier 2 | `audit/intro_T2_2026-09-19.yaml` | 0 blocker / 2 major / 2 minor，全部 triage |
+| C | `sections/01_introduction.tex` | Sonnet 写，两道闸门自查通过后交回 |
+| 闸门 | `mech_audit.sh` 五关全过 | 句子、公式、em-dash、副词、`\cite` |
+| 编译 | 6 页；Introduction 约 0.85 页，**低于 1.0–1.2 的预算** | `build/main_CP1_2026-09-19.pdf` |
+| Tier-3 冷审 | `audit/intro_T3_2026-09-19.yaml` | 0 blocker / 3 major / 2 minor，全部 triage |
 
-中文对照已重生成为 `contract_zh_2026-09-19.md`，旧版 `contract_zh_2026-09-18.md` 已删除。
+### 冷审 triage（两轮合计 0 blocker / 5 major / 4 minor）
 
-## equation_gate 对同事 Method 的实测
+| 编号 | 严重度 | 处理 |
+|---|---|---|
+| T2 f2 基准名没经过 contract | major | 把 IFBench/IFEval/COLLIE 及其 11 个子任务写进 `meta.benchmarks`，并在 `c5.notes` 注明；来源是 `numbers_benchmark.yaml` 的 `benchmark` 字段与同事表标题 |
+| T2 f3 P5 有超页风险 | major | P5 压成"关键词 + 一个头条数字"，D12 的口径改为列表后**一条共享尾句**，不再每项重复 |
+| T2 f1 P1 的对冲措辞像在预写 nc_9 | minor | 改为"用对冲动词写在同一从句里，不另起免责句" |
+| T2 f4 角色标签偏离规范 | minor | 改为 motivation / gap / intuition / bridge / contributions |
+| T3 f1 贡献 3 的 id 注释不自洽 | major | 该行补上 KOMPAS 侧的 11 个 id，使这一行能独立核算 |
+| T3 f2 "超过两个白盒控制器 5.2 点"口径不准 | major | 5.2 是对 **RE-Control** 的差；TMPC 的差是 6.136。改为"超过两者中更强的那个 5.2 点"，与 contract 的 `finding_keyword` 一致 |
+| T3 f3 "it" 有两个先行词 | major | 拆成两句，把 14.5 点明确挂在**线性特例**上（D2 的关键区分） |
+| T3 f4 / f5 跨段回指与序数回指 | minor | 两处改写；三个要求不再用"第一/第二"回指，改成点名 |
 
-14 个显示公式全部有"公式前直觉句"。5 处**首次引入却没有紧跟解释**的符号，留给 Phase 2：
-`o_{t+1}`（eq:interaction）、`\mathcal{K}_{c}`（eq:koopman_operator）、`\xi_t`（eq:koopman_model）、
-`w_h` 与 `\widehat{J}_t`（eq:selection）、`\varepsilon_{\mathrm{rec}}`（eq:residual_assumptions）。
+### 冷审独立复算了两个头条数字
+
+- 14.5 点：mean(n_bench_012–022) − mean(n_bench_001–011) = 41.373 − 26.900 = **14.473** ✓
+- 5.2 点：41.373 − mean(n_bench_034–044) = 41.373 − 36.127 = **5.245** ✓
+
+### 留给后面的
+
+- Introduction 只用了约 0.85 页，比预算少。Phase 4 的"Intro 回看"只允许收窄，所以这点余量留给 Related Work。
+- 标题在 ICLR 模板里折成三行且 "BEHAVIOR" 被断字。不影响评审，CP4 若要调只能收窄不能加主张。
+- `c3` 两列失利仍无机制解释（Rule 1 挂账），CP3b 之前处理。
 
 ## 新会话怎么用这个文件
 

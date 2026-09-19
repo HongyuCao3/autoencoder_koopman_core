@@ -29,6 +29,17 @@ meta:
   venue: ICLR
   page_limit: 9
   subfield: "test-time alignment and multi-turn behavior control of frozen LLMs"
+  benchmarks: # Tier-1 cold review of the Intro outline (f2, 2026-09-19): the names were being
+              # cited by Tier 2 without ever passing through the contract. Verified against
+              # evidence/numbers_benchmark.yaml, which carries a `benchmark` field on all 88 rows,
+              # and against the colleague's table caption in _colleague_backup_2026-09-18/4-experiment.tex.
+    - name: IFBench
+      subtasks: [WC, UWC, NS, NP]
+    - name: IFEval
+      subtasks: [KF, WC, NS, NP]
+    - name: COLLIE
+      subtasks: [Word, "Sent.", "Para."]
+    # 4 + 4 + 3 = the eleven subtasks every control claim averages over.
   arc_type: challenge_driven    # deployment gaps -> contributions; beat 2 carries the access gap,
                                 # beat 3 carries both the stateless gap and the missing-model gap
 
@@ -156,7 +167,8 @@ claim_ledger:
     appears_in: [abstract, intro, experiments, conclusion]
     driver_keyword: "candidate scoring happens on the predicted trajectory, so a command that differs from the target can be chosen when the trajectory is still moving"
     notes: >-
-      Point estimates as printed by the colleague. No seeds, no intervals, metric definition still
+      Point estimates as printed by the colleague on IFBench, IFEval and COLLIE (see meta.benchmarks;
+      eleven subtasks in total). No seeds, no intervals, metric definition still
       pending. D3: the experiments subsection states this in the same subsection as the number.
       D12: the introduction carries one clause naming these as point estimates on three public
       benchmarks; the abstract gives the gain with no interval and without the word measured. The

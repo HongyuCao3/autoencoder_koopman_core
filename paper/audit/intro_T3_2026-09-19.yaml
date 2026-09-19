@@ -1,0 +1,207 @@
+# Tier-3 cold review — paper/sections/01_introduction.tex
+# Reviewer: NeurIPS/ICLR-tier reviewer persona (Tier 3, neurips-write-tiered/references/reviewer.md),
+# audited via paper-audit D1 (confusing.md) + D2 (numbers.md) + D4 (claims.md) procedures.
+# Baseline whitelist: MPC, Koopman operator theory, instruction-following benchmarks, activation
+# steering. No project documents read beyond contract.yaml / semantic.md / the two evidence ledgers
+# / the house style rules, as instructed.
+# Date: 2026-09-19
+
+audit:
+  file: paper/sections/01_introduction.tex
+  contract: paper/contract.yaml
+  semantic: paper/semantic.md
+  ledgers: [paper/evidence/numbers.yaml, paper/evidence/numbers_benchmark.yaml]
+  dimensions_run: [confusing, numbers, claims, compliance]
+
+findings:
+
+  - id: f1
+    dimension: numbers
+    severity: major
+    location:
+      file: paper/sections/01_introduction.tex
+      line: 20
+      section: "§Introduction P5 (contributions), item 3"
+      paragraph: "contribution 3"
+    what_is_wrong: >-
+      The id comment on this line (n_bench_034 ... n_bench_044, all Qwen3-4B / RE-Control rows)
+      does not by itself back the "5.2 points" figure. Computing that delta requires the
+      Qwen3-4B / Koopman rows too (n_bench_012-022), which are cited only on the PREVIOUS
+      contribution's line (line 19), not on this one.
+    why_it_matters: >-
+      A reader who checks this line's evidence in isolation, the way the ledger convention
+      invites, can pull up only the RE-Control side of the subtraction and cannot verify
+      "5.2" from the comment alone. I independently recomputed both headline deltas from the
+      ledger rows: mean(n_bench_012:022) - mean(n_bench_001:011) = 41.373 - 26.900 = 14.473,
+      which rounds to the stated 14.5; mean(n_bench_012:022) - mean(n_bench_034:044) =
+      41.373 - 36.127 = 5.245, which rounds to the stated 5.2. Both headline numbers are
+      arithmetically correct; only the id-linkage on line 20 is incomplete.
+    recommended_fix_tier: T3
+    related_contract_id: c6
+    suggested_fix: >-
+      Append n_bench_012 through n_bench_022 to line 20's id comment so the line is
+      self-sufficient for verification, matching the convention already used on line 19.
+
+  - id: f2
+    dimension: numbers
+    severity: major
+    location:
+      file: paper/sections/01_introduction.tex
+      line: 20
+      section: "§Introduction P5 (contributions), item 3"
+      paragraph: "contribution 3"
+    what_is_wrong: >-
+      The sentence claims the controller "exceeds two white-box latent controllers by 5.2
+      points," but 5.2 is computed only against RE-Control. TMPC is the other of the "two"
+      controllers (choice_3's notes name both TMPC and RE-Control), and TMPC's Qwen3-4B ids
+      (n_bench_023-033) never appear anywhere in this file. I computed TMPC's own margin from
+      the ledger: mean(n_bench_012:022) - mean(n_bench_023:033) = 41.373 - 35.236 = 6.136, a
+      different number from the one stated. The contract itself is precise about this: choice_3's
+      finding_keyword says "+5.2 ... over the stronger white-box controller" (singular), but the
+      Tier-3 prose compressed "the stronger of two controllers" into "two controllers," dropping
+      the qualifier that tells the reader which comparator the number is actually against.
+    why_it_matters: >-
+      As written, a reviewer has no way to tell from this sentence (or its citation) whether 5.2
+      is a per-controller margin, an average of the two margins, or the smaller of two different
+      margins. It happens to be the smaller of the two (the true TMPC margin, 6.1, is larger), so
+      the sentence is not factually false, but the phrasing invites an unverifiable reading and the
+      evidence for the unnamed second comparator is absent from the paper's own ledger trail.
+    recommended_fix_tier: T3
+    related_contract_id: c6
+    suggested_fix: >-
+      Recover the contract's own qualifier, e.g. "exceeds the stronger of two white-box latent
+      controllers by 5.2 points," or add the TMPC ids and state both margins.
+
+  - id: f3
+    dimension: confusing
+    severity: major
+    location:
+      file: paper/sections/01_introduction.tex
+      line: 19
+      section: "§Introduction P5 (contributions), item 2"
+      paragraph: "contribution 2"
+    what_is_wrong: >-
+      "We condition a Koopman operator on the command, report its linear delay-embedded special
+      case, and show it raises constraint satisfaction by 14.5 points..." — "it" in the third
+      clause has two grammatically live antecedents in the same sentence: "a Koopman operator"
+      (the general, nonlinear, command-conditioned model) and "its linear delay-embedded special
+      case" (the one instance actually reported, per contract note "D2: the reported Ours row is
+      the special case E_phi = D_psi = id"). The nearer antecedent is the special case, so the
+      sentence likely parses correctly, but the ambiguity is real on a single read.
+    why_it_matters: >-
+      This is exactly the distinction the contract flags as load-bearing (choice_2's D2 note): the
+      14.5-point result is a property of the linear special case, not a demonstrated property of
+      the general nonlinear operator the sentence opens with. A reader who resolves "it" to "a
+      Koopman operator" comes away thinking the paper measured the general nonlinear model's
+      control performance, which it did not.
+    recommended_fix_tier: T3
+    related_contract_id: choice_2
+    suggested_fix: >-
+      Replace "it" with an explicit head noun per Rule 23, e.g. "...report its linear
+      delay-embedded special case, and show that this special case raises constraint
+      satisfaction by 14.5 points..."
+
+  - id: f4
+    dimension: confusing
+    severity: minor
+    location:
+      file: paper/sections/01_introduction.tex
+      line: 14
+      section: "§Introduction P4 (bridge)"
+      paragraph: "P4, opening sentence"
+    what_is_wrong: >-
+      "A predictor built at this per-exchange clock needs three properties together." "this
+      per-exchange clock" is a new label for a concept named differently two sentences earlier,
+      in the previous paragraph: "This complete-reply scoring rule makes the natural clock tick
+      one exchange, not one token." The reader must bridge a paragraph break and reconcile two
+      different phrasings ("the natural clock tick[s] one exchange" vs. "this per-exchange clock")
+      as the same referent, with no explicit link.
+    why_it_matters: >-
+      Reviewer_class (g) reader-load defect (paper-audit/confusing.md): the demonstrative "this"
+      is technically attached to a head noun ("clock"), satisfying the letter of Rule 23, but the
+      renamed phrasing across a paragraph boundary still forces a backward scan to confirm the two
+      clocks are the same one.
+    recommended_fix_tier: T3
+    related_contract_id: null
+    suggested_fix: >-
+      Reuse the exact phrase from the prior paragraph ("this exchange-level clock" or "a predictor
+      at this per-exchange clock" matching "the natural clock tick[s] one exchange") so the two
+      sentences read as the same object without requiring inference.
+
+  - id: f5
+    dimension: confusing
+    severity: minor
+    location:
+      file: paper/sections/01_introduction.tex
+      line: 14
+      section: "§Introduction P4 (bridge)"
+      paragraph: "P4, fifth sentence"
+    what_is_wrong: >-
+      "A recurrent sequence model meets the first clause and misses the other two, while a
+      per-turn Markov rule meets the second and misses the other two." The three predictor
+      properties (nonlinear response, linear step, explicit command channel) were just stated in
+      the three preceding sentences but are never named again here; the reader must hold all three
+      in working memory and remap "the first clause" / "the second" / "the other two" (used twice,
+      referring to two different pairs) onto them without any restated labels.
+    why_it_matters: >-
+      Reviewer_class (g) reader-load defect: this is the single hardest sentence in the section to
+      parse on one pass, independent of subject-matter background — it is a pure working-memory /
+      ordinal-indexing load, not a knowledge gap covered by the MPC/Koopman baseline whitelist.
+    recommended_fix_tier: T3
+    related_contract_id: null
+    suggested_fix: >-
+      Name the properties again in short form, e.g. "An LSTM admits the nonlinearity but keeps
+      neither the linear step nor the explicit command channel; a per-turn Markov rule keeps the
+      linear step but neither of the other two," so the reader does not have to re-derive which
+      ordinal maps to which property.
+
+sound:
+  - "All three contribution items carry their design_choice_lattice entry's intro_bullet_keyword
+     content in the contract order choice_1, choice_2, choice_3, with no drift in substance."
+  - "Every contribution number traces to a claim_ledger id at the recorded strength: item 1 = c1
+     (scoped, 'five of seven'), item 2 = c5 (scoped, 14.5 pts on Qwen3-4B only, matching the
+     approved semantic.md P5 one-model budget), item 3 = c6+c8 (scoped/strong respectively). No
+     sentence promises more than its cited entry's strength."
+  - "The drift cause in P1 ('One candidate driver, among others, is that...') is hedged in-line
+     exactly as semantic.md and nc_9 require: never stated as a measured finding, no separate
+     disclaimer sentence, carries its own % CITE placeholder."
+  - "Contribution item 1's 'five of seven' figure and its seven backing ids were independently
+     recomputed from numbers.yaml: n_main_013/045/077/132/180 exclude zero (5) and
+     n_main_029/093 contain zero (2), exactly matching the claim and c1's notes."
+  - "No promise-without-delivery: every committed capability in the section (finite-memory state,
+     command-conditioned operator, predictive candidate selection) has a claim_ledger entry;
+     nothing in the section commits beyond c1/c5/c6/c8."
+  - "Rule 20 (adverb ban) and Rule 19 (em-dash ban): zero grep hits in the file."
+  - "Rule 9 (sentence complexity budget): no sentence exceeds two logical turns; no 4+-clause
+     and/comma chain (流水帐) found."
+  - "Rule 18 (Q&A bookend): the three bold-label/uline pairs in P2 (Wrong interface / Stateless
+     and open loop / No usable dynamics model) are each folded into the same body paragraph with
+     no blank line, each uline answers only its own paired bold question (one underline per
+     question, Rule 18(i)), and no em-dash appears inside any uline. Packing three pairs into one
+     paragraph reads acceptably here: each pair is a short, self-contained bold-label/gap/uline
+     unit (the pattern the skill's own precedent documents as '3 Intro prior-work items' from
+     RobustReshape commit f60b867), and Rule 3's twos-or-threes convention licenses exactly this
+     grouping. It does not need to be split into three paragraphs."
+  - "Rule 23 (pronoun antecedents): clean everywhere else in the section (e.g. 'None of them',
+     'No such framing' both resolve unambiguously to the immediately preceding list/noun); the
+     one exception is f3."
+  - "Acronym engineering (rhetoric_patterns.md §1): KOMPAS is revealed exactly once, in P4, bold
+     inline; the expansion 'KOopman dynaMics modeling and Predictive control of Attributes at the
+     prompt Step' reads as a natural English noun phrase, is pronounceable, and matches
+     contract.yaml meta.acronym verbatim; the single mid-word capital (dynaMics) matches the
+     house-sanctioned MOAT precedent rather than violating the word-start rule."
+  - "No forward \\ref/\\eqref to §Experiments or the appendix inside the Introduction."
+  - "D12/D3 point-estimate caveat present and correctly scoped: the trailing sentence names all
+     three benchmarks once, as a single shared clause after the enumerate block, not repeated per
+     item, and states 'no interval reported' without the word measured."
+
+summary:
+  counts: {blocker: 0, major: 3, minor: 2, total: 5}
+  headline_number_verification:
+    delta_14_5: "mean(n_bench_012:022)=41.373 minus mean(n_bench_001:011)=26.900 = 14.473 -> matches stated 14.5"
+    delta_5_2: "mean(n_bench_012:022)=41.373 minus mean(n_bench_034:044)=36.127 = 5.245 -> matches stated 5.2 (against RE-Control specifically; TMPC margin is 6.136, uncited)"
+  hardest_sentences:
+    - "A recurrent sequence model meets the first clause and misses the other two, while a per-turn Markov rule meets the second and misses the other two."
+    - "We condition a Koopman operator on the command, report its linear delay-embedded special case, and show it raises constraint satisfaction by 14.5 points on Qwen3-4B over the uncontrolled model."
+    - "A predictor built at this per-exchange clock needs three properties together."
+  single_read_verdict: "No — three sentences (f3, f4, f5 above) require a second pass; the rest of the section, including the three-pair Q&A paragraph, reads cleanly on one pass."

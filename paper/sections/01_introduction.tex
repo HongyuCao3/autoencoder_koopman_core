@@ -1,4 +1,22 @@
-% Phase 1 (CP1). 5 paragraphs, 1.0-1.2 pages. Allocation: WRITING_PLAN §5 Phase 1.
+% Phase 1 (CP1). Realizes semantic.md Introduction P1-P5 against contract.yaml Tier-1 claims (c1, c5, c6, c8); approved CP1 cold review 2026-09-19.
 \section{Introduction}
 \label{sec:intro}
-TODO(CP1)
+
+Multi-turn interaction turns a frozen language model's reply attributes into a trajectory, and that trajectory drifts turn over turn. What a model writes in recent turns carries into what it writes next, so reply attributes carry inertia rather than being drawn fresh each turn.
+% CITE: li2024instability, driftnomore2025, attractorstates2025
+One concrete instance is a rewrite pushed past the level it was aiming for. One candidate driver, among others, is that an instruction given once competes with everything said in every turn that follows.
+% CITE: li2024instability, driftnomore2025, attractorstates2025
+
+\textbf{Wrong interface.} Every existing controller acts inside the network, needing white-box access at every token. \uline{The lever a deployment holds is one instruction per turn against a black-box API.} \textbf{Stateless and open loop.} Existing prompt-level interventions include a system prompt written once, a reminder on a fixed schedule, and a per-turn classifier template. \uline{None of them predicts what the next instruction will do, so each overshoots or undershoots the desired attribute.} \textbf{No usable dynamics model.} A control-theoretic framing of prompting exists. \uline{No such framing turns one instruction into a predicted next-turn attribute.}
+
+The quantity a controller cares about is a property of a whole reply, not of any single token inside it. A verifier that scores a reply runs once the reply is complete, never partway through generation. This complete-reply scoring rule makes the natural clock tick one exchange, not one token. Intervening at the token level needs access inside the network, while intervening at the interaction level needs only the ability to change the next prompt. Controlling a room's temperature needs no model of each air molecule, and controlling a reply's attribute needs no model of each token.
+
+A predictor that takes one exchange as its step needs three properties together. It must admit that a frozen model can respond to an instruction in a nonlinear way. It must keep the step from one turn's state to the next linear, so a horizon of candidates becomes one matrix power rather than a new generation each time. It must keep the command an explicit, readable channel, not a hidden target for text regression. A recurrent sequence model admits the nonlinearity but gives up the linear step and the readable command. A per-turn Markov rule keeps the step linear but gives up the other two. We call the minimal structure meeting all three clauses \textbf{KO}opman dyna\textbf{M}ics modeling and \textbf{P}redictive control of \textbf{A}ttributes at the prompt \textbf{S}tep, or \textbf{KOMPAS}.
+
+Our contributions are as follows.
+\begin{enumerate}
+  \item We build a finite-memory state from observable attribute readings alone, with no hidden-state access, since history beyond the current turn improves prediction on five of seven tracked attributes.  % n_main_013 n_main_045 n_main_029 n_main_077 n_main_093 n_main_132 n_main_180
+  \item We condition a Koopman operator on the command and report its linear delay-embedded special case. This special case raises constraint satisfaction by 14.5 points on Qwen3-4B over the uncontrolled model.  % n_bench_001 n_bench_002 n_bench_003 n_bench_004 n_bench_005 n_bench_006 n_bench_007 n_bench_008 n_bench_009 n_bench_010 n_bench_011 n_bench_012 n_bench_013 n_bench_014 n_bench_015 n_bench_016 n_bench_017 n_bench_018 n_bench_019 n_bench_020 n_bench_021 n_bench_022
+  \item We score candidates in a black-box interaction with no extra call to the target model, and the same controller exceeds the stronger of two white-box latent controllers by 5.2 points on Qwen3-4B.  % n_bench_012 n_bench_013 n_bench_014 n_bench_015 n_bench_016 n_bench_017 n_bench_018 n_bench_019 n_bench_020 n_bench_021 n_bench_022 n_bench_034 n_bench_035 n_bench_036 n_bench_037 n_bench_038 n_bench_039 n_bench_040 n_bench_041 n_bench_042 n_bench_043 n_bench_044
+\end{enumerate}
+These control numbers are point estimates on three public instruction-following benchmarks, IFBench, IFEval, and COLLIE, with no interval reported.

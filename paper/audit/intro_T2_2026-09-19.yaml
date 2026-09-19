@@ -1,0 +1,143 @@
+# Tier-2 semantic-outline audit — §Introduction
+# Artifact: paper/semantic.md (§Introduction, P1-P5)
+# Contract:  paper/contract.yaml
+# Reviewer persona: reviewer.md Tier-2 (allocation auditor), cold read, no project docs consulted.
+# Date: 2026-09-19
+
+findings:
+  - id: f1
+    severity: major
+    what_is_wrong: >-
+      P5 (item 2) names three specific benchmarks — "IFBench, IFEval, COLLIE" — as the source
+      of the c5/c6 point-estimate numbers. contract.yaml does not contain these names anywhere:
+      not in c5's or c6's evidence list, not in c5's/c6's notes, not in the D12 directive that
+      requires the point-estimate caveat, and not in meta.subfield. D12 only requires the intro
+      to say "point estimates on three public benchmarks" — it never specifies which three.
+    why_it_matters: >-
+      Tier 2 is supposed to be extractive from Tier 1 (per the tiered skill's own per-section
+      interleaving: "§Introduction ... contributions = choice_name list ... now extractive from
+      finalized §Method + §Experiments"). Naming specific benchmark identities that were never
+      run through the contract's provenance chain means nobody has audited whether "IFBench,
+      IFEval, COLLIE" are in fact the three benchmarks behind n_bench_001..088, or whether the
+      writer is recalling this from unlogged memory. If wrong, Tier 3 will publish a factual
+      error riding directly on the headline control-gain numbers (c5/c6) that also appear in
+      the Abstract — the exact "headline number is wrong" pattern the audit rubric treats as
+      blocker-class once it reaches prose. Catching it now, before prose exists, is the cheap
+      point of fixing it.
+    recommended_fix_tier: T1
+    suggested_fix: >-
+      Either (a) add the verified benchmark identities to contract.yaml (c5/c6 evidence or notes,
+      sourced to evidence/numbers_benchmark.yaml) and then let P5 cite them, or (b) if the three
+      benchmarks were never confirmed, strip the specific names from P5 and keep the wording at
+      the level D12 actually mandates: "point estimates on three public benchmarks," with the
+      names deferred to §Experiments Setup where they can be sourced properly.
+
+  - id: f2
+    severity: major
+    what_is_wrong: >-
+      The outline allocates 5 paragraphs (P1-P5) to a 1.0-1.2 page Introduction. The tiered
+      skill's own allocation table budgets 3 paragraphs (motivation/gap/contributions) for that
+      same page range. Bullet density (raw character count of each P-bullet, a proxy for how
+      much the eventual paragraph has to say) is uneven and P5 is the extreme outlier: 1348
+      characters vs. 625-862 for P1-P4. P5 has to deliver three numbered contributions, each
+      carrying an intro_bullet_keyword phrase, a backing claim id, two per-model numbers, and
+      (for item 2) a benchmark list plus the mandatory D12 point-estimate/no-interval hedge —
+      all while reading as Rule 3's "parallel triples," not a wall of text.
+    why_it_matters: >-
+      If P5 cannot compress into something close to the house style's contribution-paragraph
+      budget (60-120 words for an explicit list, ~180-260 for a fused P4-style paragraph)
+      without cutting content, one of two bad things happens at Tier 3: the Introduction
+      overflows 1.2 pages (squeezing Related Work/Method), or the writer silently drops
+      required detail — most dangerously the D12 point-estimate caveat, which the contract
+      says must "travel attached to the number" and is explicitly exempted from being pushed
+      to the (audit-only) non-claim ledger. Either failure is expensive to catch once prose
+      exists; it is cheap to catch now.
+    recommended_fix_tier: T2
+    suggested_fix: >-
+      Compress P5: state each item's intro_bullet_keyword plus one headline number, and fold
+      the point-estimate/no-interval caveat and the benchmark list into a single trailing
+      clause shared across items 2 and 3 rather than repeating hedge language per item.
+      Alternatively, rebudget the Introduction above 1.2 pages, or trim P2's three gap labels
+      to two if a gap can be merged without losing an argument beat.
+
+  - id: f3
+    severity: minor
+    what_is_wrong: >-
+      P1 plans to state that prior_4's drift-cause account is "a plausible borrowed account
+      and not a finding of this paper." This is functionally the same content as nc_9 ("that
+      the paper identifies why multi-turn behavior drifts"), whose candidate_explicit list
+      includes "intro" — but D16 says non_claim_ledger entries stay audit-only until the user
+      deliberately promotes one to visible prose, precisely so a scope sentence isn't written
+      into Tier 2 by default. prior_4's own note in contract.yaml does instruct this framing
+      ("states it as a plausible account, never as a finding"), so there is a real tension
+      between that note and D16's general hold, and no explicit "exception by construction"
+      is written for nc_9 the way one is written for the D3/D12 point-estimate caveat.
+    why_it_matters: >-
+      As phrased, Tier 3 generation could render this bullet as a literal "we do not claim to
+      identify why behavior drifts" sentence — exactly the pattern D16 says should wait for a
+      deliberate promotion decision, not emerge as a side effect of an intro bullet's wording.
+      The underlying intent (attribute the candidate cause to prior work, don't claim it as an
+      own finding) is correct and necessary; the risk is narrowly in how literally the phrase
+      gets carried into prose.
+    recommended_fix_tier: T2
+    suggested_fix: >-
+      Reword toward attribution rather than scope-disclaimer: e.g. "sourced to prior work,
+      stated as their account, not ours" rather than "not a finding of this paper." If the
+      team does want nc_9's disclaimer stated explicitly in the Introduction, make that a
+      conscious, logged D16 promotion in contract.yaml rather than leaving it implicit here.
+
+  - id: f4
+    severity: minor
+    what_is_wrong: >-
+      The role tags used — phenomenon, gap, intuition, reveal, contributions — depart from the
+      tiered skill's canonical §Introduction role list (motivation, gap, contributions, bridge).
+      "intuition" is borrowed from the §Problem Formulation role set; "phenomenon" and "reveal"
+      appear in neither list. This paper has no separate §Problem Formulation section per the
+      contract's own note, so the adaptation is plausibly deliberate, but it is undocumented
+      as a deviation.
+    why_it_matters: >-
+      The tiered skill says role tags exist so "Phase C's Tier 3 generation knows which
+      neurips-write template to invoke." Unrecognized tags mean Phase C either needs bespoke
+      handling for this section or risks losing the structural guarantees (e.g., Rule 22
+      formula-free discipline) that the canonical role names carry by convention.
+    recommended_fix_tier: T2
+    suggested_fix: >-
+      Add a one-line note in semantic.md (or contract.yaml meta) documenting that this project's
+      Introduction uses a custom 5-role taxonomy in place of the standard 4, and why (no separate
+      Problem Formulation section), so Phase C generation and future reviewers don't read it as
+      an oversight.
+
+sound:
+  - "Check 1 (Coverage): all four claim_ledger entries with appears_in containing intro (c1, c5, c6, c8) are each cited exactly once, in P5; all three design_choice_lattice intro_bullet_keyword strings are each carried by exactly one P5 item, no doubles, no misses."
+  - "Check 2 (Closure): every bracketed ID in the Introduction block (prior_1, prior_2, prior_3, prior_4, fx_1, choice_1, choice_2, choice_3, c1, c5, c6, c8) resolves to an entry in contract.yaml; no dangling IDs."
+  - "Check 3 (P1 framing): P1 explicitly flags prior_4's drift-cause account as a 'plausible borrowed account,' not a finding, and attaches no claim_ledger id to it, correctly honoring nc_9's audit-only status at the level of not claiming discovery (see f3 for a narrower wording concern)."
+  - "Check 4 (Ordering): P3 (intuition) precedes P4 and P5, the only two bullets touching a formal object (choice_2 preview, choice_1-3/c-ids); P1 and P2 are explicitly annotated 'no formal object.' P3 itself contains zero formulas, symbols, or numbers, confirmed by grep."
+  - "Check 5 (Form): a `\\. [A-Z]` scan across the Introduction block returns zero matches — no complete sentences smuggled in; every bullet is shaped `P<n> (<role>): ...`."
+  - "Check 6 (Contribution count): P5 numbers exactly three items, one per choice_1/2/3, and explicitly excludes the joint training objective as a would-be fourth, consistent with D19."
+
+judgment:
+  can_predict_contributions_and_evidence: >-
+    Yes. Reading only this block, a reviewer can state the three contributions precisely:
+    (1) a finite-memory state over observed attributes (no hidden-state access), evidenced by
+    a 5-of-7-task prediction win with intervals excluding zero; (2) a command-conditioned
+    Koopman operator, whose reported instance is a linear special case, evidenced by a
+    ~14.5-14.8 point control-satisfaction gain over an uncontrolled frozen model on three
+    (named but contract-unverified) public benchmarks, reported as point estimates with no
+    interval; (3) black-box model-predictive candidate selection, evidenced by a ~5.2-5.7
+    point margin over two white-box latent controllers plus a cost argument (one latent
+    propagation and a decode, no extra target-model query). The hedging is unusually careful
+    for an intro block — "five of seven," "linear special case," "point estimates... no
+    interval attached" all survive into the bullet, so a cold reviewer is not being sold more
+    than the contract can defend.
+  weakest_contribution: >-
+    Contribution 2 (the command-conditioned Koopman operator, choice_2/P5-item-2) is the
+    weakest. Its distinguishing feature — that the operator conditions on the command at all —
+    is validated only end-to-end, through the control result (c5), which bundles the memory
+    state, the operator, and the selection rule together. On the prediction side the contract's
+    own ledger documents that a learned nonlinear lifting never beats the identity lifting (c2)
+    and that no ablation isolates the command column from a no-command operator on the
+    prediction task (nc_1, nc_8) — on five of the seven prediction columns the applied command
+    is in fact an exact affine function of the state, so the design "cannot see an action effect
+    at all" there (mechanism m5). P5's own wording is honest about this (it backs item 2 with
+    the control claim c5, not a prediction claim), but a reviewer reading closely will notice
+    that the operator's namesake property is asserted structurally and defended only indirectly.
