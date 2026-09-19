@@ -1,35 +1,4 @@
-% Abstract, drafted 2026-09-16 for ICLR 2027 (paper deadline Sep 25 2026 AOE).
-% Voice: ~/.claude/skills/neurips-write (6-move abstract) + references/sentence_discipline.md
-% overrides (one logical move per sentence, no question scaffolding, no meta-discourse).
-% Content boundaries this draft is bound by (do not relax without a user decision):
-%   docs/article/CLOSED_LOOP_SYNTHESIS.md 五 (claims withdrawn), 六 (what may be presented), 七 (co-located caveats)
-%   .claude/global.md 报告口径; .claude/paper.md 诚实性红线 (the null must stay in the narrative)
-% Deliberately carries NO magnitudes: the cross-column ladder mixes a self-judged column
-% with independently rejudged ones, and abstract.md licenses the categorical form when the
-% headline claim is categorical. Numbers land in Table 1 / Table 2 with their own calibers.
-% TODO: no acronym. This is not a method-proposal paper, and nothing in contract.yaml names one.
+% Phase 4 (CP4). Abstract: <=180 words, extraction method per neurips-write/references/abstract.md.
 \begin{abstract}
-Multi-turn behavioral steering aims to hold a target property of a language model's replies
-on target as the interaction unfolds.
-However, the value of an intervention and the value of its timing are confounded in the
-comparisons that motivate state-aware controllers.
-Existing interventions, such as per-turn classifiers, fixed reminder schedules, one-shot
-system prompts, and learned controllers, are scored against an unregulated baseline, so the
-reported gain separates neither.
-To fundamentally fill this gap, we model the multi-turn readout as a linear operator driven
-by the intervention itself, and deliver what that operator buys together with where control
-built on it stops paying.
-Our study contributes three instruments: 1) operator identification under randomized
-intervention, aiming to decouple the action from the state; 2) equal-cost closed-loop
-evaluation, intending to place a model-predictive controller against the strongest open-loop
-schedule and against hand-written feedback rules; 3) a planning-headroom criterion,
-dedicating to settle whether re-timing the same actions buys anything before closed-loop
-compute is spent.
-Across four multi-turn settings, delay-embedded memory is required in every informative
-comparison, while nonlinear state encoders move the fit by less than the paired uncertainty
-and flip sign between tasks.
-No closed-loop arm beats its equal-cost best fixed schedule in any setting, and where the
-bound is computable, a controller granted full hindsight over the same readout ties as well.
-The criterion reproduces that verdict at no generation cost, and it is one-directional: it
-licenses a decision not to invest, and its non-zero side stays untested.
+TODO(CP4)
 \end{abstract}

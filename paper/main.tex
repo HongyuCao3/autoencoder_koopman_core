@@ -1,13 +1,14 @@
-% Step I2 skeleton (docs/article/PAPER_EXECUTION_PLAN.md).
-% Venue decision 2026-09-18: ICLR 2027, deadline 2026-09-25 AOE (already recorded in
-% sections/abstract.tex's own header comment; this file's \documentclass was stale).
+% ICLR 2027 main file. Rebuilt 2026-09-18 for the positive-result draft.
+% Layout and phase plan: WRITING_PLAN_2026-09-18.md. Argument lattice: contract.yaml.
+% The negative-result draft this replaces is archived verbatim under
+% _archive_2026-09-18_negative_paper/ (user decision D1).
 \documentclass{article}
 \usepackage{iclr2027_conference,times}
 \input{math_commands.tex}
 
-% amsmath/amssymb dropped: math_commands.tex (dlbook_notation) already loads amsmath/amsfonts
-% and separately declares \triangleq; loading amssymb after it redefines the same symbol and
-% is a hard LaTeX error, not a style choice.
+% amsmath/amssymb dropped on purpose: math_commands.tex (dlbook_notation) already loads
+% amsmath/amsfonts and separately declares \triangleq; loading amssymb after it redefines the
+% same symbol and is a hard LaTeX error, not a style choice.
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{multirow}
@@ -17,18 +18,12 @@
 \usepackage[normalem]{ulem}
 
 % Authors must not appear in the submitted version (ICLR double-blind); keep hidden as long as
-% \iclrfinalcopy stays commented out below.
+% \iclrfinalcopy stays commented out.
 %\iclrfinalcopy
 
-% Title: user decision 2026-09-17, replacing the 2026-09-16 provisional choice.
-% The earlier title named a "pre-investment criterion", which reads as two-sided: it would tell a
-% reader both when to invest and when not to. Only the zero side has been checked. The one
-% pre-registered out-of-sample test of the non-zero side (the readability column's row 3, signed
-% to be non-zero) came in at +0.0061 with the interval containing zero. The Tier-1 cold review
-% raised the same objection from the evidence alone. This title states the one-sidedness, which
-% keeps the scope in place under page-limit compression rather than resting on a single abstract
-% sentence that a late cut could remove.
-\title{When Not to Close the Loop: A One-Sided Criterion for Multi-Turn LLM Behavior Control}
+% TODO(D10): final title follows the method-name decision in DECISIONS.md. This working title is
+% the colleague's original, kept so the skeleton compiles and so no untested claim enters the title.
+\title{Test-time Alignment for Large Language Models via Koopman Model}
 
 \author{%
   TODO: author list
@@ -40,14 +35,17 @@
 
 \input{sections/abstract.tex}
 \input{sections/01_introduction.tex}
-\input{sections/02_problem_formulation.tex}
-\input{sections/03_method.tex}
-\input{sections/04_experiments.tex}
-\input{sections/05_conclusion.tex}
-\input{sections/06_related_work.tex}
+\input{sections/02_method.tex}
+\input{sections/03_experiments.tex}
+\input{sections/04_conclusion.tex}
+\input{sections/05_related_work.tex}
 
 \appendix
-\input{sections/A1_estimator.tex}
+\input{sections/appendix/A1_estimator.tex}
+\input{sections/appendix/A2_small_columns.tex}
+\input{sections/appendix/A3_window.tex}
+\input{sections/appendix/A4_equal_cost.tex}
+\input{sections/appendix/A5_onestep.tex}
 
 \bibliographystyle{iclr2027_conference}
 \bibliography{main}
