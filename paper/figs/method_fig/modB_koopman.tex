@@ -43,7 +43,7 @@
 \node[mathlab,anchor=north] at (4.03,0.57) {$\symBcol$};
 \ScalarCell{(4.16,1.03)}{ours}{$\symCmd$}
 \draw[oursflow] (4.03,1.25) -- (4.03,1.49);
-\node[minicap,anchor=north,text=ours] at (4.03,0.30) {command enters here};
+\node[minicap,anchor=north,text=ours] at (4.03,0.30) {command};
 
 % ---------------- 6. predicted latent state -------------------------
 \draw[thinflow] (4.19,1.65) -- (4.41,1.65);
@@ -74,7 +74,9 @@
 \node[mathlab,anchor=east,inner sep=1.2pt] at (5.60,0.47) {$\symYhat$};
 
 % ---------------- 9. the linear special case ------------------------
+% v4: dropped the "linear case: E_phi=D_psi=id" caption per user request --
+% the dashed bypass arrows are kept, each already carries its own inline
+% "id" label (via \IdBypass), so the shortcut still reads without the
+% extra sentence.
 \IdBypass{(0.80,2.44)}{(2.31,2.44)}
 \IdBypass{(5.28,2.44)}{(5.98,2.44)}
-\node[minicap,anchor=west] at (0.05,0.55)
-  {linear case: $\symEnc{=}\symDec{=}\operatorname{id}$};

@@ -75,6 +75,17 @@
 \ScalarCell{(4.15,2.24)}{ours}{$\symCmdStar$}
 \draw[oursflow] (4.15,2.13) -- (3.20,2.18);
 
-% ---------------- 6. receding horizon (routed clear of the plot/bars) --
-\draw[thinflow] (4.26,2.02) -- (4.70,2.02) -- (4.70,0.15) -- (0.06,0.15) -- (0.06,0.33);
-\node[minicap,anchor=south] at (2.30,0.16) {execute, observe, replan};
+% ---------------- 6. receding horizon: execute -> observe -> replan, as
+% three sequential blocks along the return path (was: one text caption
+% riding on a single long arrow). Order matches the arrow's own direction
+% of travel (right to left along the bottom, then up into the next
+% rollout) -- this is the control loop's real feedback path, not an
+% incidental reversal, so it is drawn as a loop on purpose, unlike the
+% internal module chains which should read strictly left to right.
+\draw[thinflow] (4.26,2.02) -- (4.70,2.02) -- (4.70,0.15) -- (4.18,0.15);
+\node[rhblock] (rhExec) at (3.85,0.15) {Execute};
+\draw[thinflow] (3.52,0.15) -- (2.63,0.15);
+\node[rhblock] (rhObs) at (2.30,0.15) {Observe};
+\draw[thinflow] (1.97,0.15) -- (1.08,0.15);
+\node[rhblock] (rhReplan) at (0.75,0.15) {Replan};
+\draw[thinflow] (0.42,0.15) -- (0.06,0.15) -- (0.06,0.33);
