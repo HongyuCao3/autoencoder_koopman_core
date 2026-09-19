@@ -4,12 +4,27 @@ updated: 2026-09-19   by: opus session 01UHUsmU
 phase: 2   checkpoint: CP2   status: done (D21：不停下，直接进 Phase 3)
 last_commit: (见本次提交)
 artifacts_ready: contract.yaml (签字 D20), semantic.md §Introduction + §Method (both approved), sections/01_introduction.tex (CP1 approved), sections/02_method.tex + sections/appendix/A1_estimator.tex (CP2)
-current_target: sections/03a_setup.tex (Phase 3 起点)
+current_target: sections/03a_setup.tex（Tier 2 已建，待生成正文）
 gates: sentence_gate=pass  equation_gate=pass (12 公式)  mech_audit=pass  compile=pass (build/main_CP2_2026-09-19.pdf, 7 页)
 cold_review: audit/method_T2_2026-09-19.yaml (0/3/3) 与 audit/method_T3_2026-09-19.yaml (0/2/2)，全部 triage
 user_verdict_on_previous: CP1 approved（D21：全文过完再统一回看）
-next_action: Phase 3。先为整章 Experiments 建 Tier 2（四个小节一次建完），再逐节生成
-open_questions_for_user: (1) c3 两列失利的机制解释是否要在 CP3b 之前查
+next_action: 逐节生成 03a–03d；4.1 的指标定义仍缺，见下
+open_questions_for_user: (1) 约束满足率的**指标定义**仍缺，账本头部记为 pending from colleague——需要你去要；(2) c3 两列失利的机制解释是否要在 4.2 之前查
+
+## Phase 3 起步：整章 Experiments 的 Tier 2 已建
+
+四个小节一次建完（4.1 设置 / 4.2 预测 / 4.3 控制 / 4.4 分析）。子代理独立复算了所有数字，与
+`tables/_build_report.json` 逐项一致。RQ 的印刷编号按阅读顺序重编（印刷 RQ1=contract rq2a，
+RQ2=rq2b，RQ3=rq1，RQ4=rq3），contract 的 rq_id 只当内部标识，不进正文，因此不动 contract。
+
+子代理按要求把查不到的 setup 事实标成 `TODO(data)` 而不是编，共报了四条。Opus 追查后：
+
+| 缺的事实 | 结果 |
+|---|---|
+| 自建轨迹由哪个模型产生 | **已找到**：Qwen3-4B-Instruct-2507（`docs/LEDGER.md` 201–202、549）。`docs/NAMING.md` 的 backbone2 行确认 gemma 第二 backbone 只是计划、GPU 作业未提交，因此**不报告** |
+| 每个任务的轨迹数 | **已找到**：183 条 n_main_* 逐条归并，每个任务只有一种设置。但那是**加窗后的 held-out 计分行数**，不是轨迹数，正文必须这么说 |
+| 每个任务的记忆长度与 horizon | **已找到**：逐任务不同（句长 lag 3 / H 6；constraint nu 4 / H 4；CEFR lag 1 / H 4 等），一句话盖不住，要一张小设置表或进附录 |
+| 约束满足率的**指标定义** | **仍然缺**。`numbers_benchmark.yaml` 头部自己记着 pending from colleague。在它到位之前正文只说"各基准报告的约束满足率"，不去转述它测的是什么 |
 
 ## CP2 做了什么
 
