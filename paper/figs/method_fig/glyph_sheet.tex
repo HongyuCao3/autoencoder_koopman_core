@@ -1,0 +1,166 @@
+% glyph_sheet.tex — FIG_PLAN §3.0 step 1b deliverable.
+% One instance of every glyph in the §1.5.1 vocabulary, with its macro name.
+% NOT part of the final figure; it exists so the user can veto the visual
+% grammar before four modules are drawn.
+
+\newcommand{\gname}[2]{\node[anchor=north,font=\scriptsize\ttfamily,
+  text=black!45,inner sep=1.2pt] at #1 {#2};}
+\newcommand{\grow}[2]{\node[anchor=west,font=\bfseries\scriptsize,
+  text=black!70] at #1 {#2};}
+
+% ================= row 1 : tensors =================
+\grow{(0.0,10.15)}{1\quad scalars, vectors, matrices --- the shape is visible}
+\draw[black!15,line width=0.4pt] (0,9.98)--(13.8,9.98);
+
+\ScalarCell{(0.25,9.55)}{tok1}{$\symAttr$}
+\gname{(0.36,9.08)}{ScalarCell}
+\ScalarCell{(1.85,9.55)}{ours}{$\symCmd$}
+\gname{(1.96,9.08)}{ScalarCell}
+\ScalarCell{(3.45,9.55)}{good}{$\symTarget$}
+\gname{(3.56,9.08)}{ScalarCell}
+
+\MemColV{(5.05,9.55)}{4}{0.22}
+\DimBraceR{(5.30,9.55)}{(5.30,8.67)}{$\symMemDim$}
+\node[mathlab,anchor=north] at (5.16,8.63) {$\symMem$};
+\gname{(5.16,8.38)}{MemColV}
+
+\LatCol{(6.85,9.55)}{3}{0.22}
+\DimBraceR{(7.10,9.55)}{(7.10,8.89)}{$\symLatDim$}
+\node[mathlab,anchor=north] at (6.96,8.85) {$\symLat$};
+\gname{(6.96,8.60)}{LatCol}
+
+\MatBlock{(8.45,9.55)}{3}{3}{0.22}{clLatentD}
+\node[mathlab,anchor=north] at (8.78,8.85) {$\symK$};
+\gname{(8.78,8.60)}{MatBlock}
+
+\MatBlock{(9.95,9.55)}{3}{1}{0.22}{ours}
+\node[mathlab,anchor=north] at (10.06,8.85) {$\symBcol$};
+\gname{(10.06,8.60)}{MatBlock}
+
+\MatBlock{(11.05,9.55)}{3}{1}{0.22}{black}
+\node[mathlab,anchor=north] at (11.16,8.85) {$\symBias$};
+\gname{(11.16,8.60)}{MatBlock}
+
+\RowSelector{(12.15,9.55)}{4}{0.22}
+\node[mathlab,anchor=north] at (12.59,9.28) {$\symSel$};
+\gname{(12.59,9.03)}{RowSelector}
+
+% ================= row 2 : networks and blocks =================
+\grow{(0.0,8.05)}{2\quad networks are drawn as networks; the frozen model is frozen}
+\draw[black!15,line width=0.4pt] (0,7.88)--(13.8,7.88);
+
+\EncNet{gsE}{(0.55,6.85)}
+\node[mathlab,anchor=north] at (1.01,6.00) {$\symEnc$};
+\gname{(1.01,5.75)}{EncNet}
+\Trainable{(0.25,6.08)}{(1.78,7.56)}
+\node[minicap,anchor=south,text=clPinkD] at (1.01,7.58) {trainable};
+
+\DecNet{gsD}{(2.95,6.85)}
+\node[mathlab,anchor=north] at (3.41,6.00) {$\symDec$};
+\gname{(3.41,5.75)}{DecNet}
+
+\FrozenLLM{(5.65,6.85)}
+\gname{(5.65,6.50)}{FrozenLLM}
+
+\RulerV{(7.45,6.85)}
+\gname{(7.55,6.62)}{RulerV}
+
+\MemColV{(9.05,7.15)}{4}{0.22}
+\LatCol{(10.55,7.06)}{3}{0.22}
+\IdBypass{(9.35,7.38)}{(10.50,7.38)}
+\draw[thinflow] (9.35,6.72)--(10.50,6.72);
+\node[mathlab,anchor=north] at (9.92,6.68) {$\symEnc$};
+\gname{(9.92,6.28)}{IdBypass}
+
+\LatCol{(11.95,7.32)}{3}{0.22}
+\LatCol{(13.45,7.32)}{3}{0.22}
+\LossLink{(12.22,6.94)}{(13.42,6.94)}{$\symLlin$}
+\gname{(12.82,6.42)}{LossLink}
+
+% ================= row 3 : the affine step as block algebra =========
+\grow{(0.0,5.25)}{3\quad the one-step latent update, written as real blocks}
+\draw[black!15,line width=0.4pt] (0,5.08)--(13.8,5.08);
+
+\LatCol{(0.35,4.55)}{3}{0.22}
+\node[mathlab,anchor=north] at (0.46,3.82) {$\symLatHat$};
+\node[mathlab] at (0.90,4.22) {$=$};
+\MatBlock{(1.15,4.55)}{3}{3}{0.22}{clLatentD}
+\node[mathlab,anchor=north] at (1.48,3.82) {$\symK$};
+\LatCol{(1.90,4.55)}{3}{0.22}
+\node[mathlab,anchor=north] at (2.01,3.82) {$\symLat$};
+\node[mathlab] at (2.42,4.22) {$+$};
+\MatBlock{(2.68,4.55)}{3}{1}{0.22}{ours}
+\node[mathlab,anchor=north] at (2.79,3.82) {$\symBcol$};
+\ScalarCell{(3.02,4.33)}{ours}{$\symCmd$}
+\node[mathlab] at (3.56,4.22) {$+$};
+\MatBlock{(3.82,4.55)}{3}{1}{0.22}{black}
+\node[mathlab,anchor=north] at (3.93,3.82) {$\symBias$};
+\draw[oursflow] (3.13,4.94)--(3.13,4.58);
+\node[minicap,anchor=west,text=ours] at (3.30,4.88) {command enters here};
+\gname{(2.10,3.48)}{MatBlock / LatCol / ScalarCell}
+
+% ================= row 4 : plots, cost, selection ==================
+\grow{(0.0,3.05)}{4\quad prediction, cost, choice}
+\draw[black!15,line width=0.4pt] (0,2.88)--(13.8,2.88);
+
+% mini axes with three predicted trajectories vs the target
+\MiniAxes{(0.45,1.15)}{2.10}{1.35}
+\draw[good,dashed,line width=0.6pt] (0.45,2.00)--(2.45,2.00);
+\node[mathlab,anchor=west,text=good,inner sep=1.5pt] at (2.48,2.00) {$\symTarget$};
+\draw[bad,line width=0.7pt] (0.45,1.40)--(1.10,2.15)--(1.75,2.42)--(2.35,2.30);
+\draw[good,line width=0.7pt] (0.45,1.40)--(1.10,1.80)--(1.75,1.96)--(2.35,2.00);
+\draw[ours,line width=0.7pt] (0.45,1.40)--(1.10,1.55)--(1.75,1.62)--(2.35,1.66);
+\node[mathlab,anchor=north] at (2.45,1.12) {$\symStep$};
+\node[mathlab,anchor=east] at (0.42,2.50) {$\widehat{y}$};
+\gname{(1.45,0.92)}{MiniAxes}
+
+% cost bars + argmin
+\node[mathlab,anchor=south west] at (3.35,2.48) {$\symCost(\symCmdAny)$};
+\fill[bad!75]  (3.40,2.22) rectangle ++(1.35,0.16);
+\fill[ours!75] (3.40,1.92) rectangle ++(0.95,0.16);
+\fill[good!80] (3.40,1.62) rectangle ++(0.32,0.16);
+\draw[oursflow] (4.62,1.44)--(3.85,1.62);
+\ScalarCell{(4.70,1.60)}{ours}{$\symCmdStar$}
+\gname{(3.90,0.92)}{fill + ScalarCell}
+
+% H-step latent rollout, fading with h
+\LatColVF{(6.35,2.52)}{3}{0.22}{100}
+\LatColVF{(7.55,2.52)}{3}{0.22}{78}
+\LatColVF{(8.75,2.52)}{3}{0.22}{58}
+\LatColVF{(9.95,2.52)}{3}{0.22}{42}
+\foreach \x in {6.62,7.82,9.02}{\draw[thinflow] (\x,2.19)--++(0.86,0);}
+\foreach \x in {7.05,8.25,9.45}{\node[mathlab,anchor=south,inner sep=1.2pt] at (\x,2.23) {$\symK$};}
+\node[mathlab,anchor=north] at (6.46,1.82) {$\symLat$};
+\node[mathlab,anchor=north] at (9.00,1.82) {$\symLatRoll$};
+\DimBraceB{(7.55,1.52)}{(10.17,1.52)}{$\symStep = 1,\ldots,\symHor$}
+\node[minicap,anchor=north] at (8.30,1.06) {no LLM call};
+\gname{(8.30,0.80)}{LatColVF x H}
+
+% candidate set
+\node[mathlab,anchor=south] at (12.07,2.58) {$\symCmdSet$};
+\ScalarCell{(11.65,2.52)}{ours}{}
+\ScalarCell{(12.00,2.52)}{bad}{}
+\ScalarCell{(12.35,2.52)}{good}{}
+\gname{(12.07,2.18)}{ScalarCell x 3}
+
+% loss-link demo on states
+\MemColV{(11.65,1.55)}{3}{0.22}
+\MemColV{(13.35,1.55)}{3}{0.22}
+\LossLink{(11.92,1.22)}{(13.32,1.22)}{$\symLpred$}
+\gname{(12.62,0.72)}{LossLink}
+
+% ================= row 5 : left-column box style ===================
+\grow{(0.0,0.35)}{5\quad left column: white boxes reuse the same icons}
+\draw[black!15,line width=0.4pt] (0,0.18)--(13.8,0.18);
+\node[whitebox,anchor=north west,minimum width=3.0cm] at (0.25,-0.05)
+  {\textbf{Verifier}\\[1pt] $\eqVerify$};
+\node[whiteboxo,anchor=north west,minimum width=3.7cm] at (3.65,-0.05)
+  {\textbf{KOMPAS: predict \& select}\\[1pt] $\eqArgmin$};
+\node[dashbox,anchor=north west,minimum width=3.4cm] at (7.85,-0.05)
+  {offline: learn $\symParams$};
+\gname{(2.00,-1.05)}{whitebox / whiteboxo / dashbox}
+\node[dotA] at (11.45,-0.30) {};
+\node[dotB] at (11.75,-0.30) {};
+\node[dotC] at (12.05,-0.30) {};
+\node[dotD] at (12.35,-0.30) {};
+\node[minicap,anchor=west] at (12.55,-0.30) {module dots A--D};
