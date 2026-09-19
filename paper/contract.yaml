@@ -226,39 +226,39 @@ symbol_lattice:
   - id: s_x
     symbol: 'x'
     gloss: "task input the dialogue starts from"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "fixed within one trajectory"
-    appears_in: [method]
+    appears_in: [problem_formulation, method]
   - id: s_ptheta
     symbol: 'p_{\theta}'
     gloss: "the frozen language model"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "parameters never updated"
-    appears_in: [method, experiments]
+    appears_in: [problem_formulation]
   - id: s_r
     symbol: 'r'
     gloss: "desired value of the output attribute"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "the objective, distinct from the command actually applied"
-    appears_in: [method, experiments]
+    appears_in: [problem_formulation, method]
   - id: s_hist
     symbol: '\mathcal{H}_t'
     gloss: "dialogue history before step t"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "text, not the memory vector"
-    appears_in: [method]
+    appears_in: [problem_formulation, method]
   - id: s_u
     symbol: 'u_t'
     gloss: "the textual intervention sent at step t"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "built by the prompting protocol from a numerical command"
-    appears_in: [method]
+    appears_in: [problem_formulation, method]
   - id: s_o
     symbol: 'o_{t+1}'
     gloss: "the generated reply"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "text, distinguished from its measured attribute"
-    appears_in: [method]
+    appears_in: [problem_formulation]
   - id: s_yhat
     symbol: '\widehat y_{t+h\mid t}'
     gloss: "the model's forecast of the attribute h steps ahead, formed from what is known now"
@@ -274,15 +274,15 @@ symbol_lattice:
   - id: s_y
     symbol: 'y_t'
     gloss: "measured attribute of the reply at step t"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "scalar; one attribute at a time"
-    appears_in: [method, experiments]
+    appears_in: [problem_formulation, method, experiments]
   - id: s_V
     symbol: 'V'
     gloss: "task-specific verifier that measures the attribute"
-    first_defined: method
+    first_defined: problem_formulation
     scope: "runs on a whole reply, never on a partial generation"
-    appears_in: [method, experiments]
+    appears_in: [problem_formulation]
   - id: s_P
     symbol: '\mathcal{P}'
     gloss: "prompting protocol that turns a command into a prompt"
@@ -439,14 +439,14 @@ equation_lattice:
     label: "eq:interaction"
     operation_name: "sampling a reply from the frozen model and measuring its attribute"
     rhs_symbols: [s_ptheta, s_x, s_hist, s_u, s_V, s_o]
-    in_section: problem_formulation   # D22
+    in_section: problem_formulation   # D23
     has_gloss: true
     role: definition
   - id: eq_modeling_objective
     label: "eq:modeling_objective"
     operation_name: "squared error between the realized attribute and its h-step-ahead forecast, at each horizon step"
     rhs_symbols: [s_y, s_yhat, s_H, s_ell]
-    in_section: problem_formulation   # D22: added when Problem Formulation split into Modeling
+    in_section: problem_formulation   # D23: added when Problem Formulation split into Modeling
                                       # and Control. It is what makes the paper's reported metric
                                       # a multi-step quantity rather than a one-step one.
     has_gloss: true

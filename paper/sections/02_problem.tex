@@ -19,17 +19,16 @@ The next response and its measured attribute are
     y_{t+1}=V(o_{t+1}),
     \label{eq:interaction}
 \end{equation}
-where $V$ is a task-specific verifier that reads a finished reply into
+Here $V$ is a task-specific verifier that reads a finished reply into
 a scalar attribute. The reply $o_{t+1}$ is text; $y_{t+1}$ is its
 measured attribute value.
 
 A model of this interaction is useful only if it stays accurate over
-several future steps, since a controller reasons about the consequences
-of an intervention several turns ahead, not only the very next one. We
-therefore state the modeling objective as multi-step attribute
-prediction accuracy: for a horizon of $H$ steps, a model's forecast
-$\widehat y_{t+h\mid t}$ of the attribute at step $t+h$, formed from
-information available at step $t$, should keep the discrepancy
+several future steps. A controller reasons about an intervention's
+consequences several turns ahead, not only the very next one. We
+therefore state the modeling objective as multi-step prediction
+accuracy: the model's forecast should track the actual attribute
+across a horizon of $H$ steps,
 \begin{equation}
     \ell_h
     =
@@ -37,10 +36,11 @@ information available at step $t$, should keep the discrepancy
     \qquad h=1,\ldots,H,
     \label{eq:modeling_objective}
 \end{equation}
-small across the whole horizon, not only at $h=1$. Here $\widehat
-y_{t+h\mid t}$ denotes the model's $h$-step-ahead forecast of the
-attribute, and $\ell_h$ is the resulting squared error at horizon step
-$h$. Section~\ref{sec:koopman_operator} specifies how this forecast is
+Here $\widehat y_{t+h\mid t}$ is the model's forecast of the attribute
+at step $t+h$, made from information available at step $t$, and
+$y_{t+h}$ is the actual reading. The discrepancy $\ell_h$ should stay
+small for every $h$ up to $H$, not only at $h=1$.
+Section~\ref{sec:koopman_operator} specifies how this forecast is
 formed and what is held fixed to make it well defined.
 
 \subsection{Control}

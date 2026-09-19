@@ -48,9 +48,11 @@ observations,
     y_t=C s_t,
     \label{eq:memory_state}
 \end{equation}
-where $L\geq 1$ is the number of previous observations retained and
-$C=[1,0,\ldots,0]$ selects the current attribute from the stack. The
-vector $s_t$ is the memory state used throughout the rest of the paper.
+Here $y_t$ is the measured attribute at step $t$
+(Section~\ref{sec:problem_modeling}), $L\geq 1$ is the number of
+previous observations retained, and $C=[1,0,\ldots,0]$ selects the
+current attribute from the stack. The vector $s_t$ is the memory state
+used throughout the rest of the paper.
 A short window of recent readings is assumed to carry enough of the
 conversation to predict the next reading. It is an approximation to the
 information needed for prediction, not an exact reconstruction of the
@@ -81,9 +83,11 @@ We make this concrete with a command-conditioned prompting protocol
     c_t\in\mathcal{C}\subseteq\mathbb{R},
     \label{eq:prompt_protocol}
 \end{equation}
-where $\mathcal{P}$ constructs a prompt from a numerical command $c_t$
-and the current dialogue, and $\mathcal{C}$ is the range of admissible
-commands from which every candidate is later drawn.
+Here $\mathcal{H}_t$ is the dialogue history from
+Section~\ref{sec:problem_modeling}. $\mathcal{P}$ constructs a prompt
+from a numerical command $c_t$ and that history, and $\mathcal{C}$ is
+the range of admissible commands from which every candidate is later
+drawn.
 
 Before approximating anything, the population object is the conditional
 expectation of an observable one step ahead, given the state and the
