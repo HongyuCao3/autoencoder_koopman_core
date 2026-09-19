@@ -1,4 +1,20 @@
 % Phase 3 CP3c. Control line: does predictive selection raise satisfaction? Table 2 = tables/tab_control.tex.
 \subsection{Constraint Satisfaction under Predictive Control}
 \label{sec:exp_control}
-TODO(CP3c)
+
+\textbf{Question.} (RQ3) Does predictive control built on the learned operator raise constraint satisfaction over the same frozen model with no control and over the two white-box latent controllers?
+\textbf{Setup.} Setup, benchmarks and baselines follow \S\ref{sec:exp_setup}; Table~\ref{tab:control} reports the constraint-satisfaction score defined there.
+
+\input{tables/tab_control.tex}
+
+\textbf{Findings, gain over the uncontrolled baseline.} Predictive control raises constraint satisfaction over the uncontrolled baseline by +14.5 points on Qwen3-4B and +14.8 on Qwen3-8B, averaged over eleven subtasks as point estimates with no seeds or intervals.  % c5; control_deltas: Qwen3-4B/Koopman-Base=14.47, Qwen3-8B/Koopman-Base=14.76
+The driver is that scoring happens on a candidate's predicted trajectory, not its immediate effect.  % m3
+This lets the controller pick a command that differs from the target while the attribute is still moving.  % m3
+
+\textbf{Findings, gain over the white-box controllers.} The same controller exceeds the stronger white-box baseline, RE-Control, by +5.2 points on Qwen3-4B and +5.7 on Qwen3-8B, again as point estimates with no interval.  % c6; control_deltas: Qwen3-4B/Koopman-RE-Control=5.25, Qwen3-8B/Koopman-RE-Control=5.65
+Its smallest per-subtask margin is +2.4 on Qwen3-4B and +2.7 on Qwen3-8B, both on the IFBench under-word-count subtask.  % c6 notes; tab_control UWC cells (n_bench_013 n_bench_035; n_bench_057 n_bench_079)
+The access requirement is uneven, and it is uneven against us: RE-Control reads the model's activations, while the predictive controller sees only text.  % choice_3 notes
+Across the two models and eleven subtasks, the controller ranks best in all twenty-two cells, reported as a count rather than a significance claim.  % c7; tab_control all-cells (n_bench_012 n_bench_022 n_bench_056 n_bench_066)
+The margin is largest where the constraint is hardest to satisfy in one shot.  % c7 driver_keyword
+
+Taken together, \uline{predictive control raises constraint satisfaction over the uncontrolled baseline and both white-box controllers in all twenty-two model-by-subtask cells, answering RQ3 yes. It does so at the weaker access requirement of the two comparisons.}

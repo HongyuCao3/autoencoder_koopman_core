@@ -1,60 +1,45 @@
 # WRITING_STATE
 
 updated: 2026-09-19   by: opus session 01UHUsmU
-phase: 2   checkpoint: CP2   status: done (D21：不停下，直接进 Phase 3)
+phase: 3   checkpoint: CP3a-CP3d   status: done (D21：不停下)
 last_commit: (见本次提交)
-artifacts_ready: contract.yaml (签字 D20), semantic.md §Introduction + §Method (both approved), sections/01_introduction.tex (CP1 approved), sections/02_method.tex + sections/appendix/A1_estimator.tex (CP2)
-current_target: sections/03a_setup.tex（Tier 2 已建，待生成正文）
-gates: sentence_gate=pass  equation_gate=pass (12 公式)  mech_audit=pass  compile=pass (build/main_CP2_2026-09-19.pdf, 7 页)
-cold_review: audit/method_T2_2026-09-19.yaml (0/3/3) 与 audit/method_T3_2026-09-19.yaml (0/2/2)，全部 triage
-user_verdict_on_previous: CP1 approved（D21：全文过完再统一回看）
-next_action: 逐节生成 03a–03d；4.1 的指标定义仍缺，见下
-open_questions_for_user: (1) 约束满足率的**指标定义**仍缺，账本头部记为 pending from colleague——需要你去要；(2) c3 两列失利的机制解释是否要在 4.2 之前查
+artifacts_ready: 01_introduction / 02_problem / 02_method / 03a-03d / appendix A1 全部有正文
+current_target: sections/abstract.tex 与 sections/04_conclusion.tex (Phase 4)
+gates: sentence_gate=pass  equation_gate=pass  mech_audit=pass  compile=pass (build/main_CP3_2026-09-19.pdf, 9 页)
+cold_review: audit/experiments_T3_2026-09-19.yaml — 0 blocker / 4 major / 5 minor，全部已 triage
+user_verdict_on_previous: CP1 approved；D21 全文过完再统一回看
+next_action: Phase 4。先做 Intro 回看（只许收窄），再写 Conclusion 与 Abstract
+open_questions_for_user: (1) 约束满足率的指标定义仍缺，需向同事要；(2) 另一会话与本会话曾同时改 contract 与 Method，见下
 
-## Phase 3 起步：整章 Experiments 的 Tier 2 已建
+## CP3 做了什么
 
-四个小节一次建完（4.1 设置 / 4.2 预测 / 4.3 控制 / 4.4 分析）。子代理独立复算了所有数字，与
-`tables/_build_report.json` 逐项一致。RQ 的印刷编号按阅读顺序重编（印刷 RQ1=contract rq2a，
-RQ2=rq2b，RQ3=rq1，RQ4=rq3），contract 的 rq_id 只当内部标识，不进正文，因此不动 contract。
+四节一次生成（4.1 设置 / 4.2 预测 / 4.3 控制 / 4.4 分析），三道闸门全过，9 页。
 
-子代理按要求把查不到的 setup 事实标成 `TODO(data)` 而不是编，共报了四条。Opus 追查后：
+### 冷审逐个复算了九组数字，全部与账本一致
 
-| 缺的事实 | 结果 |
-|---|---|
-| 自建轨迹由哪个模型产生 | **已找到**：Qwen3-4B-Instruct-2507（`docs/LEDGER.md` 201–202、549）。`docs/NAMING.md` 的 backbone2 行确认 gemma 第二 backbone 只是计划、GPU 作业未提交，因此**不报告** |
-| 每个任务的轨迹数 | **已找到**：183 条 n_main_* 逐条归并，每个任务只有一种设置。但那是**加窗后的 held-out 计分行数**，不是轨迹数，正文必须这么说 |
-| 每个任务的记忆长度与 horizon | **已找到**：逐任务不同（句长 lag 3 / H 6；constraint nu 4 / H 4；CEFR lag 1 / H 4 等），一句话盖不住，要一张小设置表或进附录 |
-| 约束满足率的**指标定义** | **仍然缺**。`numbers_benchmark.yaml` 头部自己记着 pending from colleague。在它到位之前正文只说"各基准报告的约束满足率"，不去转述它测的是什么 |
+控制两个增益、两个对 RE-Control 的差、两个最小单子任务边际（都落在 IFBench UWC）、22 格横扫、
+4/7 排名及第二第三、5/7 记忆必要性及两个例外、CEFR 的 +0.599、LSTM 二比二的分列、
+命令通道的 +0.0015 与 +0.0061。冷审还记下一个坑：拿表里**四舍五入后**的 Avg. 相减会得 5.3，
+和正文的 5.2 对不上，那是舍入陷阱不是错误。
 
-## CP2 做了什么
+### 四条 major 的处理
 
-方法章是**改造**不是重写：同事原稿五节重组为五节，加三个 Why-X，训练目标移进附录。
+| 编号 | 问题 | 处理 |
+|---|---|---|
+| f3 | **实质错误**：4.1 写成"Qwen3-4B-Instruct-2507 是两条线共用的模型"，但那只是建模线；控制线报的是 Qwen3-4B 与 Qwen3-8B 两个目标模型、且是同事跑的。这让读者无法判断 Table 2 一半的数字从哪来 | 拆成三句：建模线单模型、第二 backbone 未跑所以 Table 1 全部来自那一个模型、控制线另算且由同事提供 |
+| f1 | 排名那条 claim 没有 driver 句（Rule 1） | 补上 contract 里 c4 已写好的 driver |
+| f2 | 选择界的作用域没写：它只管单步保持命令的比较，不管重规划后的闭环 | 正文与收尾答句都补上这个边界 |
+| f4 | 只给了加窗后的计分行数，没有轨迹数，也没写区间的重采样协议 | 都从账本的 `test` 字段追回：七列是 40–100 条轨迹，区间是按轨迹配对的 grouped bootstrap、2000 次重采样 |
 
-| 项 | 结果 |
-|---|---|
-| 结构 | 3.1 问题形式化 / 3.2 有限记忆状态 / 3.3 命令条件化算子 / 3.4 预测式候选选择 / 3.5 误差与选择。原"有限记忆 Koopman 动力学"拆成 3.2+3.3，因为它带两个设计选择而 Rule 24 只允许一个 Why-X |
-| 三个 Why-X | 按 D19 论证实例化：为什么被窗口化的是验证器读数 / 一条指令凭什么有命令坐标 / 为什么打分不打开模型。每个都先承认底层机制是标准做法再转折 |
-| 训练目标 | 连同 eq:training_transition、eq:training_objective 迁入 sections/appendix/A1_estimator.tex，含重叠窗口的元组构造与固定目标下的命令标注规则 |
-| 修复 | 图注从 "Caption" 改成一句话点四个阶段；删 actually；补五处首次引入符号的解释 |
+五条 minor 也都改了（补证据 id、给 TMPC/RE-Control 留 `% CITE` 位、删一处重复免责、
+改掉一个歧义习语和一个没解释的行话）。
 
-### 冷审 triage（两轮 0 blocker / 5 major / 5 minor）
+### 顺手修的一件事
 
-Tier-2 五条已处理（训练数据构造没落点、3.5 超页、两处角色标签不在规范词表、Why-X 两条 bullet 实为一段、预测器冻结未写）。
-
-Tier-3 两条 major 都是**符号没定义**，而且是 contract 的 symbol_lattice 里就缺：
-- `$R$`（代价界里的那个 2R）从未定义，审稿人核不了 c9 的推导。
-- `$\mathcal{C}$`（命令值域）从 3.1 用到 3.4 才在 3.4 定义它的子集。
-
-两个都补进了 `symbol_lattice`，并挂到 `eq_prompt_protocol` / `eq_cost_bound` 的 `rhs_symbols` 上，
-**所以 equation_gate 从此会自己守住它们**。另加两处：附录三个 λ 权重的解释、一句里 bounds 指两个东西。
-
-### 工具改动
-
-`mech_audit.sh` 的副词关加了声明式豁免：同一行写
-`% GATE-EXEMPT: adverb <词> -- <理由>` 才放行，并在 PASS 时报出豁免条数。
-之前脚本自己说 uniformly 是精度性白名单、正则里却照抓，PASS 名不副实。
-现在全文只有一条豁免（"uniformly over the candidate rollouts"，数学量词）。
-3.5 收尾那句以副词开头的答句改写掉了，不需要豁免。
+生成器为了绕过闸门，把 Skill_H 那个公式**不加 label**（因为 contract 里没有它的条目）。
+这是拿掉温度计而不是退烧。正确做法是补 contract：新增 `eq_skill` 与符号 `s_ellnull`，
+公式加上 `\label{eq:skill}`，并改写成 §2.1 建模目标里那个 $\ell_h$ 的求和——
+这样"§2 声明的目标"和"§4 报告的指标"在纸面上就是同一个东西。
 
 ## 新会话怎么用这个文件
 

@@ -1,0 +1,257 @@
+# Tier-3 cold-reviewer audit — paper/sections/03a_setup.tex, 03b_prediction.tex,
+# 03c_control.tex, 03d_analysis.tex
+# Persona: Tier-3 NeurIPS/ICLR reviewer, baseline knowledge = MPC, Koopman operator theory,
+#          instruction-following benchmarks, activation steering. No project-document
+#          knowledge, has not read this project's docs.
+# Checks run, in order: (1) numbers recomputation, (2) evidence-comment audit,
+#          (3) Rule 10 (setup-vs-narrative separation), (4) Rule 1/5 (driver sentences +
+#          the LSTM no-mechanism exception), (5) Rule 8 claim calibration, (6) baselines
+#          description/access-asymmetry disclosure, (7) setup completeness (repro from 4.1),
+#          (8) §4.4 honesty (equal-cost tie + command-channel blindness), (9) confusing
+#          sentences.
+# Run date: 2026-09-19
+# Verdict: (1) numbers pass is clean — every stated number recomputes exactly against
+#          paper/tables/_build_report.json and the two tables, once float-rounding
+#          (round-half-to-even on 5.25 -> 5.2, on 5.65 -> 5.7) is accounted for. The
+#          findings below are calibration, completeness, and evidence-trail gaps, not
+#          numeric errors. I would believe the headline result IF finding f3 (the
+#          Qwen3-8B model-identity gap) is resolved; as written, a reader cannot verify
+#          that the second row of the control table is what the setup paragraph says it is.
+
+findings:
+  - id: f1
+    severity: major
+    location:
+      file: paper/sections/03b_prediction.tex
+      line: 10
+      section: "§4.2 Predictive Accuracy of the Learned Operator"
+      paragraph: "Findings, ranking and history, P1 (c4)"
+    what_is_wrong: >-
+      The ranking claim ("ranks first on four of seven columns... second on constraint
+      and third on character length and formality") has no driver sentence anywhere in
+      the paragraph, even though contract.yaml's c4 entry defines one
+      (driver_keyword: "the two third places are the two columns where a recurrent
+      baseline fits the residual better"). The only driver sentence in the paragraph
+      (line 14, tagged % m1) explains c1 (the history result), not c4 (the ranking
+      result); the two are different claims sharing one paragraph.
+    why_it_matters: >-
+      Rule 1 ("every number [has] a driver sentence") and Rule 5 (driver grammar: claim
+      first, then mechanistic cause) are violated for one of the two headline claims in
+      Table 1's Findings paragraph. A reviewer reading the ranking sentence is left to
+      guess why the linear model loses specifically on character length and formality
+      (the two "third place" columns) to a recurrent baseline, when the contract already
+      has the answer on file.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      Add one sentence after line 11 naming the mechanism already on file in
+      contract.yaml (c4.driver_keyword): the two columns where KOMPAS (linear) places
+      third are the two columns where a recurrent baseline fits the residual better.
+
+  - id: f2
+    severity: major
+    location:
+      file: paper/sections/03d_analysis.tex
+      line: 8
+      section: "§4.4 From Prediction Quality to Control Quality"
+      paragraph: "Findings, the bound (c9)"
+    what_is_wrong: >-
+      contract.yaml's c9.notes states the selection bound is "a conditional statement
+      about one held-command comparison. It says nothing about the replanned closed
+      loop, and the prose keeps that boundary" — but the prose does not keep that
+      boundary. Neither the bound paragraph (lines 8-9) nor the underlined closing
+      answer ("prediction quality bounds control quality at no added query cost, which
+      answers RQ4") states that the guarantee is about a single held-command comparison
+      rather than the replanned closed loop actually evaluated in §4.3.
+    why_it_matters: >-
+      This is the D4 sub-type-5 pattern (theory-derived claim with external/undisclosed
+      scope narrower than the prose's operational conclusion). Without the scope
+      sentence, a reader can read the underlined RQ4 answer as certifying the empirical
+      closed-loop gains in §4.3 (+14.5/+14.8, +5.2/+5.7 pp), when the derivation only
+      bounds one held-command cost comparison.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      Add a clause to the bound paragraph or the RQ4 closing sentence stating the bound
+      covers one held-command comparison and says nothing about the replanned closed
+      loop evaluated empirically in §4.3.
+
+  - id: f3
+    severity: major
+    location:
+      file: paper/sections/03a_setup.tex
+      line: 11
+      section: "§4.1 Experimental Setup"
+      paragraph: "P1, agent/backbone model"
+    what_is_wrong: >-
+      Line 11 states the self-built trajectories are "produced and judged by
+      Qwen3-4B-Instruct-2507, the same agent model across both lines," and line 12
+      states "a second backbone remains a planned arm with no submitted GPU job, so it
+      is not reported here." Yet Table 2 (tab_control.tex) reports full control-line
+      results for a second target model, Qwen3-8B, including the headline +14.8 pp and
+      +5.7 pp gains. A reader cannot tell from §4.1 whether the Qwen3-8B rows in Table 2
+      are the "second backbone" described as unreported and not submitted, a different
+      checkpoint unrelated to that sentence, or how a Koopman predictor for an 8B target
+      was fit if no second-backbone job was run.
+    why_it_matters: >-
+      Half of Table 2's headline numbers (every Qwen3-8B row) rest on a model whose
+      provenance the setup paragraph appears to contradict. This is not a table/prose
+      number mismatch (the numbers themselves recompute correctly, see the numbers
+      pass) — it is a gap in what the reader can verify about where those numbers came
+      from, which bears directly on whether the second half of the headline result can
+      be trusted.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      State explicitly in §4.1 what "the same agent model across both lines" is scoped
+      to (modeling-line trajectory production only, or also the control line's
+      Qwen3-4B arm), and state what produced the Qwen3-8B control results (a separately
+      fit operator, a shared one, or a different data source), so it no longer reads as
+      contradicting the "second backbone... not reported" sentence.
+
+  - id: f4
+    severity: major
+    location:
+      file: paper/sections/03a_setup.tex
+      line: 19
+      section: "§4.1 Experimental Setup"
+      paragraph: "P2, window/horizon/rows"
+    what_is_wrong: >-
+      §4.1 gives only post-windowing "scored held-out rows" (30 to 12,376) and
+      explicitly says this is "counted after windowing rather than as raw trajectory
+      counts" — but the raw trajectory count per self-built task is never given
+      anywhere in §4.1 or the appendix pointer. Separately, §4.2 repeatedly cites
+      "paired bootstrap intervals" (e.g. line 12) but §4.1 never states the resampling
+      protocol (what is resampled, how many resamples) behind them.
+    why_it_matters: >-
+      This is a reproducibility gap beyond the one TODO already disclosed (the
+      constraint-satisfaction metric definition, line 42). A reader working only from
+      §4.1 cannot reconstruct how large the underlying self-built datasets are or how
+      the bootstrap intervals cited throughout §4.2 were computed.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      Add one sentence to §4.1 giving the raw trajectory count per task (or a range,
+      as done for scored rows), and one sentence naming the bootstrap unit and resample
+      count used for the intervals reported in §4.2.
+
+  - id: f5
+    severity: minor
+    location:
+      file: paper/sections/03d_analysis.tex
+      line: 20
+      section: "§4.4 From Prediction Quality to Control Quality"
+      paragraph: "Cross-check, command-channel scope"
+    what_is_wrong: >-
+      The trailing comment on line 20 ("% nc_1; nc_8") cites only contract-level ledger
+      ids for the claim that the action effect cannot be estimated "on those five
+      columns," without the underlying n_main evidence ids
+      (n_main_014, n_main_030, n_main_046, n_main_078, n_main_094) that nc_1's own
+      `reason` field in contract.yaml cites for exactly this claim. The very next line
+      (21) does cite specific n_main ids for the parallel two-column claim, so the
+      omission on line 20 is an inconsistency in the evidence trail, not a stylistic
+      choice.
+    why_it_matters: >-
+      A maintainer trying to verify the "five columns" half of this claim against the
+      ledger has to reconstruct the id list from contract.yaml by hand; the comment
+      does not do the job the rest of the file's comments do.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      Append the five n_main ids already listed in contract.yaml's nc_1.reason to the
+      trailing comment on line 20, matching the citation style used on line 21.
+
+  - id: f6
+    severity: minor
+    location:
+      file: paper/sections/03a_setup.tex
+      line: 21
+      section: "§4.1 Experimental Setup"
+      paragraph: "P3, control-line baselines"
+    what_is_wrong: >-
+      TMPC and RE-Control are named and used throughout §4.1/§4.3 with no citation and
+      no expanded name anywhere in the four sections under review; a reader confined to
+      these sections cannot look either method up or independently judge whether they
+      represent the current state of the art in white-box activation control.
+    why_it_matters: >-
+      §4.1 does describe what each baseline needs from the model (access column), which
+      is the more important half of the baselines check, so this is a completeness gap
+      rather than a fairness gap. It may already be resolved by a citation in Method or
+      Related Work, which is outside this audit's scope, so it is flagged as minor
+      pending that check.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      Confirm TMPC and RE-Control are cited at first mention somewhere in the paper
+      (Method or Related Work); if not, add the citation at first mention in §4.1.
+
+  - id: f7
+    severity: minor
+    location:
+      file: paper/sections/03d_analysis.tex
+      line: 16
+      section: "§4.4 From Prediction Quality to Control Quality"
+      paragraph: "Cross-check, equal-cost boundary"
+    what_is_wrong: >-
+      Two consecutive sentences make the same "not a failure of the controller"
+      disclaimer twice in different words: "This is a boundary on where planning has
+      headroom, not a failure of the controller" and "The boundary reflects the
+      command-response geometry of those four tasks, rather than a limit of the
+      predictive controller itself."
+    why_it_matters: >-
+      This is the Rule 5 Findings-paragraph-trim failure mode (doubled-up driver /
+      possible-reason pairs restating the same point), and it also buries the one new
+      piece of information (that the four tasks' command-response geometry is the
+      actual cause) inside a repeated disclaimer instead of leading with it.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      Merge the two sentences into one that leads with the command-response-geometry
+      cause and drops the repeated "not a failure / not a limit" framing.
+
+  - id: f8
+    severity: minor
+    location:
+      file: paper/sections/03c_control.tex
+      line: 16
+      section: "§4.3 Constraint Satisfaction under Predictive Control"
+      paragraph: "Findings, gain over the white-box controllers"
+    what_is_wrong: >-
+      "The comparison runs against the access asymmetry" is an ambiguous idiom on
+      first read: it is not immediately clear whether "runs against" means the
+      comparison is undermined by the asymmetry or that the controller operates
+      despite it (the intended meaning, confirmed by contract.yaml choice_3.notes:
+      "the access asymmetry... is turned into an advantage instead of being apologized
+      for").
+    why_it_matters: >-
+      This is the sentence carrying the paper's own disclosure of an unmatched
+      comparison; a reviewer who misreads the idiom on first pass may mistake an
+      acknowledged, favorable asymmetry for a hedge on the result's validity.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      Reword to state the direction plainly, e.g. "The comparison is not access-matched:
+      RE-Control needs latent-activation access that the predictive controller does
+      not."
+
+  - id: f9
+    severity: minor
+    location:
+      file: paper/sections/03d_analysis.tex
+      line: 17
+      section: "§4.4 From Prediction Quality to Control Quality"
+      paragraph: "Cross-check, equal-cost boundary"
+    what_is_wrong: >-
+      "Command-response geometry" is introduced once, with no gloss, and never used
+      again; a reader cannot tell what property of the four self-built behavioral tasks
+      this phrase names.
+    why_it_matters: >-
+      This is the one substantive explanatory term in the equal-cost paragraph, and it
+      is undefined notation (reviewer class d) at its only occurrence.
+    recommended_fix_tier: T3
+    suggested_fix: >-
+      Either gloss the phrase in one clause (what about the four tasks' command-to-
+      response mapping produces the tie) or replace it with the concrete property
+      directly.
+
+sound:
+  - "All nine itemized numeric checks (control gain over baseline +14.5/+14.8, gain over RE-Control +5.2/+5.7, smallest per-subtask margins +2.4/+2.7 both on IFBench UWC, the 22-of-22-cell sweep, the 4-of-7 ranking with second on constraint and third on character length/formality, the 5-of-7 history result excepting items-s1 and formality, the CEFR lifting gap +0.599, the LSTM 2-2 split with items-s2/CEFR favoring linear and character length/constraint favoring LSTM, and the two command-channel differences +0.0015/+0.0061) recompute exactly against paper/tables/_build_report.json and the two tables."
+  - "The +5.2/+5.7 RE-Control deltas only match the ledger's 5.25/5.65 under round-half-to-even on the underlying floats; naively subtracting the table's rounded Avg. column cells (41.4-36.1=5.3) would wrongly flag a mismatch, but the full-precision ledger values round to exactly 5.2 and 5.7."
+  - "Point-estimate/no-interval status travels in the same sentence as each control-line number (c5, c6, c7), matching contract.yaml's D3/D12 requirement."
+  - "The LSTM two-two split's 'no mechanism established' exception (c3) is used exactly once and is not extended to any other claim in these four sections."
+  - "§4.4 states both required honesty items without downgrading either to a throwaway clause: the equal-cost tie on the four self-built behavioral tasks (nc_2) and the five-of-seven command-channel blindness (m5) each get their own bolded Cross-check paragraph."
+  - "The access asymmetry with the two white-box controllers (RE-Control, TMPC) is disclosed explicitly as a property of the comparison, not glossed over, and the fact that TMPC/RE-Control are colleague reproductions rather than author-run baselines is stated plainly."
+  - "No training hyperparameter, dataset-size, or window/horizon setup detail is repeated in §4.2-§4.4 outside a cross-reference back to §4.1; the model names Qwen3-4B/Qwen3-8B that do recur in §4.3-§4.4 are the table's own row axis, not a duplicated setup fact."
+  - "The one disclosed reproducibility gap (the constraint-satisfaction metric's exact per-subtask definition) is correctly marked with a TODO(data) comment and is not silently assumed anywhere else in the four sections."

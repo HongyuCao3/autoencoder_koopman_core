@@ -427,6 +427,12 @@ symbol_lattice:
     first_defined: method
     scope: "the quantity that doubles in the selection bound"
     appears_in: [method]
+  - id: s_ellnull
+    symbol: '\ell_h^{\mathrm{null}}'
+    gloss: "the same squared forecast error, for the best trivial null"
+    first_defined: experiments
+    scope: "the denominator of the reported skill score"
+    appears_in: [experiments]
   - id: s_skill
     symbol: '\mathrm{Skill}_H'
     gloss: "one minus the ratio of rollout error to the best trivial null's rollout error"
@@ -523,6 +529,16 @@ equation_lattice:
     in_section: method
     has_gloss: true
     role: definition
+  - id: eq_skill
+    label: "eq:skill"
+    operation_name: "one minus the ratio of the operator's summed horizon error to the best trivial null's summed horizon error"
+    rhs_symbols: [s_ell, s_ellnull, s_H, s_skill]
+    in_section: experiments
+    has_gloss: true
+    role: quality_claim
+    # Added 2026-09-19. The generator had left this equation unlabelled to get past the gate,
+    # which is the wrong direction: an unlabelled equation cannot be cross-referenced and the
+    # gate cannot audit it. The fix is the contract entry, not a missing label.
   - id: eq_prediction_bound
     label: "eq:prediction_bound"
     operation_name: "geometric accumulation of the latent residual through the readout Lipschitz constant"

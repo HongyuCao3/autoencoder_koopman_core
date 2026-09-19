@@ -1,4 +1,51 @@
 % Phase 3 CP3a. Setup only; Rule 10 keeps every setup detail here or in the appendix.
 \subsection{Experimental Setup}
 \label{sec:exp_setup}
-TODO(CP3a)
+
+Experiments cover two task groups.
+The first is eleven self-built multi-turn tasks that form the modeling line.  % RECOVERED 2026-09-19 (Opus); semantic.md Experiments P1
+Table~\ref{tab:prediction} carries seven of them: sentence length, items (s2), items (s1), character length, formality, constraint and CEFR.  % tab_prediction.tex column headers
+The remaining four appear in Appendix~\ref{app:A2_small_columns}: sentiment, average word length, defense and GSM8K-sharded.  % _build_report.json:prediction_appendix
+The second group is three public instruction-following benchmarks that form the control line: IFBench, IFEval and COLLIE.  % contract.yaml meta.benchmarks
+Together they carry eleven subtasks: WC, UWC, NS and NP for IFBench; KF, WC, NS and NP for IFEval; Word, Sent. and Para. for COLLIE.  % contract.yaml meta.benchmarks
+The modeling line runs on a single model, Qwen3-4B-Instruct-2507, which both produces and scores the self-built trajectories.  % RECOVERED 2026-09-19 (Opus, docs/LEDGER.md lines 201-202, 549)
+A second backbone for the modeling line remains a planned arm with no submitted job, so every number in Table~\ref{tab:prediction} comes from that one model.  % RECOVERED 2026-09-19 (Opus, docs/NAMING.md backbone2 row)
+The control line is separate: it reports two frozen target models, Qwen3-4B and Qwen3-8B, on runs supplied by a co-author.  % tab_control.tex row groups; c5 notes
+
+The modeling line compares six predictors, the six rows of Table~\ref{tab:prediction}.  % tab_prediction.tex row count
+Stateless is a memoryless null, Last-turn is a single-reading state, and Memory w/o action is a multi-turn state without the command term.
+LSTM is a recurrent sequence baseline, and KOMPAS (learned lifting) and KOMPAS (linear) are the two operator variants.
+KOMPAS (linear) sets the encoder and decoder to the identity map of \S\ref{sec:koopman_operator}, the reported instance throughout this paper.
+Window length and horizon vary by task: window length ranges from 1 to 4 readings and horizon from 3 to 6 steps, with full per-task settings in Appendix~\ref{app:A3_window}.  % RECOVERED 2026-09-19 (Opus, tabulated from evidence/numbers.yaml); semantic.md Experiments P2
+Scored held-out rows per task range from 30 to 12,376, counted after windowing.  % RECOVERED 2026-09-19 (Opus, evidence/numbers.yaml)
+The trajectories those rows come from number 40 to 100 for the seven columns of Table~\ref{tab:prediction}, and 4 to 30 for the appendix columns.  % RECOVERED 2026-09-19 (Opus, group counts in evidence/numbers.yaml `test` fields)
+Every interval reported in \S\ref{sec:exp_prediction} is a paired grouped bootstrap over trajectories, with 2000 resamples.  % evidence/numbers.yaml `test` field, all n_main_* contrast rows
+
+The control line compares four methods per frozen model, the four rows of Table~\ref{tab:control}: Base, TMPC, RE-Control and KOMPAS.  % tab_control.tex row count
+Base applies no control, and its Access entry is `--' in Table~\ref{tab:control}.  % tab_control.tex Access column
+TMPC and RE-Control are white-box latent controllers that require activation access to the frozen model.  % tab_control.tex Access column
+KOMPAS needs only the instruction it sends, marked black-box Access, since it never opens the model.  % tab_control.tex Access column
+% CITE: wang2026tmpc
+% CITE: kong2024recontrol
+TMPC and RE-Control are reproductions by a co-author rather than baselines the authors ran themselves.  % c6 notes
+
+A predictor that never beats guessing the best fixed trivial answer scores zero, and one that halves that guess's error scores one half.
+We define the prediction skill score as
+\begin{equation}
+    \mathrm{Skill}_H
+    =
+    1-\frac{\sum_{h=1}^{H}\ell_h}{\sum_{h=1}^{H}\ell_h^{\mathrm{null}}},
+    \label{eq:skill}
+\end{equation}
+Here $\ell_h$ is the squared forecast error at horizon step $h$, defined in Section~\ref{sec:problem_modeling}.  % contract.yaml symbol_lattice s_ell
+The numerator sums it over the horizon, and $\ell_h^{\mathrm{null}}$ is the same quantity for the best trivial null.  % contract.yaml symbol_lattice s_ellnull
+The best trivial null is the best-scoring memoryless baseline over the same rows.
+The score $\mathrm{Skill}_H$ is therefore the fraction of that null's horizon error which the operator removes.  % contract.yaml symbol_lattice s_skill
+A score of zero means tied with that null; a negative score means worse than it.
+
+The control-line metric is the constraint-satisfaction score as reported for each benchmark, a per-subtask percentage with no interval attached.  % numbers_benchmark.yaml unit field
+% TODO(data): metric definition pending from colleague
+Its exact definition, what counts as a satisfied instruction per subtask, is not yet available from the colleague.
+The two experiment lines therefore report different metrics in different reference frames.
+The modeling line's skill score is referenced against a best-trivial-null baseline and can go negative, while the control line's percentage carries no reference point.
+The modeling line tests whether the operator predicts the trajectory; the control line tests whether acting on that prediction changes the outcome.
