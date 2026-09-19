@@ -1,74 +1,61 @@
-% left_loop.tex — FIG_PLAN §3.1.  Left column of Fig. 1: ONE interaction
-% step of the closed loop, read top to bottom.  Local coordinates, origin
-% bottom-left, canvas 3.4cm x 7.0cm.  Every symbol comes from symbols.tex.
+% left_loop.tex — FIG_PLAN §3.1, revision 2 (user review of step 1, 2026-09-19).
+% Left column of Fig. 1: the five LOGICAL STEPS of one interaction, drawn as a
+% control loop with the controller in the middle.  No formulas: the left column
+% carries the logic, the right panel carries the mechanism.
 %
-% Geometry: boxes 2.94cm wide at x=0.44; the 0.35cm icon indents the TITLE
-% line only, the formula line spans the full box width (measured: the
-% widest formula, box 6, is 2.77cm against 2.86cm of room).
-\path (0,0) rectangle (3.4,7.0);            % fixed extent
-\def\bxW{2.94}                              % box width (cm)
+% Order = the standard control-loop order, rotated so that KOMPAS is the centre
+% block of the column: measure -> estimate -> control -> actuate -> plant, and
+% the plant's response closes the loop back to the measurement.
+% Local coordinates, origin bottom-left, canvas 3.6cm x 7.0cm.
+\path (0,0) rectangle (3.6,7.0);            % fixed extent
+\def\bxW{3.10}                              % box width (cm)
 
-% ---- 1  task and target ------------------------------------------------
+% ---- 1  verification ---------------------------------------------------
 \node[whitebox,anchor=north west,minimum width=\bxW cm,minimum height=0.72cm,
-      inner sep=0pt] (l1) at (0.44,6.86) {};
-\ScalarCell{(0.52,6.75)}{good}{}
-\node[anchor=west,font=\scriptsize\bfseries] at (0.82,6.64) {Task \& target};
-\node[anchor=west,font=\scriptsize]          at (0.52,6.34) {$\symTask,\ \symTarget$};
+      inner sep=0pt] (l1) at (0.44,6.74) {};
+\RulerIcon[0.85]{(0.60,6.38)}
+\node[anchor=west,font=\scriptsize\bfseries] at (0.80,6.38) {Verification};
 
-% ---- 2  prompt protocol ------------------------------------------------
+% ---- 2  memory update --------------------------------------------------
 \node[whitebox,anchor=north west,minimum width=\bxW cm,minimum height=0.72cm,
-      inner sep=0pt] (l2) at (0.44,5.88) {};
-\ProtoIcon[0.85]{(0.63,5.66)}
-\node[anchor=west,font=\scriptsize\bfseries] at (0.82,5.66) {Prompt protocol};
-\node[anchor=west,font=\scriptsize]          at (0.52,5.36) {$\eqProto$};
+      inner sep=0pt] (l2) at (0.44,5.42) {};
+\MemColV{(0.56,5.24)}{4}{0.09}
+\node[anchor=west,font=\scriptsize\bfseries] at (0.80,5.06) {Memory update};
+\node[dotA] at (3.42,5.06) {};
 
-% ---- 3  frozen LLM -----------------------------------------------------
+% ---- 3  KOMPAS: the controller, at the centre of the loop --------------
+\node[whiteboxo,anchor=north west,minimum width=\bxW cm,minimum height=1.20cm,
+      inner sep=0pt] (l3) at (0.44,4.10) {};
+\node[anchor=west,font=\scriptsize\bfseries,text=ours,fill=white,inner sep=1.6pt]
+     at (0.62,4.10) {KOMPAS};
+\node[whitebox,anchor=north west,minimum width=1.36cm,minimum height=0.52cm,
+      inner sep=0pt] (l3a) at (0.60,3.74) {};
+\node[font=\scriptsize\bfseries] at (1.28,3.48) {Modeling};
+\node[whitebox,anchor=north west,minimum width=1.18cm,minimum height=0.52cm,
+      inner sep=0pt] (l3b) at (2.20,3.74) {};
+\node[font=\scriptsize\bfseries] at (2.79,3.48) {Control};
+\draw[thinflow] (l3a.east) -- (l3b.west);
+\node[dotB] at (1.20,3.06) {};
+\node[dotC] at (1.36,3.06) {};
+\node[dotD] at (2.79,3.06) {};
+
+% ---- 4  prompt construction -------------------------------------------
 \node[whitebox,anchor=north west,minimum width=\bxW cm,minimum height=0.72cm,
-      inner sep=0pt] (l3) at (0.44,4.90) {};
-\SnowIcon[0.85]{(0.63,4.68)}
-\node[anchor=west,font=\scriptsize\bfseries] at (0.82,4.68) {Frozen LLM};
-\node[anchor=west,font=\scriptsize]          at (0.52,4.38) {$\eqGenShort$};
+      inner sep=0pt] (l4) at (0.44,2.30) {};
+\ProtoIcon[0.85]{(0.60,1.94)}
+\node[anchor=west,font=\scriptsize\bfseries,align=left] at (0.80,1.94)
+     {Prompt\\construction};
 
-% ---- 4  verifier -------------------------------------------------------
+% ---- 5  inference ------------------------------------------------------
 \node[whitebox,anchor=north west,minimum width=\bxW cm,minimum height=0.72cm,
-      inner sep=0pt] (l4) at (0.44,3.92) {};
-\RulerIcon[0.85]{(0.63,3.70)}
-\node[anchor=west,font=\scriptsize\bfseries] at (0.82,3.70) {Verifier};
-\node[anchor=west,font=\scriptsize]          at (0.52,3.40) {$\eqVerify$};
+      inner sep=0pt] (l5) at (0.44,0.98) {};
+\SnowIcon[0.85]{(0.60,0.62)}
+\node[anchor=west,font=\scriptsize\bfseries] at (0.80,0.62) {Inference};
 
-% ---- 5  memory window --------------------------------------------------
-\node[whitebox,anchor=north west,minimum width=\bxW cm,minimum height=0.72cm,
-      inner sep=0pt] (l5) at (0.44,2.94) {};
-\MemColV{(0.59,2.90)}{4}{0.09}
-\node[anchor=west,font=\scriptsize\bfseries] at (0.82,2.72) {Memory state};
-\node[anchor=west,font=\scriptsize]          at (0.52,2.42) {$\symMemNext\in\symMemSpace$};
-\node[dotA] at (3.28,2.77) {};
-
-% ---- offline training (dashed: it is NOT part of the loop) -------------
-\node[dashbox,anchor=north west,minimum width=2.40cm,minimum height=0.55cm,
-      inner sep=0pt] (lo) at (0.98,2.00) {};
-\node[anchor=west,font=\scriptsize] at (1.06,1.80) {offline: learn};
-\node[anchor=west,font=\scriptsize] at (1.06,1.56) {$\symParams$};
-\node[dotC] at (3.24,1.84) {};
-
-% ---- 6  KOMPAS ---------------------------------------------------------
-\node[whiteboxo,anchor=north west,minimum width=\bxW cm,minimum height=1.02cm,
-      inner sep=0pt] (l6) at (0.44,1.23) {};
-\LatColVF{(0.58,1.15)}{3}{0.09}{100}
-\StarIcon[0.62]{(0.63,0.71)}
-\node[anchor=west,font=\scriptsize\bfseries,text=ours] at (0.82,1.01) {KOMPAS};
-\node[anchor=west,font=\scriptsize]          at (0.82,0.71) {predict \& select}
-;
-\node[anchor=west,font=\scriptsize]          at (0.52,0.41) {$\eqArgmin$};
-\node[dotB] at (3.10,1.06) {};
-\node[dotD] at (3.28,1.06) {};
-
-% ---- flow: 1 -> 2 -> 3 -> 4 -> 5 -> 6 ---------------------------------
+% ---- forward path ------------------------------------------------------
 \foreach \a/\b in {l1/l2,l2/l3,l3/l4,l4/l5}{%
   \draw[thinflow] (\a.south) -- (\b.north);}
-\draw[thinflow] (0.72,2.22) -- (0.72,1.23);
-\draw[bypass]   (2.18,1.45) -- (2.18,1.23);
 
-% ---- the loop back: one interaction step ------------------------------
-\draw[thinflow] (l6.west) -- (0.24,0.72) -- (0.24,5.52) -- (l2.west);
-\node[minicap,rotate=90,anchor=south,inner sep=2pt] at (0.22,3.10) {next turn};
+% ---- the response closes the loop -------------------------------------
+\draw[thinflow] (l5.west) -- (0.22,0.62) -- (0.22,6.38) -- (l1.west);
+\node[minicap,rotate=90,anchor=south,inner sep=2pt] at (0.20,5.38) {response};

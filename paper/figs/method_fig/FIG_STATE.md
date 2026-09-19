@@ -13,7 +13,7 @@ gates: compile=pass
        G5 only box 6 carries the `ours` border; module colours only in the dots = pass
        G6 no numbers in the figure = pass
 previews_for_review: preview/step_glyph_sheet_v3.png (step 0),
-                     preview/step_left_loop_v5.png (step 1)
+                     preview/step_left_loop_v6.png (step 1, rev 2)
 user_verdict_on_previous: n/a (first session; step 0 and step 1 submitted together
                           per FIG_PLAN \S9 item 3)
 next_action: wait for user verdict on step 0 + step 1; on approve -> step 2,
@@ -28,7 +28,31 @@ notes:
     RowSelector, IdBypass, LossLink, FrozenLLM, RulerV, MiniAxes, DimBraceR/T/B,
     Trainable, seqstrip, TokRow, MemColV, MemRow, LatColVF, LatCol.
   - 图元样张 glyph_sheet.tex 不是最终图的一部分，只作步骤 0 的人审件。
-  - 步骤 1 登记的三处偏离 FIG_PLAN §3.1：
+  - 步骤 1 rev2（用户 2026-09-19 审后重画）：左栏改成"五个逻辑步骤的控制回路"，
+    KOMPAS 在正中。用户指令逐条落实：
+    * Frozen LLM -> Inference；Verifier -> Verification；Prompt protocol ->
+      Prompt construction（都改成动作名，不是物件名）。
+    * KOMPAS 拆成 Modeling 与 Control 两个小 block，左右并列、箭头相连，放在
+      KOMPAS 框内部。
+    * 删除 offline: learn 虚线框。
+    * 左栏公式全部删除。
+    * KOMPAS 移到整栏正中（y 中心 3.50 = 画布中心）。
+    实现方式：把回路按控制框图的标准顺序旋转成
+    Verification -> Memory update -> KOMPAS -> Prompt construction -> Inference,
+    再由 Inference 经左侧 response 边回到 Verification。五块 + KOMPAS 居中
+    只有在回路恰好五步时才成立。
+    rev2 顺带的四个判断（都可否决）：
+    (a) 删掉原框 1 "Task \& target"。它是输入不是步骤，且留着就没法让 KOMPAS
+        落在正中。目标 r 在右栏模块 D 的绿色目标线上出现。
+    (b) "Memory state" -> "Memory update"，把用户的命名规则一并套到这一框。
+    (c) offline 框删掉后模块 C（离线训练）在左栏失去锚点，C 色点挪到 Modeling
+        下方（训练属于建模那一侧）。
+    (d) 左栏 3.4cm -> 3.6cm：Modeling/Control 两个并列小框塞不进 3.4cm。右栏
+        由 10.4cm 变 10.2cm，模块 B 按 FIG_PLAN §8 的 A:B = 3:7 备选取 7.14cm，
+        仍宽于规格的 7.0cm。
+  - 公式移出左栏的副作用：G2 符号审计对 left_loop.tex 变成空跑（0 atoms）。
+    全图的记号一致性从此完全由右栏四个模块承担。
+  - 步骤 1 rev1 登记的三处偏离 FIG_PLAN §3.1（已被 rev2 取代，存档）：
     (a) 框 3 公式用计划预授权的简写 o_{t+1} ~ p_theta(.|H_t,u_t)（省去 x）；实测全写
         2.83cm，框内可用 2.86cm，留白不够。
     (b) 框 5 标题由 "Memory window" 改 "Memory state"（实测 2.33cm，与右上角色点相撞；
