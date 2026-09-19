@@ -1,0 +1,25 @@
+\path (0,0) rectangle (2.94,3.03);
+
+% ---- 1. the window slides out of a stream of observations ----
+\MemRow{(1.30,2.68)}{7}{0.20}
+\DimBraceT{(1.90,2.68)}{(2.70,2.68)}{$\symMemDim$}
+\node[mathlab,anchor=north,inner sep=1pt] at (2.60,2.47) {$\symAttr$};
+\draw[thinflow] (2.30,2.48) -- (1.80,2.09);
+
+% ---- 2. block algebra: the window's first entry IS the current value ----
+\RowSelector{(0.65,1.76)}{4}{0.22}
+\node[mathlab,inner sep=1pt] at (1.61,1.65) {$\cdot$};
+\MemColV{(1.69,2.09)}{4}{0.22}
+\node[mathlab,inner sep=1pt] at (2.02,1.65) {$=$};
+\ScalarCell{(2.13,1.76)}{tok1}{$\symAttr$}
+\node[mathlab,anchor=north,inner sep=1pt] at (1.09,1.54) {$\symSel$};
+\node[mathlab,anchor=north,inner sep=1pt] at (1.80,1.21) {$\symMem$};
+
+% ---- 3. why one observation is not enough ----
+\MiniAxes{(0.10,0.32)}{1.85}{0.65}
+\draw[draw=bad,line width=0.6pt] (0.10,0.93) -- (0.72,0.80) -- (1.30,0.70) -- (1.95,0.645);
+\draw[draw=ours,line width=0.6pt] (0.10,0.36) -- (0.72,0.48) -- (1.30,0.58) -- (1.95,0.645);
+\draw[-{Stealth[length=1.6mm]},dash pattern=on 1.4pt off 1.2pt,line width=0.5pt,draw=bad] (1.95,0.645) -- (2.18,0.50);
+\draw[-{Stealth[length=1.6mm]},dash pattern=on 1.4pt off 1.2pt,line width=0.5pt,draw=ours] (1.95,0.645) -- (2.18,0.79);
+\fill[black] (1.95,0.645) circle (0.025);
+\node[minicap,inner sep=1pt] at (1.47,0.16) {same $\symAttr$};

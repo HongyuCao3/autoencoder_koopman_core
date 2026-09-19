@@ -1,0 +1,75 @@
+% modB_koopman.tex — module B: finite-memory Koopman dynamics.
+% eq:koopman_model drawn as a state-space block diagram, left to right:
+% s_t -> E_phi -> xi_t -> K -> (+) -> xihat_{t+1} -> D_psi -> shat -> C -> yhat,
+% with the command branch B c_t entering the summing node from below and the
+% bias b from above.  Canvas 6.53 x 3.03; top-left 2.8 x 0.30 kept empty.
+\path (0,0) rectangle (6.53,3.03);
+
+% ---------------- 1. finite-memory state s_t ------------------------
+\MemColV{(0.62,2.09)}{4}{0.22}
+\DimBraceR{(0.11,1.21)}{(0.11,2.09)}{$\symMemDim$}
+\node[mathlab,anchor=north] at (0.73,1.17) {$\symMem$};
+
+% ---------------- 2. encoder E_phi ----------------------------------
+\begin{scope}[shift={(1.2088,1.65)},scale=0.62]
+  \EncNet{mbE}{(0,0)}
+\end{scope}
+\Trainable{(1.03,1.15)}{(1.958,2.15)}
+\node[mathlab,anchor=north] at (1.494,1.12) {$\symEnc$};
+\draw[thinflow] (0.84,1.65) -- (1.06,1.65);
+\draw[thinflow] (1.928,1.65) -- (2.20,1.65);
+
+% ---------------- 3. latent state xi_t ------------------------------
+\LatCol{(2.20,1.98)}{3}{0.22}
+\DimBraceR{(2.45,1.32)}{(2.45,1.98)}{$\symLatDim$}
+\node[mathlab,anchor=north] at (2.31,1.28) {$\symLat$};
+\draw[thinflow] (2.42,1.41) -- (3.00,1.41);
+
+% ---------------- 4. latent transition K ----------------------------
+\MatBlock{(3.00,1.98)}{3}{3}{0.22}{clLatentD}
+\node[mathlab,anchor=north] at (3.33,1.28) {$\symK$};
+\DimBraceT{(3.00,2.04)}{(3.66,2.04)}{$\symLatDim \times \symLatDim$}
+\draw[thinflow] (3.66,1.65) -- (3.87,1.65);
+
+% ---------------- 5. summing node, bias and command branches --------
+\node[mathlab,circle,draw=black!60,line width=0.5pt,fill=white,
+      inner sep=0pt,minimum size=3.2mm] at (4.03,1.65) {$+$};
+% bias branch, from above
+\MatBlock{(3.92,2.69)}{3}{1}{0.22}{black}
+\node[mathlab,anchor=south] at (4.03,2.71) {$\symBias$};
+\draw[thinflow] (4.03,2.03) -- (4.03,1.81);
+% command branch, from below: this is the point of the figure
+\MatBlock{(3.92,1.25)}{3}{1}{0.22}{ours}
+\node[mathlab,anchor=north] at (4.03,0.57) {$\symBcol$};
+\ScalarCell{(4.16,1.03)}{ours}{$\symCmd$}
+\draw[oursflow] (4.03,1.25) -- (4.03,1.49);
+\node[minicap,anchor=north,text=ours] at (4.03,0.30) {command enters here};
+
+% ---------------- 6. predicted latent state -------------------------
+\draw[thinflow] (4.19,1.65) -- (4.41,1.65);
+\LatCol{(4.41,1.98)}{3}{0.22}
+\node[mathlab,anchor=south] at (4.52,2.00) {$\symLatHat$};
+\draw[thinflow] (4.63,1.65) -- (5.03,1.65);
+
+% ---------------- 7. decoder D_psi ----------------------------------
+\begin{scope}[shift={(5.1788,1.65)},scale=0.62]
+  \DecNet{mbD}{(0,0)}
+\end{scope}
+\Trainable{(5.00,1.15)}{(5.928,2.15)}
+\node[mathlab,anchor=north] at (5.40,1.12) {$\symDec$};
+\draw[thinflow] (5.898,1.65) -- (6.30,1.65);
+
+% ---------------- 8. predicted state and attribute readout ----------
+\MemColV{(6.30,2.09)}{4}{0.22}
+\node[mathlab,anchor=south east] at (6.52,2.17) {$\symMemHat$};
+\draw[thinflow] (6.41,1.21) -- (6.41,0.98);
+\RowSelector{(5.64,0.98)}{4}{0.22}
+\node[mathlab,anchor=north] at (6.08,0.74) {$\symSel$};
+\draw[thinflow] (5.75,0.76) -- (5.75,0.58);
+\ScalarCell{(5.64,0.58)}{tok1}{$\symYhat$}
+
+% ---------------- 9. the linear special case ------------------------
+\IdBypass{(0.80,2.44)}{(2.31,2.44)}
+\IdBypass{(5.28,2.44)}{(5.98,2.44)}
+\node[minicap,anchor=west] at (0.05,0.55)
+  {linear case: $\symEnc{=}\symDec{=}\operatorname{id}$};

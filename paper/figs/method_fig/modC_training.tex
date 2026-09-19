@@ -1,0 +1,127 @@
+% modC_training.tex — module C: offline training of the Koopman predictor.
+% Draws eq:training_transition and eq:training_objective as glyphs.
+%
+% Layout (coordinator revision): the upper (predicted) row runs left to
+% right; the lower (observed) row is folded back and runs right to left,
+% so that the three compared quantities sit directly above one another.
+% Each \LossLink is then a short, near-vertical segment, and the three
+% loss circles land far apart in x (>=0.9cm, checked below) instead of
+% converging in one central corridor.
+%
+% Canvas 4.735 x 3.03; top-left 2.2 x 0.30 left empty for the corner tag.
+\path (0,0) rectangle (4.735,3.03);
+
+% =====================================================================
+% 0. the training set D — two offset "transition cards", far left,
+%    outside both rows.
+% =====================================================================
+\begin{scope}[shift={(0.16,1.90)}]
+  \MemColV{(0.065,0)}{2}{0.08}
+  \ScalarCell{(0,-0.18)}{ours}{}
+  \MemColV{(0.065,-0.52)}{2}{0.08}
+\end{scope}
+\begin{scope}[shift={(0.10,2.00)}]
+  \MemColV{(0.065,0)}{2}{0.08}
+  \ScalarCell{(0,-0.18)}{ours}{}
+  \MemColV{(0.065,-0.52)}{2}{0.08}
+\end{scope}
+\node[mathlab,anchor=north] at (0.24,1.15) {$\symData$};
+\draw[thinflow] (0.40,1.95) -- (0.55,2.30);
+\node[mathlab,anchor=east] at (0.50,2.35) {$\symMem$};
+
+% =====================================================================
+% 1. UPPER ROW, left -> right: s_t -> Enc -> xi_t -> K,B,c -> q_t
+%    -> Dec -> pale D(q_t)
+% =====================================================================
+\MemColV{(0.55,2.67)}{4}{0.16}
+\draw[thinflow] (0.71,2.35) -- (0.854,2.35);
+
+\begin{scope}[shift={(0.95,2.35)},scale=0.40]
+  \EncNet{mcE1}{(0,0)}
+\end{scope}
+\Trainable{(0.854,2.05)}{(1.414,2.65)}
+\node[mathlab,anchor=north] at (1.134,2.03) {$\symEnc$};
+\draw[thinflow] (1.414,2.35) -- (1.55,2.35);
+
+\LatCol{(1.55,2.59)}{3}{0.16}
+\node[mathlab,anchor=north] at (1.63,2.09) {$\symLat$};
+\draw[thinflow] (1.71,2.35) -- (1.75,2.35);
+
+\MatBlock{(1.75,2.59)}{3}{3}{0.16}{clLatentD}
+\node[mathlab,anchor=north] at (1.99,2.09) {$\symK$};
+\node[mathlab] at (2.28,2.35) {$+$};
+
+\MatBlock{(2.33,2.59)}{3}{1}{0.16}{ours}
+\node[mathlab,anchor=north] at (2.41,2.09) {$\symBcol$};
+\ScalarCell{(2.51,2.46)}{ours}{$\symCmd$}
+
+\node[mathlab] at (2.79,2.35) {$=$};
+\LatCol{(2.85,2.59)}{3}{0.16}
+\node[mathlab,anchor=south] at (2.93,2.62) {$\symQ$};
+\draw[thinflow] (3.01,2.35) -- (3.13,2.35);
+
+\begin{scope}[shift={(3.226,2.35)},scale=0.40]
+  \DecNet{mcD1}{(0,0)}
+\end{scope}
+\Trainable{(3.13,2.05)}{(3.69,2.65)}
+\node[mathlab,anchor=south] at (3.41,2.28) {$\symDec$};
+\draw[thinflow] (3.69,2.35) -- (3.81,2.35);
+
+\begin{scope}[opacity=0.55]
+  \MemColV{(3.81,2.67)}{4}{0.16}
+\end{scope}
+\node[mathlab,anchor=south] at (3.89,2.70) {$\symDec(\symQ)$};
+
+% =====================================================================
+% 2. LOWER ROW, right -> left (folded back under the predicted path):
+%    s_{t+1} (below pale D(q_t))  -> Enc (shared) -> xi_{t+1} (below q_t)
+% =====================================================================
+\begin{scope}[opacity=1]
+  \MemColV{(3.81,1.66)}{4}{0.16}
+\end{scope}
+\node[mathlab,anchor=north] at (3.89,1.00) {$\symMemNext$};
+\draw[thinflow] (3.81,1.34) -- (3.69,1.36);
+
+\begin{scope}[shift={(3.226,1.36)},scale=0.40]
+  \EncNet{mcE2}{(0,0)}
+\end{scope}
+\Trainable{(3.13,1.06)}{(3.69,1.66)}
+\node[mathlab,anchor=north] at (3.41,1.04) {$\symEnc$};
+\draw[thinflow] (3.13,1.36) -- (3.01,1.42);
+
+\LatCol{(2.85,1.66)}{3}{0.16}
+\node[mathlab,anchor=north] at (2.93,1.16) {$\symLatNext$};
+
+% =====================================================================
+% 3. RECONSTRUCTION BRANCH, lower left, below s_t:
+%    s_t -> (short bypass) -> small Dec -> pale D(E(s_t))
+% =====================================================================
+\draw[bypass] (0.63,1.98) -- (1.00,1.78);
+
+\begin{scope}[shift={(1.10,1.60)},scale=0.30]
+  \DecNet{mcD3}{(0,0)}
+\end{scope}
+\Trainable{(1.028,1.375)}{(1.448,1.825)}
+\node[mathlab,anchor=north] at (1.238,1.355) {$\symDec$};
+\draw[thinflow] (1.05,1.42) -- (0.68,1.32);
+
+\begin{scope}[opacity=0.55]
+  \MemColV{(0.55,1.30)}{4}{0.16}
+\end{scope}
+\node[mathlab,anchor=north west] at (0.75,0.64) {$\symDec(\symEnc(\symMem))$};
+
+% =====================================================================
+% 4. the three losses — each a SHORT, near-vertical dashed red link
+%    between two blocks that sit directly above/below one another.
+%    Centres (x): rec=0.63, lin=2.93, pred=3.89 — all >=0.9cm apart.
+%    Lengths: rec=0.73cm, lin=0.45cm, pred=0.37cm — all <=1.0cm.
+% =====================================================================
+\LossLink{(0.63,2.03)}{(0.63,1.30)}{$\symLrec$}
+\LossLink{(2.93,2.11)}{(2.93,1.66)}{$\symLlin$}
+\LossLink{(3.89,2.03)}{(3.89,1.66)}{$\symLpred$}
+
+% =====================================================================
+% 5. caption
+% =====================================================================
+\node[minicap,anchor=south east] at (4.70,0.05)
+  {updates $\symParams$; $\symTheta$ frozen};
