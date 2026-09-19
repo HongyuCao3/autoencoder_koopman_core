@@ -1,7 +1,7 @@
 # FIG_STATE (method figure, TikZ)
 
-updated: 2026-09-19  by: opus session (bookkeeping catch-up + step 3 + step-3 revision, this session)
-step: 3 (rev 2)   status: awaiting_user_review
+updated: 2026-09-19  by: sonnet session (step-3 title-bar redesign + a text-overlap fix it surfaced, this session)
+step: 3 (rev 3)   status: awaiting_user_review
 decisions: Q1=C-as-own-module (user, 2026-09-19, 2x2 保持四块)
            Q2=sentence-length (user, 默认)
            Q3=no-bound-glyph, minicap only (user, 默认)
@@ -41,13 +41,15 @@ gates (step 2, four modules, this session):
           expected per FIG_PLAN 2a/2d spec, not a style override)
 previews_for_review: preview/step_left_loop_v6.png (step 1, rev 2),
                      preview/step_modA_memory_v3.png,
-                     preview/step_modB_koopman_v12.png,
+                     preview/step_modB_koopman_v13.png (rebuilt after the
+                       y-hat label move below; content otherwise identical
+                       to v12),
                      preview/step_modC_training_v14.png,
                      preview/step_modD_control_v17.png,
-                     preview/step_right_panel_v12.png (step 3 rev 2, CURRENT
-                       -- supersedes v1: fixed the neuron-overlap bug in
-                       every scaled net and 4 separate text-overlap bugs,
-                       see the note above)
+                     preview/step_right_panel_v16.png (step 3 rev 3, CURRENT
+                       -- supersedes v12: full-width centred title bars on
+                       all 4 panels (was: small corner tags), plus the one
+                       text-overlap bug this surfaced, see the note below)
 user_verdict_on_previous: not yet recorded in this file for step 1 rev2 or step 2 --
   rev2's changes already encode detailed user feedback from a prior review (see
   notes below), but no explicit approved/revise verdict was logged before the
@@ -56,15 +58,13 @@ user_verdict_on_previous: not yet recorded in this file for step 1 rev2 or step 
   state (step 2 fully drafted, gates run, nothing committed) so a fresh session
   is not misled by the stale step:1 entry that preceded it. All 5 images above
   were just sent to the user for review together.
-next_action: step 3 (right_panel.tex) has now been drafted and rendered in
-             the same sitting as the step-2 catch-up, ALSO without waiting for
-             a user verdict first -- see note below, this is a second instance
-             of the same process gap, done knowingly this time with the user's
-             explicit go-ahead (see chat: "先补记账再进入步骤3"). On user
-             approve of step 1 rev2 + step 2 (four modules) + step 3 (panel)
-             together -> step 4 (master assembly, wire into 02_method.tex,
-             render the real page). On revise -> iterate the named
-             module/panel only, bump version, re-run gates.
+next_action: step 3 rev 3 (title bars) is drafted, rendered, gate-checked
+             and committed; still awaiting a user verdict on step 1 rev2 +
+             step 2 (four modules) + step 3 (panel, now rev 3) together --
+             no verdict has been given on ANY version of step 3 yet. Do NOT
+             start step 4 (master assembly, wire into 02_method.tex) before
+             that verdict arrives. On approve -> step 4. On revise -> iterate
+             the named module/panel only, bump version, re-run gates.
 notes:
   - THIS SESSION, step 3 rev 2 (user feedback: "有一些文字overlap问题需要解决,
     神经网络设计元素中的圆形半径减小,因为现在重叠比较严重"):
@@ -137,6 +137,67 @@ notes:
     step_modA_memory_v3, step_modB_koopman_v12, step_modC_training_v14,
     step_modD_control_v17 -- same content as v11/v13/v16 respectively, just
     recompiled after the comment cleanup, no visual change).
+  - THIS SESSION, step 3 rev 3 (user feedback: "ABCD四个块的标题改成和矩形等长
+    文字居中，也调整其他图像位置避免标题遮盖其他内容" -- titles must span the
+    full width of each panel, centred, and nothing may sit under them):
+    Rather than reflow any of the four modules' own (already tightly-packed,
+    already-gated) internal coordinate systems to make room for a full-width
+    bar, added a new strip ABOVE each panel's existing content, exclusively
+    for the title: `\TitleH=0.36` (bar height), `\PanelH=\ModH+\TitleH=3.39`
+    (new full panel height), `\RowOneY=\PanelH+0.25=3.64` (new row-1 y-offset,
+    replacing the old literal 3.28). New `\PanelTitle` macro draws a filled
+    rounded-rect spanning the panel's own width with centred bold white text.
+    Every module's own local (0,0) origin is unchanged -- only the panel box
+    and the new title strip grew around it -- so no modA/C/D edits were
+    needed for the redesign itself. Verified by cropping each of the 4
+    title-strip-to-content transitions at 500dpi: all 4 titles read centred
+    and full-width, all 4 have a visible content gap below the bar, and the
+    inter-row gap (row1 bottom border to row2 title top) is unaffected.
+    ONE real overlap surfaced by this change, found the same way as every
+    other overlap this session (crop+zoom the actual render, not paper
+    coordinates): B's "(feeds D)" caption only needed a uniform +\RowOneY
+    shift (same as everything else in row 1), so on paper it looked
+    unaffected -- but at 600dpi it was sitting directly on top of B's own
+    $\hat y_{t+1}$ label (both objects centred at the same local x=5.75; the
+    caption's top edge at y=0.45 landed inside the label's own vertical
+    span). This was not a new bug from the title change; the same collision
+    would already have existed in v12 as soon as anyone zoomed that corner
+    -- it had simply never been crop-checked at high enough resolution
+    before now, and the title-height change is what prompted a full re-crop
+    of every corner of the panel this time. Fixed in two parts:
+      1. modB_koopman.tex: the $\hat y_{t+1}$ label was coming from
+         \ScalarCell's built-in south-of-the-box placement, which put it
+         directly below the box with no margin to spare. Replaced the macro
+         call with the same box drawn by hand plus a custom label anchored
+         WEST of the box instead of south, freeing the strip below the box
+         entirely (module-internal edit, needed because the label's own
+         default position was the root cause, not anything in right_panel.tex).
+      2. right_panel.tex: moved the "(feeds D)" node to sit below the box in
+         the now-empty strip (local y 0.45 -> 0.28) and re-anchored it
+         north-west starting at the box's own right edge (local x 5.75 ->
+         5.86) instead of centring it under the box, which also fixed a
+         second, smaller issue the first fix's geometry would otherwise have
+         left behind: at the lower y, "(feeds D)" was landing edge-to-edge
+         against B's own "command enters here" caption with no visible gap.
+    Re-ran G2 on modB_koopman.tex and right_panel.tex after both edits: OK,
+    0 unmatched (the label swap and caption move are geometry-only, no
+    symbol changed). No other module touched.
+    HOUSEKEEPING found along the way (same class of bug as the step-3-rev-2
+    entry above): fig_symbol_audit.py treats any $...$ span as math mode, but
+    TikZ's calc library also delimits coordinate arithmetic with $...$; the
+    new \PanelTitle macro used calc syntax to add \TitleH to a coordinate
+    (`($#1+(#2,\TitleH)$)`), so the audit read \TitleH as an undefined paper
+    symbol and failed G2 on right_panel.tex (1 unmatched). \TitleH is a
+    layout constant, not notation, so this was a false positive, not a real
+    gap. Fixed by rewriting \PanelBox/\PanelTitle to do their arithmetic in a
+    shifted scope with plain brace-pgfmath coordinates (the `{2.09+\RowOneY}`
+    style already used elsewhere in this file) instead of calc's $...$ --
+    zero visual change (confirmed: v16 is byte-identical to v15), G2 now
+    OK (11 atoms, 0 unmatched).
+    Final artefact for review: preview/step_right_panel_v16.png (also
+    step_modB_koopman_v13.png, same content as the version reviewed in rev 2,
+    just recompiled after the label-position fix -- no other visual change
+    to module B).
   - THIS SESSION, continued (step 3, per user's explicit "先补记账再进入步骤3"):
     wrote right_panel.tex per FIG_PLAN §3.3. Native module canvases read off
     each modX_*.tex \path rectangle: A 2.94x3.03, B 6.53x3.03, C 4.735x3.03,
