@@ -18,7 +18,7 @@
 % v3: 0.36 -> 0.46. Needed so panel A's two-line title (see \PanelTitle
 % above) has room; applied to all 4 panels uniformly so every title bar
 % stays the same height (the row layout only knows one \TitleH).
-\def\TitleH{0.46}          % title-bar strip height, same for all 4 panels
+\def\TitleH{0.36}          % title-bar strip height, same for all 4 panels
 \def\ModH{3.03}            % each module's own content height (unchanged)
 \pgfmathsetmacro{\PanelH}{\ModH+\TitleH}   % = 3.39, full panel box height
 
@@ -54,27 +54,27 @@
 
 % ---- panel borders (full height, including the title strip), drawn first
 % so the title fill and module content both sit on top of them ----
-\PanelBox{(0.00,\RowOneY)}{2.94}{\PanelH}
-\PanelBox{(3.19,\RowOneY)}{6.53}{\PanelH}
-\PanelBox{(0.00,0.00)}{4.735}{\PanelH}
-\PanelBox{(4.985,0.00)}{4.735}{\PanelH}
+\PanelBox{(0.00,\RowOneY)}{3.40}{\PanelH}
+\PanelBox{(3.65,\RowOneY)}{6.07}{\PanelH}
+\PanelBox{(0.00,0.00)}{3.40}{\PanelH}
+\PanelBox{(3.65,0.00)}{6.07}{\PanelH}
 
 % ---- title bars, in the strip ABOVE each module's own content area (at
 % local y=\ModH within that module's frame) -- a NEW band, not carved out
 % of space any module's internals already use, so nothing needed to move ----
 % v3 (2026-09-19, post CP2-redo): titles renamed to match the plan's
 % §2.2 wording, which in turn matches §3.1-3.3's own subsection titles.
-\PanelTitle{(0.00,\RowOneY+\ModH)}{2.94}{clModA}{A Finite-memory\\state}
-\PanelTitle{(3.19,\RowOneY+\ModH)}{6.53}{clModB}{B Koopman dynamics model}
-\PanelTitle{(0.00,\ModH)}{4.735}{clModC}{C Learning from data}
-\PanelTitle{(4.985,\ModH)}{4.735}{clModD}{D Predictive selection}
+\PanelTitle{(0.00,\RowOneY+\ModH)}{3.40}{clModA}{A Finite-memory state}
+\PanelTitle{(3.65,\RowOneY+\ModH)}{6.07}{clModB}{B Koopman dynamics model}
+\PanelTitle{(0.00,\ModH)}{3.40}{clModC}{C Learning from data}
+\PanelTitle{(3.65,\ModH)}{6.07}{clModD}{D Predictive selection}
 
 % ---- module content, each in its own shifted scope (origin unchanged --
 % only the panel box and title strip grew, not the module's own frame) ----
 \begin{scope}[shift={(0.00,\RowOneY)}]  \input{modA_memory}   \end{scope}
-\begin{scope}[shift={(3.19,\RowOneY)}]  \input{modB_koopman}  \end{scope}
+\begin{scope}[shift={(3.65,\RowOneY)}]  \input{modB_koopman}  \end{scope}
 \begin{scope}[shift={(0.00,0.00)}]      \input{modC_learning} \end{scope}
-\begin{scope}[shift={(4.985,0.00)}]     \input{modD_control}  \end{scope}
+\begin{scope}[shift={(3.65,0.00)}]      \input{modD_control}  \end{scope}
 
 % ---- cross-module relation (drawn): A's finite-memory state s_t is what
 % B's dynamics model takes in. Both modules place their MemColV for s_t
@@ -88,7 +88,7 @@
 % is that every other cross-module relation is carried by glyph identity
 % alone (same shape, same colour, same symbol in both panels), never by a
 % second drawn arrow or caption.
-\draw[thinflow] (1.91,{2.09+\RowOneY}) -- (3.81,{2.09+\RowOneY});
+\draw[thinflow] (2.24,{1.75+\RowOneY}) -- (4.08,{1.75+\RowOneY});
 
 % ---- C trains B (caption instead of a line; the two panels are not
 % adjacent at this row spacing) ----

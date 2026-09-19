@@ -44,6 +44,8 @@
 | D34 | 2026-09-19 | 3.3 加 **Algorithm 1**（滚动时域循环），`main.tex` 加 `algorithm` / `algorithmic` / `amsthm` 与 `\newtheorem{proposition}`；伪代码受 Rule 21 约束（不得出现结果数字）；`equation_gate.py` 跳过 `algorithmic` 环境、并识别 `proposition` 环境内的公式（直觉句检查放宽为"Proposition 之前一段有直觉句"）。 | — |
 | D35 | 2026-09-19 | 编号勘误：`WRITING_PLAN_2026-09-19.md` §2.3 说 D22 重号，核对后**不成立**——Problem Formulation 拆分那条现登记为 D23，表里 D22 只出现一次。不做任何改号；本条留作记录，避免下一个会话重新去"修"它。 | 覆盖 v2.1 计划 §2.3 |
 
+| D36 | 2026-09-19 | **待签字。** Fig. 1 放弃 2×2 四模块，改为一张整体图：左半是 Koopman 交换图（下行文本空间的非线性黑箱一步，上行延迟坐标上的线性一步，验证器读数为竖直观测映射，命令 $c_t$ 一格两箭头同时进入 $\mathcal{P}$ 与 $B$），右半是控制（$K^h$ 闭式滚动、候选评分、argmin），$c_t^\star$ 沿底部回路成为下一步命令。学习不占版面（图注一句）；左栏、A 的两趋势小图、lifting 通道不画（D33 由正文白话段满足）。同事 `figs/method.png` 退役进 `_colleague_backup_2026-09-18/`。 | 覆盖 FIG_PLAN v2 的 1/4+3/4 版式与 Q1 的 2×2 裁决；细化 D31 |
+
 ## 已执行的操作性裁决（不进表，但有约束力）
 
 - **2026-09-18（Phase 0.1）**：删除 `paper/iclr2027_koopman_alignment/`。理由是它与

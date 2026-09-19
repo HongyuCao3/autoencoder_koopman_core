@@ -10,15 +10,22 @@ step is the clock used here. On a short window of verifier readings we
 identify a command-conditioned Koopman dynamics model of that step. The model
 then ranks candidate instructions before any of them is sent. The parameters
 of $p_{\theta}$ never change, and the dynamics model is fit offline.
+Figure~\ref{fig:method} shows one interaction step in both spaces on the
+left and the controller built on the linear step on the right.
 
-\begin{figure}[ht]
+\begin{figure}[t]
     \centering
-    \includegraphics[width=0.95\linewidth]{figs/method.png}
-    \caption{The modeling half builds a finite-memory state from recent
-    attribute readings and fits a command-conditioned transition on it. The
-    control half scores candidate commands on their predicted trajectories,
-    sends the best one, and plans again from the reading that comes back.}
-    \label{fig:placeholder}
+    \includegraphics[width=\textwidth]{figs/method.pdf}
+    \caption{Overview of KOMPAS. Left: one interaction step, seen in two
+    spaces. In text space the frozen model turns a prompt into a reply and
+    the verifier reads one attribute. In observable space the same step acts
+    on the window of recent readings through the affine map, and the command
+    $c_t$ enters both spaces from one cell. Right: the same operator's
+    closed-form power rolls each candidate command forward, the predicted
+    trajectories are scored against the target, and the best command returns
+    as the next $c_t$. The operator is fit offline by least squares
+    (Section~\ref{sec:learning}).}
+    \label{fig:method}
 \end{figure}
 
 \subsection{A Koopman Dynamics Model of Prompt--Response Interaction}

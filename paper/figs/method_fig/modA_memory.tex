@@ -1,25 +1,34 @@
-\path (0,0) rectangle (2.94,3.03);
+% modA_memory.tex — module A: the finite-memory state (eq:memory_state).
+% v4 (balance/layout pass, 2026-09-19): canvas widened to 3.40 so the
+% title fits on one line and both rows of the right panel split at the same
+% x (3.40 | 6.07). Three tiers, top to bottom, every connector orthogonal:
+%   1. a stream of readings with the window of the last L+1 marked,
+%   2. the block identity  y_t = C s_t  (the stack is the right-most block,
+%      so the cross-module arrow to B leaves from it without crossing),
+%   3. why one reading is not enough: two histories, same current value.
+\path (0,0) rectangle (3.40,3.03);
 
-% ---- 1. the window slides out of a stream of observations ----
-\MemRow{(1.30,2.68)}{7}{0.20}
-\DimBraceT{(1.90,2.68)}{(2.70,2.68)}{$\symMemDim$}
-\node[mathlab,anchor=north,inner sep=1pt] at (2.60,2.47) {$\symAttr$};
-\draw[thinflow] (2.30,2.48) -- (1.80,2.09);
+% ---- 1. the window over the stream --------------------------------------
+\MemRow{(1.00,2.78)}{7}{0.20}
+\DimBraceT{(1.60,2.80)}{(2.40,2.80)}{$\symMemDim$}
+\node[mathlab,anchor=west] at (2.44,2.68) {$\symAttr$}
+;
+\draw[thinflow] (2.00,2.58) -- (2.00,2.21);
 
-% ---- 2. block algebra: the window's first entry IS the current value ----
-\RowSelector{(0.65,1.76)}{4}{0.22}
-\node[mathlab,inner sep=1pt] at (1.61,1.65) {$\cdot$};
-\MemColV{(1.69,2.09)}{4}{0.22}
-\node[mathlab,inner sep=1pt] at (2.02,1.65) {$=$};
-\ScalarCell{(2.13,1.76)}{tok1}{$\symAttr$}
-\node[mathlab,anchor=north,inner sep=1pt] at (1.09,1.54) {$\symSel$};
-\node[mathlab,anchor=north,inner sep=1pt] at (1.80,1.21) {$\symMem$};
+% ---- 2. y_t = C s_t ------------------------------------------------------
+\ScalarCell{(0.50,1.86)}{tok1}{$\symAttr$}
+\node[mathlab] at (0.82,1.75) {$=$};
+\RowSelector{(0.92,1.86)}{4}{0.22}
+\node[mathlab,anchor=north] at (1.36,1.60) {$\symSel$};
+\node[mathlab] at (1.90,1.75) {$\cdot$};
+\MemColV{(2.00,2.19)}{4}{0.22}
+\node[mathlab,anchor=north] at (2.11,1.25) {$\symMem$};
 
-% ---- 3. why one observation is not enough ----
-\MiniAxes{(0.10,0.32)}{1.85}{0.65}
-\draw[draw=bad,line width=0.6pt] (0.10,0.93) -- (0.72,0.80) -- (1.30,0.70) -- (1.95,0.645);
-\draw[draw=ours,line width=0.6pt] (0.10,0.36) -- (0.72,0.48) -- (1.30,0.58) -- (1.95,0.645);
-\draw[-{Stealth[length=1.6mm]},dash pattern=on 1.4pt off 1.2pt,line width=0.5pt,draw=bad] (1.95,0.645) -- (2.18,0.50);
-\draw[-{Stealth[length=1.6mm]},dash pattern=on 1.4pt off 1.2pt,line width=0.5pt,draw=ours] (1.95,0.645) -- (2.18,0.79);
-\fill[black] (1.95,0.645) circle (0.025);
-\node[minicap,inner sep=1pt] at (1.47,0.16) {same $\symAttr$};
+% ---- 3. same reading, opposite trends --------------------------------------
+\MiniAxes{(0.45,0.42)}{2.50}{0.72}
+\draw[draw=bad,line width=0.6pt]  (0.50,0.98) -- (1.20,0.86) -- (1.90,0.76) -- (2.55,0.70);
+\draw[draw=ours,line width=0.6pt] (0.50,0.44) -- (1.20,0.54) -- (1.90,0.63) -- (2.55,0.70);
+\draw[-{Stealth[length=1.6mm]},dash pattern=on 1.4pt off 1.2pt,line width=0.5pt,draw=bad]  (2.55,0.70) -- (2.85,0.56);
+\draw[-{Stealth[length=1.6mm]},dash pattern=on 1.4pt off 1.2pt,line width=0.5pt,draw=ours] (2.55,0.70) -- (2.85,0.84);
+\fill[black] (2.55,0.70) circle (0.025);
+\node[minicap,anchor=north] at (1.70,0.34) {same $\symAttr$};

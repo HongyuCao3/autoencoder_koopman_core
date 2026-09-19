@@ -397,3 +397,6 @@
 % twice, offset by one cell) to show how overlapping windows cut transitions.
 \newcommand{\WinBracket}[4]{%
   \draw[#4,line width=0.6pt,rounded corners=1pt] #1 ++(0,0.04) -| ++({#2*#3},{-#3-0.08}) -| cycle;}
+% v3.1 (balance pass): a neutral third candidate colour. Candidates are
+% ours / bad / clAlt so that green stays reserved for the target r (G5).
+\definecolor{clAlt}{HTML}{8A97A3}

@@ -1,120 +1,59 @@
-% modB_koopman.tex — module B: the command-conditioned Koopman dynamics model.
-% v3 (2026-09-19, post CP2-redo): eq:koopman_model is stated directly on the
-% reading window s_t (no encoder/decoder in the main text), so the main chain
-% now runs left to right entirely in s-space:
-%   s_t -> [K, (L+1)x(L+1)] -> (+) -> shat_{t+1} -> [C selector] -> yhat_{t+1}
-% with the command column B (+ the scalar c_t) entering the sum from below --
-% this branch is still the point of the figure -- and the bias b entering
-% from above. The one thing kept from the lifting story (3.1 P6) is drawn as
-% a single faded, optional detour arcing over the top of the main chain,
-% through a de-emphasised encoder/decoder pair; the paper reports the
-% identity lifting (the solid chain below), so the arc+nets are opacity 0.45
-% and never the thing a reader's eye lands on first. The two labels that
-% belong to the arc (E_phi, and the "optional learned lifting" caption) are
-% kept at full opacity so they stay legible (G4) -- only the drawn shapes
-% (line + nets) are faded, per the plan's "opacity=0.45" on the arc itself.
-% Canvas 6.53 x 3.03; top-left strip is the title bar (added in right_panel).
-\path (0,0) rectangle (6.53,3.03);
+% modB_koopman.tex — module B: the s-space dynamics model (eq:koopman_model).
+% v24 (balance/layout pass, 2026-09-19): canvas 6.07 x 3.03. Main chain on
+% baseline y=1.75, left to right: s_t -> K -> (+) -> shat_{t+1} -> C -> yhat.
+% Bias b enters the sum from above, the command column B c_t from below.
+% The learned lifting (3.1 P6) is a faded OPTIONAL lane above the chain,
+% wired with right-angle connectors: it inserts an encoder in front of K
+% and a decoder after the affine step, i.e. the model of Appendix A1; the
+% earlier arc skipped K, B and b, which is not that model. E_phi appears
+% here once, the only time in the figure. K carries no dimension brace: the
+% 4x4 grid against the 4-cell state already shows (L+1)x(L+1).
+\path (0,0) rectangle (6.07,3.03);
 
-% ---------------- 1. finite-memory state s_t --------------------------
-% top-left y=2.09, same local coordinate module A uses for its own s_t
-% column bottom -- the cross-module arrow in right_panel.tex depends on
-% this and is NOT changed here. L+1 is already labelled once, in A; per
-% the plan's "no dimension appears twice" rule this module does not repeat
-% \DimBraceR for it.
-\MemColV{(0.70,2.09)}{4}{0.22}
-\node[mathlab,anchor=north] at (0.81,1.19) {$\symMem$};
-\draw[thinflow] (0.92,1.75) -- (1.45,1.75);
+% ---------------- 1. memory state s_t --------------------------------
+\MemColV{(0.45,2.19)}{4}{0.22}
+\node[mathlab,anchor=north] at (0.56,1.25) {$\symMem$};
+\draw[thinflow] (0.67,1.75) -- (1.10,1.75);
 
-% ---------------- 2. the transition matrix K ---------------------------
-\MatBlock{(1.45,2.19)}{4}{4}{0.22}{clLatentD}
-\node[mathlab,anchor=north] at (1.89,1.29) {$\symK$};
-\DimBraceT{(1.45,2.21)}{(2.33,2.21)}{$\symMemDim\times{}\symMemDim$}
-% the "{}" above is a no-op in the typeset output (same as v20's render);
-% it exists only so the G2 audit script's naive string-substitution macro
-% expander does not read "\times" immediately followed by \symMemDim's
-% own expansion "L+1" as the single (nonexistent) control word "\timesL".
-% Real TeX tokenizes \times and \symMemDim as separate control words
-% regardless, so this changes nothing LaTeX actually renders -- it is the
-% same class of audit-script false positive the plan's risk table already
-% flags for \symResid's \lVert, fixed the same way it prescribes: work
-% around it in the fragment, do not touch the script, note it here.
-\draw[thinflow] (2.33,1.75) -- (2.86,1.75);
+% ---------------- 2. transition K -------------------------------------
+\MatBlock{(1.10,2.19)}{4}{4}{0.22}{clLatentD}
+\node[mathlab,anchor=north] at (1.54,1.25) {$\symK$};
+\draw[thinflow] (1.98,1.75) -- (2.42,1.75);
 
-% ---------------- 3. summing node, bias (above) and command (below) ----
+% ---------------- 3. sum; bias from above, command from below ----------
 \node[mathlab,circle,draw=black!60,line width=0.5pt,fill=white,
-      inner sep=0pt,minimum size=3.2mm] (Bsum) at (3.02,1.75) {$+$};
-% bias branch, from above -- kept small (cell 0.10) and labelled to its
-% WEST (not above) so the column's own top can stay well below the lifting
-% arc that passes over it (see step 6): with this column, its top sits at
-% y=2.39, and the arc/nets are kept at y>=2.58, a 0.19cm clearance, comfortably
-% above the plan's >=0.15cm minimum.
-\MatBlock{(2.97,2.39)}{4}{1}{0.10}{black}
-\node[mathlab,anchor=east] at (2.94,2.19) {$\symBias$};
-\draw[thinflow] (3.02,1.99) -- (3.02,1.91);
-% command branch, from below: still the point of the figure, so it keeps
-% the full-size cell (0.22) and the accent colour. Column is 4x1 (matches
-% B's real shape, (L+1)x1). Label placed to the column's WEST (like b's,
-% above) rather than stacked below it -- the first attempt stacked $B$'s
-% label directly above the "command" minicap at the old (3-row) offsets,
-% and re-using those same y's for a taller 4-row column left only a hair
-% of clearance, so the two merged into unreadable "comBand" text.
-\MatBlock{(2.91,1.25)}{4}{1}{0.22}{ours}
-\node[mathlab,anchor=east] at (2.88,0.81) {$\symBcol$};
-\ScalarCell{(3.15,1.03)}{ours}{$\symCmd$}
-\draw[oursflow] (3.02,1.25) -- (3.02,1.59);
-\node[minicap,anchor=south,text=ours] at (3.02,0.15) {command};
+      inner sep=0pt,minimum size=3.2mm] (Bsum) at (2.58,1.75) {$+$};
+\MatBlock{(2.47,2.87)}{4}{1}{0.22}{black}
+\node[mathlab,anchor=west] at (2.72,2.43) {$\symBias$};
+\draw[thinflow] (2.58,1.99) -- (2.58,1.91);
+\MatBlock{(2.47,1.51)}{4}{1}{0.22}{ours}
+\node[mathlab,anchor=east] at (2.43,1.07) {$\symBcol$};
+\ScalarCell{(2.75,1.08)}{ours}{$\symCmd$}
+\draw[oursflow] (2.58,1.51) -- (2.58,1.59);
+\node[minicap,anchor=north,text=ours] at (2.58,0.58) {command};
+\draw[thinflow] (2.74,1.75) -- (3.18,1.75);
 
-% ---------------- 4. predicted state shat_{t+1} -------------------------
-\draw[thinflow] (3.18,1.75) -- (3.70,1.75);
-\MemColV{(3.70,2.09)}{4}{0.22}
-\node[mathlab,anchor=west] at (3.94,2.05) {$\symMemHat$};
+% ---------------- 4. predicted state and readout -----------------------
+\MemColV{(3.18,2.19)}{4}{0.22}
+\node[mathlab,anchor=north] at (3.29,1.25) {$\symMemHat$};
+\draw[thinflow] (3.40,1.75) -- (3.84,1.75);
+\RowSelector{(3.84,1.86)}{4}{0.22}
+\node[mathlab,anchor=north] at (4.28,1.58) {$\symSel$};
+\draw[thinflow] (4.72,1.75) -- (5.16,1.75);
+\ScalarCell{(5.16,1.86)}{tok1}{$\symYhat$}
 
-% ---------------- 5. readout: selection row C, then the scalar yhat ----
-\draw[thinflow] (3.92,1.75) -- (4.45,1.75);
-\RowSelector{(4.45,1.86)}{4}{0.22}
-\node[mathlab,anchor=north] at (4.89,1.62) {$\symSel$};
-\draw[thinflow] (5.33,1.75) -- (5.86,1.75);
-\ScalarCell{(5.86,1.86)}{tok1}{$\symYhat$}
-
-% ---------------- 6. optional learned lifting: one faded detour --------
-% 3.1 P6: "the same affine step can be written on learned features E_phi(s_t)
-% instead of on the window; this paper reports the identity lifting." Drawn
-% once, as a complete arc from s_t's own column top back to shat_{t+1}'s own
-% column top, through a de-emphasised encoder/decoder pair -- never a bare
-% "id" bypass (that macro belonged to the retired xi-space chain and is not
-% used here).
-%   The nets sit in the two GAPS either side of the main chain's busy
-% middle (Enc over the s_t->K arrow, Dec just before shat_{t+1}), not
-% directly above K or the bias column -- the first attempt put Enc right
-% above K and its label collided with K's own (L+1)x(L+1) brace label,
-% because both are centred on K's own x-span; here Enc's centre (x~1.18)
-% is well clear of the brace (x 1.45-2.33). Only the thin horizontal
-% connecting line, not a net's full height, has to clear the bias column
-% (top y=2.39) and K's brace (top y~2.36) in between -- at y=2.70 it clears
-% both by >=0.3cm, comfortably past the plan's 0.15cm minimum.
+% ---------------- 5. optional learned lifting (faded lane, orthogonal) --
 \begin{scope}[opacity=0.45]
-  \draw[bypass] (0.81,2.09) to[out=70,in=200] (1.04,2.80);
-  \begin{scope}[shift={(1.10,2.80)},scale=0.24,transform shape]
+  \draw[bypass] (0.56,2.19) -- (0.56,2.70) -- (0.70,2.70);
+  \begin{scope}[shift={(0.762,2.70)},scale=0.26,transform shape]
     \EncNet{mbLiftE}{(0,0)}
   \end{scope}
-  \draw[bypass] (1.378,2.80) -- (3.314,2.80);
-  \begin{scope}[shift={(3.372,2.80)},scale=0.24,transform shape]
+  \draw[bypass] (1.06,2.70) -- (1.20,2.70) -- (1.20,2.21);
+  \draw[bypass] (2.96,1.75) -- (2.96,2.70) -- (2.98,2.70);
+  \begin{scope}[shift={(3.042,2.70)},scale=0.26,transform shape]
     \DecNet{mbLiftD}{(0,0)}
   \end{scope}
-  \draw[bypass] (3.65,2.80) to[out=-20,in=100] (3.81,2.09);
+  \draw[bypass] (3.344,2.70) -- (3.36,2.70) -- (3.36,2.21);
 \end{scope}
-% E_phi appears exactly once in the whole figure: here, under the one
-% de-emphasised encoder that draws it (G10). The decoder that follows it is
-% deliberately left unlabelled -- 3.1 P6 introduces one new symbol (E_phi),
-% not a paired decoder symbol, and the main text never names one.
-%   Two earlier revisions tried to clear the K-dimension label
-% ($(L+1)\times(L+1)$, centred over K) by moving THIS label up and by
-% shrinking/raising the nets -- both still rendered as merged run-on text
-% (only visible in the PNG, not from the coordinates: the brace macro's
-% decoration bumps its text noticeably higher than the raw brace-line y
-% suggests). Fixed instead by getting this label off that shared row
-% entirely: it now sits to the WEST of the encoder, vertically centred on
-% the net (y=2.80), far above the brace's own row (y<=2.45).
-\node[mathlab,anchor=east] at (0.98,2.80) {$\symEnc$};
-\node[minicap,anchor=south west] at (4.55,1.05) {optional learned lifting};
+\node[mathlab,anchor=south,inner sep=0pt] at (0.88,2.90) {$\symEnc$};
+\node[minicap,anchor=center] at (1.83,2.55) {optional\\lifting};

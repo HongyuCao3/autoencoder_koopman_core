@@ -603,3 +603,63 @@ notes:
         原单行标题实测 3.80cm，比整个左栏还宽。框 6 因此也是全栏唯一的大框，与它是
         本文贡献这件事同向。
     (d) 图元图标只缩进标题行，公式行占满框宽——否则框 3、框 6 的公式一定溢出。
+
+## v3.1 — balance / layout pass on the right panel (2026-09-19, opus)
+step: v3-2 (redo)   status: awaiting_user_review   render: preview/step_right_panel_v26.png
+What changed (all four modules + right_panel.tex; kompas_style.tex append-only; left_loop.tex untouched):
+  - Grid: both rows now split at the same x, 3.40 | 6.07 (was 2.94|6.53 over 4.735|4.735).
+    A and C are the narrow column, B and D the wide one. TitleH back to 0.36; all four
+    titles single-line ("A Finite-memory state" no longer wraps).
+  - Every connector is orthogonal (no curves, no diagonals): B's lifting lane is a
+    right-angle lane (up from s_t, across, down into K; up after the sum, across, down
+    into shat); C's card -> least-squares and residual -> fitted-parameter links are
+    L-shaped; D's candidates drop onto a horizontal bus that feeds the command injection.
+  - Main-chain baseline y=1.75 in A (y_t = C s_t row), B and D; C is stacked (its chain
+    sits at y=1.10 under the data tiers) because it is now 3.40 wide.
+  - A: re-ordered as y_t = C s_t so the stack is the right-most block and the A->B cross
+    arrow (now at y=1.75) leaves it without crossing anything.
+  - Logic fixes on inherited content:
+      (1) D: candidates fan into the COMMAND injection, not into s_t.
+      (2) D: candidate colours ours / bad / clAlt; the selected candidate (shortest cost
+          bar, trajectory that settles on r) is the ours one; green is target-only.
+      (3) C: Khat/Bhat/bhat drawn as 4x4 / 4x1 / 4x1 blocks (v4 drew Khat as one cell).
+      (4) C: p_theta moved to the data source (it generated the readings, it is not fitted);
+          it was half outside the panel before.
+      (5) B: the lifting lane now inserts an encoder before K and a decoder after the
+          affine step (the A1 model); the old arc skipped K, B and b.
+  - Deviation from FIG_PLAN_v3 §3.2: K's (L+1)x(L+1) brace dropped in B -- the 4x4 grid
+    against the 4-cell state shows it, and the brace blocked the lifting connector.
+  - kompas_style.tex: appended \definecolor{clAlt} (neutral third-candidate colour).
+Gates: compile pass; fig_symbol_audit 0 unmatched on all five fragments; G8 term grep clean
+  (only TikZ's align=center key in right_panel.tex); minicaps A1/B2/C2/D2; \symEnc once (B);
+  one drawn cross-module arrow (A->B).
+Not done: v3-3 (method_figure.tex assembly, wiring into 02_method.tex, caption) -- waits for
+  the user's verdict on this render. Nothing committed in this pass.
+
+## v4 — one unified figure (2026-09-19, opus; user: "先全部按照你的建议画")
+step: v4 drawn + wired   status: awaiting_user_review
+render: figs/method_fig/preview/step_method_figure_v6.png ; page: build/page_fig_v4.png (p.3)
+Design (FIG_PLAN_v4_unified §2): two horizontal "space" lanes on the left (text space below,
+observable space above, verifier reading as the vertical observation map, the command cell
+between them feeding P downward and B upward), a Control panel on the right (K^h box with
+sum_{j<h} K^j(Bc+b), readout C, trajectories vs r, cost bars, argmin), and the selected
+command returning along the bottom into the command cell. Two real steps shown, the second
+faded with B and b not expanded. All connectors orthogonal.
+Files: NEW figs/method_fig/method_figure.tex (single canvas 13.25 x 5.6, standalone) ->
+  figs/method.pdf. left_loop.tex / right_panel.tex / modA..D remain on disk but are no
+  longer inputs of anything (kept for reuse; delete or archive at the user's call).
+Wired: sections/02_method.tex now \includegraphics[width=\textwidth]{figs/method.pdf},
+  figure [t], label fig:method (fig:placeholder gone), new caption (6 sentences, all
+  <=30 words), and a Figure~\ref sentence appended to the opening paragraph.
+  Colleague's raster moved: figs/method.png -> _colleague_backup_2026-09-18/method_colleague.png.
+Gates: fig_symbol_audit method_figure.tex OK (23 atoms, 0 unmatched); term grep clean;
+  minicaps 5 (delay coordinates / linear / nonlinear, black box / closed form, no LLM call /
+  none for lifting); mech_audit.sh sections/02_method.tex PASS (all 9); latexmk 10 pages, no
+  undefined refs; figure lands on p.3 top.
+Deviations from FIG_PLAN_v4 (to confirm):
+  - no lifting lane in the figure (density; D33 is satisfied by the text gloss in 3.1 P6);
+    E_phi therefore appears 0 times in the figure.
+  - observation-map label is V(o_{t+1}) instead of y_{t+1}: the audit checks 02_method.tex
+    only and y_{t+1} is defined in 02_problem.tex.
+  - rollout sum written sum_{j<h} (not j=0..h-1) to fit the box; same atoms.
+Pending: D36 in DECISIONS.md (added as 待签字); nothing committed in this pass.

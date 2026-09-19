@@ -20,3 +20,6 @@ paper/**/*.fdb_latexmk
 paper/**/*.bbl
 paper/**/*.blg
 paper/**/*.pdf
+
+# Scratch files from the git-hygiene workaround in paper/ (see claude/repo_git_hygiene_notes)
+paper/tmp*.tmp
