@@ -26,6 +26,7 @@
 | D16 | 2026-09-19 | `non_claim_ledger` 改为**审查工具，不是正文**。Tier 2 / Tier 3 一律不写"we do not claim X"式句子；每条新增 `mode: audit_only` 与 `candidate_explicit`（若将来提升为显式，会落在哪）。正文写完后由用户挑出少数几条显式说明，避免限定句淹没主线。**例外**：D3 / D12 要求的点估计口径不走这条路，它挂在 `c5.notes` / `c6.notes` 上，跟着数字走。 | 覆盖 skill 对 non_claim 的默认用法 |
 | D17 | 2026-09-19 | claim 与实验章**都**改成**先建模线、后控制线**：`c1`–`c4` 预测，`c5`–`c8` 控制，`c9` 桥。实验章 `03b` 为预测、`03c` 为控制。全文一条线：建模 → 验证模型 → 用模型控制。代价是最强的数字（+14.5）往后挪一页。 | 覆盖 WRITING_PLAN §5 的 CP3b/CP3c 内容分配 |
 | D18 | 2026-09-19 | **主文恰好两张表**：Table 1 建模线（`tab_prediction`），Table 2 控制线（`tab_control`）。四个小样本列那张是附录 A2（`tab:prediction_small_app`），不计入主文。 | 明确 D4 |
+| D21 | 2026-09-19 | CP1 **approved**。用户改变审核节奏：**不再逐 checkpoint 停下**，一口气把全文过一遍，之后统一回看。闸门、冷审、每 checkpoint 一次 commit 全部照旧，只是不等用户答复就进下一阶段。 | 放宽 D8 的"每章审核"与 WRITING_PLAN §5 的停点 |
 | D20 | 2026-09-19 | 用户通读 `contract_zh_2026-09-19.md` 后**签字**，Tier-1 contract 生效。Phase 1 开工。后续任何对 contract 的改动都要回到用户，不能由写作会话自行修改。 | — |
 | D19 | 2026-09-19 | 四个设计选择并成三个：**联合训练目标降进附录 A1**（连同 `eq:training_transition`、`eq:training_objective`），主文留 有限记忆状态 / 命令条件化算子 / 预测式候选选择。**三个 Why 段全部改成论证"实例化"而不是论证机制**：延迟嵌入、仿射输入列、提升空间 MPC 都是学界共识（Korda & Mezić 2018），再论证一遍只会招来"这不就是把它套到文本上"。 | 覆盖 WRITING_PLAN §2.2 的四条 design_choice_lattice |
 

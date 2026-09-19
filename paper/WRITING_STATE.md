@@ -1,52 +1,45 @@
 # WRITING_STATE
 
 updated: 2026-09-19   by: opus session 01UHUsmU
-phase: 1   checkpoint: CP1   status: awaiting_user_review
+phase: 2   checkpoint: CP2   status: done (D21：不停下，直接进 Phase 3)
 last_commit: (见本次提交)
-artifacts_ready: contract.yaml (Tier 1, 用户 2026-09-19 签字 D20), semantic.md §Introduction (approved CP1), sections/01_introduction.tex (CP1 草稿)
-current_target: sections/01_introduction.tex
-gates: sentence_gate=pass  equation_gate=pass (0 公式)  mech_audit=pass (全部五关)  compile=pass (build/main_CP1_2026-09-19.pdf, 6 页)
-cold_review: audit/intro_T2_2026-09-19.yaml (0/2/2) 与 audit/intro_T3_2026-09-19.yaml (0/3/2)，全部已 triage
-user_verdict_on_previous: contract 已签字（D20）
-next_action: 等用户对 CP1 的审核结论（approved / revise:<cosmetic|structural> / redo）；approve 后进 Phase 2（Method 改造，先建 Tier 2）
-open_questions_for_user: (1) CP1 是否通过；(2) c3 两列失利的机制解释是否要在 CP3b 之前查
+artifacts_ready: contract.yaml (签字 D20), semantic.md §Introduction + §Method (both approved), sections/01_introduction.tex (CP1 approved), sections/02_method.tex + sections/appendix/A1_estimator.tex (CP2)
+current_target: sections/03a_setup.tex (Phase 3 起点)
+gates: sentence_gate=pass  equation_gate=pass (12 公式)  mech_audit=pass  compile=pass (build/main_CP2_2026-09-19.pdf, 7 页)
+cold_review: audit/method_T2_2026-09-19.yaml (0/3/3) 与 audit/method_T3_2026-09-19.yaml (0/2/2)，全部 triage
+user_verdict_on_previous: CP1 approved（D21：全文过完再统一回看）
+next_action: Phase 3。先为整章 Experiments 建 Tier 2（四个小节一次建完），再逐节生成
+open_questions_for_user: (1) c3 两列失利的机制解释是否要在 CP3b 之前查
 
-## CP1 做了什么
+## CP2 做了什么
 
-六步走完：建 Tier 2 → 冷审 Tier 2 → 生成 Tier 3 → 机械闸门 → 编译 → 交用户审核。
+方法章是**改造**不是重写：同事原稿五节重组为五节，加三个 Why-X，训练目标移进附录。
 
-| 步 | 产出 | 结果 |
-|---|---|---|
-| B | `semantic.md` 的 §Introduction 块，5 段（motivation / gap / intuition / bridge / contributions） | Sonnet 建，Opus 收 |
-| 审 Tier 2 | `audit/intro_T2_2026-09-19.yaml` | 0 blocker / 2 major / 2 minor，全部 triage |
-| C | `sections/01_introduction.tex` | Sonnet 写，两道闸门自查通过后交回 |
-| 闸门 | `mech_audit.sh` 五关全过 | 句子、公式、em-dash、副词、`\cite` |
-| 编译 | 6 页；Introduction 约 0.85 页，**低于 1.0–1.2 的预算** | `build/main_CP1_2026-09-19.pdf` |
-| Tier-3 冷审 | `audit/intro_T3_2026-09-19.yaml` | 0 blocker / 3 major / 2 minor，全部 triage |
+| 项 | 结果 |
+|---|---|
+| 结构 | 3.1 问题形式化 / 3.2 有限记忆状态 / 3.3 命令条件化算子 / 3.4 预测式候选选择 / 3.5 误差与选择。原"有限记忆 Koopman 动力学"拆成 3.2+3.3，因为它带两个设计选择而 Rule 24 只允许一个 Why-X |
+| 三个 Why-X | 按 D19 论证实例化：为什么被窗口化的是验证器读数 / 一条指令凭什么有命令坐标 / 为什么打分不打开模型。每个都先承认底层机制是标准做法再转折 |
+| 训练目标 | 连同 eq:training_transition、eq:training_objective 迁入 sections/appendix/A1_estimator.tex，含重叠窗口的元组构造与固定目标下的命令标注规则 |
+| 修复 | 图注从 "Caption" 改成一句话点四个阶段；删 actually；补五处首次引入符号的解释 |
 
-### 冷审 triage（两轮合计 0 blocker / 5 major / 4 minor）
+### 冷审 triage（两轮 0 blocker / 5 major / 5 minor）
 
-| 编号 | 严重度 | 处理 |
-|---|---|---|
-| T2 f2 基准名没经过 contract | major | 把 IFBench/IFEval/COLLIE 及其 11 个子任务写进 `meta.benchmarks`，并在 `c5.notes` 注明；来源是 `numbers_benchmark.yaml` 的 `benchmark` 字段与同事表标题 |
-| T2 f3 P5 有超页风险 | major | P5 压成"关键词 + 一个头条数字"，D12 的口径改为列表后**一条共享尾句**，不再每项重复 |
-| T2 f1 P1 的对冲措辞像在预写 nc_9 | minor | 改为"用对冲动词写在同一从句里，不另起免责句" |
-| T2 f4 角色标签偏离规范 | minor | 改为 motivation / gap / intuition / bridge / contributions |
-| T3 f1 贡献 3 的 id 注释不自洽 | major | 该行补上 KOMPAS 侧的 11 个 id，使这一行能独立核算 |
-| T3 f2 "超过两个白盒控制器 5.2 点"口径不准 | major | 5.2 是对 **RE-Control** 的差；TMPC 的差是 6.136。改为"超过两者中更强的那个 5.2 点"，与 contract 的 `finding_keyword` 一致 |
-| T3 f3 "it" 有两个先行词 | major | 拆成两句，把 14.5 点明确挂在**线性特例**上（D2 的关键区分） |
-| T3 f4 / f5 跨段回指与序数回指 | minor | 两处改写；三个要求不再用"第一/第二"回指，改成点名 |
+Tier-2 五条已处理（训练数据构造没落点、3.5 超页、两处角色标签不在规范词表、Why-X 两条 bullet 实为一段、预测器冻结未写）。
 
-### 冷审独立复算了两个头条数字
+Tier-3 两条 major 都是**符号没定义**，而且是 contract 的 symbol_lattice 里就缺：
+- `$R$`（代价界里的那个 2R）从未定义，审稿人核不了 c9 的推导。
+- `$\mathcal{C}$`（命令值域）从 3.1 用到 3.4 才在 3.4 定义它的子集。
 
-- 14.5 点：mean(n_bench_012–022) − mean(n_bench_001–011) = 41.373 − 26.900 = **14.473** ✓
-- 5.2 点：41.373 − mean(n_bench_034–044) = 41.373 − 36.127 = **5.245** ✓
+两个都补进了 `symbol_lattice`，并挂到 `eq_prompt_protocol` / `eq_cost_bound` 的 `rhs_symbols` 上，
+**所以 equation_gate 从此会自己守住它们**。另加两处：附录三个 λ 权重的解释、一句里 bounds 指两个东西。
 
-### 留给后面的
+### 工具改动
 
-- Introduction 只用了约 0.85 页，比预算少。Phase 4 的"Intro 回看"只允许收窄，所以这点余量留给 Related Work。
-- 标题在 ICLR 模板里折成三行且 "BEHAVIOR" 被断字。不影响评审，CP4 若要调只能收窄不能加主张。
-- `c3` 两列失利仍无机制解释（Rule 1 挂账），CP3b 之前处理。
+`mech_audit.sh` 的副词关加了声明式豁免：同一行写
+`% GATE-EXEMPT: adverb <词> -- <理由>` 才放行，并在 PASS 时报出豁免条数。
+之前脚本自己说 uniformly 是精度性白名单、正则里却照抓，PASS 名不副实。
+现在全文只有一条豁免（"uniformly over the candidate rollouts"，数学量词）。
+3.5 收尾那句以副词开头的答句改写掉了，不需要豁免。
 
 ## 新会话怎么用这个文件
 

@@ -1,5 +1,82 @@
-%% Appendix A1. Estimator details, the joint training objective (D19 moved it here from the
-%% Method), and the learned-lifting ablation that reads on choice_2. Filled after the main text.
 \section{Estimator Details and the Learned Lifting}
 \label{app:A1_estimator}
-TODO
+
+This appendix gives the objective used to fit the command-conditioned
+Koopman predictor introduced in Section~\ref{sec:koopman_operator},
+including the learned-lifting variant in which the encoder and decoder
+are not the identity.
+
+\textbf{Transition tuples.} Given recorded prompt-response
+trajectories, we construct transition tuples
+$\mathcal{D}=\{(s_t,c_t,s_{t+1})\}$ using overlapping history windows:
+each window of $L+1$ readings supplies one state $s_t$, and sliding the
+window by one step supplies the next tuple. Each command label is the
+command applied before the successor observation. For trajectories
+collected under a fixed requested target, that target supplies the
+command label at every step of the trajectory.
+
+\textbf{Training transition.} Fitting the operator needs a one-step
+latent prediction from an encoded state and the applied command. Let
+\begin{equation}
+    q_t
+    =
+    K E_{\phi}(s_t)+B c_t+b.
+    \label{eq:training_transition}
+\end{equation}
+Here $q_t$ is the predicted encoding of $s_{t+1}$ under the current
+parameters, computed from the encoder $E_{\phi}$, the transition $K$,
+the command column $B$, and the bias $b$.
+
+\textbf{Training objective.} Three losses jointly shape the encoder,
+decoder, and transition. We optimize
+\begin{equation}
+    \begin{aligned}
+        \mathcal{L}_{\mathrm{rec}}
+        &=
+        \mathbb{E}_{\mathcal{D}}\!\left[
+            \left\|
+                s_t-D_{\psi}(E_{\phi}(s_t))
+            \right\|_2^2
+        \right],\\
+        \mathcal{L}_{\mathrm{lin}}
+        &=
+        \mathbb{E}_{\mathcal{D}}\!\left[
+            \left\|
+                E_{\phi}(s_{t+1})-q_t
+            \right\|_2^2
+        \right],\\
+        \mathcal{L}_{\mathrm{pred}}
+        &=
+        \mathbb{E}_{\mathcal{D}}\!\left[
+            \left\|
+                s_{t+1}-D_{\psi}(q_t)
+            \right\|_2^2
+        \right],\\
+        \mathcal{L}
+        &=
+        \lambda_{\mathrm{rec}}\mathcal{L}_{\mathrm{rec}}
+        +
+        \lambda_{\mathrm{lin}}\mathcal{L}_{\mathrm{lin}}
+        +
+        \lambda_{\mathrm{pred}}\mathcal{L}_{\mathrm{pred}}.
+    \end{aligned}
+    \label{eq:training_objective}
+\end{equation}
+The nonnegative weights $\lambda_{\mathrm{rec}}$,
+$\lambda_{\mathrm{lin}}$ and $\lambda_{\mathrm{pred}}$ set how much
+each term contributes to the total.
+The reconstruction term $\mathcal{L}_{\mathrm{rec}}$ preserves
+information present in the memory state $s_t$. The latent-consistency
+term $\mathcal{L}_{\mathrm{lin}}$ pulls the encoded successor toward the
+affine prediction $q_t$. The prediction term $\mathcal{L}_{\mathrm{pred}}$
+ties that latent transition back to accuracy in the observed state
+space.
+
+These three terms are complementary. Latent consistency alone admits
+uninformative constant encodings, since a constant encoder can drive
+$\mathcal{L}_{\mathrm{lin}}$ to zero without capturing any structure.
+Reconstruction alone does not require the representation to support
+prediction, since $D_{\psi}(E_{\phi}(s_t))$ can recover $s_t$ while
+carrying no information about $s_{t+1}$. Training updates
+$(\phi,\psi,K,B,b)$, and the frozen language model's parameters
+$\theta$ never change.

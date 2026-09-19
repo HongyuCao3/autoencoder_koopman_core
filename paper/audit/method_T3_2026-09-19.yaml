@@ -1,0 +1,85 @@
+# D1 (confusing) cold-reviewer audit — Tier-3 prose review
+# Scope: paper/sections/02_method.tex + paper/sections/appendix/A1_estimator.tex
+# Reviewer: Tier-3 NeurIPS/ICLR persona, baseline = MPC + Koopman + delay embedding +
+#           instruction-following benchmarks + activation steering; no project-document
+#           knowledge; does not know experimental results.
+# Run date: 2026-09-19
+
+findings:
+  - id: f1
+    dimension: confusing
+    severity: major
+    location:
+      file: paper/sections/02_method.tex
+      line: 335
+      section: "§3.5 Prediction Error and Intervention Selection"
+      paragraph: "Eq. (cost_bound) gloss"
+    finding: "The constant $R$ is used to bound the cost-estimation gap in eq:cost_bound but is never defined anywhere in the section or in the symbol lattice."
+    evidence:
+      quoted_passage: "The gap between a candidate's actual held-command cost $J_t(c)=\\sum_{h=1}^{H}w_h|y_h^c-r|^2$ and its predicted counterpart $\\widehat{J}_t(c)$ accumulates only through this same per-step error, once both are bounded by $R$."
+      reviewer_class: "(d)"
+      baseline_concept_check: null
+    recommended_fix_tier: T1
+    related_contract_id: eq_cost_bound
+    fix_hint: "State what R bounds (e.g. the attribute deviation |y-r| for every candidate over the rollout) in the sentence introducing it, and add a symbol_lattice entry for it; without this, the factor of 2R in eq:cost_bound cannot be checked or reproduced."
+
+  - id: f2
+    dimension: confusing
+    severity: major
+    location:
+      file: paper/sections/02_method.tex
+      line: 52
+      section: "§3.1 Problem Formulation"
+      paragraph: "eq:prompt_protocol gloss"
+    finding: "The command space $\\mathcal{C}$ (as opposed to its per-step subset $\\mathcal{C}_t$) is used from its first appearance in §3.1 through §3.4 but is never itself defined; only $\\mathcal{C}_t\\subseteq\\mathcal{C}$ is glossed, in §3.4, three subsections later."
+    evidence:
+      quoted_passage: "u_t=\\mathcal{P}(x,\\mathcal{H}_t,c_t), \\qquad c_t\\in\\mathcal{C}\\subseteq\\mathbb{R}"
+      reviewer_class: "(d)"
+      baseline_concept_check: null
+    recommended_fix_tier: T1
+    related_contract_id: eq_prompt_protocol
+    fix_hint: "Add one clause after eq:prompt_protocol naming $\\mathcal{C}$ (e.g. 'the space of admissible numerical commands') and add a symbol_lattice entry for it, distinct from the later $\\mathcal{C}_t$."
+
+  - id: f3
+    dimension: confusing
+    severity: minor
+    location:
+      file: paper/sections/appendix/A1_estimator.tex
+      line: 61
+      section: "Appendix A1, Training objective"
+      paragraph: "eq:training_objective"
+    finding: "The loss weights $\\lambda_{\\mathrm{rec}}, \\lambda_{\\mathrm{lin}}, \\lambda_{\\mathrm{pred}}$ are introduced only inside the equation and are never named or glossed in the surrounding prose."
+    evidence:
+      quoted_passage: "\\mathcal{L} = \\lambda_{\\mathrm{rec}}\\mathcal{L}_{\\mathrm{rec}} + \\lambda_{\\mathrm{lin}}\\mathcal{L}_{\\mathrm{lin}} + \\lambda_{\\mathrm{pred}}\\mathcal{L}_{\\mathrm{pred}}."
+      reviewer_class: "(d)"
+      baseline_concept_check: "not flagged as a request for the values, only for the missing one-clause gloss naming them as nonnegative loss weights"
+    recommended_fix_tier: T3
+    related_contract_id: eq_training_objective
+    fix_hint: "Append a short clause after the equation: 'where lambda_rec, lambda_lin, lambda_pred >= 0 weight the three terms.'"
+
+  - id: f4
+    dimension: confusing
+    severity: minor
+    location:
+      file: paper/sections/02_method.tex
+      line: 309
+      section: "§3.5 Prediction Error and Intervention Selection"
+      paragraph: "Eq. (residual_assumptions) gloss"
+    finding: "The word 'bounds' denotes two different objects inside one sentence: the yet-to-be-derived prediction/cost bounds and the just-stated residual-assumption bounds, without disambiguation."
+    evidence:
+      quoted_passage: "For stochastic generation, the bounds below hold on the event that these residual bounds hold."
+      reviewer_class: "(g)"
+      baseline_concept_check: "conditioning on an event is baseline probability knowledge; the defect is the reused noun, not the concept"
+    recommended_fix_tier: T3
+    related_contract_id: eq_residual_assumptions
+    fix_hint: "Rename one occurrence, e.g. 'the deterministic error bounds derived below hold conditional on the event that these residual assumptions hold.'"
+
+sound:
+  - "Rule 21 (no experimental results in §Method): no numbers, no baseline names, no §Experiments pointers found anywhere in 02_method.tex; the identity-encoder paragraph (lines 172-177) names the reported instance without framing it as the one that won."
+  - "Rule 22/24 (Why-X paragraphs): exactly three \\textbf{Why...} paragraphs, at the heads of §3.2, §3.3, §3.4 and nowhere else; each is formula-free, number-free, symbol-free, and closes with a \\uline{} answer folded into the same paragraph with no blank line before it."
+  - "All three Why-X paragraphs argue the instantiation, not the settled machinery: each explicitly names the standard result (windowing for partial observability, an affine input column, MPC on a lifted linear predictor) and pivots the argument to the paper's specific choice (a verifier's reading; a scalar command coordinate carried by the prompting protocol; scoring without opening the model). Each underlined answer directly answers its own bolded lead."
+  - "Math-prose alignment (Rule 14) holds for all 12 numbered equations in 02_method.tex and both numbered equations in A1_estimator.tex: in every case the surrounding prose names the operation the equation actually performs (no inflated verbs, e.g. no 'directional'/'normalized' language over an unnormalized quantity)."
+  - "The roman selector row $C$ (eq:memory_state) is never confused with the calligraphic command sets $\\mathcal{C}$/$\\mathcal{C}_t$; the two are typographically distinct and used consistently throughout."
+  - "The memory-state letter 's' is not reused as a bound/summation index anywhere; all sums in the section index on h or j, and the rollout-step notation $s_h^c$ is explicitly tied back to $s_t$ ($s_0^c = s_t$)."
+  - "All three named scope statements the co-author's text carried survive intact: no exact finite-dimensional Koopman representation is assumed (line 167-168), no convergence or reachability guarantee is claimed (line 367-368), and control additionally depends on coverage of command-history pairs at inference (line 275-276). The prompting-protocol scope statement (lines 56-58) and the finite-memory approximation scope statement (lines 100-103) also survive verbatim."
+  - "Appendix A1's one-sentence main-text pointer (lines 179-182) is coherent with A1's actual content: A1 supplies the transition-tuple construction and the three-term training objective it promises, so the restructure leaves no hole in the main-text argument, only a compression move."

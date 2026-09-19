@@ -279,6 +279,18 @@ symbol_lattice:
     first_defined: method
     scope: "selected from a finite candidate set; equals the target only in ordinary target-following"
     appears_in: [method, experiments]
+  - id: s_Cspace
+    symbol: '\mathcal{C}'
+    gloss: "the range of admissible numerical commands"
+    first_defined: method
+    scope: "the whole command range; the per-step candidate set is a finite subset of it"
+    appears_in: [method]
+  - id: s_R
+    symbol: 'R'
+    gloss: "uniform bound on how far an attribute can sit from the target"
+    first_defined: method
+    scope: "assumed, and it is what turns the per-step error bound into a cost bound"
+    appears_in: [method]
   - id: s_Cset
     symbol: '\mathcal{C}_t'
     gloss: "admissible candidate commands at step t"
@@ -417,7 +429,7 @@ equation_lattice:
   - id: eq_prompt_protocol
     label: "eq:prompt_protocol"
     operation_name: "construction of the prompt from a numerical command and the dialogue"
-    rhs_symbols: [s_P, s_x, s_hist, s_c]
+    rhs_symbols: [s_P, s_x, s_hist, s_c, s_Cspace]
     in_section: method
     has_gloss: true
     role: definition
@@ -496,7 +508,7 @@ equation_lattice:
   - id: eq_cost_bound
     label: "eq:cost_bound"
     operation_name: "difference-of-squares bound on the predicted versus actual held-command cost"
-    rhs_symbols: [s_w, s_Delta, s_deltaJ]
+    rhs_symbols: [s_w, s_Delta, s_deltaJ, s_R]
     in_section: method
     has_gloss: true
     role: mechanism_probe

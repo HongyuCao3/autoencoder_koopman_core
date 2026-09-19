@@ -32,13 +32,20 @@ fi
 
 banner "4. adverbs (Rule 20)"
 ADV='\b(significantly|substantially|considerably|dramatically|drastically|vastly|remarkably|notably|markedly|materially|highly|extremely|particularly|especially|decisively|strongly|weakly|robustly|sharply|severely|clearly|obviously|essentially|fundamentally|intrinsically|inherently|truly|indeed|surely|certainly|actually|effectively|practically|simply|merely|just|relatively|comparatively|somewhat|fairly|slightly|moderately|largely|mostly|primarily|nearly|virtually|roughly|approximately|freshly|already|uniformly|overwhelmingly|empirically|eventually|explicitly|directly|monotonically|exactly|formally)\b'
-if grep -nEi "$ADV" "${FILES[@]}"; then
+# A line may keep one adverb only by declaring why, on that same line:
+#   % GATE-EXEMPT: adverb <word> -- <reason>
+# The exemption is visible in every diff and greppable, so "PASS" keeps meaning PASS.
+# Rule 20 exists to kill vague intensifiers; a mathematical quantifier is a different animal.
+if grep -nEi "$ADV" "${FILES[@]}" | grep -v 'GATE-EXEMPT: adverb'; then
   echo "FAIL: replace each adverb with a number, a delta, or a structural fact."
   echo "      Whitelist (precision-bearing, house-voice V3): deterministically; exactly for cardinality;"
-  echo "      monotonically when the sequence is not spelled out. Keep those and delete this line's hit by hand."
+  echo "      monotonically when the sequence is not spelled out."
+  echo "      To keep one deliberately, append on the same line: % GATE-EXEMPT: adverb <word> -- <reason>"
   FAIL=1
 else
   echo "PASS"
+  n=$(grep -c 'GATE-EXEMPT: adverb' "${FILES[@]}" 2>/dev/null | awk -F: '{s+=$NF} END {print s+0}')
+  [ "$n" -gt 0 ] && echo "      ($n declared exemption(s); read them, they are not free)"
 fi
 
 banner "5. \\cite (user decision D7)"

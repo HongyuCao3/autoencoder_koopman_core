@@ -1,0 +1,218 @@
+# Tier-2 cold review of paper/semantic.md §Method block, run 2026-09-19.
+# Reviewer: Tier-2 allocation auditor persona (neurips-write-tiered/references/reviewer.md).
+# Scope: the "## §Method" block only (3.1-3.5), judged against semantic.md, SKILL.md rules
+# 18/21/22/24, method.md, contract.yaml, and paper/sections/02_method.tex.
+
+meta:
+  audit_date: "2026-09-19"
+  dimension: compliance
+  tier: T2
+  scope_file: paper/semantic.md
+  scope_section: "§Method (3.1-3.5)"
+  compared_against:
+    - paper/contract.yaml
+    - paper/sections/02_method.tex
+    - claude-skill/neurips-write/SKILL.md (Rules 18, 21, 22, 24)
+    - claude-skill/neurips-write/references/method.md
+  findings_count:
+    blocker: 0
+    major: 3
+    minor: 3
+
+findings:
+  - id: f1
+    dimension: compliance
+    severity: major
+    location:
+      file: paper/semantic.md
+      line: 55
+      section: "§3.3 Command-Conditioned Koopman Operator"
+      paragraph: "3.3 P6 (How-X)"
+    finding: >-
+      The source's transition-tuple construction procedure ("construct transition tuples
+      D={(s_t,c_t,s_{t+1})} using overlapping history windows") and its command-labeling rule
+      for fixed-target trajectories ("For trajectories collected with a fixed requested target,
+      that target supplies the command label throughout the trajectory") have no landing site
+      anywhere in the semantic outline, in Method or Appendix. D19 authorized moving only the two
+      training-objective equations (eq_training_transition, eq_training_objective) to appendix
+      A1; it did not authorize dropping the data-construction narrative around them, and
+      paper/sections/appendix/A1_estimator.tex is currently a TODO stub with no content at all.
+    evidence:
+      rule_violated: "Loss-from-source check (task item 9); D19 scope"
+      matched_pattern: "02_method.tex lines 135-140 vs semantic.md line 55 (3.3 P6)"
+      fix_template: "Add explicit coverage of the transition-construction procedure, either as a compressed clause in 3.3 P6 or as an explicit appendix A1 assignment"
+    recommended_fix_tier: T2
+    related_contract_id: choice_2
+    fix_hint: >-
+      Add a clause to 3.3 P6 naming the overlapping-window construction and the fixed-target
+      labeling rule, or explicitly route both to appendix A1 alongside the training objective,
+      and confirm A1_estimator.tex is filled before this section is marked done.
+
+  - id: f2
+    dimension: compliance
+    severity: major
+    location:
+      file: paper/semantic.md
+      line: null
+      section: "§3.3-3.5"
+      paragraph: null
+    finding: >-
+      3.3, 3.4, and 3.5 each carry 6 Tier-2 paragraphs and 2-4 equations apiece, exceeding
+      method.md's 2-4-paragraph-per-module-subsection guideline. Combined with one figure and
+      twelve equations (several of them 3-4 line aligned blocks: eq_koopman_model, eq_rollout,
+      eq_residual_assumptions, eq_selection_bound), the block is at real risk of exceeding the
+      2.5-3.0 page budget stated for this paper. §3.5 (Prediction Error and Intervention
+      Selection) is the largest risk: it is the only subsection with four equations plus a
+      stated assumption plus three chained bound derivations, and as a proof-style subsection it
+      compresses less willingly than the other three.
+    evidence:
+      rule_violated: "Tier-2 allocation discipline (semantic.md §Allocation discipline); method.md word/space budget"
+      matched_pattern: "3.3=6 paragraphs/2 eq, 3.4=6 paragraphs/3 eq, 3.5=6 paragraphs/4 eq vs the 2-4 paragraph guideline"
+      fix_template: "Chain short where-clauses per equation (method.md), or move derivation detail to an appendix cross-reference"
+    recommended_fix_tier: T2
+    related_contract_id: null
+    fix_hint: >-
+      Trim §3.5 first (e.g., fold eq_cost_bound's intuition into eq_prediction_bound's paragraph
+      per method.md's chained-equation guidance, or move part of the bound derivation to an
+      appendix pointer), then re-check 3.3/3.4 against the page count once §3.5 is compressed.
+
+  - id: f3
+    dimension: compliance
+    severity: major
+    location:
+      file: paper/semantic.md
+      line: 73
+      section: "§3.5 Prediction Error and Intervention Selection"
+      paragraph: "3.5 P0 (question) [OPUS PATCH]"
+    finding: >-
+      The Opus patch on 3.5 fixes the orphan-underline mechanics of Rule 18 by adding a bolded
+      question, but tags it with a role, "(question)", that does not exist in semantic.md's own
+      §Method role vocabulary (overview / Why-X / Eq+gloss / How-X / complexity / closing).
+      Rule 18 documents bolded Q/A bookends specifically for Experiments RQ subsections, Method
+      Why-X paragraphs, and Introduction prior-work items; a bare non-Why-X bolded question in
+      Method has no documented template. Per semantic.md, role tags exist so "Phase C's Tier 3
+      generation knows which neurips-write template to invoke" — an unrecognized tag risks
+      silent mis-generation, and it will not be caught by the standard role-tag coverage grep
+      (semantic.md §Validation gates item 4), which only checks known tags.
+    evidence:
+      rule_violated: "Rule 18 (Q&A bookend); semantic.md §Allowed paragraph roles (§Method)"
+      matched_pattern: "3.5 P0 (question) has no matching entry in the §Method role table"
+      fix_template: "Reuse an existing role tag rather than inventing one"
+    recommended_fix_tier: T2
+    related_contract_id: null
+    fix_hint: >-
+      Retag P0 as part of a `setup` paragraph that opens with the bolded question (folding it
+      into 3.5 P1), or add a documented `question` role to semantic.md's §Method role table
+      before Tier-3 generation runs on this subsection.
+
+  - id: f4
+    dimension: compliance
+    severity: minor
+    location:
+      file: paper/semantic.md
+      line: 35
+      section: "§3.2 Finite-Memory Interaction State"
+      paragraph: "3.2 P1/P2 [OPUS PATCH]"
+    finding: >-
+      The Opus patch resolves the substantive Rule 24 vs. anchor-entrance conflict (the anchor
+      example correctly precedes the Why-X argument within one intended prose paragraph), but
+      the outline still encodes this as two separately P-numbered bullets (P1 and P2), both
+      tagged "(Why-X...)". A mechanical role-tag count over the file (the same grep the
+      Validation gates section documents) would see two Why-X-tagged P-bullets in one
+      subsection and flag a Rule 24 violation, even though the prose intent is one paragraph.
+    evidence:
+      rule_violated: "Rule 24 (mechanical shape only; substantive intent is compliant)"
+      matched_pattern: "3.2 P1 (Why-X, opened by the anchor) / 3.2 P2 (Why-X, continued from P1 in the same paragraph)"
+      fix_template: "Collapse to a single P-numbered bullet with sub-clauses"
+    recommended_fix_tier: T2
+    related_contract_id: choice_1
+    fix_hint: >-
+      Collapse 3.2 P1 and P2 into a single P1 bullet (or renumber as P1a/P1b under one P1) so
+      the file's mechanical paragraph count matches the one intended prose paragraph.
+
+  - id: f5
+    dimension: compliance
+    severity: minor
+    location:
+      file: paper/semantic.md
+      line: null
+      section: "§3.3 Command-Conditioned Koopman Operator"
+      paragraph: null
+    finding: >-
+      The source's closing statement that "the learned predictor is held fixed during
+      test-time control" (no online adaptation of phi, psi, K, B, b once control starts) is not
+      explicitly asserted anywhere in the Method outline. It is inferable from "trained offline"
+      in 3.1 P1, but a reader relying only on the outline for reimplementation is left to infer
+      rather than confirm that replanning does not refit the operator.
+    evidence:
+      rule_violated: "Loss-from-source check (task item 9)"
+      matched_pattern: "02_method.tex lines 188-190 vs no corresponding bullet in 3.3 or 3.4"
+      fix_template: "Add a one-clause note to the bridge or How-X bullet nearest the control loop"
+    recommended_fix_tier: T2
+    related_contract_id: choice_2
+    fix_hint: >-
+      Add a short clause (e.g., to 3.3 P6 or 3.4 P5) stating the operator is held fixed once
+      test-time control begins, matching the source's explicit statement.
+
+  - id: f6
+    dimension: compliance
+    severity: minor
+    location:
+      file: paper/semantic.md
+      line: 35
+      section: "§3.2 Finite-Memory Interaction State"
+      paragraph: "3.2 P1"
+    finding: >-
+      The role tag "(Why-X, opened by the anchor)" is not one of semantic.md's documented
+      §Method role tags, nor is it the "intuition" role (which semantic.md scopes only to
+      §Problem Formulation). This is a schema-completeness gap parallel to f3: the tag works by
+      convention within this file but is not backed by the house documentation that Tier-3
+      generation is meant to key off of.
+    evidence:
+      rule_violated: "semantic.md §Allowed paragraph roles (§Method)"
+      matched_pattern: "3.2 P1 (Why-X, opened by the anchor)"
+      fix_template: "Document the hybrid tag or fold it into a plain Why-X tag with an internal note"
+    recommended_fix_tier: T2
+    related_contract_id: choice_1
+    fix_hint: >-
+      Either add "opened by the anchor" as a documented sub-pattern of the Why-X role in
+      semantic.md's own reference doc, or drop the qualifier from the tag and keep the anchor
+      placement as an inline note only.
+
+sound:
+  - "Rule 24: exactly one Why-X paragraph in 3.2, 3.3, and 3.4; none in 3.1 or 3.5 (substantive intent, per the two Opus patches)."
+  - "Rule 22: all three Why-X bullets (3.2, 3.3, 3.4) are formula-free, number-free, symbol-free."
+  - "Rule 21: no numeric result, no named-baseline comparison, and no pointer to a results table anywhere in the §Method block; the linear special case is never framed as the instance that won."
+  - "D19 compliance: all three Why-X bullets argue their instantiation (the windowed quantity; that language can carry a command coordinate; black-box scoring) rather than defending delay embedding, affine lifting, or MPC as machinery."
+  - "Symbol coverage: all 30 symbol_lattice entries with first_defined=method are introduced exactly once in §Method, with no gaps or duplicate introductions (mechanically verified)."
+  - "Equation coverage: all 12 equation_lattice entries with in_section=method are introduced exactly once; eq_training_transition and eq_training_objective correctly carry zero introductions in Method (moved to appendix per D19)."
+  - "Bracketed-ID integrity: every bracketed ID referenced in the §Method block resolves to an existing paper/contract.yaml entry; none dangling."
+  - "Example economy: [ex_1] appears exactly once, in 3.2; [fx_1] does not appear anywhere in §Method."
+  - "D16 non-claim leakage: no bullet plans a new \"we do not claim X\" disclaimer sentence; the two colleague-authored scope statements retained verbatim (no exact finite-dimensional representation in 3.3 P4; no convergence guarantee in 3.5 P5) are the allowed exception, both already present in 02_method.tex."
+
+judgment:
+  opus_patch_3_2_verdict: >-
+    Resolves the conflict it names. Treating the anchor-example sentence and the bolded
+    "Why a Verifier's Reading" argument as one prose paragraph satisfies A11 (intuition
+    precedes formalism), Rule 24 (one Why-X, at the head of the subsection), and Rule 22
+    (the anchor sentence carries no symbol or number) simultaneously. The residual issue is
+    mechanical, not substantive: the outline still shows two P-numbered, Why-X-tagged bullets,
+    which a naive grep-based Rule 24 check would flag (see f4).
+  opus_patch_3_5_verdict: >-
+    Resolves the orphan-underline violation it names: 3.5 P5's underlined answer now has a
+    paired bolded question at the head of the subsection, and Rule 24's one-Why-X budget is
+    untouched because the new paragraph is tagged as a question, not a Why-X. The fix
+    introduces a new role tag ("question") that is not part of semantic.md's documented
+    §Method role vocabulary, which is a real but minor process risk for Tier-3 generation
+    (see f3).
+  one_method_or_three_modules: >-
+    §Method reads as one coupled method, not three loosely joined modules. The finite-memory
+    state (3.2) is explicitly built to feed the operator (3.2 P4's bridge), the operator's
+    symbols (s_E, s_K, s_B, s_b, s_g) are reused without re-introduction through 3.3, 3.4, and
+    3.5, and the closed-form rollout (3.4) and the error bound (3.5) both depend directly on
+    the operator's affine structure introduced in 3.3. Mechanisms m2 and m3 and claims c8 and
+    c9 thread across the last three subsections rather than resetting per subsection, and the
+    theoretical guarantee in 3.5 has no content of its own independent of the operator and the
+    selection rule it is bounding. The two Opus-patched paragraphs (3.2's merged anchor+Why-X,
+    3.5's added question) are stylistic grafts with minor mechanical seams (f3, f4, f6) but do
+    not fracture this pipeline coupling.
