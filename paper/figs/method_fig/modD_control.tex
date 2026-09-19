@@ -82,10 +82,16 @@
 % rollout) -- this is the control loop's real feedback path, not an
 % incidental reversal, so it is drawn as a loop on purpose, unlike the
 % internal module chains which should read strictly left to right.
-\draw[thinflow] (4.26,2.02) -- (4.70,2.02) -- (4.70,0.15) -- (4.18,0.15);
+% nodes declared FIRST, then arrows reference their .east/.west anchors --
+% this lands each arrow exactly on the box's own rendered edge no matter
+% how wide \scriptsize makes "Execute"/"Observe"/"Replan" actually come
+% out, instead of guessing a fixed half-width (the guess was wrong: the
+% first attempt's hand-picked coordinates landed inside the boxes, so the
+% connector was visibly cutting through the middle of each word).
 \node[rhblock] (rhExec) at (3.85,0.15) {Execute};
-\draw[thinflow] (3.52,0.15) -- (2.63,0.15);
 \node[rhblock] (rhObs) at (2.30,0.15) {Observe};
-\draw[thinflow] (1.97,0.15) -- (1.08,0.15);
 \node[rhblock] (rhReplan) at (0.75,0.15) {Replan};
-\draw[thinflow] (0.42,0.15) -- (0.06,0.15) -- (0.06,0.33);
+\draw[thinflow] (4.26,2.02) -- (4.70,2.02) -- (4.70,0.15) -- (rhExec.east);
+\draw[thinflow] (rhExec.west) -- (rhObs.east);
+\draw[thinflow] (rhObs.west) -- (rhReplan.east);
+\draw[thinflow] (rhReplan.west) -- (0.06,0.15) -- (0.06,0.33);

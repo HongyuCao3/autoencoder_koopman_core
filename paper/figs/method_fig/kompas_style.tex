@@ -188,6 +188,10 @@
                    line width=0.55pt,draw=bad},
   losslab/.style={circle,draw=bad,fill=white,line width=0.4pt,inner sep=0.5pt,
                   font=\scriptsize,text=bad},
+  % flat (no circle) variant -- for a losslink that crosses another one,
+  % the circle's own diameter is what collides; plain text has a much
+  % smaller footprint and still reads as the same red loss notation.
+  losslabflat/.style={font=\scriptsize,text=bad,inner sep=1pt},
   dotA/.style={circle,fill=clModA,inner sep=0pt,minimum size=1.4mm},
   dotB/.style={circle,fill=clModB,inner sep=0pt,minimum size=1.4mm},
   dotC/.style={circle,fill=clModC,inner sep=0pt,minimum size=1.4mm},

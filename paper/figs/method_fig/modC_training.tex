@@ -146,9 +146,25 @@
 %    box (x 3.13-3.69, y 1.06-1.66): both diagonals stay above y=1.66
 %    across that whole x-range, so neither crosses the glyph.
 % =====================================================================
-\draw[lossline] (0.63,2.03) -- (0.63,1.00) -- node[losslab]{$\symLrec$} (1.60,1.00);
-\draw[lossline] (2.93,2.11) -- node[losslab,pos=0.25]{$\symLlin$} (3.89,1.66);
-\draw[lossline] (3.89,2.03) -- node[losslab,pos=0.25]{$\symLpred$} (2.93,1.66);
+% detour lowered to y=0.75 (was 1.00): at 1.00 the losslab circle's own
+% radius reached back up far enough to sit on top of -- and hide -- the
+% small decoder's own D_psi label (anchor=north at y=1.355, so its text
+% ends around y~1.2); this was caught only by noticing the label had
+% silently disappeared from the render, not by any coordinate check.
+\draw[lossline] (0.63,2.03) -- (0.63,0.75) -- node[losslab]{$\symLrec$} (1.60,0.75);
+% lin/pred: flat (no-circle) labels, AND moved off the line itself. Both
+% pos=0.25-on-the-line and pos=0.25-with-flat-style still overlapped (the
+% two lines are near-mirror-symmetric, so any shared pos value puts both
+% labels at nearly the same spot). Placed instead in the one pocket that
+% is clear of every glyph: below decoder mcD1 (bottom edge y=2.05) and
+% above encoder mcE2 (top edge y=1.66), between the s_t+1/q_t column pair
+% (right edge x<=3.01) and the xi_t+1 column (left edge x=3.81) -- stacked
+% vertically, away from the crossing point, each still close enough to its
+% own dashed line to read as that line's label.
+\draw[lossline] (2.93,2.11) -- (3.89,1.66);
+\draw[lossline] (3.89,2.03) -- (2.93,1.66);
+\node[losslabflat] at (3.41,1.97) {$\symLlin$};
+\node[losslabflat] at (3.41,1.74) {$\symLpred$};
 
 % =====================================================================
 % 5. caption

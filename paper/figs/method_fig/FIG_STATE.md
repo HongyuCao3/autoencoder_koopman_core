@@ -1,7 +1,7 @@
 # FIG_STATE (method figure, TikZ)
 
-updated: 2026-09-19  by: sonnet session (step-3 title-bar redesign + a text-overlap fix it surfaced, this session)
-step: 3 (rev 3)   status: awaiting_user_review
+updated: 2026-09-19  by: sonnet session (step-3 rev 4: caption trims, D's loop as 3 blocks, C redrawn left-to-right, this session)
+step: 3 (rev 4)   status: awaiting_user_review
 decisions: Q1=C-as-own-module (user, 2026-09-19, 2x2 保持四块)
            Q2=sentence-length (user, 默认)
            Q3=no-bound-glyph, minicap only (user, 默认)
@@ -46,7 +46,7 @@ previews_for_review: preview/step_left_loop_v6.png (step 1, rev 2),
                        to v12),
                      preview/step_modC_training_v14.png,
                      preview/step_modD_control_v17.png,
-                     preview/step_right_panel_v16.png (step 3 rev 3, CURRENT
+                     preview/step_right_panel_v20.png (step 3 rev 4, CURRENT
                        -- supersedes v12: full-width centred title bars on
                        all 4 panels (was: small corner tags), plus the one
                        text-overlap bug this surfaced, see the note below)
@@ -58,13 +58,14 @@ user_verdict_on_previous: not yet recorded in this file for step 1 rev2 or step 
   state (step 2 fully drafted, gates run, nothing committed) so a fresh session
   is not misled by the stale step:1 entry that preceded it. All 5 images above
   were just sent to the user for review together.
-next_action: step 3 rev 3 (title bars) is drafted, rendered, gate-checked
-             and committed; still awaiting a user verdict on step 1 rev2 +
-             step 2 (four modules) + step 3 (panel, now rev 3) together --
-             no verdict has been given on ANY version of step 3 yet. Do NOT
-             start step 4 (master assembly, wire into 02_method.tex) before
-             that verdict arrives. On approve -> step 4. On revise -> iterate
-             the named module/panel only, bump version, re-run gates.
+next_action: step 3 rev 4 (caption trims + D's loop as blocks + C redrawn
+             left-to-right) is drafted, rendered, gate-checked and committed;
+             still awaiting a user verdict on step 1 rev2 + step 2 (four
+             modules) + step 3 (panel, now rev 4) together -- no verdict has
+             been given on ANY version of step 3 yet. Do NOT start step 4
+             (master assembly, wire into 02_method.tex) before that verdict
+             arrives. On approve -> step 4. On revise -> iterate the named
+             module/panel only, bump version, re-run gates.
 notes:
   - THIS SESSION, step 3 rev 2 (user feedback: "有一些文字overlap问题需要解决,
     神经网络设计元素中的圆形半径减小,因为现在重叠比较严重"):
@@ -198,6 +199,110 @@ notes:
     step_modB_koopman_v13.png, same content as the version reviewed in rev 2,
     just recompiled after the label-position fix -- no other visual change
     to module B).
+  - THIS SESSION, step 3 rev 4 (user request: shorten B's "command enters
+    here" caption to "command"; drop B's "linear case" caption; turn D's
+    "execute, observe, replan" caption into three real sub-blocks; make
+    every module's OWN internal diagram read strictly left to right, no
+    module may fold a chain back on itself).
+    PROCESS NOTE: partway through this work, `git log` turned up commit
+    8a7e879 ("...step 3 rev 4 -- L-to-R module C, 3-block receding-horizon
+    loop"), already on this branch, from a DIFFERENT session
+    (Claude-Session session_019dNpHg3wG7w5S5Euh9ZHKg, not this one) --
+    someone is running another Cowork/Claude session on this same repo in
+    parallel. That commit's modB/modD/kompas_style changes are byte-for-
+    byte identical to what this session had independently written for the
+    same request (same wording, same coordinates), so no conflict; its
+    modC/modD content matched this session's FIRST draft too, before this
+    session's own render-and-crop pass (the established verification habit
+    for this figure) caught three real bugs that commit did not: (i) an
+    arrow in D's three-block loop was drawn to a guessed box half-width and
+    visibly cut through the middle of each word instead of stopping at the
+    box edge; (ii) C's two new crossing loss labels (L_lin/L_pred) fully
+    overlapped each other; (iii) C's reconstruction-branch $D_\psi$ label
+    was silently hidden underneath the L_rec loss circle. This entry
+    documents this session's work including those three fixes; the base
+    geometry decisions (L-to-R row swap, three rhblock nodes, the two
+    caption edits) were reached independently by both sessions from the
+    same user request, not copied from one to the other. Worth flagging to
+    the user: two sessions editing the same figure files concurrently is
+    how a commit like 8a7e879 ships without its render ever being crop-
+    checked -- there was no second reviewer in that session's loop, only
+    in this one.
+    Four changes (2 already on the branch via 8a7e879, this session added
+    fixes to 2 of them -- see process note above):
+      1. modB_koopman.tex: "command enters here" -> "command" (text only).
+         Dropped the "linear case: E_phi=D_psi=id" minicap entirely; kept
+         both dashed \IdBypass arrows, since each already carries its own
+         inline "id" label and does not depend on the dropped sentence to
+         be legible.
+      2. modD_control.tex: the single caption riding the receding-horizon
+         return arrow became three real blocks (new `rhblock` style in
+         kompas_style.tex: a plain rounded box, no colour -- G5 reserves
+         colour for module identity, not internal captions), connected by
+         three short arrows in temporal order (Execute -> Observe ->
+         Replan, matching the arrow's own right-to-left-then-up direction).
+         This loop is drawn as a loop ON PURPOSE: it is the actual control
+         feedback path (execute, observe, replan, repeat), not an
+         incidental reversal like the ones fixed in point 4 below, so it
+         was NOT flattened to left-to-right.
+         BUG caught by rendering, not by the coordinate math: the first
+         attempt hand-picked a half-width for each box and placed the
+         connecting arrows to stop just outside it: at \scriptsize the
+         actual rendered boxes came out wider than guessed, so every arrow
+         landed inside its neighbour's box and was clearly visible cutting
+         through the middle of the word (checked at 2x zoom on "Observe").
+         Fixed by naming each node and re-pointing the arrows at
+         `.east`/`.west` node anchors instead of guessed coordinates --
+         this lands on the box's true rendered edge regardless of text
+         width, and cannot drift out of sync with the font again.
+      3. modC_training.tex, the actual "no back-turns" fix: this module's
+         own header comment already admitted its lower ("observed") row
+         was "folded back and runs right to left" by a prior revision, on
+         purpose, so the three loss-link pairs would sit directly above
+         one another (short vertical links). The reconstruction branch had
+         the same problem on a smaller scale (one right-to-left arrow so
+         its result would land back under s_t). Both are now left to right.
+         This surfaced a genuine, checked-on-paper-first geometric conflict
+         worth recording: the lower row's causal order (s_{t+1} -> Enc ->
+         xi_{t+1}, left to right) is the EXACT OPPOSITE of the order needed
+         to keep xi_{t+1} under q_t and s_{t+1} under D(q_t) at the same
+         time (their upper-row partners sit in that left-right order, not
+         swapped) -- so "left to right" and "short aligned loss links"
+         cannot both hold once the row direction is fixed. Kept the row's
+         x-footprint unchanged (still 2.85-3.97) and just swapped which end
+         holds which glyph, which turns L_lin and L_pred from short
+         verticals into two ~0.96cm diagonals that cross each other once
+         between the rows -- checked against the shared encoder mcE2's own
+         box and confirmed neither diagonal crosses it.
+         Two more bugs this surfaced, both found by rendering (not by
+         re-deriving coordinates -- by now the established pattern for
+         every collision this session):
+         (a) \symLlin and \symLpred, both placed at the line's own
+             pos=0.25 (even after switching to a flat, no-circle label
+             style), still overlapped each other almost completely -- the
+             two links are near-mirror-symmetric, so any shared pos value
+             puts both labels at nearly the same point near the crossing.
+             Fixed by abandoning "node on the line" placement for these
+             two and hand-placing both in the one pocket that is clear of
+             every glyph (below decoder mcD1's bottom edge, above encoder
+             mcE2's top edge, between the two column pairs), stacked
+             vertically instead of sitting on their own lines.
+         (b) the reconstruction branch's own $D_\psi$ label had silently
+             vanished from the render. Root cause: moving the reconstruction
+             result column to the decoder's right (to fix its own
+             right-to-left arrow) meant L_rec's rerouted detour-and-label
+             now passed close enough underneath the $D_\psi$ label that the
+             loss circle -- drawn afterward, in section 4 -- painted over
+             it. Fixed by lowering the detour 0.25cm; re-rendered and
+             confirmed the label is back and the circle no longer reaches it.
+    Re-ran G2 on all four touched fragments: modB/modD/right_panel all OK,
+    0 unmatched; modC still shows its known 7 unmatched (\mathcal{D},
+    \mathcal{L}_{rec/lin/pred}, \phi, \psi, \theta) -- unchanged from
+    every prior entry, confirmed this is the same pre-existing D19-vs-Q1
+    appendix gap, not new drift from this revision's geometry changes.
+    Final artefact for review: preview/step_right_panel_v20.png (also
+    step_modB_koopman_v14, step_modC_training_v18, step_modD_control_v19
+    -- module A untouched, no new preview needed).
   - THIS SESSION, continued (step 3, per user's explicit "先补记账再进入步骤3"):
     wrote right_panel.tex per FIG_PLAN §3.3. Native module canvases read off
     each modX_*.tex \path rectangle: A 2.94x3.03, B 6.53x3.03, C 4.735x3.03,
