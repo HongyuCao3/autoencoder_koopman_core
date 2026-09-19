@@ -11,10 +11,17 @@
 #   grep -rnE '\b(choice_2|c3|eq_koopman_model)\b' paper/
 
 meta:
-  paper_title: "KOMPAS: Koopman Model-Predictive Alignment at the Prompt Step"
-  acronym: KOMPAS               # D10, user decision 2026-09-18.
-                                # Expansion, capitals form the name (rhetoric_patterns.md §1):
-                                #   KOopman Model-Predictive Alignment at the prompt Step
+  paper_title: "KOMPAS: Koopman Dynamics Modeling and Predictive Control of Multi-Turn LLM Behavior"
+  acronym: KOMPAS               # D10 (2026-09-18), title revised by D14 (2026-09-19).
+                                # Expansion, capitals form the name (rhetoric_patterns.md §1, the
+                                # mid-word capital is house style: MOAT = reinforceMent-enhanced
+                                # autOregressive feAture Transformation):
+                                #   KOopman dynaMics modeling and Predictive control of
+                                #   Attributes at the prompt Step
+                                # D14: the title must name both halves of the paper. "Dynamics
+                                # modeling" replaces "prediction" because the contribution is a
+                                # model of the dynamics, not a forecasting score; "control" is
+                                # named outright rather than hidden inside "model-predictive".
                                 # Reveal once in Abstract Move 4 and once in Introduction P4, bold
                                 # inline; plain KOMPAS everywhere after that.
                                 # Collision check: websearch "KOMPAS method acronym machine learning
@@ -26,7 +33,7 @@ meta:
                                 # beat 3 carries both the stateless gap and the missing-model gap
 
 narrative_arc:
-  - "Multi-turn interaction makes a frozen LLM's reply attributes a trajectory, and that trajectory drifts."
+  - "Multi-turn interaction makes a frozen LLM's reply attributes a trajectory, and that trajectory drifts as an instruction given once competes with every turn that accumulates after it."
   - "Every existing controller acts inside the network and needs white-box access at every token, while the lever a deployment actually holds is one instruction per turn against a black-box API."
   - "Prompt-level interventions today are stateless, so they overshoot or undershoot; what is missing is a dynamics model at the interaction level."
   - "We learn a finite-memory, command-conditioned Koopman predictor of prompt-response dynamics and use it to score candidate instructions before any of them is sent."
@@ -97,51 +104,8 @@ design_choice_lattice:
     notes: "rq3 also reads on this choice, for the cost side."
 
 claim_ledger:
-  # --- Control line (colleague benchmark data; user decision D3 treats it as reliable) ---
+  # --- Modeling line: what the operator predicts (self-built multi-turn tasks) ---
   - id: c1
-    claim: "Predictive control over prompt-level commands raises constraint satisfaction over the same frozen model with no control, by 14.5 points on Qwen3-4B and 14.8 points on Qwen3-8B averaged over eleven subtasks."
-    strength: scoped
-    evidence:
-      - "table_cell:tab_control:R{Qwen3-4B,Base}:C{all 11} (n_bench_001 n_bench_002 n_bench_003 n_bench_004 n_bench_005 n_bench_006 n_bench_007 n_bench_008 n_bench_009 n_bench_010 n_bench_011)"
-      - "table_cell:tab_control:R{Qwen3-4B,KOMPAS}:C{all 11} (n_bench_012 n_bench_013 n_bench_014 n_bench_015 n_bench_016 n_bench_017 n_bench_018 n_bench_019 n_bench_020 n_bench_021 n_bench_022)"
-      - "table_cell:tab_control:R{Qwen3-8B,Base}:C{all 11} (n_bench_045 n_bench_046 n_bench_047 n_bench_048 n_bench_049 n_bench_050 n_bench_051 n_bench_052 n_bench_053 n_bench_054 n_bench_055)"
-      - "table_cell:tab_control:R{Qwen3-8B,KOMPAS}:C{all 11} (n_bench_056 n_bench_057 n_bench_058 n_bench_059 n_bench_060 n_bench_061 n_bench_062 n_bench_063 n_bench_064 n_bench_065 n_bench_066)"
-    appears_in: [abstract, intro, experiments, conclusion]
-    driver_keyword: "candidate scoring happens on the predicted trajectory, so a command that differs from the target can be chosen when the trajectory is still moving"
-    notes: "Point estimates as printed by the colleague. No seeds, no intervals, metric definition still pending. The prose must say this in the same subsection (D3), and the Conclusion limitation list repeats it."
-
-  - id: c2
-    claim: "The same controller exceeds two latent-space controllers that require white-box access, by 5.2 points on Qwen3-4B and 5.7 on Qwen3-8B on average, with a smallest per-subtask margin of 2.4 and 2.7."
-    strength: scoped
-    evidence:
-      - "table_cell:tab_control:R{Qwen3-4B,RE-Control}:C{all 11} (n_bench_034 n_bench_035 n_bench_036 n_bench_037 n_bench_038 n_bench_039 n_bench_040 n_bench_041 n_bench_042 n_bench_043 n_bench_044)"
-      - "table_cell:tab_control:R{Qwen3-8B,RE-Control}:C{all 11} (n_bench_078 n_bench_079 n_bench_080 n_bench_081 n_bench_082 n_bench_083 n_bench_084 n_bench_085 n_bench_086 n_bench_087 n_bench_088)"
-    appears_in: [abstract, intro, experiments, conclusion]
-    driver_keyword: "the comparison is not access-matched, and the weaker access is ours"
-    notes: "TMPC and RE-Control are colleague reproductions, not author-run baselines. Same no-interval caveat as c1."
-
-  - id: c3
-    claim: "Across the two models and eleven subtasks, the predictive controller is the best of the four methods in every one of the twenty-two cells."
-    strength: scoped
-    evidence:
-      - "table_cell:tab_control:all-cells (n_bench_012 n_bench_022 n_bench_056 n_bench_066)"
-    appears_in: [experiments]
-    driver_keyword: "the margin is largest where the constraint is hardest to satisfy in one shot"
-    notes: "Same point-estimate caveat. A sweep of 22 cells with no intervals is weaker evidence than it looks; the prose reports it as a count, not as a significance statement."
-
-  - id: c4
-    claim: "Evaluating a candidate command costs a latent propagation and a decode, and adds no query to the target model."
-    strength: strong
-    evidence:
-      - "equation:eq_closed_form_rollout"
-      - "equation:eq_rollout"
-    appears_in: [abstract, intro, method, experiments, conclusion]
-    driver_keyword: "the closed form makes the h-step latent state a matrix power applied to the current encoding"
-    strength_basis: theoretical
-    notes: "Structural property of the model, not a measurement. Cold review f7: `strong` here means the derivation is exact, not that a large effect was measured. Any cost of building candidates or scoring responses still counts and the prose says so."
-
-  # --- Prediction line (self-built tasks) ---
-  - id: c5
     claim: "A window of past attribute readings predicts better than the current reading alone on five of seven tasks, with paired bootstrap intervals excluding zero."
     strength: scoped
     evidence:
@@ -150,7 +114,7 @@ claim_ledger:
     driver_keyword: "the window exposes the direction of travel, which a single reading cannot carry"
     notes: "RECOUNT: five of seven, not all. vector_count_stage1 has an interval containing zero (+0.246, [-0.023, +0.415]); formality is negative and not separated from zero (-0.035). The prose names the two exceptions."
 
-  - id: c6
+  - id: c2
     claim: "A learned nonlinear lifting does not predict better than the identity lifting on any of the seven tasks, and predicts worse on four of them with intervals excluding zero."
     strength: scoped
     evidence:
@@ -161,7 +125,7 @@ claim_ledger:
     driver_keyword: "the attribute readouts are already low-dimensional, so a lifting has little structure left to expose"
     notes: "RECOUNT: the story framework said the gap was at most 0.031 with signs flipping. The CEFR column is +0.599 in favour of the linear case, which is not a tie. The claim is stated as 'no gain from lifting', not as 'equivalent'."
 
-  - id: c7
+  - id: c3
     claim: "Against an LSTM sequence baseline neither model dominates: the linear operator wins two columns and loses two, each with intervals excluding zero."
     strength: observation
     evidence:
@@ -177,7 +141,7 @@ claim_ledger:
       story_framework_2026-09-18.md §8; Rule 1 requires a driver sentence, so either the
       question gets answered before CP3c or the two losses are reported without one.
 
-  - id: c8
+  - id: c4
     claim: "On free-running prediction skill the linear special case ranks first on four of seven tasks, second on one, and third on two."
     strength: scoped
     evidence:
@@ -186,6 +150,56 @@ claim_ledger:
     driver_keyword: "the two third places are the two columns where a recurrent baseline fits the residual better"
     notes: "RECOUNT: the story framework said four firsts and the rest seconds. The rest are one second and two thirds."
 
+  # --- Control line: what the controller achieves (colleague benchmark data; D3) ---
+  - id: c5
+    claim: "Predictive control over prompt-level commands raises constraint satisfaction over the same frozen model with no control, by 14.5 points on Qwen3-4B and 14.8 points on Qwen3-8B averaged over eleven subtasks."
+    strength: scoped
+    evidence:
+      - "table_cell:tab_control:R{Qwen3-4B,Base}:C{all 11} (n_bench_001 n_bench_002 n_bench_003 n_bench_004 n_bench_005 n_bench_006 n_bench_007 n_bench_008 n_bench_009 n_bench_010 n_bench_011)"
+      - "table_cell:tab_control:R{Qwen3-4B,KOMPAS}:C{all 11} (n_bench_012 n_bench_013 n_bench_014 n_bench_015 n_bench_016 n_bench_017 n_bench_018 n_bench_019 n_bench_020 n_bench_021 n_bench_022)"
+      - "table_cell:tab_control:R{Qwen3-8B,Base}:C{all 11} (n_bench_045 n_bench_046 n_bench_047 n_bench_048 n_bench_049 n_bench_050 n_bench_051 n_bench_052 n_bench_053 n_bench_054 n_bench_055)"
+      - "table_cell:tab_control:R{Qwen3-8B,KOMPAS}:C{all 11} (n_bench_056 n_bench_057 n_bench_058 n_bench_059 n_bench_060 n_bench_061 n_bench_062 n_bench_063 n_bench_064 n_bench_065 n_bench_066)"
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "candidate scoring happens on the predicted trajectory, so a command that differs from the target can be chosen when the trajectory is still moving"
+    notes: >-
+      Point estimates as printed by the colleague. No seeds, no intervals, metric definition still
+      pending. D3: the experiments subsection states this in the same subsection as the number.
+      D12: the introduction carries one clause naming these as point estimates on three public
+      benchmarks; the abstract gives the gain with no interval and without the word measured. The
+      Conclusion limitation list repeats it. This caveat is NOT delegated to nc_3, which is
+      audit-only under D16; it travels attached to the number.
+
+  - id: c6
+    claim: "The same controller exceeds two latent-space controllers that require white-box access, by 5.2 points on Qwen3-4B and 5.7 on Qwen3-8B on average, with a smallest per-subtask margin of 2.4 and 2.7."
+    strength: scoped
+    evidence:
+      - "table_cell:tab_control:R{Qwen3-4B,RE-Control}:C{all 11} (n_bench_034 n_bench_035 n_bench_036 n_bench_037 n_bench_038 n_bench_039 n_bench_040 n_bench_041 n_bench_042 n_bench_043 n_bench_044)"
+      - "table_cell:tab_control:R{Qwen3-8B,RE-Control}:C{all 11} (n_bench_078 n_bench_079 n_bench_080 n_bench_081 n_bench_082 n_bench_083 n_bench_084 n_bench_085 n_bench_086 n_bench_087 n_bench_088)"
+    appears_in: [abstract, intro, experiments, conclusion]
+    driver_keyword: "the comparison is not access-matched, and the weaker access is ours"
+    notes: "TMPC and RE-Control are colleague reproductions, not author-run baselines. Same no-interval caveat as c5."
+
+  - id: c7
+    claim: "Across the two models and eleven subtasks, the predictive controller is the best of the four methods in every one of the twenty-two cells."
+    strength: scoped
+    evidence:
+      - "table_cell:tab_control:all-cells (n_bench_012 n_bench_022 n_bench_056 n_bench_066)"
+    appears_in: [experiments]
+    driver_keyword: "the margin is largest where the constraint is hardest to satisfy in one shot"
+    notes: "Same point-estimate caveat. A sweep of 22 cells with no intervals is weaker evidence than it looks; the prose reports it as a count, not as a significance statement."
+
+  - id: c8
+    claim: "Evaluating a candidate command costs a latent propagation and a decode, and adds no query to the target model."
+    strength: strong
+    evidence:
+      - "equation:eq_closed_form_rollout"
+      - "equation:eq_rollout"
+    appears_in: [abstract, intro, method, experiments, conclusion]
+    driver_keyword: "the closed form makes the h-step latent state a matrix power applied to the current encoding"
+    strength_basis: theoretical
+    notes: "Structural property of the model, not a measurement. Cold review f7: `strong` here means the derivation is exact, not that a large effect was measured. Any cost of building candidates or scoring responses still counts and the prose says so."
+
+  # --- Bridge: prediction quality to selection quality ---
   - id: c9
     claim: "If the rollout residuals and the readout are bounded, the selected command's held-command cost is within twice the cost-estimation error of the best candidate."
     strength: strong
@@ -197,7 +211,6 @@ claim_ledger:
     driver_keyword: "the predicted and actual rollouts start from the same encoding, so their gap accumulates only through the dynamics residual"
     strength_basis: theoretical
     notes: "Cold review f7: `strong` means the derivation is exact under its stated assumptions, which are themselves untested (as_3). Conditional statement about one held-command comparison. It says nothing about the replanned closed loop and the prose keeps that boundary."
-
 symbol_lattice:
   # The colleague's notation is authoritative. The old draft's z_t, u_t, v_t are retired.
   - id: s_x
@@ -490,25 +503,25 @@ equation_lattice:
 mechanism_lattice:
   - id: m1
     mechanism: "A single attribute reading is consistent with two opposite trends, so a memoryless rule issues the same command in situations whose next step differs; a window of readings separates them."
-    supports_claim: [c5]
+    supports_claim: [c1]
     appears_in_method: true
     appears_in_experiments: true
     notes: "This is the colleague's own example in the Finite-Memory subsection; it is also ex_1."
   - id: m2
     mechanism: "Because the latent transition is affine and the command enters as one column, an h-step lookahead is a matrix power rather than another generation, so scoring many candidates costs no LLM calls."
-    supports_claim: [c4, c1]
+    supports_claim: [c8, c5]
     appears_in_method: true
     appears_in_experiments: true
     notes: "The cost argument and the control argument share this mechanism."
   - id: m3
     mechanism: "Scoring a candidate on its predicted trajectory rather than its immediate effect lets the controller issue a command different from the target when the attribute is still moving, which is what removes overshoot."
-    supports_claim: [c1, c2]
+    supports_claim: [c5, c6]
     appears_in_method: true
     appears_in_experiments: true
     notes: "The driver sentence behind the headline numbers."
   - id: m4
     mechanism: "The attribute readouts are already one-dimensional, so a learned lifting has little extra structure to expose and mainly adds estimation variance on trajectories that number in the tens or hundreds."
-    supports_claim: [c6]
+    supports_claim: [c2]
     appears_in_method: false
     appears_in_experiments: true
     notes: "Kept out of Method: Rule 21 bans results-shaped reasoning there."
@@ -536,6 +549,15 @@ intuition_lattice:
       borrowed_authority: []
       recorded_at: post_hoc
       source: "story_framework_2026-09-18.md#2.3; follows from the verifier running on complete replies"
+    - id: prior_4
+      statement: "An instruction issued once has to compete with everything said after it, so its hold on the reply weakens as the conversation lengthens."
+      borrowed_authority: [li2024instability, driftnomore2025, attractorstates2025]
+      recorded_at: post_hoc
+      source: >-
+        D15 (2026-09-19): narrative beat 1 needed a candidate cause for the drift, so the reader is
+        not asked to accept a phenomenon with no mechanism. This is the candidate, taken from the
+        cited drift literature. This paper does NOT test it; see nc_9. Intro P1 states it as a
+        plausible account, never as a finding, and carries a % CITE line.
   anchor_example:
     id: ex_1
     instance: "the same sentence length can occur while successive revisions are becoming longer or while they are becoming shorter"
@@ -581,40 +603,61 @@ intuition_lattice:
       source: "sections/02_method.tex, Prediction Error and Intervention Selection"
 
 non_claim_ledger:
+  # D16 (2026-09-19): these are AUDIT instruments, not prose. Tier 2 and Tier 3 do NOT write a
+  # "we do not claim X" sentence for any of them. Their job is to stop a claim from drifting past
+  # its evidence while the draft is being built and reviewed. `candidate_explicit` records where a
+  # disclaimer WOULD go if the user later promotes it; the user picks the few that get stated out
+  # loud, after the main text exists, so that scope sentences do not drown the argument.
+  # Exception by construction: the point-estimate caveat required by D3 and D12 is NOT one of these.
+  # It rides in c5.notes and c6.notes, attached to the number itself, and is written as a property
+  # of the measurement rather than as a disclaimer.
   - id: nc_1
     statement: "That putting the command into the operator improves prediction."
-    reason: "The prediction experiment gives no evidence either way. On the five core columns the applied command equals the tracking error, an exact affine function of the state, so that design cannot estimate an independent action effect at all (n_main_014 n_main_046 n_main_030 n_main_078 n_main_094, all status caveated for this reason). On the two columns where it can be estimated the paired difference is +0.0015 and +0.0061 with intervals containing zero (n_main_133 n_main_181). The command channel is exercised at control time, where the command varies, and that is where c1 and c2 test it."
-    appears_in: [experiments, conclusion]
+    reason: "The prediction experiment gives no evidence either way. On the five core columns the applied command equals the tracking error, an exact affine function of the state, so that design cannot estimate an independent action effect at all (n_main_014 n_main_046 n_main_030 n_main_078 n_main_094, all status caveated for this reason). On the two columns where it can be estimated the paired difference is +0.0015 and +0.0061 with intervals containing zero (n_main_133 n_main_181). The command channel is exercised at control time, where the command varies, and that is where c5 and c6 test it."
+    mode: audit_only
+    candidate_explicit: [experiments, conclusion]
   - id: nc_2
     statement: "That closed-loop control beats an equal-cost fixed schedule on the four self-built behavioral tasks."
     reason: "It does not. On those tasks the closed loop ties the best fixed schedule while spending more, which is reported in appendix A4 as a boundary on where planning has headroom."
-    appears_in: [experiments, conclusion]
+    mode: audit_only
+    candidate_explicit: [experiments, conclusion]
   - id: nc_3
     statement: "That the benchmark numbers carry intervals, seed counts, or an independently specified metric."
     reason: >-
       They are point estimates supplied by a colleague with no raw logs in this repository
-      (user decision D3). Cold review f2 (2026-09-18): c1 and c2 appear in the abstract and
+      (user decision D3). Cold review f2 (2026-09-18): c5 and c6 appear in the abstract and
       the introduction, so the scope has to travel with them. The abstract states the gain
       without an interval and without the word measured; the introduction carries one clause
       naming the numbers as point estimates on three public benchmarks.
-    appears_in: [abstract, intro, experiments, conclusion]
+    mode: audit_only
+    candidate_explicit: [abstract, intro, experiments, conclusion]
   - id: nc_4
     statement: "That the language model admits an exact finite-dimensional Koopman representation."
     reason: "The model is a finite-dimensional approximation on a finite-memory state; the Method says so directly."
-    appears_in: [method, conclusion]
+    mode: audit_only
+    candidate_explicit: [method, conclusion]
   - id: nc_5
     statement: "That the closed loop converges, or that the candidate set always contains a command able to reach the target."
     reason: "The bound is a one-step held-command comparison. Re-observation resets the rollout's initial error but removes neither model mismatch nor the limits of the candidate set."
-    appears_in: [method, conclusion]
+    mode: audit_only
+    candidate_explicit: [method, conclusion]
   - id: nc_7
     statement: "That each of the three terms in the training objective is necessary."
     reason: "No term-removal ablation was run for this paper. The argument for the three terms is a design argument stated in the Method, not a measured one."
-    appears_in: [method]
+    mode: audit_only
+    candidate_explicit: [method]
   - id: nc_8
     statement: "That the size of the command column has been measured against a no-command operator on the prediction tasks."
     reason: "See nc_1. The control results test whether selecting over commands helps; they do not decompose the operator."
-    appears_in: [experiments]
+    mode: audit_only
+    candidate_explicit: [experiments]
+  - id: nc_9
+    statement: "That the paper identifies why multi-turn behavior drifts."
+    reason: "Beat 1 and Intro P1 offer instruction dilution as a candidate account, borrowed from the drift literature. No experiment here separates it from other causes; the paper measures that the trajectory is predictable, not why it moves."
+    mode: audit_only
+    candidate_explicit: [intro, conclusion]
   - id: nc_6
     statement: "That the linear operator is a better sequence model than an LSTM."
     reason: "Two of seven columns favour the LSTM with intervals excluding zero (n_main_080 n_main_134). The paper claims cheap lookahead and a readable command channel, not universal predictive superiority."
-    appears_in: [experiments]
+    mode: audit_only
+    candidate_explicit: [experiments]

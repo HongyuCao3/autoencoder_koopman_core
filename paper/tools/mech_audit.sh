@@ -19,7 +19,10 @@ banner() { printf '\n--- %s ---\n' "$1"; }
 banner "1. sentence gate (<=30 words, <=2 turns; D8)"
 python3 "$HERE/sentence_gate.py" "${FILES[@]}" || FAIL=1
 
-banner "2. em-dash (Rule 19)"
+banner "2. equation gate (intuition before, symbol gloss after)"
+python3 "$HERE/equation_gate.py" "${FILES[@]}" || FAIL=1
+
+banner "3. em-dash (Rule 19)"
 if grep -nE -- '---' "${FILES[@]}"; then
   echo "FAIL: replace every --- with a sentence break, colon, or parenthetical."
   FAIL=1
@@ -27,7 +30,7 @@ else
   echo "PASS"
 fi
 
-banner "3. adverbs (Rule 20)"
+banner "4. adverbs (Rule 20)"
 ADV='\b(significantly|substantially|considerably|dramatically|drastically|vastly|remarkably|notably|markedly|materially|highly|extremely|particularly|especially|decisively|strongly|weakly|robustly|sharply|severely|clearly|obviously|essentially|fundamentally|intrinsically|inherently|truly|indeed|surely|certainly|actually|effectively|practically|simply|merely|just|relatively|comparatively|somewhat|fairly|slightly|moderately|largely|mostly|primarily|nearly|virtually|roughly|approximately|freshly|already|uniformly|overwhelmingly|empirically|eventually|explicitly|directly|monotonically|exactly|formally)\b'
 if grep -nEi "$ADV" "${FILES[@]}"; then
   echo "FAIL: replace each adverb with a number, a delta, or a structural fact."
@@ -38,7 +41,7 @@ else
   echo "PASS"
 fi
 
-banner "4. \\cite (user decision D7)"
+banner "5. \\cite (user decision D7)"
 if grep -nE '\\cite[a-z]*\{' "${FILES[@]}"; then
   echo "FAIL: no \\cite in this phase. Mark the place with a standalone line: % CITE: <key>"
   FAIL=1
@@ -53,7 +56,7 @@ for f in "${FILES[@]}"; do
 done
 
 if [ ${#METHOD_FILES[@]} -gt 0 ]; then
-  banner "5. results inside Method (Rule 21)"
+  banner "6. results inside Method (Rule 21)"
   if grep -nE 'Table~\\ref|sec:exp|outperform|baseline[s]? (beat|improve)|\+[0-9.]+ ?(pp|%)' "${METHOD_FILES[@]}"; then
     echo "FAIL: Method explains what the design does and why, never how well it scored."
     FAIL=1
@@ -61,7 +64,7 @@ if [ ${#METHOD_FILES[@]} -gt 0 ]; then
     echo "PASS"
   fi
 
-  banner "6. math inside Why-X paragraphs (Rule 22)"
+  banner "7. math inside Why-X paragraphs (Rule 22)"
   python3 - "${METHOD_FILES[@]}" <<'PY' || FAIL=1
 import re, sys
 bad = 0

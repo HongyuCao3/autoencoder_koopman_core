@@ -20,6 +20,13 @@
 | D10 | 2026-09-18 | 方法名 **KOMPAS** = **KO**opman **M**odel-**P**redictive **A**lignment at the prompt **S**tep。标题改为 *KOMPAS: Koopman Model-Predictive Alignment at the Prompt Step*。 | 满足 skill Rule 6 |
 | D11 | 2026-09-18 | Tier-1 冷审 f1：接受"**控制实验即命令通道的检验**"这个口径。`choice_2` 改挂 rq1，不补 no-command 消融。同时加 `nc_1` / `nc_8` 两条不声称，正文不得声称预测实验支持命令通道。 | 覆盖冷审 f1 的"补实验"建议 |
 | D12 | 2026-09-18 | Tier-1 冷审 f2：**Intro 带一句限定，Abstract 不带**。`nc_3.appears_in` 扩到 abstract/intro；Abstract 只给增幅、不写 measured，Intro 一个从句说明是三个公开基准上的点估计，实验章与结论章再展开。 | 细化 D3 |
+| D13 | 2026-09-19 | 控制线三条 claim（现 `c5`–`c7`）**保持 `scoped`，不上调为 `strong`**。理由不是证据不足以支撑更强措辞，而是数据之后会同步；等同事补齐 seed 与区间再重评。 | 收束冷审 f2 的第二种处理 |
+| D14 | 2026-09-19 | 标题改为 *KOMPAS: Koopman **Dynamics Modeling** and **Predictive Control** of Multi-Turn LLM Behavior*。两条要求：用 dynamics modeling 而不是 prediction（贡献是动力学模型，不是预报分数）；control 必须在标题里明写，不能藏在 model-predictive 里。acronym 展开同步改为 **KO**opman dyna**M**ics modeling and **P**redictive control of **A**ttributes at the prompt **S**tep。 | 细化 D10 |
+| D15 | 2026-09-19 | 叙事第一句要给出漂移的**候选成因**，不能只陈述现象。采用"一条只说一次的指令，要和它之后累积的每一轮竞争"。这是借自漂移文献的候选解释，本文不检验它，记为 `prior_4` 并加 `nc_9`。 | — |
+| D16 | 2026-09-19 | `non_claim_ledger` 改为**审查工具，不是正文**。Tier 2 / Tier 3 一律不写"we do not claim X"式句子；每条新增 `mode: audit_only` 与 `candidate_explicit`（若将来提升为显式，会落在哪）。正文写完后由用户挑出少数几条显式说明，避免限定句淹没主线。**例外**：D3 / D12 要求的点估计口径不走这条路，它挂在 `c5.notes` / `c6.notes` 上，跟着数字走。 | 覆盖 skill 对 non_claim 的默认用法 |
+| D17 | 2026-09-19 | claim 与实验章**都**改成**先建模线、后控制线**：`c1`–`c4` 预测，`c5`–`c8` 控制，`c9` 桥。实验章 `03b` 为预测、`03c` 为控制。全文一条线：建模 → 验证模型 → 用模型控制。代价是最强的数字（+14.5）往后挪一页。 | 覆盖 WRITING_PLAN §5 的 CP3b/CP3c 内容分配 |
+| D18 | 2026-09-19 | **主文恰好两张表**：Table 1 建模线（`tab_prediction`），Table 2 控制线（`tab_control`）。四个小样本列那张是附录 A2（`tab:prediction_small_app`），不计入主文。 | 明确 D4 |
+| D19 | — | **待定**：四个设计选择如何合并成三个。用户要求先分析学界共识，见下方"待裁决"。 | — |
 
 ## 已执行的操作性裁决（不进表，但有约束力）
 
@@ -46,6 +53,12 @@ contract 抽取，**不新增任何 claim**。第二，Phase 3 实验章写完�
 命名时排除了 TEMPO 和 PACE：arXiv 上两者都已被多篇 LLM 论文占用。KOMPAS 未搜到 ML 领域同名方法
 （websearch，2026-09-18）。acronym 按 `rhetoric_patterns.md` §1 只在 Abstract Move 4 和 Introduction P4
 各揭示一次，其余位置直接写 KOMPAS。
+
+### D19 设计选择的合并（待裁决）
+
+方法章现在有四个设计选择，篇幅与审稿人注意力只够讲三个。用户要求先弄清**学界对哪些已有共识**，
+这样正文就不必重复论证公认的部分，把空间留给真正属于我们的那一层。分析见
+`claude/method_novelty_scan_2026-09-19.md`（项目文档）与本次会话的结论摘要。
 
 ### 仍然悬着的两件事
 
