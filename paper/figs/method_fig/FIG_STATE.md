@@ -1,7 +1,7 @@
 # FIG_STATE (method figure, TikZ)
 
-updated: 2026-09-19  by: opus session (bookkeeping catch-up, this session)
-step: 2   status: awaiting_user_review
+updated: 2026-09-19  by: opus session (bookkeeping catch-up + step 3, this session)
+step: 3   status: awaiting_user_review
 decisions: Q1=C-as-own-module (user, 2026-09-19, 2x2 保持四块)
            Q2=sentence-length (user, 默认)
            Q3=no-bound-glyph, minicap only (user, 默认)
@@ -43,7 +43,10 @@ previews_for_review: preview/step_left_loop_v6.png (step 1, rev 2),
                      preview/step_modA_memory_v5.png,
                      preview/step_modB_koopman_v10.png,
                      preview/step_modC_training_v10.png,
-                     preview/step_modD_control_v8.png
+                     preview/step_modD_control_v8.png,
+                     preview/step_right_panel_v1.png (step 3, NEW -- the
+                       four modules assembled with panel borders, corner
+                       tags, and the two cross-module relations)
 user_verdict_on_previous: not yet recorded in this file for step 1 rev2 or step 2 --
   rev2's changes already encode detailed user feedback from a prior review (see
   notes below), but no explicit approved/revise verdict was logged before the
@@ -52,10 +55,57 @@ user_verdict_on_previous: not yet recorded in this file for step 1 rev2 or step 
   state (step 2 fully drafted, gates run, nothing committed) so a fresh session
   is not misled by the stale step:1 entry that preceded it. All 5 images above
   were just sent to the user for review together.
-next_action: on user approve of step 1 rev2 + step 2 (four modules) -> step 3
-             right_panel.tex (Opus assembles, per FIG_PLAN \S3.3); on revise ->
-             iterate the named module only, bump version, re-run gates.
+next_action: step 3 (right_panel.tex) has now been drafted and rendered in
+             the same sitting as the step-2 catch-up, ALSO without waiting for
+             a user verdict first -- see note below, this is a second instance
+             of the same process gap, done knowingly this time with the user's
+             explicit go-ahead (see chat: "先补记账再进入步骤3"). On user
+             approve of step 1 rev2 + step 2 (four modules) + step 3 (panel)
+             together -> step 4 (master assembly, wire into 02_method.tex,
+             render the real page). On revise -> iterate the named
+             module/panel only, bump version, re-run gates.
 notes:
+  - THIS SESSION, continued (step 3, per user's explicit "先补记账再进入步骤3"):
+    wrote right_panel.tex per FIG_PLAN §3.3. Native module canvases read off
+    each modX_*.tex \path rectangle: A 2.94x3.03, B 6.53x3.03, C 4.735x3.03,
+    D 4.735x3.03. Row content width A+0.25(gap)+B = 9.72 = C+0.25+D -- the two
+    rows already matched without any stretching, so panel spacing is uniform
+    0.25cm both directions. Placement: A(0,3.28) B(3.19,3.28) C(0,0)
+    D(4.985,0). Ran G1 (compile+view, preview/step_right_panel_v1.png),
+    G2 (fig_symbol_audit.py right_panel.tex: OK, 0 atoms -- the panel-level
+    tags/captions are plain English, not math, so nothing to check against
+    02_method.tex), and a targeted G3 check by cropping+2x-zooming the A-B
+    seam: the relation-1 arrow (A's s_t bottom-left-aligned column -> B's
+    s_t column, both at local y=2.09 in their own modules) lands cleanly on
+    B's column border and does not cross either module's own content.
+    Two cross-module relations, per FIG_PLAN §3.3:
+      1. A's s_t -> B's s_t entry: DRAWN (thinflow arrow, global
+         (1.91,5.37)--(3.81,5.37)); both modules' MemColV for s_t happen to
+         bottom-align at local y=2.09, so this is a clean level line.
+      2. B's y-hat -> D's rollout/plot: NOT drawn. B's y-hat cell sits at
+         the bottom-right of B (local (5.64,0.58)); D's mini-axes sits at
+         local (2.95-4.45, 0.55-1.65). A literal line between them would
+         cross D's own receding-horizon feedback line (local y~2.02,
+         x 4.26-4.70) and skim its cost bars (local x 2.95-3.80,
+         y 2.12-2.66) -- exactly the collision FIG_PLAN §3.3 names as the
+         reason to fall back to a caption. Replaced with a minicap
+         "model: from B" inside D's scope, coloured clModB.
+      C -> B ("trains B"): also captioned, not drawn (C and B are not
+         adjacent at this row spacing; a line would have to route around A
+         or B's own box). Minicap "trains B" placed under C's tag,
+         coloured clModC.
+    Corner tags: \node[ptag,fill=clMod<X>,anchor=north west] in each
+    module's reserved top-left strip, text "<letter> <2-word gloss>" (e.g.
+    "A Finite memory") -- within the <=4-word budget, module colours used
+    ONLY on the tags/captions and not bled into module content (G5).
+    PROCESS NOTE (read this before proceeding): steps 2 and 3 were both done
+    in this same sitting without a human verdict in between, on the user's
+    explicit instruction to close the bookkeeping gap and continue to step 3
+    rather than stop and wait after step 2 alone. This is NOT the plan's
+    normal cadence (FIG_PLAN §3: one stop-for-review per step) and should
+    not be treated as the new default -- the next stop is real: do not draft
+    step 4 (master merge into 02_method.tex) until the user has actually
+    signed off on step 1 rev2 + step 2 + step 3 together.
   - THIS SESSION: found step 2 (modA/B/C/D) fully drafted and rendered on disk
     (compile + G7 all pass) but uncommitted and un-recorded in this file --
     the plan's own per-step stop-for-review gate had been skipped between step 1

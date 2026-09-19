@@ -1,0 +1,51 @@
+% right_panel.tex — FIG_PLAN_2026-09-19 §3.3: assemble the four modules into
+% the right panel. Only positioning + panel borders + corner tags + the two
+% cross-module relations happen here; module internals are untouched.
+%
+% Native module canvases (read off each modX_*.tex \path rectangle):
+%   A 2.94 x 3.03   B 6.53 x 3.03   C 4.735 x 3.03   D 4.735 x 3.03
+% Row content width: A+0.25+B = 9.72 = C+0.25+D  (matches, no stretching
+% needed). Panel content height: 3.03+0.25+3.03 = 6.31.
+%
+% Placement (each module's own local (0,0) origin, in this panel's frame):
+%   A -> (0.00, 3.28)      B -> (3.19, 3.28)
+%   C -> (0.00, 0.00)      D -> (4.985, 0.00)
+
+\newcommand{\PanelBox}[3]{% #1=(x,y) origin  #2=width  #3=height
+  \path[panel] #1 rectangle ($#1+(#2,#3)$);
+}
+
+% ---- panel borders, drawn first so module content sits on top of them ----
+\PanelBox{(0.00,3.28)}{2.94}{3.03}
+\PanelBox{(3.19,3.28)}{6.53}{3.03}
+\PanelBox{(0.00,0.00)}{4.735}{3.03}
+\PanelBox{(4.985,0.00)}{4.735}{3.03}
+
+% ---- module content, each in its own shifted scope ----
+\begin{scope}[shift={(0.00,3.28)}]  \input{modA_memory}   \end{scope}
+\begin{scope}[shift={(3.19,3.28)}]  \input{modB_koopman}  \end{scope}
+\begin{scope}[shift={(0.00,0.00)}]  \input{modC_training} \end{scope}
+\begin{scope}[shift={(4.985,0.00)}] \input{modD_control}  \end{scope}
+
+% ---- corner tags, in each module's reserved top-left strip ----
+\node[ptag,fill=clModA,anchor=north west] at (0.06,6.28) {A~Finite memory};
+\node[ptag,fill=clModB,anchor=north west] at (3.25,6.28) {B~Koopman model};
+\node[ptag,fill=clModC,anchor=north west] at (0.06,3.00) {C~Offline learning};
+\node[ptag,fill=clModD,anchor=north west] at (5.045,3.00) {D~Predictive control};
+
+% ---- cross-module relation 1 (drawn): A's finite-memory state s_t is what
+% B's encoder takes in. Both modules place their MemColV for s_t bottom-
+% aligned at local y=2.09, so a level arrow across the 0.25cm gap reads
+% cleanly and does not cross either module's own content. ----
+\draw[thinflow] (1.91,5.37) -- (3.81,5.37);
+
+% ---- cross-module relation 2 (NOT drawn): B's predicted attribute feeds
+% D's rollout/plot conceptually, but a literal line from B's y-hat cell
+% (bottom-right of B) down to D's mini-axes would cross D's own receding-
+% horizon feedback line and skim its cost bars -- exactly the collision
+% case FIG_PLAN §3.3 anticipates. Per that fallback, use a minicap instead.
+\node[minicap,anchor=west,text=clModB] at (5.05,1.55) {model: from B};
+
+% ---- C trains B (caption instead of a line; the two panels are not
+% adjacent at this row spacing) ----
+\node[minicap,anchor=north west,text=clModC] at (0.06,2.88) {trains B};
