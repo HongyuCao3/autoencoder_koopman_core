@@ -8,8 +8,8 @@ current_target: (等用户签 contract)
 gates: sentence_gate=pass (02_method.tex)  mech_audit=fail 3 处副词 (留给 Phase 2)  compile=pass (build/main_phase0_2026-09-18.pdf)  evidence_check=pass (9 claims)
 cold_review: audit/contract_T1_2026-09-18.yaml — 3 blocker / 2 major / 4 minor，全部已 triage，见下
 user_verdict_on_previous: (Phase 0 是第一个阶段)
-next_action: 用户裁决 D19（四个设计选择如何并成三个）→ 重生成中文对照 → 签字 → Phase 1
-open_questions_for_user: (1) D19 合并方案；(2) c3 两列失利的机制解释是否要在 CP3b 之前查
+next_action: 用户通读 contract_zh_2026-09-19.md 并签字 → Phase 1（先为 Introduction 建 Tier 2，再派 Sonnet 生成 01_introduction.tex）
+open_questions_for_user: (1) contract 是否签字；(2) c3 两列失利的机制解释是否要在 CP3b 之前查
 
 ## 2026-09-19 第二轮修订（用户反馈七条）
 
@@ -18,13 +18,13 @@ open_questions_for_user: (1) D19 合并方案；(2) c3 两列失利的机制解�
 | 标题只强调建模，要用 dynamics modeling 且必须提 control | 标题与 acronym 展开同步改写 | D14 |
 | 控制线 claim 不需要更强，之后会同步数据 | 保持 scoped | D13 |
 | 叙事第一句"轨迹会漂"要给候选成因 | 改为"指令要和之后累积的每一轮竞争"；加 `prior_4` 与 `nc_9` | D15 |
-| 四个设计选择太多，只够讲三个 | **待裁决**，用户要求先做学界共识扫描 | D19 |
+| 四个设计选择太多，只够讲三个 | 共识扫描后：联合训练目标降进附录 A1；三个幸存 Why 段改成论证"实例化"而非论证机制 | D19 |
 | claim 改成先预测线再控制线 | 重排并重编号：c1–c4 预测、c5–c8 控制、c9 桥；实验章 03b 预测 / 03c 控制 | D17 |
 | 不声称的不要显式写进正文 | 全部改为 `mode: audit_only` + `candidate_explicit`；D3/D12 的点估计口径改挂 `c5.notes` / `c6.notes` | D16 |
 | 主表要两张不是三张 | Table 1 建模、Table 2 控制；小样本表明确标为附录 A2 | D18 |
 | 每个公式前要直觉、后要变量解释 | 新增 `tools/equation_gate.py`，接进 `mech_audit.sh` 第 2 关 | — |
 
-`contract_zh_2026-09-18.md` 已过期（claim 编号、标题、不声称语义都变了），D19 定了之后一次性重生成。
+中文对照已重生成为 `contract_zh_2026-09-19.md`，旧版 `contract_zh_2026-09-18.md` 已删除。
 
 ## equation_gate 对同事 Method 的实测
 
@@ -44,7 +44,7 @@ open_questions_for_user: (1) D19 合并方案；(2) c3 两列失利的机制解�
 | 0.1 | 归档旧负结果稿；建新目录布局；main.tex 重写；空壳编译 | ✅ d1bc477 |
 | 0.2 | `DECISIONS.md`、`WRITING_STATE.md` | ✅ 4b130aa |
 | 0.3 | 三个脚本；两张表生成并单独编译 | ✅ 4b130aa |
-| 0.4 | 重建 Tier-1 `contract.yaml`（9 claims / 4 design choices / 31 symbols / 14 equations / 5 mechanisms / 8 non-claims） | ✅ 本次 |
+| 0.4 | 重建 Tier-1 `contract.yaml`（9 claims / **3** design choices / 31 symbols / 14 equations / 5 mechanisms / **9** non-claims） | ✅ 2026-09-18，09-19 二修 |
 | 0.4b | Sonnet Tier-1 冷审 + Opus triage | ✅ 本次 |
 | 0.5 | 方法名 KOMPAS（D10） | ✅ 本次 |
 | 0.6 | 更新账本、commit、交用户签字 | ✅ 本次 |

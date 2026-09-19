@@ -42,7 +42,7 @@ narrative_arc:
 design_choice_lattice:
   - id: choice_1
     choice_name: "Finite-Memory Interaction State"
-    why_keyword: "a single attribute reading hides the trend that decides what the next instruction does, and a short window of past readings exposes level and direction without touching hidden activations"
+    why_keyword: "a window of past readings is the standard way to handle a partially observed system, so what this subsection has to justify is the quantity being windowed: a verifier's reading of a finished reply, which is the only signal a black-box caller can obtain and the only one the objective is stated in"
     equation_operation: "stack of the last L+1 attribute readings, with a selector row that reads the current one back out"
     equation_id: eq_memory_state
     rq_id: rq2a
@@ -51,11 +51,15 @@ design_choice_lattice:
     conclusion_takeaway_keyword: "a window of past readings, not the current one, is what makes the next step predictable"
     source: "code:src/koopman_ae/core.py"
     intuition_refs: [prior_1, ex_1, as_1]
-    notes: "The colleague's Method already carries the both-directions example; it is ex_1's single home."
+    notes: >-
+      The colleague's Method already carries the both-directions example; it is ex_1's single home.
+      D19 (2026-09-19): delay embedding itself is settled practice for partially observed systems,
+      so the Why-X argues the windowed quantity, not the windowing. See the consensus scan in the
+      project doc method_novelty_scan_2026-09-19.
 
   - id: choice_2
     choice_name: "Command-Conditioned Koopman Operator"
-    why_keyword: "the effect of an instruction has to be a readable parameter rather than a regression on text, and an affine latent transition makes multi-step lookahead a matrix power instead of another generation"
+    why_keyword: "an affine input column in a lifted space is standard control machinery, so what this subsection has to justify is that a natural-language instruction can carry a scalar command coordinate at all, which holds only because a fixed prompting protocol builds every prompt from that coordinate"
     equation_operation: "affine map of the encoded memory plus a command-scaled column and a bias"
     equation_id: eq_koopman_model
     rq_id: rq1
@@ -71,28 +75,14 @@ design_choice_lattice:
       because the control experiment is the only place the command varies and therefore
       the only place the channel does any work. No experiment isolates the command column
       against a no-command ablation on the prediction task, and nc_1 and nc_8 say so.
+      D19 (2026-09-19): rq2b now reads on this choice as a secondary test. The reported instance
+      is the linear special case, so the question "would a learned lifting do better" is a question
+      about this choice's instantiation; its ablation and the training objective both move to
+      appendix A1.
 
   - id: choice_3
-    choice_name: "Joint Reconstruction and Prediction Objective"
-    why_keyword: "the observable space has to stay informative about the memory state and has to support an affine one-step transition, so the objective carries a reconstruction term and a latent-consistency term, with an output-space prediction term tying the transition back to the quantity being read out"
-    equation_operation: "weighted sum of a reconstruction, a latent-consistency and a next-state prediction squared error"
-    equation_id: eq_training_objective
-    rq_id: rq2b
-    finding_keyword: "the learned lifting this objective trains does not improve on the identity lifting on any column with an interval excluding zero"
-    intro_bullet_keyword: "a joint training objective for the observable space, trained offline on recorded trajectories"
-    conclusion_takeaway_keyword: "the objective is what keeps the observable space informative, though the identity lifting already suffices here"
-    source: "code:src/koopman_ae/core.py"
-    intuition_refs: [as_2]
-    notes: >-
-      Honest tension: this choice's own ablation says the simpler member of the family is
-      enough. Story framework §8.1. Tier-1 cold review f5 (2026-09-18): the earlier
-      why_keyword asserted that all three loss terms are jointly necessary, which no
-      ablation in this paper tests. The rationale is now stated as a design argument; the
-      necessity claim moved to nc_7.
-
-  - id: choice_4
     choice_name: "Predictive Candidate Selection"
-    why_keyword: "scoring a candidate instruction by its predicted trajectory rather than its immediate effect is what removes overshoot, and doing the scoring in the latent space is what keeps the extra cost off the LLM"
+    why_keyword: "planning on a lifted linear predictor is standard model-predictive control, so what this subsection has to justify is scoring candidates without opening the model: they are compared on predicted readings alone, which is what lets the controller run against an interface that returns only text"
     equation_operation: "argmin over candidate commands of a horizon-weighted squared deviation from the target"
     equation_id: eq_selection
     rq_id: rq1
@@ -101,7 +91,11 @@ design_choice_lattice:
     conclusion_takeaway_keyword: "planning one instruction ahead in a learned latent space beats steering inside the network"
     source: "code:src/koopman_ae/core.py"
     intuition_refs: [prior_3, fx_1]   # as_3 removed: A10 forbids a contribution leaning on an untested assumption (cold review f4)
-    notes: "rq3 also reads on this choice, for the cost side."
+    notes: >-
+      rq3 also reads on this choice, for the cost side. D19 (2026-09-19): lifted-space MPC is
+      Korda and Mezic's result, so the Why-X argues the black-box constraint rather than the
+      planning machinery. This is also where the access asymmetry with TMPC and RE-Control is
+      turned into an advantage instead of being apologized for.
 
 claim_ledger:
   # --- Modeling line: what the operator predicts (self-built multi-turn tasks) ---
@@ -440,14 +434,16 @@ equation_lattice:
     label: "eq:training_transition"
     operation_name: "one-step latent prediction from an encoded state and the applied command"
     rhs_symbols: [s_K, s_E, s_B, s_c, s_b]
-    in_section: method
+    in_section: appendix   # D19: moved with the training objective
     has_gloss: true
     role: definition
   - id: eq_training_objective
     label: "eq:training_objective"
     operation_name: "weighted sum of a reconstruction, a latent-consistency and a next-state prediction squared error"
     rhs_symbols: [s_E, s_D, s_s]
-    in_section: method
+    in_section: appendix   # D19: no consensus in the literature on the loss composition and no
+                           # term ablation here, so it is estimator detail rather than a defended
+                           # design choice
     has_gloss: true
     role: mechanism_probe
   - id: eq_rollout
@@ -524,7 +520,7 @@ mechanism_lattice:
     supports_claim: [c2]
     appears_in_method: false
     appears_in_experiments: true
-    notes: "Kept out of Method: Rule 21 bans results-shaped reasoning there."
+    notes: "Kept out of Method: Rule 21 bans results-shaped reasoning there. D19: its design counterpart, the training objective, now lives in appendix A1."
   - id: m5
     mechanism: "On the seven attribute-tracking tasks the applied command is the tracking error itself, an exact affine function of the memory state, so the command column carries no information the state does not already carry and the prediction design cannot see an action effect at all."
     supports_claim: []
@@ -643,9 +639,14 @@ non_claim_ledger:
     candidate_explicit: [method, conclusion]
   - id: nc_7
     statement: "That each of the three terms in the training objective is necessary."
-    reason: "No term-removal ablation was run for this paper. The argument for the three terms is a design argument stated in the Method, not a measured one."
+    reason: >-
+      No term-removal ablation was run for this paper, and the literature has no settled loss
+      composition to fall back on (arXiv 2412.04578 states the loss functions and operator forms
+      vary widely). D19 therefore moves the objective to appendix A1: an undefended choice does not
+      get a Why-X in the main text. The reported instance is the linear special case, which does
+      not use the autoencoder at all.
     mode: audit_only
-    candidate_explicit: [method]
+    candidate_explicit: [appendix]
   - id: nc_8
     statement: "That the size of the command column has been measured against a no-command operator on the prediction tasks."
     reason: "See nc_1. The control results test whether selecting over commands helps; they do not decompose the operator."
