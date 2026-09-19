@@ -525,7 +525,7 @@ intuition_lattice:
       statement: "What a model wrote in the last few turns carries into what it writes next, so reply attributes have inertia rather than being drawn fresh each turn."
       borrowed_authority: [li2024instability, driftnomore2025, attractorstates2025]
       recorded_at: L3
-      source: "story_framework_2026-09-18.md#2.1; supported in-repo by the last-turn row beating the stateless row on 6 of 7 columns"
+      source: "story_framework_2026-09-18.md#2.1; supported in-repo by the last-turn row beating the stateless row on 10 of 11 columns, all 7 of the main-text columns among them (the one exception is average word length, -0.018)"
     - id: prior_2
       statement: "In deployment the only lever a caller holds is the text it sends, because the weights and the activations belong to someone else."
       borrowed_authority: []
