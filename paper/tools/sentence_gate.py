@@ -25,6 +25,9 @@ STRIP_ENVS = [
     "equation", "equation*", "align", "align*", "aligned", "gather", "gather*",
     "table", "table*", "tabular", "figure", "figure*", "itemize", "enumerate",
     "abstract", "displaymath",
+    # D34: pseudocode lines are not prose sentences. Rule 21's result-number grep in
+    # mech_audit.sh still covers the block; this gate stops counting \STATE lines as sentences.
+    "algorithm", "algorithm*", "algorithmic",
 ]
 
 
@@ -62,6 +65,10 @@ def strip_latex(text):
         # Section titles are labels, not prose sentences: drop them whole, and leave a
         # boundary behind so the title's words never join the first body sentence.
         line = re.sub(r"\\(section|subsection|subsubsection)\*?\{[^}]*\}", " . ", line)
+        # D34: a theorem environment's optional title is a label, not a prose sentence, and the
+        # environment boundary is a sentence boundary the same way a section title is.
+        line = re.sub(r"\\begin\{(proposition|lemma|theorem)\}(\[[^\]]*\])?", " . ", line)
+        line = re.sub(r"\\end\{(proposition|lemma|theorem)\}", " . ", line)
         # \paragraph{Why X.} is a prose lead-in: keep its text, drop the command.
         line = re.sub(r"\\paragraph\*?\{", " ", line)
         # Any remaining command: drop the command name, keep braces content.

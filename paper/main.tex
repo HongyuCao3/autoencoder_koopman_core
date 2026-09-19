@@ -17,6 +17,17 @@
 % Rule 18's Q&A bookend underlines the answer; normalem keeps \emph italic rather than underlined.
 \usepackage[normalem]{ulem}
 
+% D34 (2026-09-19): Algorithm 1 in Method 3.3 and Proposition 1 in Method 3.4.
+% iclr2027_conference.sty declares no theorem environment, so amsthm supplies one here.
+% This TeX installation ships no algorithm.sty or algorithmic.sty, so the float is declared
+% here with float.sty and Algorithm 1's body is a numbered list. Nothing downstream depends on
+% the algorithmicx macros.
+\usepackage{float}
+\newfloat{algorithm}{tb}{loa}
+\floatname{algorithm}{Algorithm}
+\usepackage{amsthm}
+\newtheorem{proposition}{Proposition}
+
 % Authors must not appear in the submitted version (ICLR double-blind); keep hidden as long as
 % \iclrfinalcopy stays commented out.
 %\iclrfinalcopy
@@ -47,6 +58,7 @@
 \input{sections/appendix/A3_window.tex}
 \input{sections/appendix/A4_equal_cost.tex}
 \input{sections/appendix/A5_onestep.tex}
+\input{sections/appendix/A6_selection_bound.tex}
 
 \bibliographystyle{iclr2027_conference}
 \bibliography{main}

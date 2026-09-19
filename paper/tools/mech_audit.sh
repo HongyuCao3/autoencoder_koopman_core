@@ -92,6 +92,55 @@ sys.exit(1 if bad else 0)
 PY
 fi
 
+banner "8. banned terminology (D29)"
+# D22 removed the alignment framing; D29 makes the rest of that vocabulary mechanical.
+# Replacements: test-time -> inference-time / during control; intervention -> instruction (prose)
+# or input (control-theoretic context); alignment cost -> tracking cost.
+# \begin{aligned} is a math environment, not the word; Related Work naming someone else's work
+# keeps its term by declaring it on the same line:
+#   % GATE-EXEMPT: term <word> -- <reason>
+TERMS='(test-time|test time|intervention|alignment cost|\balign(ed|ment)?\b)'
+if grep -nEi "$TERMS" "${FILES[@]}" \
+    | grep -v 'GATE-EXEMPT: term' \
+    | grep -vE '\\(begin|end)\{aligned\}' ; then
+  echo "FAIL: banned term (D29). test-time -> inference-time; intervention -> instruction/input;"
+  echo "      alignment -> tracking. To keep one, append on the same line:"
+  echo "      % GATE-EXEMPT: term <word> -- <reason>"
+  FAIL=1
+else
+  echo "PASS"
+fi
+
+if [ ${#METHOD_FILES[@]} -gt 0 ]; then
+  banner "9. lifting gloss (D33)"
+  # Coarse screen only. Whether the paragraph actually lands is decided by the cold review's
+  # targeted question (3); this checks that it exists, names the identity instance, carries an
+  # analogy, and stays free of display math (one inline symbol is allowed).
+  python3 - "${METHOD_FILES[@]}" <<'LIFT' || FAIL=1
+import re, sys
+bad = 0
+for path in sys.argv[1:]:
+    text = open(path, encoding='utf-8').read()
+    paras = re.split(r'\n\s*\n', text)
+    hits = [p for p in paras if re.search(r'\blifting\b', p, re.I)]
+    if not hits:
+        continue                      # no lifting mentioned: nothing to gloss
+    first = hits[0]
+    missing = []
+    if not re.search(r'\bidentity\b', first, re.I):
+        missing.append('the identity instance')
+    if not re.search(r'\bpendulum\b|\bfeature', first, re.I):
+        missing.append('an analogy (pendulum, or feature choice)')
+    if first.count('$') > 2:
+        missing.append('at most one inline symbol, no display math')
+    if missing:
+        print("  %s: D33 lifting gloss missing %s" % (path, "; ".join(missing)))
+        bad += 1
+print("FAIL: the first paragraph mentioning a lifting must gloss it (D33)." if bad else "PASS")
+sys.exit(1 if bad else 0)
+LIFT
+fi
+
 banner "result"
 if [ "$FAIL" -eq 0 ]; then
   echo "mech_audit: PASS — file may be compiled and sent to cold review."

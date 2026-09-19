@@ -3,13 +3,13 @@
 \label{sec:exp_analysis}
 
 \textbf{Question.} (RQ4) Does prediction quality translate into control quality, and at what inference cost does the controller evaluate a candidate?
-\textbf{Setup.} Setup follows \S\ref{sec:exp_setup}; the derivation is the selection bound of \S\ref{sec:analysis}, not repeated here.
+\textbf{Setup.} Setup follows \S\ref{sec:exp_setup}; the derivation is the selection bound of \S\ref{sec:guarantee}, not repeated here.
 
-\textbf{Findings, the bound.} The selection bound of \S\ref{sec:analysis} explains why more accurate rollouts keep the selected command's cost within twice the best achievable estimation error.  % c9
+\textbf{Findings, the bound.} The selection bound of \S\ref{sec:guarantee} explains why more accurate rollouts keep the selected command's cost within twice the best achievable estimation error.  % c9
 This bound is theoretical, not measured, and no new number is reported here.  % c9 strength_basis: theoretical
 It covers one held-command comparison at a single step, and says nothing about the cost of the replanned closed loop.  % c9 notes
 
-\textbf{Findings, the cost argument.} Evaluating a candidate costs one latent propagation and a decode through the closed-form rollout of \S\ref{sec:control}, adding no query to the target model.  % c8
+\textbf{Findings, the cost argument.} Evaluating a candidate costs one latent propagation and a decode through the closed-form rollout of \S\ref{sec:controller}, adding no query to the target model.  % c8
 The driver is that the affine transition and the scalar command column collapse an $h$-step lookahead into a matrix power.  % m2
 This is a structural property of the model and needs no measurement.  % c8 notes
 

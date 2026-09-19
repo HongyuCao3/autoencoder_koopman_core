@@ -1,43 +1,40 @@
+% Phase R1 (CP2-redo). Rewritten 2026-09-19 against WRITING_PLAN_2026-09-19.md v2.1 §5.2 and the
+% rebuilt semantic.md §Method. Subsections are cut by component (model / learning / controller /
+% guarantee), not one per design choice (D25). Equations are reused from the colleague's
+% 3-method.tex; the outline, the opening and the Why paragraphs are not (D25).
 \section{Method}
+\label{sec:method}
 
-We formulate multi-turn attribute tracking as feedback control over
-the observable attributes of a frozen LLM.
-Figure~\ref{fig:placeholder} shows four pipeline stages, from a
-finite-memory state built out of recent attribute readings to a
-command-conditioned latent prediction of the next reading. A scoring
-step ranks candidate commands, and execution of the chosen command is
-followed by replanning. The LLM parameters remain fixed throughout;
-only the external dynamics model is learned offline.
+A prompt and the reply it draws form one step of a dynamical system, and that
+step is the clock used here. On a short window of verifier readings we
+identify a command-conditioned Koopman dynamics model of that step. The model
+then ranks candidate instructions before any of them is sent. The parameters
+of $p_{\theta}$ never change, and the dynamics model is fit offline.
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.95\linewidth]{figs/method.png}
-    \caption{The four pipeline stages: finite-memory state
-    construction, command-conditioned latent prediction, candidate
-    scoring, and execution with replanning.}
+    \caption{The modeling half builds a finite-memory state from recent
+    attribute readings and fits a command-conditioned transition on it. The
+    control half scores candidate commands on their predicted trajectories,
+    sends the best one, and plans again from the reading that comes back.}
     \label{fig:placeholder}
 \end{figure}
 
-\subsection{Finite-Memory Interaction State}
-\label{sec:memory_state}
+\subsection{A Koopman Dynamics Model of Prompt--Response Interaction}
+\label{sec:model}
 
-For example, the same sentence length can occur while successive
-revisions are becoming longer or while they are becoming shorter. A
-single reading is therefore consistent with two opposite trends, so a
-memoryless rule issues the same command in both cases even when the
-next step differs. \textbf{Why a Verifier's Reading.} A window over past
-readings is the standard fix for a partially observed system, so the
-open question is which quantity gets windowed rather than whether to
-window at all. A black-box caller obtains only a verifier's reading of
-a finished reply, never a hidden activation, and the control objective
-is stated in terms of that same reading. \uline{The state is built only
-from what a verifier can read off a finished reply, the one signal
-available to a black-box caller.}
+Three things decide the next reading. Part of it is carried forward by what
+the recent turns have said. Part of it is pushed by the instruction issued
+now. The rest is an offset the task holds fixed across the conversation. The
+model below is the plainest map that keeps these three parts apart.
 
-Stacking the last several readings exposes both the current level and
-its recent trend, closing the gap the opening example illustrates. We
-represent the interaction using a finite window of attribute
-observations,
+A single reading cannot say which way the conversation is moving. The same
+sentence length can occur while successive revisions are becoming longer or
+while they are becoming shorter. A memoryless rule issues the same command in
+both situations, and the next step differs. Stacking the last several readings
+separates the two, since the stack shows a level and a direction of travel. We
+therefore represent the interaction by a finite window of attribute readings,
 \begin{equation}
     s_t=
     \begin{bmatrix}
@@ -49,50 +46,18 @@ observations,
     \label{eq:memory_state}
 \end{equation}
 Here $y_t$ is the measured attribute at step $t$
-(Section~\ref{sec:problem_modeling}), $L\geq 1$ is the number of
-previous observations retained, and $C=[1,0,\ldots,0]$ selects the
-current attribute from the stack. The vector $s_t$ is the memory state
-used throughout the rest of the paper.
-A short window of recent readings is assumed to carry enough of the
-conversation to predict the next reading. It is an approximation to the
-information needed for prediction, not an exact reconstruction of the
-full dialogue state.
+(Section~\ref{sec:problem_modeling}), $L\geq 1$ is the number of earlier
+readings retained, and $C=[1,0,\ldots,0]$ reads the current attribute back out
+of the stack. The vector $s_t$ is the memory state used in the rest of the
+paper. A window of this kind is assumed to carry enough of the conversation to
+predict the next reading. That is an approximation to the information
+prediction needs, not a reconstruction of the dialogue state, and the
+prediction experiments test it.
 
-This memory state requires no access to hidden activations, only the
-sequence of past verifier readings. It is what the operator introduced
-next takes as its input.
-
-\subsection{Command-Conditioned Koopman Operator}
-\label{sec:koopman_operator}
-
-\textbf{Why a Natural-Language Instruction Can Carry a Command
-Coordinate.} An affine input column in a lifted space is standard
-control machinery, so the open question is whether a natural-language
-instruction can carry a scalar command coordinate at all. It can,
-because the prompting protocol builds every prompt from that same
-coordinate rather than from unconstrained text. The coordinate is
-therefore a property of the protocol generating the instruction, not of
-the instruction's surface wording. \uline{An instruction carries a
-command coordinate only because the protocol generating it is built
-from that coordinate in the first place.}
-
-We make this concrete with a command-conditioned prompting protocol
-\begin{equation}
-    u_t=\mathcal{P}(x,\mathcal{H}_t,c_t),
-    \qquad
-    c_t\in\mathcal{C}\subseteq\mathbb{R},
-    \label{eq:prompt_protocol}
-\end{equation}
-Here $\mathcal{H}_t$ is the dialogue history from
-Section~\ref{sec:problem_modeling}. $\mathcal{P}$ constructs a prompt
-from a numerical command $c_t$ and that history, and $\mathcal{C}$ is
-the range of admissible commands from which every candidate is later
-drawn.
-
-Before approximating anything, the population object is the conditional
-expectation of an observable one step ahead, given the state and the
-command. Define the command-conditioned Koopman operator acting on an
-observable $f$ by
+Before any approximation there is a population object to approximate. It is
+the expected value of an observable one step ahead, given the current state
+and the applied command. We write the command-conditioned Koopman operator
+acting on an observable $f$ as
 \begin{equation}
     (\mathcal{K}_{c}f)(s)
     =
@@ -102,113 +67,166 @@ observable $f$ by
     \right].
     \label{eq:koopman_operator}
 \end{equation}
-Here $\mathcal{K}_{c}$ is the command-conditioned Koopman operator on
-observables, and any learned model below is a finite-dimensional
-approximation of it. The operator is linear in $f$, although the
-underlying prompt-response dynamics can be nonlinear.
+Here $\mathcal{K}_{c}$ is that operator, and it is linear in the observable
+$f$ even where the prompt-response dynamics are not. The delay coordinates
+stacked in $s_t$ are themselves a dictionary of observables. The affine model
+stated below is the finite-dimensional approximation of $\mathcal{K}_{c}$ on
+that dictionary.
+% CITE: arbabi2017hankel, korda2018mpc
 
-Approximating this operator in a learned, low-dimensional observable
-space needs a map into that space, an affine step inside it, and a map
-back out. We use an encoder $E_{\phi}$ and a decoder $D_{\psi}$:
+A command coordinate is available to the model because the prompt is built
+from one. We fix a prompting protocol and draw every instruction from it,
 \begin{equation}
-    \begin{aligned}
-        \xi_t
-        &= E_{\phi}(s_t),
-        & \xi_t &\in\mathbb{R}^{d_{\xi}},\\
-        \widehat{\xi}_{t+1}
-        &= K\xi_t+B c_t+b,\\
-        \widehat{s}_{t+1}
-        &= D_{\psi}(\widehat{\xi}_{t+1}),
-        & \widehat{y}_{t+1}
-        &= C\widehat{s}_{t+1}.
-    \end{aligned}
+    u_t=\mathcal{P}(x,\mathcal{H}_t,c_t),
+    \qquad
+    c_t\in\mathcal{C}\subseteq\mathbb{R},
+    \label{eq:prompt_protocol}
+\end{equation}
+Here $\mathcal{P}$ builds a prompt from the task input $x$, the dialogue
+history $\mathcal{H}_t$ of Section~\ref{sec:problem_modeling} and a numerical
+command $c_t$, and $\mathcal{C}$ is the range of admissible commands. The
+coordinate is a property of the protocol that generates the instruction,
+rather than of the instruction's surface wording. The treatment therefore
+covers instructions from this protocol, not text inputs with an unspecified
+encoding.
+
+With a state and a command coordinate in place, the three-part map of the
+opening paragraph has one plain form,
+\begin{equation}
+    \widehat{s}_{t+1}
+    =
+    K s_t+B c_t+b,
+    \qquad
+    \widehat{y}_{t+1}
+    =
+    C\widehat{s}_{t+1}.
     \label{eq:koopman_model}
 \end{equation}
-Here $\xi_t$ is the encoded memory state, the space in which the
-affine step and the later rollout operate.
-$K\in\mathbb{R}^{d_{\xi}\times d_{\xi}}$ describes latent evolution,
-$B\in\mathbb{R}^{d_{\xi}\times 1}$ describes command dependence, and
-$b\in\mathbb{R}^{d_{\xi}}$ is a bias. We write
-$g_{\psi}=C\circ D_{\psi}$ for the attribute readout.
+Here $K\in\mathbb{R}^{(L+1)\times(L+1)}$ carries the window forward,
+$B\in\mathbb{R}^{(L+1)\times 1}$ is the column through which one unit of
+command acts, and $b\in\mathbb{R}^{L+1}$ is a bias. Two restrictions are imposed
+here by choice. One transition is shared by all commands, and the command
+enters through one column. Neither follows from the operator being linear, and
+no exact finite-dimensional Koopman representation of $p_{\theta}$ is assumed.
 
-The shared $K$ and the affine command dependence are modeling
-restrictions, rather than consequences of the operator's linearity. In
-particular, we do not assume an exact finite-dimensional Koopman
-representation of the LLM. Moreover, $g_{\psi}$ need not be linear, so
-linear latent dynamics do not imply a linear map from latent states to
-output attributes.
+One generalization is worth naming, since a Koopman model is often written on
+features of the state rather than on the state itself. A lifting is a change of
+coordinates. The same affine step is written on learned features
+$E_{\phi}(s_t)$ of the window instead of on the window, and a decoder maps
+those features back. One reason to reach
+for one is familiar from regression: the right features let a straight line
+fit a curved relation. A curved one-step map behaves the same way. This
+paper reports the identity lifting, which leaves the model written on the
+readings themselves; the learned variant is kept as a comparison row and is
+trained as in Appendix~\ref{app:A1_estimator}. A reading here is one scalar
+and the window is short, which leaves learned features little extra structure
+to expose.
 
-The encoder and decoder need not do any work at all. One member of this
-family sets $E_{\phi}$ and $D_{\psi}$ to the identity, so the operator
-acts on the raw memory state $s_t$ with no learned lifting. This
-linear, delay-embedded case is the instance this paper examines, and it
-keeps the same affine transition and command column as the general
-form.
+\textbf{Why a Linear Operator on a Short Window Can Carry Multi-Turn
+Dynamics.} Written out, the reported instance is a delay regression with an
+exogenous input, and a reader is entitled to ask what the operator view adds.
+One thing it adds belongs to that view alone. The operator acts on
+observables, so a learned lifting is a change of dictionary inside one model
+rather than a second model. The linear instance is that same dictionary, left
+as it is. Two further properties this section leans on come with any affine
+state-space form: the multi-step forecast has a closed form, and a planner can
+consume that forecast. \uline{The operator view buys no accuracy of its own,
+and it is what puts the raw window, the learned features and the planner into
+one family.}
 
-The operator, and any learned lifting, is fit offline on recorded
-transitions built from overlapping history windows, held fixed during
-test-time control, with its training objective in
-Appendix~\ref{app:A1_estimator}.
+\subsection{Learning the Model from Interaction Data}
+\label{sec:learning}
 
-\subsection{Predictive Candidate Selection}
-\label{sec:control}
+The training data is a set of recorded transitions. Each window of $L+1$
+readings supplies one state, and sliding the window by one step supplies the
+next transition. The command label of a transition is the command applied
+before the successor reading. For a trajectory recorded under one fixed
+requested target, that target labels every step of the trajectory.
 
-\textbf{Why Scoring Happens Without Opening the Model.} Planning on a
-lifted linear predictor is standard model-predictive control, so the
-open question is how a candidate gets scored without opening the model
-that would otherwise generate it. Each candidate is compared only on
-the reply attributes it is predicted to produce, never on any quantity
-internal to the model. This is what lets the controller run against an
-interface that returns text alone. \uline{A candidate is judged only by
-the reply attributes it is predicted to produce, never by anything
-inside the model that would produce them.}
+In the reported instance the unknowns are the transition, the command column
+and the bias. All three enter the next-step prediction linearly, which makes
+fitting them to the recorded transitions a least-squares problem,
+\begin{equation}
+    (\widehat{K},\widehat{B},\widehat{b})
+    =
+    \operatorname*{arg\,min}_{K,B,b}
+    \sum_{t}
+    \bigl\|
+        s_{t+1}-(K s_t+B c_t+b)
+    \bigr\|_2^2 .
+    \label{eq:identification}
+\end{equation}
+The sum runs over every transition $(s_t,c_t,s_{t+1})$ that the overlapping
+windows of the training trajectories supply, with $s_{t+1}$ the recorded
+successor state. The problem admits a closed-form solution. For the window
+lengths used here the unknown entries number in the tens, which keeps the
+count of unknowns small next to the count of recorded transitions.
 
-At each iteration, let $\mathcal{C}_t\subseteq\mathcal{C}$ be a
-nonempty finite set of admissible candidate commands. Evaluating a
-candidate needs only holding its command fixed over a lookahead and
-propagating the encoded state forward, with no further generation from
-the frozen model. We hold each candidate's command fixed over a
-prediction horizon of $H$ interactions, truncated to the remaining
-interaction budget, and propagate the state starting from the current
-observed memory:
+What the training trajectories cover decides where the fitted model can be
+trusted. Accurate prediction on trajectories with a fixed command does not by
+itself establish accuracy after a command changes. The reliable range at
+inference time is therefore set by the command-history pairs the training
+trajectories contain.
+
+The learned-lifting variant replaces the identity map with an encoder and fits
+it together with the transition under a three-term objective.
+Appendix~\ref{app:A1_estimator} states that objective; what a lifting is was
+said above.
+
+\subsection{Predictive Instruction Selection with Replanning}
+\label{sec:controller}
+
+\textbf{Why Scoring Happens Without Opening the Model.} A candidate has to be
+judged before it is sent, and the judge cannot look inside the model that
+would answer it. The score therefore reads only the attributes a candidate is
+predicted to produce. Nothing internal to the generator enters the comparison,
+and nothing beyond one instruction is asked of the interface. \uline{A
+candidate is judged only by the reply attributes it is predicted to produce,
+never by anything inside the model that would produce them.}
+
+Evaluating a candidate means holding its command fixed over a lookahead and
+rolling the state forward, with no further generation from the frozen model.
+Let $\mathcal{C}_t\subseteq\mathcal{C}$ be the finite nonempty candidate set
+at step $t$, and let the rollout start from the observed window,
 \begin{equation}
     \begin{aligned}
-        \widehat{\xi}_{t\mid t}(c)
-        &= E_{\phi}(s_t),\\
-        \widehat{\xi}_{t+h\mid t}(c)
+        \widehat{s}_{t\mid t}(c)
+        &= s_t,\\
+        \widehat{s}_{t+h\mid t}(c)
         &=
-        K\widehat{\xi}_{t+h-1\mid t}(c)+Bc+b,\\
+        K\widehat{s}_{t+h-1\mid t}(c)+Bc+b,\\
         \widehat{y}_{t+h\mid t}(c)
         &=
-        g_{\psi}\!\left(
-            \widehat{\xi}_{t+h\mid t}(c)
-        \right),
+        C\widehat{s}_{t+h\mid t}(c),
         \qquad h=1,\ldots,H.
     \end{aligned}
     \label{eq:rollout}
 \end{equation}
-Here $\mathcal{C}_t$ is the admissible candidate set at step $t$, and
-$H$ is the prediction horizon in interactions.
+Here $\mathcal{C}_t$ is the candidate set the controller ranks at this step,
+and $H$ is the prediction horizon in interactions, truncated to the remaining
+interaction budget. What that set holds is a property of the task rather than
+of the controller: a finite list of admissible command values, fixed before
+the loop begins.
+% TODO(data): the per-benchmark candidate lists are part of the colleague's control setup and
+% are reported with the experiments, not here.
 
-Because the latent transition is affine and the command enters as one
-column, propagating several steps ahead collapses into a matrix power
-rather than a step-by-step loop. The latent trajectory has the explicit
-form
+An affine transition with the command in one column turns an $h$-step
+lookahead into a matrix power. The rollout then has the explicit form
 \begin{equation}
-    \widehat{\xi}_{t+h\mid t}(c)
+    \widehat{s}_{t+h\mid t}(c)
     =
-    K^h E_{\phi}(s_t)
+    K^h s_t
     +
     \sum_{j=0}^{h-1}K^j(Bc+b).
     \label{eq:closed_form_rollout}
 \end{equation}
-Candidate evaluation therefore costs a latent propagation and a decode,
-not another query to the target LLM.
+Evaluating one candidate costs a matrix product and a readout. It adds no
+query to $p_{\theta}$, whatever the size of the candidate set.
 
-Scoring a candidate on its whole predicted trajectory, rather than its
-immediate effect, lets the controller pick a command that differs from
-the target while the attribute is still moving. We score each candidate
-using its predicted trajectory's deviation from the desired attribute:
+A candidate is scored on its whole predicted trajectory, not on its immediate
+effect. That lets the controller issue a command different from the target
+while the attribute is still moving. Each candidate is scored by its predicted
+deviation from the desired attribute,
 \begin{equation}
     \begin{aligned}
         \widehat{J}_t(c)
@@ -225,119 +243,80 @@ using its predicted trajectory's deviation from the desired attribute:
     \end{aligned}
     \label{eq:selection}
 \end{equation}
-Here $w_h$ weights the deviation at horizon step $h$, and
-$\widehat{J}_t$ is the predicted cost of holding a candidate command
-over the horizon.
+Here $w_h$ is the weight on the deviation $h$ steps ahead. The quantity
+$\widehat{J}_t$ is the predicted cost of holding one command over the horizon,
+and $c_t^{\star}$ is the command that minimizes it.
 
-The controller executes only the next intervention
-$u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^{\star})$. After receiving
-$o_{t+1}$, it evaluates $y_{t+1}=V(o_{t+1})$, shifts the memory window,
-and repeats the optimization from actual observations rather than a
-previously predicted memory. The constant-command assumption applies
-only within a hypothetical rollout; the executed command can change at
-every real interaction. Candidate simulation adds no target-LLM
-queries, although any cost of constructing candidates or evaluating
-responses still counts toward the inference budget.
+\begin{algorithm}[ht]
+\caption{The receding-horizon loop that runs at inference time. Inputs: the frozen
+$p_{\theta}$, the fitted $(K,B,b)$, the protocol $\mathcal{P}$, the reference $r$, the horizon
+$H$, and an interaction budget $T$.}
+\label{alg:loop}
+\begin{enumerate}
+    \item Read the attribute $y_t=V(o_t)$ of the reply in hand.
+    \item Shift $y_t$ into the window to form the state $s_t$.
+    \item For each candidate $c\in\mathcal{C}_t$, roll $s_t$ forward over $H$ steps by
+          \eqref{eq:closed_form_rollout} and score $\widehat{J}_t(c)$.
+    \item Take $c_t^{\star}\in\operatorname*{arg\,min}_{c\in\mathcal{C}_t}\widehat{J}_t(c)$.
+    \item Send $u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^{\star})$ and receive the reply $o_{t+1}$.
+    \item Return to step 1 until the budget $T$ is spent.
+\end{enumerate}
+\end{algorithm}
 
-Accurate prediction on fixed-command training trajectories alone does
-not establish accuracy after command changes. Control additionally
-depends on coverage of the command-history pairs encountered at
-inference time.
+The controller executes the first step of a plan and no more of it. The new
+reading, not a predicted one, is what the next plan starts from. A command
+held constant belongs to the hypothetical rollout, never to the executed
+sequence. Candidate simulation adds no query to the target model, and building
+candidates and reading replies still count against the interaction budget.
 
-\subsection{Prediction Error and Intervention Selection}
-\label{sec:analysis}
+\subsection{What Prediction Accuracy Buys}
+\label{sec:guarantee}
 
-\textbf{What does predictive accuracy buy for the command that gets
-selected?} We give a conditional analysis connecting predictive
-accuracy to the quality of candidate selection. For a candidate $c$,
-let $s_h^c$ and $y_h^c$ denote the actual memory state and attribute
-after $h$ further interactions that repeatedly apply $c$ from the
-current state. Define $\xi_h^c=E_{\phi}(s_h^c)$, with $s_0^c=s_t$.
-
-Suppose that, uniformly over the candidate rollouts,  % GATE-EXEMPT: adverb uniformly -- mathematical quantifier over the rollout index, not an intensifier
-\begin{equation}
-    \begin{aligned}
-        \xi_{h+1}^c
-        &=K\xi_h^c+Bc+b+\eta_h^c,
-        &
-        \|\eta_h^c\|_2
-        &\leq\varepsilon_{\mathrm{dyn}},\\
-        y_h^c
-        &=g_{\psi}(\xi_h^c)+\nu_h^c,
-        &
-        |\nu_h^c|
-        &\leq\varepsilon_{\mathrm{rec}}.
-    \end{aligned}
-    \label{eq:residual_assumptions}
-\end{equation}
-The bound $\varepsilon_{\mathrm{dyn}}$ limits the one-step latent
-residual, and $\varepsilon_{\mathrm{rec}}$ limits the residual left in
-the readout itself. These residuals include imperfect finite-memory
-closure, model approximation, and generation variability. Assume
-further that $\|K\|_2\leq\kappa$ and that $g_{\psi}$ is $L_g$-Lipschitz
-on the relevant latent region. For stochastic generation, the
-results below hold on the event that these residual conditions are met.
-
-Because the predicted and actual latent rollouts start from the same
-encoding, their gap grows only through the accumulated one-step
-residual carried through the readout.
+An accurate model is worth having because it makes the selected command hard
+to improve on in hindsight. For a candidate $c$, let $y_h^c$ be the attribute
+reached after $h$ interactions that hold $c$. Let
+$J_t(c)=\sum_{h=1}^{H}w_h|y_h^c-r|^2$ be the cost those readings incur. The
+next statement bounds the gap between that cost and the smallest one on
+offer.
+\begin{proposition}[Selection error under bounded residuals]
+\label{prop:selection}
+Suppose that over the candidate rollouts the one-step state residual stays
+below $\varepsilon_{\mathrm{dyn}}$ and the readout residual stays below
+$\varepsilon_{\mathrm{rec}}$. Suppose the readout does not amplify small state
+differences without bound. Then
 \begin{equation}
     \left|
         y_h^c-\widehat{y}_{t+h\mid t}(c)
     \right|
     \leq
-    \varepsilon_{\mathrm{rec}}
-    +
-    L_g\varepsilon_{\mathrm{dyn}}
-    \sum_{j=0}^{h-1}\kappa^j
-    \;\triangleq\;\Delta_h.
+    \Delta_h,
+    \qquad h=1,\ldots,H,
     \label{eq:prediction_bound}
 \end{equation}
-Here $\Delta_h$ is the resulting $h$-step attribute prediction error
-bound, and it trades off against the horizon $H$: a longer horizon
-covers more distant consequences but needs accurate dynamics over more
-steps. If $\kappa<1$ the geometric sum is bounded by $1/(1-\kappa)$,
-and no such contraction is assumed for the learned model. The gap
-between a candidate's actual held-command cost
-$J_t(c)=\sum_{h=1}^{H}w_h|y_h^c-r|^2$ and its predicted counterpart
-$\widehat{J}_t(c)$ accumulates only through this same per-step error.
-Let $R$ bound how far any attribute, actual or predicted, sits from the
-target across candidates and prediction steps.
+and the selected command satisfies
 \begin{equation}
-    \left|
-        J_t(c)-\widehat{J}_t(c)
-    \right|
+    J_t(c_t^{\star})
     \leq
-    2R\sum_{h=1}^{H}w_h\Delta_h
-    \;\triangleq\;\delta_J.
-    \label{eq:cost_bound}
-\end{equation}
-Here $\delta_J$ bounds the gap between the predicted and actual
-held-command cost.
-
-Let
-$c_t^{\mathrm{opt}}\in\operatorname*{arg\,min}_{c\in\mathcal{C}_t}J_t(c)$.
-Applying the cost bound twice around the definition of $c_t^{\star}$
-gives
-\begin{equation}
-    \begin{aligned}
-        J_t(c_t^{\star})
-        &\leq
-        \widehat{J}_t(c_t^{\star})+\delta_J\\
-        &\leq
-        \widehat{J}_t(c_t^{\mathrm{opt}})+\delta_J\\
-        &\leq
-        \min_{c\in\mathcal{C}_t}J_t(c)+2\delta_J.
-    \end{aligned}
+    \min_{c\in\mathcal{C}_t}J_t(c)+2\delta_J.
     \label{eq:selection_bound}
 \end{equation}
-This places the selected command's actual cost within twice the best
-candidate's cost-estimation error, for the current held-command
-comparison rather than the cumulative cost of the replanned closed
-loop. It does not guarantee that the candidate set contains an
-intervention able to reach $r$, nor that the closed loop converges.
-Re-observation resets the rollout's initial latent error, but it does
-not eliminate model mismatch or guarantee exact target tracking.
-\uline{Predictions that stay accurate across the rollout keep the
-selected candidate's cost within twice the best achievable estimation
-error, for this one held-command comparison.}
+\end{proposition}
+Here $\Delta_h$ is the $h$-step attribute error bound, which accumulates the
+one-step residual $\varepsilon_{\mathrm{dyn}}$ over $h$ steps and adds the
+readout residual $\varepsilon_{\mathrm{rec}}$. The quantity $\delta_J$
+accumulates $\Delta_h$ over the horizon weights and bounds the gap between a
+candidate's predicted and actual held-command cost.
+Appendix~\ref{app:A6_selection_bound} gives both in closed form.
+
+The proof is two short steps. Predicted and actual rollouts start from the
+same window, so their gap grows only through the accumulated one-step
+residual. Applying the cost bound on either side of the minimizing choice
+gives the factor of two.
+
+The statement compares candidates under one held command. It does not promise
+that $\mathcal{C}_t$ holds a command able to reach $r$, and it does not
+promise that the replanned loop converges. Re-observation resets the initial
+error of the next rollout and removes neither model mismatch nor the limits of
+the candidate set. \uline{Rollouts that stay accurate keep the selected
+candidate's cost within twice the best achievable estimation error, for this
+one held-command comparison.}

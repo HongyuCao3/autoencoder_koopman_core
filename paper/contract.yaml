@@ -44,6 +44,9 @@ meta:
     - name: COLLIE
       subtasks: [Word, "Sent.", "Para."]
     # 4 + 4 + 3 = the eleven subtasks every control claim averages over.
+  plan_version: "WRITING_PLAN_2026-09-19.md v2.1 (Method rewrite, D25-D35)"
+  structure:
+    method_subsections: [model, learning, controller, guarantee]   # D25
   arc_type: challenge_driven    # deployment gaps -> contributions; beat 2 carries the access gap,
                                 # beat 3 carries both the stateless gap and the missing-model gap
 
@@ -51,13 +54,15 @@ narrative_arc:
   - "Multi-turn interaction makes a frozen LLM's reply attributes a trajectory, and that trajectory drifts as an instruction given once competes with every turn that accumulates after it."
   - "Every existing controller acts inside the network and needs white-box access at every token, while the lever a deployment actually holds is one instruction per turn against a black-box API."
   - "Prompt-level interventions today are stateless, so they overshoot or undershoot; what is missing is a dynamics model at the interaction level."
-  - "We learn a finite-memory, command-conditioned Koopman predictor of prompt-response dynamics and use it to score candidate instructions before any of them is sent."
+  - "We identify a command-conditioned Koopman dynamics model on delay coordinates of the verifier reading, taking one prompt-response exchange as one step; in its reported linear instance the fit is a least-squares problem over recorded transitions."
+  - "We use that model to score candidate instructions before any of them is sent, holding a candidate command over a horizon and replanning from each actual reading."
   - "The controller raises constraint satisfaction by about fifteen points over an uncontrolled model and by about five over two white-box latent controllers, with no extra LLM call per candidate."
 
 design_choice_lattice:
   - id: choice_1
     choice_name: "Finite-Memory Interaction State"
-    why_keyword: "a window of past readings is the standard way to handle a partially observed system, so what this subsection has to justify is the quantity being windowed: a verifier's reading of a finished reply, which is the only signal a black-box caller can obtain and the only one the objective is stated in"
+    why_keyword: "stated as an observability fact in Problem Formulation section 2.1 (a black-box caller obtains only a verifier's reading of a finished reply, and the objective is stated in that same reading); no Why paragraph in Method (D32)"
+    home: method_3.1_P2
     equation_operation: "stack of the last L+1 attribute readings, with a selector row that reads the current one back out"
     equation_id: eq_memory_state
     rq_id: rq2a
@@ -73,14 +78,16 @@ design_choice_lattice:
       project doc method_novelty_scan_2026-09-19.
 
   - id: choice_2
-    choice_name: "Command-Conditioned Koopman Operator"
-    why_keyword: "an affine input column in a lifted space is standard control machinery, so what this subsection has to justify is that a natural-language instruction can carry a scalar command coordinate at all, which holds only because a fixed prompting protocol builds every prompt from that coordinate"
-    equation_operation: "affine map of the encoded memory plus a command-scaled column and a bias"
+    choice_name: "Koopman Dynamics Model on Delay Coordinates"
+    why_keyword: "a modeling argument: why a finite-dimensional linear operator can approximate a multi-turn attribute sequence at all. It answers the ARX objection head on, conceding that the reported instance is numerically a delay regression with an exogenous input, and naming the three things the Koopman view adds that the regression view does not: the operator acts on observables so the dictionary can be swapped (a learned lifting is the same model, not another one), the multi-step rollout has a closed form, and the resulting predictor drops into standard MPC machinery"
+    equation_operation: "affine map of the delay-coordinate state plus a command-scaled column and a bias"
     equation_id: eq_koopman_model
-    rq_id: rq1
-    finding_keyword: "selecting over commands in the learned latent space raises satisfaction by +14.5 and +14.8 points, which is what the command column is for"
-    intro_bullet_keyword: "a command-conditioned operator whose linear delay-embedded special case is the instance we report"
-    conclusion_takeaway_keyword: "the command enters as one column of the operator, which is what makes lookahead cheap"
+    rq_id: rq2b
+    secondary_rq: rq1
+    finding_keyword: "the linear delay-coordinate instance ranks first on four of seven tasks, and a learned lifting beats it on none of them"
+    intro_bullet_keyword: "a Koopman dynamics model on delay coordinates whose linear instance ranks first on four of seven tasks and is not beaten by a learned lifting"
+    conclusion_takeaway_keyword: "a linear operator on a short window of readings is enough; the lifting can stay off"
+    home: method_3.1
     source: "code:src/koopman_ae/core.py"
     intuition_refs: [prior_2, as_2]
     notes: >-
@@ -94,6 +101,14 @@ design_choice_lattice:
       is the linear special case, so the question "would a learned lifting do better" is a question
       about this choice's instantiation; its ablation and the training objective both move to
       appendix A1.
+      D26 (2026-09-19): the primary rq_id moves back to rq2b and rq1 becomes secondary. D11's
+      reading is unchanged (the control experiment is still the only place the command varies and
+      therefore the only test of the channel); it is no longer this choice's PRIMARY evidence,
+      because with choice_1 and choice_3 as they stand the lattice otherwise reads 2 control : 1
+      modeling, against the title (D14) and the claim order (D17). The Why paragraph is also
+      re-aimed: it now argues modeling capacity rather than the command coordinate. The
+      command-coordinate argument survives as a short protocol statement in 3.1 P4, not as a
+      Why paragraph.
 
   - id: choice_3
     choice_name: "Predictive Candidate Selection"
@@ -102,7 +117,8 @@ design_choice_lattice:
     equation_id: eq_selection
     rq_id: rq1
     finding_keyword: "+14.5 and +14.8 points over an uncontrolled model, +5.2 and +5.7 over the stronger white-box controller, best in all 22 cells"
-    intro_bullet_keyword: "model-predictive selection of the next instruction, black-box and with no extra generation per candidate"
+    intro_bullet_keyword: "model-predictive selection of the next instruction, black-box and with no extra generation per candidate, raising constraint satisfaction by 14.5 points over the uncontrolled model and by 5.2 over the stronger white-box controller"
+    home: method_3.3
     conclusion_takeaway_keyword: "planning one instruction ahead in a learned latent space beats steering inside the network"
     source: "code:src/koopman_ae/core.py"
     intuition_refs: [prior_3, fx_1]   # as_3 removed: A10 forbids a contribution leaning on an untested assumption (cold review f4)
@@ -111,6 +127,8 @@ design_choice_lattice:
       Korda and Mezic's result, so the Why-X argues the black-box constraint rather than the
       planning machinery. This is also where the access asymmetry with TMPC and RE-Control is
       turned into an advantage instead of being apologized for.
+      D34 (2026-09-19): Algorithm 1 (the receding-horizon loop) lives in this subsection, and the
+      cost sentence in Experiments 4.4 points at its for-loop rather than restating it.
 
 claim_ledger:
   # --- Modeling line: what the operator predicts (self-built multi-turn tasks) ---
@@ -220,7 +238,14 @@ claim_ledger:
     appears_in: [method, experiments, conclusion]
     driver_keyword: "the predicted and actual rollouts start from the same encoding, so their gap accumulates only through the dynamics residual"
     strength_basis: theoretical
-    notes: "Cold review f7: `strong` means the derivation is exact under its stated assumptions, which are themselves untested (as_3). Conditional statement about one held-command comparison. It says nothing about the replanned closed loop and the prose keeps that boundary."
+    home: method_3.4_proposition_1 + appendix_A6_proof
+    notes: >-
+      Cold review f7: `strong` means the derivation is exact under its stated assumptions, which
+      are themselves untested (as_3). Conditional statement about one held-command comparison. It
+      says nothing about the replanned closed loop and the prose keeps that boundary.
+      D28 (2026-09-19): the main text carries Proposition 1 in s-space plus one sentence of proof
+      idea; the residual assumptions, the cost bound and the full proof move to appendix A6. An
+      untested bound does not get a third of the Method section.
 symbol_lattice:
   # The colleague's notation is authoritative. The old draft's z_t, u_t, v_t are retired.
   - id: s_x
@@ -304,9 +329,9 @@ symbol_lattice:
   - id: s_R
     symbol: 'R'
     gloss: "uniform bound on how far an attribute can sit from the target"
-    first_defined: method
+    first_defined: appendix          # D28: the cost bound moved to A6
     scope: "assumed, and it is what turns the per-step error bound into a cost bound"
-    appears_in: [method]
+    appears_in: [appendix]
   - id: s_Cset
     symbol: '\mathcal{C}_t'
     gloss: "admissible candidate commands at step t"
@@ -339,22 +364,23 @@ symbol_lattice:
     appears_in: [method]
   - id: s_E
     symbol: 'E_{\phi}'
-    gloss: "encoder from memory state to observable space"
+    gloss: "encoder from the memory state into a learned feature space (the lifting)"
     first_defined: method
-    scope: "the identity in the reported special case"
-    appears_in: [method, experiments]
+    scope: "the identity in the reported instance; appears in the main text only inline, inside the lifting gloss paragraph 3.1 P6"
+    appears_in: [method_inline_once, appendix, experiments]
+    gloss_required: true             # D33: first appearance carries a plain-language paragraph
   - id: s_D
     symbol: 'D_{\psi}'
-    gloss: "decoder from observable space back to memory state"
-    first_defined: method
-    scope: "the identity in the reported special case"
-    appears_in: [method, experiments]
+    gloss: "decoder from the feature space back to the memory state"
+    first_defined: appendix          # D25: main-text equations are written in s-space
+    scope: "the identity in the reported instance"
+    appears_in: [appendix]
   - id: s_xi
     symbol: '\xi_t'
     gloss: "encoded memory state"
-    first_defined: method
-    scope: "the space the rollout happens in"
-    appears_in: [method]
+    first_defined: appendix          # D25
+    scope: "the space the learned-lifting variant and the A6 proof work in"
+    appears_in: [appendix]
   - id: s_K
     symbol: 'K'
     gloss: "latent transition matrix"
@@ -376,9 +402,9 @@ symbol_lattice:
   - id: s_g
     symbol: 'g_{\psi}'
     gloss: "attribute readout, the decoder followed by the selector"
-    first_defined: method
+    first_defined: appendix          # D25: the main text reads out with C
     scope: "need not be linear"
-    appears_in: [method]
+    appears_in: [appendix]
   - id: s_H
     symbol: 'H'
     gloss: "prediction horizon in interactions"
@@ -399,22 +425,22 @@ symbol_lattice:
     appears_in: [method]
   - id: s_eps
     symbol: '\varepsilon_{\mathrm{dyn}}, \varepsilon_{\mathrm{rec}}'
-    gloss: "uniform bounds on the latent residual and on the readout residual"
-    first_defined: method
+    gloss: "uniform bounds on the one-step state residual and on the readout residual"
+    first_defined: method            # named in Proposition 1; formalized in A6
     scope: "assumed, not measured"
-    appears_in: [method]
+    appears_in: [method, appendix]
   - id: s_kappa
     symbol: '\kappa'
-    gloss: "bound on the spectral norm of the latent transition"
-    first_defined: method
+    gloss: "bound on the spectral norm of the transition"
+    first_defined: appendix          # D28
     scope: "no contraction is assumed"
-    appears_in: [method]
+    appears_in: [appendix]
   - id: s_Lg
     symbol: 'L_g'
     gloss: "Lipschitz constant of the readout on the relevant region"
-    first_defined: method
+    first_defined: appendix          # D28
     scope: "local, not global"
-    appears_in: [method]
+    appears_in: [appendix]
   - id: s_Delta
     symbol: '\Delta_h'
     gloss: "h-step attribute prediction error bound"
@@ -427,6 +453,13 @@ symbol_lattice:
     first_defined: method
     scope: "the quantity that doubles in the selection bound"
     appears_in: [method]
+  - id: s_Yset
+    symbol: '\mathcal{Y}'
+    gloss: "the set of attribute values a task counts as satisfying its constraint"
+    first_defined: problem_formulation
+    scope: "task-given; the reference r is chosen inside it, which is what ties the tracking objective to the reported satisfaction score"
+    appears_in: [problem_formulation]
+    status: pending_metric_definition   # D30: exact wording waits on the colleague's metric definition
   - id: s_ellnull
     symbol: '\ell_h^{\mathrm{null}}'
     gloss: "the same squared forecast error, for the best trivial null"
@@ -480,11 +513,28 @@ equation_lattice:
     role: definition
   - id: eq_koopman_model
     label: "eq:koopman_model"
-    operation_name: "affine map of the encoded memory plus a command-scaled column and a bias"
-    rhs_symbols: [s_E, s_D, s_xi, s_K, s_B, s_b, s_C]
+    operation_name: "affine map of the delay-coordinate state plus a command-scaled column and a bias, read out by the selector row"
+    rhs_symbols: [s_s, s_K, s_B, s_b, s_c, s_C]
     in_section: method
     has_gloss: true
     role: mechanism_probe
+    notes: >-
+      D25: the main text states this in s-space only. The general form, with the memory state
+      replaced by a learned lifting, is described in words in 3.1 P6 and written out in A1.
+  - id: eq_identification
+    label: "eq:identification"
+    operation_name: "least-squares fit of the transition, the command column and the bias to recorded one-step transitions"
+    rhs_symbols: [s_s, s_c, s_K, s_B, s_b]
+    in_section: method
+    has_gloss: true
+    role: definition
+    notes: >-
+      D27 (2026-09-19). The main text had no estimation equation at all: D19 moved the whole
+      estimator to A1, which took the identification of the reported linear instance with it. The
+      linear fit is a plain least-squares problem, unrelated to the loss-composition question D19
+      was about, and it is the object that makes "we build a dynamics model" concrete. It is also
+      why the model is identifiable from tens to hundreds of trajectories: the unknowns number in
+      the tens. Home: 3.2.
   - id: eq_training_transition
     label: "eq:training_transition"
     operation_name: "one-step latent prediction from an encoded state and the applied command"
@@ -503,15 +553,15 @@ equation_lattice:
     role: mechanism_probe
   - id: eq_rollout
     label: "eq:rollout"
-    operation_name: "recursive latent propagation of a held candidate command with decoding at each step"
-    rhs_symbols: [s_K, s_B, s_b, s_g, s_H, s_E]
+    operation_name: "recursive propagation of the memory state under a held candidate command, read out at each step"
+    rhs_symbols: [s_s, s_K, s_B, s_b, s_C, s_H, s_Cset]   # D25: s-space, no encoder or decoder
     in_section: method
     has_gloss: true
     role: mechanism_probe
   - id: eq_closed_form_rollout
     label: "eq:closed_form_rollout"
-    operation_name: "matrix power of the transition applied to the current encoding, plus a geometric sum of the command and bias term"
-    rhs_symbols: [s_K, s_E, s_B, s_b]
+    operation_name: "matrix power of the transition applied to the current memory state, plus a geometric sum of the command and bias term"
+    rhs_symbols: [s_s, s_K, s_B, s_b]   # D25: s-space
     in_section: method
     has_gloss: true
     role: mechanism_probe
@@ -526,7 +576,7 @@ equation_lattice:
     label: "eq:residual_assumptions"
     operation_name: "uniform bounds on the latent transition residual and the readout residual"
     rhs_symbols: [s_K, s_B, s_b, s_g, s_eps]
-    in_section: method
+    in_section: appendix   # D28: assumptions stated in words in Proposition 1, formalized in A6
     has_gloss: true
     role: definition
   - id: eq_skill
@@ -541,16 +591,31 @@ equation_lattice:
     # gate cannot audit it. The fix is the contract entry, not a missing label.
   - id: eq_prediction_bound
     label: "eq:prediction_bound"
-    operation_name: "geometric accumulation of the latent residual through the readout Lipschitz constant"
-    rhs_symbols: [s_eps, s_Lg, s_kappa, s_Delta]
+    operation_name: "geometric accumulation of the one-step residual through the readout"
+    rhs_symbols: [s_eps, s_Delta]
     in_section: method
+    env: proposition       # D34: lives inside Proposition 1; the Lipschitz form is in A6
     has_gloss: true
     role: mechanism_probe
+  - id: eq_prediction_bound_full
+    label: "eq:prediction_bound_full"
+    operation_name: "geometric accumulation of the one-step residual through the readout Lipschitz constant"
+    rhs_symbols: [s_eps, s_Lg, s_kappa, s_Delta]
+    in_section: appendix   # D28: the closed form behind Proposition 1's first line
+    has_gloss: true
+    role: mechanism_probe
+  - id: eq_selection_bound_proof
+    label: "eq:selection_bound_proof"
+    operation_name: "two applications of the cost bound around the argmin, written as the three-line proof"
+    rhs_symbols: [s_deltaJ, s_Cset]
+    in_section: appendix   # D28
+    has_gloss: true
+    role: quality_claim
   - id: eq_cost_bound
     label: "eq:cost_bound"
     operation_name: "difference-of-squares bound on the predicted versus actual held-command cost"
     rhs_symbols: [s_w, s_Delta, s_deltaJ, s_R]
-    in_section: method
+    in_section: appendix   # D28
     has_gloss: true
     role: mechanism_probe
   - id: eq_selection_bound
@@ -558,6 +623,7 @@ equation_lattice:
     operation_name: "two applications of the cost bound around the argmin, giving twice the cost gap"
     rhs_symbols: [s_deltaJ, s_Cset]
     in_section: method
+    env: proposition       # D34
     has_gloss: true
     role: quality_claim
 
@@ -619,11 +685,21 @@ intuition_lattice:
         not asked to accept a phenomenon with no mechanism. This is the candidate, taken from the
         cited drift literature. This paper does NOT test it; see nc_9. Intro P1 states it as a
         plausible account, never as a finding, and carries a % CITE line.
+    - id: prior_5
+      statement: "A nonlinear one-step map can look close to linear once it is written in the right coordinates, the way a pendulum's angle evolves nonlinearly while its sine and cosine evolve almost linearly."
+      borrowed_authority: []
+      recorded_at: post_hoc
+      source: >-
+        D33 (2026-09-19): the source of the analogy in the lifting gloss paragraph (Method 3.1 P6),
+        written for a reader who has not read a Koopman paper. It is an analogy, not a result; the
+        alternative wording offered there is feature choice in linear regression. Exactly one of
+        the two is used.
+      kind: analogy
   anchor_example:
     id: ex_1
     instance: "the same sentence length can occur while successive revisions are becoming longer or while they are becoming shorter"
     illustrates: [prior_1, as_1]
-    home: method_finite_memory_entrance   # cold review f3: this paper has no separate Problem
+    home: method_3.1_P2   # D25: the state window is a paragraph inside the model subsection now   # cold review f3: this paper has no separate Problem
                                           # Formulation section; the formalization entrance is the
                                           # first paragraph of the Finite-Memory subsection, which is
                                           # where the colleague's text already places this example
@@ -648,7 +724,7 @@ intuition_lattice:
       source: "sections/02_method.tex states it as an approximation, not an exact reconstruction"
     - id: as_2
       name: "Assumption 2 (Affine Latent Transition)"
-      plain_statement: "In the learned observable space the next state is an affine function of the current state and the applied command."
+      plain_statement: "On the delay coordinates of the verifier reading the next state is an affine function of the current state and the applied command."
       formal_pointer: eq_koopman_model
       strength: approximate
       tested_by: rq2b
@@ -662,6 +738,32 @@ intuition_lattice:
       tested_by: motivational_only
       recorded_at: L3
       source: "sections/02_method.tex, Prediction Error and Intervention Selection"
+
+terminology_bans:            # D29, enforced by tools/mech_audit.sh check 8
+  - term: "test-time"
+    replace_with: "inference-time, or during control"
+    reason: "carries the test-time-alignment framing D22 removed"
+  - term: "intervention"
+    replace_with: "instruction (prose) / input (control-theoretic context)"
+    reason: "an intervention/alignment word for what control theory calls the input; u_t is an instruction"
+  - term: "alignment cost"
+    replace_with: "tracking cost"
+    reason: "D22"
+  - term: "align / aligned / alignment"
+    replace_with: "track / tracking"
+    reason: "D22; naming someone else's work in Related Work is exempt via an on-line GATE-EXEMPT comment"
+    exempt: "\\begin{aligned}; Related Work references to other papers by name"
+
+terminology_glosses:         # terms the main text must explain once, in plain language
+  - term: "lifting"
+    home: method_3.1_P6
+    spec: >-
+      D33: 4-6 sentences, no formulas, in order: what it is (a change of coordinates into learned
+      features in which the one-step map is closer to affine); one analogy (prior_5's pendulum, OR
+      feature choice in linear regression, exactly one of the two); that this paper reports the
+      identity lifting and keeps the learned one as a Table 1 comparison trained as in A1; why a
+      learned lifting has little to expose when the reading is a scalar and the window is short.
+      Audience: an ML reviewer who has never read a Koopman paper.
 
 non_claim_ledger:
   # D16 (2026-09-19): these are AUDIT instruments, not prose. Tier 2 and Tier 3 do NOT write a

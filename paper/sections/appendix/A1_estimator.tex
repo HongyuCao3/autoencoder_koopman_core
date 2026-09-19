@@ -1,19 +1,12 @@
 \section{Estimator Details and the Learned Lifting}
 \label{app:A1_estimator}
 
-This appendix gives the objective used to fit the command-conditioned
-Koopman predictor introduced in Section~\ref{sec:koopman_operator},
-including the learned-lifting variant in which the encoder and decoder
-are not the identity.
-
-\textbf{Transition tuples.} Given recorded prompt-response
-trajectories, we construct transition tuples
-$\mathcal{D}=\{(s_t,c_t,s_{t+1})\}$ using overlapping history windows:
-each window of $L+1$ readings supplies one state $s_t$, and sliding the
-window by one step supplies the next tuple. Each command label is the
-command applied before the successor observation. For trajectories
-collected under a fixed requested target, that target supplies the
-command label at every step of the trajectory.
+The reported instance is fit by the least-squares problem of
+Section~\ref{sec:learning}, on the transition tuples
+$\mathcal{D}=\{(s_t,c_t,s_{t+1})\}$ constructed there. This appendix covers
+the learned-lifting variant instead, in which the encoder and the decoder are
+not the identity. What a lifting is, and why the reported instance leaves it
+off, is said in Section~\ref{sec:model}.
 
 \textbf{Training transition.} Fitting the operator needs a one-step
 latent prediction from an encoded state and the applied command. Let

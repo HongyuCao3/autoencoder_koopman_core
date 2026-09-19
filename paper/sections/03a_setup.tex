@@ -15,7 +15,7 @@ The control line is separate: it reports two frozen target models, Qwen3-4B and 
 The modeling line compares six predictors, the six rows of Table~\ref{tab:prediction}.  % tab_prediction.tex row count
 Stateless is a memoryless null, Last-turn is a single-reading state, and Memory w/o action is a multi-turn state without the command term.
 LSTM is a recurrent sequence baseline, and KOMPAS (learned lifting) and KOMPAS (linear) are the two operator variants.
-KOMPAS (linear) sets the encoder and decoder to the identity map of \S\ref{sec:koopman_operator}, the reported instance throughout this paper.
+KOMPAS (linear) sets the encoder and decoder to the identity map of \S\ref{sec:model}, the reported instance throughout this paper.
 Window length and horizon vary by task: window length ranges from 1 to 4 readings and horizon from 3 to 6 steps, with full per-task settings in Appendix~\ref{app:A3_window}.  % RECOVERED 2026-09-19 (Opus, tabulated from evidence/numbers.yaml); semantic.md Experiments P2
 Scored held-out rows per task range from 30 to 12,376, counted after windowing.  % RECOVERED 2026-09-19 (Opus, evidence/numbers.yaml)
 The trajectories those rows come from number 40 to 100 for the seven columns of Table~\ref{tab:prediction}, and 4 to 30 for the appendix columns.  % RECOVERED 2026-09-19 (Opus, group counts in evidence/numbers.yaml `test` fields)

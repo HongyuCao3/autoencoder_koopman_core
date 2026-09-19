@@ -1,0 +1,97 @@
+% New in Phase R1 (D28). Carries what Proposition 1 leaves out: the residual assumptions in the
+% lifted coordinates, the constants L_g and kappa, the uniform range R, the cost bound, and the
+% proof of both lines of the proposition.
+\section{Assumptions and Proof for Proposition~\ref{prop:selection}}
+\label{app:A6_selection_bound}
+
+Proposition~\ref{prop:selection} is stated on the memory state, which is the
+form the reported instance uses. The proof is written in the lifted
+coordinates of Appendix~\ref{app:A1_estimator}, so that it covers the learned
+variant as well. Set $\xi_t=E_{\phi}(s_t)$ and write $g_{\psi}=C\circ D_{\psi}$
+for the attribute readout. The identity lifting recovers the main-text
+statement, with $\xi_t=s_t$ and $g_{\psi}=C$.
+
+For a candidate $c$, let $s_h^c$ and $y_h^c$ be the memory state and the
+attribute after $h$ further interactions that hold $c$, starting from
+$s_0^c=s_t$, and set $\xi_h^c=E_{\phi}(s_h^c)$. The residuals of the fitted
+model along such a rollout are what the bound is stated in terms of,
+\begin{equation}
+    \begin{aligned}
+        \xi_{h+1}^c
+        &=K\xi_h^c+Bc+b+\eta_h^c,
+        &
+        \|\eta_h^c\|_2
+        &\leq\varepsilon_{\mathrm{dyn}},\\
+        y_h^c
+        &=g_{\psi}(\xi_h^c)+\nu_h^c,
+        &
+        |\nu_h^c|
+        &\leq\varepsilon_{\mathrm{rec}}.
+    \end{aligned}
+    \label{eq:residual_assumptions}
+\end{equation}
+Here $\eta_h^c$ is the one-step residual of the fitted transition and
+$\nu_h^c$ is the residual left in the readout. Both bounds are assumed to hold
+over the candidate rollouts, and both absorb imperfect finite-memory closure,
+model approximation and generation variability. Assume further that
+$\|K\|_2\leq\kappa$, and that $g_{\psi}$ is $L_g$-Lipschitz on the region the
+rollouts visit. For stochastic generation the statements hold on the event
+that these conditions are met.
+
+The predicted and the actual rollout start from the same encoding, so the gap
+between them is the accumulated one-step residual carried through the readout,
+\begin{equation}
+    \left|
+        y_h^c-\widehat{y}_{t+h\mid t}(c)
+    \right|
+    \leq
+    \varepsilon_{\mathrm{rec}}
+    +
+    L_g\varepsilon_{\mathrm{dyn}}
+    \sum_{j=0}^{h-1}\kappa^j
+    \;\triangleq\;\Delta_h .
+    \label{eq:prediction_bound_full}
+\end{equation}
+Here $\Delta_h$ is the $h$-step attribute error bound of
+Proposition~\ref{prop:selection}. It trades against the horizon: a longer
+horizon covers more distant consequences and asks the dynamics to hold over
+more steps. A contraction, $\kappa<1$, would bound the geometric sum by
+$1/(1-\kappa)$, and no contraction is assumed for the fitted model.
+
+The cost of a candidate is a weighted sum of squared deviations, so a bound on
+each deviation gives a bound on the cost. Let $R$ bound how far any attribute,
+predicted or actual, sits from the reference across candidates and rollout
+steps,
+\begin{equation}
+    \left|
+        J_t(c)-\widehat{J}_t(c)
+    \right|
+    \leq
+    2R\sum_{h=1}^{H}w_h\Delta_h
+    \;\triangleq\;\delta_J .
+    \label{eq:cost_bound}
+\end{equation}
+Here $\delta_J$ bounds the gap between the predicted and the actual
+held-command cost of one candidate. The factor $2R$ comes from the identity
+$a^2-b^2=(a+b)(a-b)$ applied to each deviation pair.
+
+Let $c_t^{\mathrm{opt}}\in\operatorname*{arg\,min}_{c\in\mathcal{C}_t}J_t(c)$.
+Two applications of the cost bound around the definition of $c_t^{\star}$
+close the argument,
+\begin{equation}
+    \begin{aligned}
+        J_t(c_t^{\star})
+        &\leq
+        \widehat{J}_t(c_t^{\star})+\delta_J\\
+        &\leq
+        \widehat{J}_t(c_t^{\mathrm{opt}})+\delta_J\\
+        &\leq
+        \min_{c\in\mathcal{C}_t}J_t(c)+2\delta_J.
+    \end{aligned}
+    \label{eq:selection_bound_proof}
+\end{equation}
+The middle line holds because $c_t^{\star}$ minimizes the predicted cost. This
+is the second line of Proposition~\ref{prop:selection}. It concerns the
+current held-command comparison, not the cumulative cost of the replanned
+loop, and it assumes nothing about the candidate set beyond its being finite
+and nonempty.

@@ -1,79 +1,70 @@
 # WRITING_STATE
 
-updated: 2026-09-19   by: opus session 01UHUsmU
-phase: 3   checkpoint: CP3a-CP3d   status: done (D21：不停下)
-last_commit: (见本次提交)
-artifacts_ready: 01_introduction / 02_problem / 02_method / 03a-03d / appendix A1 全部有正文
-current_target: sections/abstract.tex 与 sections/04_conclusion.tex (Phase 4)
-gates: sentence_gate=pass  equation_gate=pass  mech_audit=pass  compile=pass (build/main_CP3_2026-09-19.pdf, 9 页)
-cold_review: audit/experiments_T3_2026-09-19.yaml — 0 blocker / 4 major / 5 minor，全部已 triage
-user_verdict_on_previous: CP1 approved；D21 全文过完再统一回看
-next_action: Phase 4。先做 Intro 回看（只许收窄），再写 Conclusion 与 Abstract
-open_questions_for_user: (1) 约束满足率的指标定义仍缺，需向同事要；(2) 另一会话与本会话曾同时改 contract 与 Method，见下
+updated: 2026-09-19   by: opus session 01TAse1G
+plan: WRITING_PLAN_2026-09-19.md (v2.1)
+phase: R2 done   checkpoint: CP2-redo   status: awaiting_user_review
+last_commit: (this commit)
+artifacts_ready: contract.yaml (D20 signed; v2.1 revision applied this session, D25-D35),
+  semantic.md §Introduction (approved CP1), §Method (rebuilt for CP2-redo), §Experiments (draft,
+  relabel partly done), sections/01_introduction.tex (contribution 2 split), sections/02_problem.tex
+  (D30 bridge with TODO(data), D32 observability, forward ref to sec:model),
+  sections/02_method.tex (rewritten), sections/appendix/A6_selection_bound.tex (new),
+  sections/appendix/A1_estimator.tex (opening rewritten)
+gates: sentence=pass equation=pass (10 displayed equations in Method) term=pass mech=pass
+  compile=pass (build/main_CP2redo_2026-09-19.pdf, 10 pages; Method spans pages 3-5)
+cold_review: audit/method_T3_redo_2026-09-19.yaml (0 blocker / 2 major / 5 minor; 5 fixed,
+  1 deferred to the user, 1 rejected with a reason)
+user_verdict_on_previous: CP1 approved; CP2 superseded by this rewrite
+next_action: user reviews §3 (and the four subsection titles); then Phase 3 relabel pass and 03a-03d
+open_questions_for_user:
+  (1) the colleague's constraint-satisfaction metric definition is still missing; §2.2's bridge and
+      4.1 P5 carry TODO(data) until it arrives
+  (2) D31, Figure 1 module C, deferred by the user this session. The figure is still the colleague's
+      four-module control pipeline and the image itself contains the words "Test Time", which the
+      term gate cannot see because it is a PNG. Phase R3 has to redraw or relabel it
+  (3) cold review F3: the letter C carries three objects (readout row, command range, candidate set).
+      Renaming touches the colleague's notation, the appendices and the figure, so it was not done
+      unilaterally
 
-## CP3 做了什么
+## What CP2-redo changed
 
-四节一次生成（4.1 设置 / 4.2 预测 / 4.3 控制 / 4.4 分析），三道闸门全过，9 页。
+Method is a rewrite, not the CP2 reshuffle. Old outline: problem / state / operator / selection /
+bound. New outline, cut by component (D25):
 
-### 冷审逐个复算了九组数字，全部与账本一致
-
-控制两个增益、两个对 RE-Control 的差、两个最小单子任务边际（都落在 IFBench UWC）、22 格横扫、
-4/7 排名及第二第三、5/7 记忆必要性及两个例外、CEFR 的 +0.599、LSTM 二比二的分列、
-命令通道的 +0.0015 与 +0.0061。冷审还记下一个坑：拿表里**四舍五入后**的 Avg. 相减会得 5.3，
-和正文的 5.2 对不上，那是舍入陷阱不是错误。
-
-### 四条 major 的处理
-
-| 编号 | 问题 | 处理 |
+| new | content | equations |
 |---|---|---|
-| f3 | **实质错误**：4.1 写成"Qwen3-4B-Instruct-2507 是两条线共用的模型"，但那只是建模线；控制线报的是 Qwen3-4B 与 Qwen3-8B 两个目标模型、且是同事跑的。这让读者无法判断 Table 2 一半的数字从哪来 | 拆成三句：建模线单模型、第二 backbone 未跑所以 Table 1 全部来自那一个模型、控制线另算且由同事提供 |
-| f1 | 排名那条 claim 没有 driver 句（Rule 1） | 补上 contract 里 c4 已写好的 driver |
-| f2 | 选择界的作用域没写：它只管单步保持命令的比较，不管重规划后的闭环 | 正文与收尾答句都补上这个边界 |
-| f4 | 只给了加窗后的计分行数，没有轨迹数，也没写区间的重采样协议 | 都从账本的 `test` 字段追回：七列是 40–100 条轨迹，区间是按轨迹配对的 grouped bootstrap、2000 次重采样 |
+| 3.1 `sec:model` A Koopman Dynamics Model of Prompt-Response Interaction | three-part intuition, the state window as a paragraph, the operator and the sentence tying delay coordinates to it as a dictionary, the protocol, the affine model in s-space, the lifting gloss (D33), one Why paragraph arguing modeling capacity and answering the ARX objection | memory_state, koopman_operator, prompt_protocol, koopman_model |
+| 3.2 `sec:learning` Learning the Model from Interaction Data | transition tuples moved back from A1, the least-squares fit, coverage, a pointer to A1 for the learned lifting. No Why paragraph | **identification (new)** |
+| 3.3 `sec:controller` Predictive Instruction Selection with Replanning | Why paragraph (black-box scoring), rollout, closed form, selection, Algorithm 1, replanning scope | rollout, closed_form_rollout, selection |
+| 3.4 `sec:guarantee` What Prediction Accuracy Buys | Proposition 1 in s-space, one-sentence proof idea, boundary | prediction_bound, selection_bound |
 
-五条 minor 也都改了（补证据 id、给 TMPC/RE-Control 留 `% CITE` 位、删一处重复免责、
-改掉一个歧义习语和一个没解释的行话）。
+Everything with a Lipschitz constant, a spectral-norm bound or a lifted coordinate moved to the new
+appendix A6. The main text's equations use only s-space symbols; `E_phi` appears once, inline, in
+the lifting gloss.
 
-### 顺手修的一件事
+## Tool changes this session
 
-生成器为了绕过闸门，把 Skill_H 那个公式**不加 label**（因为 contract 里没有它的条目）。
-这是拿掉温度计而不是退烧。正确做法是补 contract：新增 `eq_skill` 与符号 `s_ellnull`，
-公式加上 `\label{eq:skill}`，并改写成 §2.1 建模目标里那个 $\ell_h$ 的求和——
-这样"§2 声明的目标"和"§4 报告的指标"在纸面上就是同一个东西。
+- `mech_audit.sh`: check 8, the D29 terminology gate (test-time / intervention / alignment, with a
+  `% GATE-EXEMPT: term` escape and an exemption for `\begin{aligned}`); check 9, the D33 lifting-gloss
+  screen (first paragraph naming a lifting must contain "identity", an analogy, and at most one
+  inline symbol).
+- `equation_gate.py`: skips the body of an `algorithmic` block, and treats a proposition's opening
+  line as transparent so the intuition sentence above the environment counts.
+- `sentence_gate.py`: `algorithm` / `algorithmic` added to the stripped environments; a theorem
+  environment's optional title is treated as a label, not a sentence.
+- `main.tex`: this TeX installation has no `algorithm.sty`, so the float is declared with
+  `float.sty` and Algorithm 1's body is a numbered list. `amsthm` supplies the proposition
+  environment. Appendix A6 is included.
 
-## 新会话怎么用这个文件
+## New decisions
 
-读 `WRITING_PLAN_2026-09-18.md` §0 的五件事，然后**只做** `next_action` 指向的那一步。
-做完更新本文件、commit、停下等用户。不要跳过 checkpoint 连写两章，不要在用户未审核的章节上继续。
+D25-D35 are in `DECISIONS.md`. D31 (Figure 1 module C) is recorded as deferred, not decided. D35
+records that the D22 duplicate the plan warned about does not exist in the table, so no renumbering
+was done.
 
-## Phase 0 进度明细
+## Phase 3 note (unchanged from CP3 start)
 
-| 步 | 内容 | 状态 |
-|---|---|---|
-| 0.1 | 归档旧负结果稿；建新目录布局；main.tex 重写；空壳编译 | ✅ d1bc477 |
-| 0.2 | `DECISIONS.md`、`WRITING_STATE.md` | ✅ 4b130aa |
-| 0.3 | 三个脚本；两张表生成并单独编译 | ✅ 4b130aa |
-| 0.4 | 重建 Tier-1 `contract.yaml`（9 claims / **3** design choices / 31 symbols / 14 equations / 5 mechanisms / **9** non-claims） | ✅ 2026-09-18，09-19 二修 |
-| 0.4b | Sonnet Tier-1 冷审 + Opus triage | ✅ 本次 |
-| 0.5 | 方法名 KOMPAS（D10） | ✅ 本次 |
-| 0.6 | 更新账本、commit、交用户签字 | ✅ 本次 |
-
-## 冷审 triage 结果（audit/contract_T1_2026-09-18.yaml）
-
-| 编号 | 严重度 | 处理 |
-|---|---|---|
-| f1 命令通道无实验支持 | blocker | D11：`choice_2` 从 rq2b 改挂 rq1；加 `nc_1`（说明五个 core 列上命令是状态的仿射函数，估不出效应）与 `nc_8` |
-| f2 头条数字无区间却进 Abstract | blocker | D12：`nc_3.appears_in` 扩到 abstract/intro；Abstract 不带限定词，Intro 带一句 |
-| f3 anchor_example 指向不存在的章节 | blocker | `home` 改为 `method_finite_memory_entrance`（本文无独立 Problem Formulation 章） |
-| f4 as_3 未受检验却进贡献 | major | 从 `choice_4.intuition_refs` 移除 as_3 |
-| f5 choice_3 声称三项损失缺一不可 | major | `why_keyword` 改为设计论证；必要性移入 `nc_7` |
-| f6 arc_type 注释说三个 gap 但 arc 只写两个 | minor | 改注释，说明 beat 3 同时承载两个 gap |
-| f7 strong 混淆经验与理论 | minor | c4 / c9 加 `strength_basis: theoretical` |
-| f8 c3/c7/c8 的 driver 无机制支撑 | minor | c7 的 driver 改为 "no mechanism established"，登记为待查数据问题 |
-| f9 operation_name 与 equation_operation 措辞不一致 | minor | 两处统一 |
-
-## Phase 2 开工前要处理的存量问题
-
-同事 `sections/02_method.tex` 跑 `mech_audit.sh` 的结果：句子闸门通过；Rule 20 命中三处副词
-（`actually` 一处；`uniformly` 两处，后者是"在候选滚动上一致成立"的数学量词，属精度性白名单，
-保留但要在 Phase 2 确认）。Rule 21 / 22 通过。
+`semantic.md` §Experiments still carries its four subsections in draft. The relabel pass is partly
+done: `03a_setup.tex` and `03d_analysis.tex` now point at `sec:model`, `sec:controller` and
+`sec:guarantee`, and 4.4 points at Proposition 1. The rest of §5.5's relabel checklist runs before
+03a-03d are generated.

@@ -16,67 +16,180 @@ P5 (contributions): numbered exactly three, one per [choice_1, choice_2, choice_
 
 ## §Method
 
-<!-- status: approved CP2 (Tier-2 cold review method_T2_2026-09-19.yaml: 0 blocker, 3 major, 3 minor; all six triaged 2026-09-19) -->
+<!-- status: rebuilt 2026-09-19 for CP2-redo (D25). Supersedes the CP2 block, which followed the
+     colleague's controller-paper outline (state / operator / learning / test-time control / bound).
+     Subsections are cut BY COMPONENT (model / learning / controller / guarantee), not one per
+     design choice: choice_1 and choice_2 both live in 3.1 and the state window is a paragraph.
+     Why paragraphs: at most one per subsection (D32); 3.2 and 3.4 carry none. -->
 
-### 3.1 Problem Formulation
+Opening paragraph (<= 4 sentences, before 3.1, modeling before control): one prompt-response
+exchange is one step of a dynamical system; on delay coordinates of the verifier's reading we
+identify a command-conditioned Koopman dynamics model; the model then scores candidate
+instructions before any of them is sent; the LLM's parameters never change and the model is fit
+offline. Figure~1 referenced as left column modeling, right column control. BANNED opening: "We
+formulate ... as feedback control" (D25). No numbers, no baseline names (Rule 21).
 
-3.1 P1 (overview): frames multi-turn attribute tracking as feedback control over a frozen LLM's observable reply attributes (D22: the word "alignment" is never used for what KOMPAS itself does); walks the four pipeline stages the figure shows — finite-memory state construction, command-conditioned latent prediction, candidate scoring, execution-and-replan; states LLM parameters fixed throughout, only the external dynamics model trained offline; figure caption repaired from the placeholder "Caption" to one sentence naming these four stages; zero numbers, zero baseline names (Rule 21)
+### 3.1 A Koopman Dynamics Model of Prompt-Response Interaction  (label sec:model, ~0.85 page)
 
-3.1 P2 (setup): introduces [s_x, s_ptheta, s_r, s_hist, s_u] — task input, frozen model, desired attribute value, dialogue history, textual intervention; one attribute considered at a time, illustrative only (sentence length, sentiment polarity), no result attached; interaction step defined as one whole prompt-response exchange rather than a token-generation step, instantiating [prior_3]
+3.1 P1 (intuition, no symbols): the next reading is what the recent history carries forward, plus
+what the instruction pushes, plus a constant offset; that three-part reading of one step is the
+whole model in words, before any symbol appears.
 
-3.1 P3 (intuition + Eq + gloss): intuition — the control objective is stated only in terms of a verifier's reading of a finished reply, never a partial generation; introduces [eq_interaction]; glosses [s_V, s_o, s_y] — task-specific verifier, generated reply text distinguished from its measured attribute, scalar attribute value (repair: closes the known gap on $o_{t+1}$); states the tracking error $e_t=r-y_t$ and the finite-budget objective inline, no separate equation id
+3.1 P2 (anchor + Eq + gloss): CLAIM FIRST, then the example — a single reading is consistent with
+two opposite trends, so a memoryless rule issues the same command where the next step differs
+[m1]; [ex_1] verbatim as the illustration inside that claim, "the same sentence length can occur
+while successive revisions are becoming longer or while they are becoming shorter"; must NOT open
+with "For example" (CP2 defect). Introduces [eq_memory_state]; glosses [s_s, s_L, s_C]; states
+[as_1]'s plain statement and its scope (an approximation to the information needed for
+prediction, not a reconstruction of the dialogue state); marks [as_1] as tested in the prediction
+experiments. The observability argument for windowing a verifier's reading is NOT here: it moved
+to Problem Formulation 2.1 as an observability fact (D32). Home of [choice_1].
 
-3.1 P4 (intuition + Eq + gloss): intuition — a candidate intervention has to be represented inside the predictor for its effect to be distinguishable from another candidate's; introduces [eq_prompt_protocol]; glosses [s_P, s_c] — the prompting protocol, the numerical command it consumes; scope statement kept verbatim — concerns the specified protocol only, not arbitrary textual interventions with an unspecified encoding
+3.1 P3 (intuition + Eq + gloss): the population object before any approximation is the conditional
+expectation of an observable one step ahead given state and command; introduces
+[eq_koopman_operator]; glosses [s_Kop]; IMMEDIATELY AFTER the gloss, one sentence tying the two
+halves together — the delay coordinates [s_s] are themselves the dictionary of observables, so the
+affine model below is this operator's finite-dimensional approximation on that dictionary, which
+is what makes the linear instance a Koopman model rather than a separate regression. Note the
+operator is linear in the observable although the prompt-response dynamics need not be. % CITE:
+arbabi2017hankel, korda2018mpc  (delay observables / lifted MPC; the Related Work phase resolves
+these keys)
 
-3.1 P5 (bridge): contrasts ordinary target-following, where [s_c] equals [s_r], against predictive control, where the applied command may differ from the target to compensate for a predicted response; bridges to the finite-memory state needed to make that prediction, entrance of [choice_1]
+3.1 P4 (Eq + gloss): the command coordinate's provenance, compressed to one short paragraph — every
+prompt is built by a fixed protocol from a scalar command, so the coordinate is a property of the
+protocol rather than of the instruction's surface wording; introduces [eq_prompt_protocol]; glosses
+[s_P, s_c, s_Cspace]; scope kept verbatim — the specified protocol only, not arbitrary text inputs
+with an unspecified encoding. NOT a Why paragraph any more (D26 re-aimed 3.1's Why at modeling
+capacity).
 
-### 3.2 Finite-Memory Interaction State
+3.1 P5 (Eq + gloss): intuition — with the state and the command coordinate fixed, the model is the
+plainest map that can carry all three parts of P1; introduces [eq_koopman_model] IN S-SPACE ONLY,
+one-step affine transition plus command column plus bias, read out by the selector row; glosses
+[s_K, s_B, s_b]; states that the shared transition and the affine command dependence are modeling
+restrictions rather than consequences of the operator's linearity, instantiating [as_2] (now "affine
+on the delay coordinates", tested by rq2b) and [nc_4]. No encoder, decoder, latent state or readout
+symbol appears in this equation (D25, §5.3 notation list).
 
-3.2 P1 (Why-X): ONE paragraph. It opens with the anchor example and then makes the argument, because Rule 24 puts the Why-X at the head of the subsection while [ex_1]'s contract home is the subsection entrance; both hold only when the anchor is the Why-X paragraph's opening sentence, and the anchor is plain English with no symbol and no number, so Rule 22 permits it there. Opening sentence instantiates [ex_1] verbatim — "the same sentence length can occur while successive revisions are becoming longer or while they are becoming shorter"; covers both directions in one instance; grounded in [prior_1] and [as_1]; explained by [m1] — a single reading is consistent with two opposite trends, so a memoryless rule issues the same command where the next step differs. Then the bolded lead **Why a Verifier's Reading** and the argument for [choice_1]: a window over past readings is the standard fix for a partially observed system, so the burden here is the quantity being windowed, not the windowing itself; a black-box caller obtains only a verifier's reading of a finished reply, never a hidden activation, and the control objective is stated in exactly that reading; formula-free, number-free, symbol-free (Rule 22); ends \uline{the state is built only from what a verifier can read off a finished reply, the one signal a black-box caller actually has}; exactly one Why-X in this subsection (Rule 24)
+3.1 P6 (lifting gloss, D33): 4-6 sentences, no display math, at most the inline symbol $E_\phi$
+once; written for an ML reviewer who has never read a Koopman paper; in order — (1) what a lifting
+is: a change of coordinates, the same affine step written on learned features of the window instead
+of on the window itself; (2) ONE analogy from [prior_5], the pendulum angle versus its sine and
+cosine, OR feature choice in linear regression, exactly one of the two, not both; (3) this paper
+reports the identity lifting, so the model is written directly on the readings, and the learned
+variant is kept as a comparison row trained as in appendix A1; (4) why a learned lifting has little
+to expose when the reading is a scalar and the window is short [m4], as a mechanism with NO number
+(Rule 21). Every later mention of "lifting" in the paper points back here and does not re-explain.
 
-3.2 P2 (Eq + gloss): intuition — stacking the last several readings exposes level and trend together, closing the gap the entrance example illustrates; introduces [eq_memory_state]; glosses [s_s, s_L, s_C] — the memory-state stack, the number of past readings retained, the selector row reading the current attribute back out; states [as_1]'s plain statement — a short window of recent readings carries enough of the conversation to predict the next reading; scope kept verbatim — an approximation to the information needed for prediction, not an exact reconstruction of the dialogue state
+3.1 P7 (Why paragraph, the only one in this subsection): **Why a Linear Operator on a Short Window
+Can Carry Multi-Turn Dynamics** — the modeling argument for [choice_2]. It concedes the ARX
+objection in the open (the reported instance is, numerically, a delay regression with an exogenous
+input), then names what the operator view adds that the regression view does not: the operator acts
+on observables, so the dictionary can be swapped and the learned lifting is the same model rather
+than a different one; the multi-step forecast has a closed form instead of a simulation loop; and
+the resulting predictor is the object standard predictive control already knows how to plan with.
+Formula-free, number-free, symbol-free (Rule 22). Sentence shape must NOT be "X is standard, so the
+open question is Y" — that shape is now used once at most in the whole section and 3.3 owns it.
+Ends with the \uline{} answer sentence (Rule 18).
 
-3.2 P3 (bridge): the memory state [s_s] built with no access to hidden activations, satisfying [choice_1]'s no-hidden-state framing; bridges into the operator that consumes it next
+### 3.2 Learning the Model from Interaction Data  (label sec:learning, ~0.4 page, NO Why paragraph)
 
-### 3.3 Command-Conditioned Koopman Operator
+3.2 P1 (setup): construction of the transition tuples, moved here from appendix A1 — each window of
+$L+1$ readings gives one state, sliding the window by one step gives the next tuple, and the command
+label is the command applied before the successor observation; for trajectories recorded under a
+fixed requested target, that target labels every step.
 
-3.3 P1 (Why-X): **Why a Natural-Language Instruction Can Carry a Command Coordinate** — argues [choice_2]; an affine input column in a lifted space is standard control machinery, so the burden here is that a natural-language instruction can carry a scalar command coordinate at all; holds only because the prompting protocol builds every prompt from that same scalar coordinate, fixed and known rather than an arbitrary text channel; formula-free, number-free, symbol-free (Rule 22); ends \uline{an instruction carries a command coordinate only because the protocol generating it is built from that coordinate in the first place}; exactly one Why-X in this subsection (Rule 24)
+3.2 P2 (intuition + Eq + gloss): intuition — in the reported instance the only unknowns are the
+transition, the command column and the bias, and all three enter the next-step prediction linearly,
+so fitting them to recorded transitions is an ordinary least-squares problem with a closed-form
+solution; introduces [eq_identification]; glosses the sum over overlapping windows; one sentence on
+scale — the unknowns number in the tens, which is why tens to hundreds of recorded trajectories
+suffice (a property of the parameterization, no dataset number here, Rule 21). Supports the
+offline-fit half of [c8].
 
-3.3 P2 (intuition + Eq + gloss): intuition — before approximating anything, the population object is the conditional expectation of an observable one step ahead given the state and the command; introduces [eq_koopman_operator]; glosses [s_Kop] — the command-conditioned Koopman operator on observables, the population object of which any learned model is a finite-dimensional approximation (repair: closes the known gap on $\mathcal{K}_c$); notes the operator is linear in the observable even though the underlying prompt-response dynamics can be nonlinear
+3.2 P3 (scope): coverage — accurate prediction on fixed-command training trajectories does not by
+itself establish accuracy after command changes, so what the training trajectories cover in
+command-history pairs sets where the model can be trusted at inference time (moved here from the
+old 3.3 closing paragraph). Registers [nc_7] as audit-only: no term-removal ablation is claimed.
 
-3.3 P3 (intuition + Eq + gloss): intuition — approximating that operator in a learned, low-dimensional observable space needs a map into that space, an affine step inside it, and a map back out; introduces [eq_koopman_model]; glosses [s_E, s_D, s_xi, s_K, s_B, s_b] — the encoder, the decoder, the encoded memory state (repair: closes the known gap on $\xi_t$), the latent transition matrix, the command column, the latent bias; defines the attribute readout [s_g] as the selector composed with the decoder
+3.2 P4 (pointer): one sentence — the learned-lifting variant replaces the identity map with an
+encoder and fits it jointly with the transition under a three-term objective, given in appendix A1;
+points back to 3.1 P6 for what a lifting is, does not re-explain it.
 
-3.3 P4 (definition/scope): the shared [s_K] and the affine command dependence are modeling restrictions, not consequences of the operator's linearity; scope kept verbatim — no exact finite-dimensional Koopman representation of the underlying model is assumed, instantiating [as_2]; notes [s_g] need not be linear, so linear latent dynamics do not force a linear map from state to attribute
+### 3.3 Predictive Instruction Selection with Replanning  (label sec:controller, ~0.65 page)
 
-3.3 P5 (How-X): the identity choice, encoder equals decoder equals identity, presented as one member of the encoder/decoder family, the delay-embedded linear instance examined in this paper; never framed as the instance that won (Rule 21); under this instance the operator acts directly on the raw memory state [s_s]
+3.3 P1 (Why paragraph, the only one here): **Why Scoring Happens Without Opening the Model** —
+argues [choice_3], kept from CP2 in substance: planning on a linear predictor is standard predictive
+control, so what has to be justified is scoring a candidate without opening the model that would
+otherwise produce the reply; each candidate is compared only on the reply attributes it is predicted
+to produce. Formula-free, number-free, symbol-free (Rule 22); ends \uline{a candidate is judged only
+by the reply attributes it is predicted to produce, never by anything inside the model that would
+produce them}; instantiates [prior_3]. Sentence shape differs from 3.1 P7's (D25 §5.3).
 
-3.3 P6 (How-X): the operator, and any learned lifting, fit offline on recorded prompt-response transitions built as overlapping history windows over each trajectory, each command label taken from the command applied before the successor observation (adverb repair: drops "actually"); the learned predictor held fixed during test-time control, only the external dynamics model trained offline; the labeling rule for fixed-target trajectories routed to appendix A1 with the objective (cold review f1, f5: the source text carried both and neither had a landing place); the joint reconstruction-plus-prediction objective for the learned-lifting variant, together with [eq_training_transition, eq_training_objective], moved to appendix A1 per D19; no equation carried here — an undefended loss composition does not earn a Why-X in the main text (Rule 21, [nc_7])
+3.3 P2 (intuition + Eq + gloss): intuition — evaluating a candidate means holding its command fixed
+over a lookahead and rolling the state forward, with no further generation; introduces [eq_rollout]
+IN S-SPACE; glosses [s_Cset, s_H].
 
-### 3.4 Predictive Candidate Selection
+3.3 P3 (intuition + Eq + gloss): intuition — an affine transition with the command in one column
+collapses an h-step lookahead into a matrix power [m2]; introduces [eq_closed_form_rollout]; no new
+symbol; one sentence of consequence — evaluating a candidate costs a matrix product and a readout
+and adds no query to the target model, supporting [c8] as a structural property rather than a
+measurement.
 
-3.4 P1 (Why-X): **Why Scoring Happens Without Opening the Model** — argues [choice_3]; planning on a lifted linear predictor is standard model-predictive control, so the burden here is that scoring happens without opening the model; a candidate is compared on its predicted readings alone, which is what lets the controller run against an interface that returns only text; formula-free, number-free, symbol-free (Rule 22); ends \uline{a candidate is judged only by the reply attributes it is predicted to produce, never by anything inside the model that would produce them}; exactly one Why-X in this subsection (Rule 24); instantiates [prior_3]
+3.3 P4 (intuition + Eq + gloss): intuition — scoring the whole predicted trajectory rather than the
+immediate effect lets the controller issue a command different from the target while the attribute
+is still moving [m3]; introduces [eq_selection]; glosses [s_w, s_Jhat].
 
-3.4 P2 (intuition + Eq + gloss): intuition — evaluating a candidate needs only holding its command fixed over a lookahead and propagating the encoded state forward, no further generation from the frozen model; introduces [eq_rollout]; glosses [s_Cset, s_H] — the nonempty finite set of admissible candidate commands at the step, the prediction horizon in interactions; the recursive latent propagation starts from the current observed memory and is decoded at every step via [s_g]
+3.3 P5 (Algorithm 1, D34): the receding-horizon loop as pseudocode — read the attribute of the last
+reply; shift it into the window to form the state; for each candidate command, roll the state
+forward over the horizon in closed form and score the predicted trajectory; take the argmin; build
+the instruction from it with the protocol; send it, read the new attribute, repeat until the budget
+is spent. No result numbers anywhere inside the environment (Rule 21). The caption names it as the
+loop, not as a contribution.
 
-3.4 P3 (intuition + Eq + gloss): intuition — because the latent transition is affine and the command enters as one column, propagating several steps ahead collapses into a matrix power rather than a step-by-step loop, explained by [m2]; introduces [eq_closed_form_rollout]; restates [s_K, s_E, s_B, s_b] in closed form, no new symbol introduced; supports [c8] — candidate evaluation costs a latent propagation and a decode, no added query to the target model, a structural property rather than a measurement
+3.3 P6 (scope): only the first step of the plan is executed, replanning starts from the actual
+reading rather than from a predicted one, and the constant-command assumption lives only inside a
+hypothetical rollout; candidate simulation adds no target-model query, while constructing candidates
+and reading replies still counts against the interaction budget.
 
-3.4 P4 (intuition + Eq + gloss): intuition — scoring a candidate on its whole predicted trajectory rather than its immediate effect lets the controller pick a command that differs from the target while the attribute is still moving, explained by [m3]; introduces [eq_selection]; glosses [s_w, s_Jhat] — the nonnegative weight on the h-step deviation, the predicted cost of holding a candidate command (repair: closes the known gap on both $w_h$ and $\widehat{J}_t$)
+### 3.4 What Prediction Accuracy Buys  (label sec:guarantee, ~0.25 page, NO Why paragraph, D28)
 
-3.4 P5 (How-X): the controller executes only the next intervention, observes the actual response, shifts the memory window, and replans; the constant-command assumption applies only inside the hypothetical rollout, never to the executed sequence, kept as an existing scope statement; candidate simulation adds no target-LLM query, though any cost of constructing or evaluating candidates still counts toward the inference budget (Rule 21: structural accounting, not a measured result)
+3.4 P1 (intuition, one or two sentences): the more accurately the model predicts each candidate's
+trajectory, the closer the selected command has to be to the one that would have been best in
+hindsight; this sentence is the intuition the equation gate requires ahead of the proposition.
 
-3.4 P6 (scope): accurate prediction on fixed-command training trajectories does not by itself establish accuracy after command changes; control additionally depends on coverage of the command-history pairs encountered at inference, kept as an existing scope statement
+3.4 P2 (Proposition 1): stated in s-space inside a `proposition` environment; assumptions carried in
+words (the one-step state residual and the readout residual stay below fixed levels over the
+candidate rollouts, and the readout does not amplify small state differences without bound), with
+[s_eps] named; conclusion in two lines, the h-step attribute error bound [eq_prediction_bound] and
+the selection bound [eq_selection_bound], with [s_Delta, s_deltaJ] glossed; supports [c9],
+strength_basis theoretical. The Lipschitz constant, the spectral-norm bound, the uniform range R and
+the full assumption display stay in appendix A6 (D28).
 
-### 3.5 Prediction Error and Intervention Selection
+3.4 P3 (proof idea + pointer): one sentence — the predicted and actual rollouts start from the same
+state, so their gap accumulates only through the one-step residual, and applying the cost bound
+twice around the argmin gives the factor two; full assumptions and proof in appendix A6.
 
-3.5 P1 (setup): opens with a bolded question, for example **What does predictive accuracy buy for the command that gets selected?**, so that P5's \uline{} answer is not an orphan underline (Rule 18). It is a question inside a setup paragraph, not a Why-X, so Rule 24's budget of one Why-X per design-choice subsection is untouched and 3.5 still carries none. Then the conditional analysis connecting predictive accuracy to candidate-selection quality; for a held candidate, defines the actual memory state and attribute after further interactions that repeatedly apply it, encoded via [s_E] matching [s_s]'s notation
+3.4 P4 (scope, ends the section): the bound is about one held-command comparison; it does not
+guarantee that the candidate set contains a command able to reach [s_r], and it does not guarantee
+that the replanned closed loop converges [nc_5]; ends with the \uline{} answer sentence (Rule 18).
 
-3.5 P2 (assumption + Eq + gloss): states [as_3]'s plain statement before its formal pointer (A11) — over the candidate rollouts the model's one-step error and the readout error stay below fixed levels, and the readout does not amplify small latent differences without bound; introduces [eq_residual_assumptions]; glosses [s_eps, s_kappa, s_Lg] — the uniform bounds on the latent residual and on the readout residual (repair: closes the known gap on $\varepsilon_{\mathrm{rec}}$ specifically), the bound on the spectral norm of the latent transition, the Lipschitz constant of the readout on the relevant region; "uniformly" retained here as a precision-bearing quantifier (Rule 20), not cut
+### Method-wide constraints (Tier 3 must satisfy all of them)
 
-3.5 P3 (intuition + Eq + gloss): intuition — because the predicted and actual latent rollouts start from the same encoding, their gap can only grow through the accumulated one-step residual carried through the readout; introduces [eq_prediction_bound]; glosses [s_Delta] — the resulting h-step attribute prediction error bound; notes the trade-off in choosing [s_H] — a longer horizon covers more distant consequences but needs accurate dynamics over a longer rollout; no contraction assumed for the learned model, [s_kappa] need not be below one; supports [c9]
-
-3.5 P4 (Eq + gloss): BUDGET (cold review f2): 3.5 is the overflow risk in a 2.5 to 3.0 page section, so this paragraph and P3 are written as ONE paragraph carrying both bounds, per method.md's chained-equation guidance; intuition folded from P3 — the gap between a candidate's actual and predicted held-command cost accumulates only through the already-bounded per-step attribute error; introduces [eq_cost_bound]; glosses [s_deltaJ] — the bound on the gap between predicted and actual held-command cost; supports [c9]
-
-3.5 P5 (Eq + gloss): introduces [eq_selection_bound]; two applications of the cost bound around the argmin place the selected command's actual cost within twice the best candidate's cost-estimation error; supports [c9] directly; ends \uline{uniformly accurate predictions keep the selected candidate's cost within twice the best achievable estimation error, for this one held-command comparison} (second "uniformly" retained as a precision-bearing quantifier, Rule 20); scope kept verbatim — concerns the current held-command comparison, not the cumulative cost of the subsequently replanned closed loop; does not guarantee the candidate set contains an intervention capable of reaching [s_r], nor that the closed loop converges; re-observation resets the rollout's initial latent error, it does not eliminate model mismatch or guarantee exact target tracking
+- Notation: main-text equations use only $x, p_\theta, \mathcal{H}_t, u_t, o_t, y_t, V, r, e_t, c_t,
+  \mathcal{C}, \mathcal{C}_t, \mathcal{P}, s_t, L, C, K, B, b, H, h, w_h, \widehat J_t, c_t^\star,
+  \Delta_h, \delta_J, \varepsilon_{\mathrm{dyn}}, \varepsilon_{\mathrm{rec}}$. $D_\psi, g_\psi,
+  \xi_t, d_\xi, L_g, \kappa, R$ appear only in appendices A1 and A6; $E_\phi$ appears once inline, in
+  3.1 P6.
+- Terminology (D29): instruction for $u_t$, command for $c_t$, reading or attribute for $y_t$,
+  inference-time rather than test-time. The words test-time, intervention and alignment do not occur.
+- Why paragraphs: 3.1 P7 and 3.3 P1 only, with different sentence shapes, each ending in a \uline{}
+  answer.
+- Equations by home: 3.1 carries eq_memory_state, eq_koopman_operator, eq_prompt_protocol,
+  eq_koopman_model; 3.2 carries eq_identification; 3.3 carries eq_rollout, eq_closed_form_rollout,
+  eq_selection; 3.4 carries eq_prediction_bound and eq_selection_bound inside Proposition 1.
+- Labels: sec:model, sec:learning, sec:controller, sec:guarantee. The old labels sec:memory_state,
+  sec:koopman_operator, sec:control and sec:analysis are retired and every reference to them, in
+  §2, §4 and the appendices, is updated in the same pass.
 
 ## §Experiments
 
@@ -120,9 +233,9 @@ BUDGET note: 4.1 carries 5 setup paragraphs, 4.2 and 4.3 carry 4 each (Question+
 
 ### 4.4 From Prediction Quality to Control Quality
 
-4.4 P1 (RQ + Setup): **Question.** does prediction quality translate into control quality, and at what inference cost; setup sentence points to Method's §3.5 bound for the derivation, no repetition of it here (Rule 10 and Rule 21 boundary, Method owns the derivation, Experiments owns its consequence); no new dataset or metric introduced in this subsection
+4.4 P1 (RQ + Setup): **Question.** does prediction quality translate into control quality, and at what inference cost; setup sentence points to Method's Proposition 1 (section 3.4, proof in appendix A6) for the derivation, no repetition of it here (Rule 10 and Rule 21 boundary, Method owns the derivation, Experiments owns its consequence); no new dataset or metric introduced in this subsection
 
-4.4 P2 (Findings, the bound): the selection bound from Method [eq_selection_bound] explains why more accurate rollouts keep the selected command's cost within twice the best achievable estimation error, so better prediction gives near-optimal candidate selection [c9]; theoretical, not measured, strength_basis is theoretical and no new number is planned here [c9]
+4.4 P2 (Findings, the bound): Proposition 1 of Method [eq_selection_bound] explains why more accurate rollouts keep the selected command's cost within twice the best achievable estimation error, so better prediction gives near-optimal candidate selection [c9]; theoretical, not measured, strength_basis is theoretical and no new number is planned here [c9]
 
 4.4 P3 (Findings, the cost argument): evaluating a candidate costs one latent propagation and a decode via the closed-form rollout, and adds no query to the target model [c8; eq_closed_form_rollout]; driver names the affine transition plus the scalar command column as collapsing an h-step lookahead into a matrix power [m2]; structural property of the model, needs no measurement, and none is planned here [c8 notes]
 

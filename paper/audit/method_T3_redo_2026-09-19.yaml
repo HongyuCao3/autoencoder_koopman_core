@@ -1,0 +1,49 @@
+# Cold review of the rewritten Method (CP2-redo), Sonnet subagent, 2026-09-19.
+# Persona: ICLR reviewer working on LLMs, never read a Koopman paper. Read only the .tex files.
+# Five targeted questions from WRITING_PLAN_2026-09-19.md §7.3.
+verdict_counts: {blocker: 0, major: 2, minor: 5}
+q1: "a dynamics model and a controller built on it; decided by the opening sentence pair of the section"
+q2: "yes, the Why paragraph raises the ARX objection verbatim and answers it"
+q3: "answered correctly in two sentences (change of coordinates; identity lifting reported because the reading is one scalar)"
+q4: "model / learning / controller / guarantee; no reviewer read delay embedding itself as a contribution"
+q5: "implementable except for the candidate set, which was never constructed"
+triage:
+  - id: F1
+    severity: major
+    finding: "two of the three things the Why paragraph credited to the operator view (closed-form horizon, planner-ready object) hold for any affine state-space model, so the rebuttal overclaims for the reported instance"
+    action: FIXED
+    how: "the Why paragraph now credits the operator view with one thing that is its own (the lifting is a change of dictionary inside one model) and says outright that the other two come with any affine state-space form; the underlined answer now states that the operator view buys no accuracy by itself"
+  - id: F2
+    severity: major
+    finding: "the candidate set C_t is used four times and never constructed, so Algorithm 1 cannot be run as written"
+    action: FIXED
+    how: "3.3 now says what the set is (a finite list of admissible command values, fixed before the loop, a property of the task) and a TODO(data) comment records that the per-benchmark lists belong to the colleague's control setup and are reported with the experiments"
+  - id: F3
+    severity: minor
+    finding: "the letter C carries three objects: the readout row C, the command range \\mathcal{C}, the candidate set \\mathcal{C}_t"
+    action: DEFERRED
+    how: "renaming the readout row touches the colleague's notation, the symbol lattice, the appendices and the figure. Raised for the user at CP2-redo; contract already warns against the confusion in s_C.scope"
+  - id: F4
+    severity: minor
+    finding: "'a few tens to a few hundred recorded trajectories pin them down' is an unsupported sample-sufficiency claim inside Method"
+    action: FIXED
+    how: "replaced by a parameter-count statement with no dataset claim"
+  - id: F5
+    severity: minor
+    finding: "the two-restriction sentence needed a second read"
+    action: FIXED
+    how: "split into three short sentences"
+  - id: F6
+    severity: minor
+    finding: "A1's decoder never appears in the main text, so a reader who skips the appendix does not know one exists"
+    action: FIXED
+    how: "the lifting paragraph now names the decoder in words; the symbol stays out of the main text per D25"
+  - id: F7
+    severity: minor
+    finding: "the subsection title 'Learning the Model from Interaction Data' may over-credit a plain least-squares fit"
+    action: REJECTED
+    how: "D25 cuts the section by component on purpose, and D27 puts the fit in the main text on purpose. The paragraph itself calls it a least-squares problem with a closed-form solution, which is the opposite of a novelty claim"
+note_outside_scope: >
+  The reviewer observed that Figure 1 still shows the colleague's four-module control pipeline and
+  carries the words "Test Time" inside the image. The term gate cannot see text inside a PNG.
+  This is D31 / Phase R3 work and is recorded in WRITING_STATE.

@@ -69,11 +69,40 @@ def blocks(lines):
             i += 1
 
 
+def mask_algorithmic(lines):
+    """Blank out the body of algorithmic blocks (D34).
+
+    Pseudocode names symbols the prose has already introduced, in an order the gate would
+    otherwise read as a first occurrence. Rule 21's result-number grep in mech_audit.sh still
+    covers the block; only this gate's symbol bookkeeping ignores it.
+    """
+    out, inside = [], False
+    for raw in lines:
+        stripped = strip_comment(raw)
+        if re.search(r"\\begin\{algorithmic\}", stripped):
+            inside = True
+            out.append(raw)
+            continue
+        if re.search(r"\\end\{algorithmic\}", stripped):
+            inside = False
+            out.append(raw)
+            continue
+        out.append("%" + raw if inside else raw)
+    return out
+
+
 def intuition_before(lines, begin_idx):
-    """True when a prose sentence sits in the same paragraph just above the equation."""
+    """True when a prose sentence sits in the same paragraph just above the equation.
+
+    D34: a Proposition's opening line is not a paragraph break for this purpose. The intuition
+    sentence for a bound stated inside a proposition sits in the paragraph above the environment.
+    """
     k = begin_idx - 1
     while k >= 0:
         raw = strip_comment(lines[k]).strip()
+        if re.match(r"\\(begin|end)\{(proposition|lemma|theorem)\}", raw):
+            k -= 1
+            continue
         if not raw:
             return False                      # paragraph break: the equation opens a paragraph
         if re.match(r"\\(section|subsection|subsubsection|paragraph|label|end|begin|item)", raw):
@@ -151,7 +180,7 @@ def gloss_after(lines, end_idx, wanted):
 
 def check(path, eqs, earlier=""):
     with open(path, encoding="utf-8") as fh:
-        lines = fh.read().split("\n")
+        lines = mask_algorithmic(fh.read().split("\n"))
     problems = []
     seen = 0
     for label, b, e in blocks(lines):

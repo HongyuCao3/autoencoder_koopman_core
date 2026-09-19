@@ -1,3 +1,6 @@
+% Phase R2 (2026-09-19). D30: bridge from the tracking objective to the reported satisfaction
+% score, wording pending the colleague's metric definition. D32: the observability fact that used
+% to be Method's first Why paragraph is stated here. D29: the banned input word is replaced by "instruction".
 \section{Problem Formulation}
 \label{sec:problem}
 
@@ -8,7 +11,7 @@ Let $x$ denote a task input and $p_{\theta}$ a frozen large language
 model (LLM). We track one output attribute at a time, such as sentence
 length or sentiment polarity. At interaction step $t$, the model has
 produced a dialogue history $\mathcal{H}_t$, and a controller supplies
-a textual intervention $u_t$. A step is one complete prompt-response
+a textual instruction $u_t$. A step is one complete prompt-response
 exchange.
 
 The next response and its measured attribute are
@@ -21,10 +24,13 @@ The next response and its measured attribute are
 \end{equation}
 Here $V$ is a task-specific verifier that reads a finished reply into
 a scalar attribute. The reply $o_{t+1}$ is text; $y_{t+1}$ is its
-measured attribute value.
+measured attribute value. A caller outside the model sees $y_{t+1}$ and
+nothing else of the model's internals. The activations that produced the
+reply are out of reach, so the reading of the verifier is both the signal
+available and the quantity the objective is stated in.
 
 A model of this interaction is useful only if it stays accurate over
-several future steps. A controller reasons about an intervention's
+several future steps. A controller reasons about an instruction's
 consequences several turns ahead, not only the very next one. We
 therefore state the modeling objective as multi-step prediction
 accuracy: the model's forecast should track the actual attribute
@@ -40,7 +46,7 @@ Here $\widehat y_{t+h\mid t}$ is the model's forecast of the attribute
 at step $t+h$, made from information available at step $t$, and
 $y_{t+h}$ is the actual reading. The discrepancy $\ell_h$ should stay
 small for every $h$ up to $H$, not only at $h=1$.
-Section~\ref{sec:koopman_operator} specifies how this forecast is
+Section~\ref{sec:model} specifies how this forecast is
 formed and what is held fixed to make it well defined.
 
 \subsection{Control}
@@ -50,7 +56,17 @@ Let $r\in\mathbb{R}$ denote the desired value of the tracked attribute.
 The tracking error is $e_t=r-y_t$, and the control objective is to
 drive this error toward zero within a finite interaction budget. At
 each step the controller's action is a scalar command $c_t$, which
-determines the intervention $u_t$ applied to the model.
+determines the instruction $u_t$ applied to the model.
+
+The tracked quantity is a number, and what the control experiments report
+is a rate of constraint satisfaction. The two meet through the task's own
+feasible set $\mathcal{Y}$: a reply counts as satisfying the constraint when
+its reading $y_t$ lands in $\mathcal{Y}$, and $r$ is chosen inside
+$\mathcal{Y}$. Driving the tracking error toward zero is therefore the means,
+and the reported satisfaction rate is the outcome.
+% TODO(data): the exact definition of the satisfaction metric is pending from the colleague
+% (evidence/numbers_benchmark.yaml header). Until it arrives this paragraph states the relation
+% and does not paraphrase what the metric counts per subtask. D30.
 
 The desired output $r$ and the applied command $c_t$ play distinct
 roles: $r$ states the objective, and $c_t$ is the controller's choice.
