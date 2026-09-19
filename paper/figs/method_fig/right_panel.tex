@@ -15,7 +15,10 @@
 % for the bar and leaves every module's own coordinate system untouched --
 % each module still only knows about its own 3.03-tall content area; the
 % bar lives in the extra \TitleH above it, entirely at this assembly layer.
-\def\TitleH{0.36}          % title-bar strip height, same for all 4 panels
+% v3: 0.36 -> 0.46. Needed so panel A's two-line title (see \PanelTitle
+% above) has room; applied to all 4 panels uniformly so every title bar
+% stays the same height (the row layout only knows one \TitleH).
+\def\TitleH{0.46}          % title-bar strip height, same for all 4 panels
 \def\ModH{3.03}            % each module's own content height (unchanged)
 \pgfmathsetmacro{\PanelH}{\ModH+\TitleH}   % = 3.39, full panel box height
 
@@ -31,8 +34,17 @@
                              % #2=width  #3=fill colour  #4=centred text
 \begin{scope}[shift={#1}]
   \path[rounded corners=3pt,fill=#3] (0,0) rectangle (#2,\TitleH);
-  \node[font=\bfseries\scriptsize,text=white] at ({0.5*#2},{0.5*\TitleH}) {#4};
+  \node[font=\bfseries\scriptsize,text=white,align=center] at ({0.5*#2},{0.5*\TitleH}) {#4};
 \end{scope}}
+% v3: the plan's new title text ("A Finite-memory state" etc.) is longer
+% than the old text this macro was tuned for, and panel A's own width
+% (2.94cm, unchanged -- the 2x2 layout is on the "immutable" list) is the
+% narrowest of the four; at one line, \scriptsize, it clipped against the
+% panel's own rounded corner in the render. G3 sets \scriptsize as a FLOOR
+% ("minimum font size"), so the fix is a two-line title for A alone (see
+% \TitleH below), not a smaller font for anyone. align=center (added here,
+% affects all four uniformly, so still one shared macro, not a per-panel
+% override) is what makes A's explicit "\\" below actually wrap.
 
 % Placement (each module's own local (0,0) origin, in this panel's frame;
 % row 1 sits \PanelH above row 2 plus the usual 0.25cm gap):
@@ -50,35 +62,33 @@
 % ---- title bars, in the strip ABOVE each module's own content area (at
 % local y=\ModH within that module's frame) -- a NEW band, not carved out
 % of space any module's internals already use, so nothing needed to move ----
-\PanelTitle{(0.00,\RowOneY+\ModH)}{2.94}{clModA}{A Finite memory}
-\PanelTitle{(3.19,\RowOneY+\ModH)}{6.53}{clModB}{B Koopman model}
-\PanelTitle{(0.00,\ModH)}{4.735}{clModC}{C Offline learning}
-\PanelTitle{(4.985,\ModH)}{4.735}{clModD}{D Predictive control}
+% v3 (2026-09-19, post CP2-redo): titles renamed to match the plan's
+% §2.2 wording, which in turn matches §3.1-3.3's own subsection titles.
+\PanelTitle{(0.00,\RowOneY+\ModH)}{2.94}{clModA}{A Finite-memory\\state}
+\PanelTitle{(3.19,\RowOneY+\ModH)}{6.53}{clModB}{B Koopman dynamics model}
+\PanelTitle{(0.00,\ModH)}{4.735}{clModC}{C Learning from data}
+\PanelTitle{(4.985,\ModH)}{4.735}{clModD}{D Predictive selection}
 
 % ---- module content, each in its own shifted scope (origin unchanged --
 % only the panel box and title strip grew, not the module's own frame) ----
 \begin{scope}[shift={(0.00,\RowOneY)}]  \input{modA_memory}   \end{scope}
 \begin{scope}[shift={(3.19,\RowOneY)}]  \input{modB_koopman}  \end{scope}
-\begin{scope}[shift={(0.00,0.00)}]      \input{modC_training} \end{scope}
+\begin{scope}[shift={(0.00,0.00)}]      \input{modC_learning} \end{scope}
 \begin{scope}[shift={(4.985,0.00)}]     \input{modD_control}  \end{scope}
 
-% ---- cross-module relation 1 (drawn): A's finite-memory state s_t is what
-% B's encoder takes in. Both modules place their MemColV for s_t bottom-
-% aligned at local y=2.09, so a level arrow across the 0.25cm gap reads
-% cleanly and does not cross either module's own content. Shifted up by
-% \RowOneY (was the old fixed 3.28) since row 1 now sits higher. ----
+% ---- cross-module relation (drawn): A's finite-memory state s_t is what
+% B's dynamics model takes in. Both modules place their MemColV for s_t
+% with its TOP at local y=2.09 (same column, same coordinate, in both
+% frames), so a level arrow across the 0.25cm gap reads cleanly and does
+% not cross either module's own content. Shifted up by \RowOneY (was the
+% old fixed 3.28) since row 1 now sits higher. ----
+% v3 (post CP2-redo): this is now the ONLY cross-module arrow in the right
+% panel (G9). The old "(feeds D)" caption (B's yhat "feeds" D's rollout)
+% is dropped, not replaced with a line -- the plan's rule for this version
+% is that every other cross-module relation is carried by glyph identity
+% alone (same shape, same colour, same symbol in both panels), never by a
+% second drawn arrow or caption.
 \draw[thinflow] (1.91,{2.09+\RowOneY}) -- (3.81,{2.09+\RowOneY});
-
-% ---- cross-module relation 2 (NOT drawn): B's predicted attribute feeds
-% D's rollout/plot conceptually, but a literal line from B's y-hat cell
-% (bottom-right of B) down to D's mini-axes would cross D's own receding-
-% horizon feedback line and skim its cost bars -- exactly the collision
-% case FIG_PLAN §3.3 anticipates. Per that fallback, use a minicap instead.
-% Sits below B's y-hat cell (local (5.75,0.28)); the cell's own label was
-% moved west in modB_koopman.tex to clear this exact strip -- the original
-% placement at y=0.45 landed on top of that label before the move.
-% Shifted up by \RowOneY like everything else in row 1.
-\node[minicap,anchor=north west] at (9.05,{0.30+\RowOneY}) {(feeds D)};
 
 % ---- C trains B (caption instead of a line; the two panels are not
 % adjacent at this row spacing) ----

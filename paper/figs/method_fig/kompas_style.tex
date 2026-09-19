@@ -375,3 +375,25 @@
     \draw[black!55,line width=0.35pt] (\a:0.105)--++(\a+140:0.042);
     \draw[black!55,line width=0.35pt] (\a:0.105)--++(\a-140:0.042);}
 \end{scope}}
+
+% =====================================================================
+% ==============  v3 additions (post CP2-redo, FIG_PLAN_v3 §3.0)  =====
+% Added 2026-09-19. ONLY these two macros; append-only per the plan's
+% "unchanged" list for this file.
+% =====================================================================
+% \MemColVF{(top-left)}{n}{cell}{fade 0..100} — a FADING reading column
+% (tok1 hue), the s-space counterpart of \LatColVF now that the rollout
+% (eq:closed_form_rollout) lives on the readings s_t, not a latent xi_t.
+\newcommand{\MemColVF}[4]{%
+\begin{scope}[shift={#1}]
+  \foreach \r in {1,...,#2}{%
+    \pgfmathtruncatemacro{\p}{(22+18*mod(\r*5+2,4))*#4/100}
+    \fill[tok1!\p,gcell] (0,{-(\r-1)*#3}) rectangle ++(#3,-#3);}
+  \pgfmathtruncatemacro{\pe}{90*#4/100}
+  \draw[tok1!\pe,line width=0.45pt] (0,0) rectangle (#3,{-#2*#3});
+\end{scope}}
+% \WinBracket{(x,y) top-left of first window}{n cells}{cell}{colour} — a
+% sliding-window bracket over a MemRow; used ONCE in module C (rendered
+% twice, offset by one cell) to show how overlapping windows cut transitions.
+\newcommand{\WinBracket}[4]{%
+  \draw[#4,line width=0.6pt,rounded corners=1pt] #1 ++(0,0.04) -| ++({#2*#3},{-#3-0.08}) -| cycle;}

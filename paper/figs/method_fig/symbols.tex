@@ -2,6 +2,15 @@
 % Every macro below is copied from paper/sections/02_method.tex.
 % Rule: no fragment may type a raw symbol inside $...$; use these macros.
 % If a symbol is missing here, it is missing from §3 — fix §3 first.
+%
+% v3 (2026-09-19, post CP2-redo, FIG_PLAN_v3 §3.0): the model now operates on
+% s_t directly (no encoder/decoder in the main text), so the xi-space macros
+% (\symLat*, \symDec, \symQ, \symReadout, \symLatRoll, \symData) and the
+% three-term training loss macros (\symLrec/Llin/Lpred, \symParams) are
+% removed -- those objects now live only in the appendix. \symEnc (E_phi) is
+% kept: 3.1 P6 mentions the lifting once in the main text, and module B draws
+% it once as an optional, faded detour. New macros below cover the s-space
+% identification/rollout objects the rewritten §3.2/3.3 actually states.
 
 % ---- task, target, command ----
 \newcommand{\symTask}{x}
@@ -29,29 +38,25 @@
 \newcommand{\symMemDim}{L+1}
 \newcommand{\symMemSpace}{\mathbb{R}^{L+1}}
 \newcommand{\symSel}{C}
-% ---- Koopman model ----
+% ---- lifting (kept: 3.1 P6 mentions it once; drawn once, faded, in B) ----
 \newcommand{\symEnc}{E_{\phi}}
-\newcommand{\symDec}{D_{\psi}}
-\newcommand{\symLat}{\xi_t}
-\newcommand{\symLatNext}{\xi_{t+1}}
-\newcommand{\symLatHat}{\widehat{\xi}_{t+1}}
-\newcommand{\symLatDim}{d_{\xi}}
+% ---- Koopman model (s-space, eq:koopman_model) ----
 \newcommand{\symK}{K}
 \newcommand{\symBcol}{B}
 \newcommand{\symBias}{b}
-\newcommand{\symQ}{q_t}
-\newcommand{\symReadout}{g_{\psi}}
 \newcommand{\symYhat}{\widehat{y}_{t+1}}
-% ---- offline learning ----
-\newcommand{\symData}{\mathcal{D}}
-\newcommand{\symLrec}{\mathcal{L}_{\mathrm{rec}}}
-\newcommand{\symLlin}{\mathcal{L}_{\mathrm{lin}}}
-\newcommand{\symLpred}{\mathcal{L}_{\mathrm{pred}}}
-\newcommand{\symParams}{(\phi,\psi,K,B,b)}
+% ---- learning the model (eq:identification) ----
+\newcommand{\symKhat}{\widehat{K}}
+\newcommand{\symBhat}{\widehat{B}}
+\newcommand{\symbhat}{\widehat{b}}
+\newcommand{\symFit}{(\symKhat,\symBhat,\symbhat)}
+\newcommand{\symTrans}{(\symMem,\symCmd,\symMemNext)}
+\newcommand{\symResid}{\lVert\,\cdot\,\rVert_2^{2}}
+\newcommand{\symBudget}{T}
 % ---- predictive control ----
 \newcommand{\symHor}{H}
 \newcommand{\symStep}{h}
-\newcommand{\symLatRoll}{\widehat{\xi}_{t+h\mid t}}
+\newcommand{\symMemRoll}{\widehat{s}_{t+h\mid t}}
 \newcommand{\symYroll}{\widehat{y}_{t+h\mid t}}
 \newcommand{\symKpow}{K^{h}}
 \newcommand{\symCost}{\widehat{J}_t}
@@ -64,7 +69,8 @@
 \newcommand{\eqGenShort}{\symOut \sim \symLLM(\cdot\mid \symHist,\symPrompt)}
 \newcommand{\eqVerify}{\symAttrNext = \symVerifier(\symOut)}
 \newcommand{\eqSelect}{\symAttr = \symSel \symMem}
-\newcommand{\eqAffine}{\symLatHat = \symK \symLat + \symBcol \symCmd + \symBias}
+\newcommand{\eqAffine}{\symMemHat = \symK \symMem + \symBcol \symCmd + \symBias}
+\newcommand{\eqIdent}{\symFit = \operatorname*{arg\,min}\textstyle\sum_t \lVert \symMemNext-(\symK\symMem+\symBcol\symCmd+\symBias)\rVert_2^{2}}
 \newcommand{\eqArgmin}{\symCmdStar = \operatorname*{arg\,min}_{\symCmdAny\in\symCmdSet}\symCost(\symCmdAny)}
 \newcommand{\eqCost}{\symCost(\symCmdAny) = \sum_{\symStep=1}^{\symHor} w_{\symStep}
   \lvert \symYroll(\symCmdAny) - \symTarget \rvert^{2}}

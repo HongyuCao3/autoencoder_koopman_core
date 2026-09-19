@@ -1,0 +1,71 @@
+% symbols.tex — the ONLY way a symbol may enter the method figure.
+% Every macro below is copied from paper/sections/02_method.tex.
+% Rule: no fragment may type a raw symbol inside $...$; use these macros.
+% If a symbol is missing here, it is missing from §3 — fix §3 first.
+
+% ---- task, target, command ----
+\newcommand{\symTask}{x}
+\newcommand{\symTarget}{r}
+\newcommand{\symCmd}{c_t}
+\newcommand{\symCmdAny}{c}
+\newcommand{\symCmdSet}{\mathcal{C}_t}
+\newcommand{\symCmdStar}{c_t^{\star}}
+% ---- prompting protocol and the frozen model ----
+\newcommand{\symPrompt}{u_t}
+\newcommand{\symProto}{\mathcal{P}}
+\newcommand{\symHist}{\mathcal{H}_t}
+\newcommand{\symLLM}{p_{\theta}}
+\newcommand{\symTheta}{\theta}
+\newcommand{\symOut}{o_{t+1}}
+\newcommand{\symVerifier}{V}
+% ---- attributes and the finite-memory state ----
+\newcommand{\symAttr}{y_t}
+\newcommand{\symAttrPrev}{y_{t-1}}
+\newcommand{\symAttrLast}{y_{t-L}}
+\newcommand{\symAttrNext}{y_{t+1}}
+\newcommand{\symMem}{s_t}
+\newcommand{\symMemNext}{s_{t+1}}
+\newcommand{\symMemHat}{\widehat{s}_{t+1}}
+\newcommand{\symMemDim}{L+1}
+\newcommand{\symMemSpace}{\mathbb{R}^{L+1}}
+\newcommand{\symSel}{C}
+% ---- Koopman model ----
+\newcommand{\symEnc}{E_{\phi}}
+\newcommand{\symDec}{D_{\psi}}
+\newcommand{\symLat}{\xi_t}
+\newcommand{\symLatNext}{\xi_{t+1}}
+\newcommand{\symLatHat}{\widehat{\xi}_{t+1}}
+\newcommand{\symLatDim}{d_{\xi}}
+\newcommand{\symK}{K}
+\newcommand{\symBcol}{B}
+\newcommand{\symBias}{b}
+\newcommand{\symQ}{q_t}
+\newcommand{\symReadout}{g_{\psi}}
+\newcommand{\symYhat}{\widehat{y}_{t+1}}
+% ---- offline learning ----
+\newcommand{\symData}{\mathcal{D}}
+\newcommand{\symLrec}{\mathcal{L}_{\mathrm{rec}}}
+\newcommand{\symLlin}{\mathcal{L}_{\mathrm{lin}}}
+\newcommand{\symLpred}{\mathcal{L}_{\mathrm{pred}}}
+\newcommand{\symParams}{(\phi,\psi,K,B,b)}
+% ---- predictive control ----
+\newcommand{\symHor}{H}
+\newcommand{\symStep}{h}
+\newcommand{\symLatRoll}{\widehat{\xi}_{t+h\mid t}}
+\newcommand{\symYroll}{\widehat{y}_{t+h\mid t}}
+\newcommand{\symKpow}{K^{h}}
+\newcommand{\symCost}{\widehat{J}_t}
+\newcommand{\symBound}{\Delta_h}
+
+% ---- one-line equations reused verbatim across fragments ----
+\newcommand{\eqProto}{\symPrompt = \symProto(\symTask,\symHist,\symCmd)}
+\newcommand{\eqProtoShort}{\symPrompt = \symProto(\symHist,\symCmd)}
+\newcommand{\eqGen}{\symOut \sim \symLLM(\cdot\mid \symTask,\symHist,\symPrompt)}
+\newcommand{\eqGenShort}{\symOut \sim \symLLM(\cdot\mid \symHist,\symPrompt)}
+\newcommand{\eqVerify}{\symAttrNext = \symVerifier(\symOut)}
+\newcommand{\eqSelect}{\symAttr = \symSel \symMem}
+\newcommand{\eqAffine}{\symLatHat = \symK \symLat + \symBcol \symCmd + \symBias}
+\newcommand{\eqArgmin}{\symCmdStar = \operatorname*{arg\,min}_{\symCmdAny\in\symCmdSet}\symCost(\symCmdAny)}
+\newcommand{\eqCost}{\symCost(\symCmdAny) = \sum_{\symStep=1}^{\symHor} w_{\symStep}
+  \lvert \symYroll(\symCmdAny) - \symTarget \rvert^{2}}
+\newcommand{\eqBound}{\lvert \symAttr - \symYhat \rvert \le \symBound}

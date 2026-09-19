@@ -1,0 +1,97 @@
+% modD_control.tex — module D: predictive test-time control.
+% Draws eq:rollout (latent rollout per candidate, no LLM call), the
+% closed-form expansion's per-step command injection (eq:closed_form_rollout),
+% and eq:selection (cost + argmin over the candidate set).
+% Canvas 4.735 x 3.03; top-left 2.2 x 0.30 left empty for the corner tag.
+\path (0,0) rectangle (4.735,3.03);
+
+% ---------------- 1. candidate set C_t --------------------------------
+\node[mathlab,anchor=south] at (0.51,2.57) {$\symCmdSet$};
+\ScalarCell{(0.12,2.55)}{ours}{}
+\ScalarCell{(0.40,2.55)}{bad}{}
+\ScalarCell{(0.68,2.55)}{good}{}
+
+% three thin lines: the same chain is rolled out once per candidate
+\draw[draw=ours,line width=0.4pt] (0.23,2.33) -- (0.14,2.20);
+\draw[draw=bad,line width=0.4pt]  (0.51,2.33) -- (0.14,2.20);
+\draw[draw=good,line width=0.4pt] (0.79,2.33) -- (0.14,2.20);
+
+% ---------------- 2. latent rollout without an LLM call ---------------
+% xihat_{t+h|t} = K xihat_{t+h-1|t} + B c + b   (eq:rollout, eq:closed_form_rollout)
+% label the chain ONCE at each end; the fading colour marks successive h.
+\LatCol{(0.05,2.20)}{3}{0.18}
+\node[mathlab,anchor=north] at (0.14,1.62) {$\symLat$};
+\LatColVF{(0.69,2.20)}{3}{0.18}{78}
+\LatColVF{(1.33,2.20)}{3}{0.18}{58}
+\LatColVF{(1.97,2.20)}{3}{0.18}{42}
+\node[mathlab,anchor=north east] at (2.16,1.62) {$\symLatRoll$};  % v4: this label is wide (xi-hat-t-plus-h-given-t); centred at 2.06 its right half reached into the decoder (now starting at x=2.25). Right-anchored instead so it grows left, away from it.
+
+\draw[thinflow] (0.25,1.93) -- (0.67,1.93);
+\draw[thinflow] (0.89,1.93) -- (1.31,1.93);
+\node[mathlab,anchor=south] at (1.10,1.99) {$\symK$};
+\draw[thinflow] (1.53,1.93) -- (1.95,1.93);
+
+% one instance of the per-step command injection is enough: the three
+% arrows are identical, so a single Bc (ours) + b (grey) reads as "every
+% step adds the command".
+\MatBlock{(1.02,1.86)}{3}{1}{0.07}{ours}
+\MatBlock{(1.10,1.86)}{3}{1}{0.07}{black}
+
+\DimBraceB{(0.05,1.30)}{(2.15,1.30)}{$\symStep = 1,\ldots,\symHor$}
+\node[minicap] at (1.10,0.85) {no LLM call};
+
+% ---------------- 3. decode to an attribute (readout, once) -----------
+% sits on the chain's own line, to the right of it -- not stacked below.
+% v4: the decoder was drawn at scale 0.26 -- half of FIG_PLAN \S3.2's own
+% "scaled to 50%" spec for this glyph -- which is what made the readout
+% cluster this tight in the first place (neurons + row-selector + label all
+% competing for under 0.4cm). Grown to 0.35 and every downstream coordinate
+% recomputed from its actual bounding box, not eyeballed.
+\draw[microflow] (2.17,1.93) -- (2.22,1.85);  % v5: found the real culprit -- this arrow's tip (x=2.32) was left over from the scale-0.26 decoder and landed 0.07cm INSIDE the scale-0.35 decoder's new left edge (x=2.25), drawing the arrowhead on top of the first neuron column. Pulled back to just outside it.
+\begin{scope}[shift={(2.334,1.80)},scale=0.35,transform shape]
+  \DecNet{mdDec}{(0,0)}
+\end{scope}
+\draw[microflow] (2.74,1.80) -- (2.82,1.80);
+\RowSelector{(2.82,1.835)}{3}{0.07}
+\node[mathlab,anchor=south] at (2.925,1.845) {$\symReadout$};
+\draw[microflow] (3.03,1.80) -- (2.95,1.66);
+
+% ---------------- 4. predicted trajectory vs. target -------------------
+\MiniAxes{(2.95,0.55)}{1.50}{1.10}
+\node[mathlab,anchor=west] at (4.47,0.55) {$\symStep$};
+\node[mathlab,anchor=south west] at (3.06,1.60) {$\symYroll$};  % v6-v7: this WAS the actual source of the mangled glyph inside the decoder trapezoid in every earlier render -- anchor=south east at (2.98,1.66) grows left/up from that point, so this (wide) label was reaching back into the decoder the whole time; none of the arrow/selector/other-label edits touched it because it belongs to section 4 (the mini-axes y-label), not section 3. Re-anchored south-west so it grows right/up above the axes' own top-left corner, then nudged further right/down once more for clean air from g_psi.
+\draw[dashed,draw=good,line width=0.5pt] (2.95,1.10) -- (4.45,1.10);
+\node[mathlab,anchor=west,text=good] at (4.47,1.10) {$\symTarget$};
+\draw[draw=bad,line width=0.6pt]  (3.00,0.70) -- (3.45,1.40) -- (3.90,1.50) -- (4.40,1.35);
+\draw[draw=good,line width=0.6pt] (3.00,0.70) -- (3.45,0.95) -- (3.90,1.05) -- (4.40,1.10);
+\draw[draw=ours,line width=0.6pt] (3.00,0.70) -- (3.45,0.78) -- (3.90,0.85) -- (4.40,0.92);
+\node[minicap] at (4.47,0.92) {$\symBound$};
+
+% ---------------- 5. cost and the choice (above the plot) --------------
+\node[mathlab,anchor=south] at (3.30,2.66) {$\symCost$};
+\fill[ours] (2.95,2.48) rectangle (3.50,2.60);
+\fill[bad]  (2.95,2.30) rectangle (3.80,2.42);
+\fill[good] (2.95,2.12) rectangle (3.20,2.24);
+\ScalarCell{(4.15,2.24)}{ours}{$\symCmdStar$}
+\draw[oursflow] (4.15,2.13) -- (3.20,2.18);
+
+% ---------------- 6. receding horizon: execute -> observe -> replan, as
+% three sequential blocks along the return path (was: one text caption
+% riding on a single long arrow). Order matches the arrow's own direction
+% of travel (right to left along the bottom, then up into the next
+% rollout) -- this is the control loop's real feedback path, not an
+% incidental reversal, so it is drawn as a loop on purpose, unlike the
+% internal module chains which should read strictly left to right.
+% nodes declared FIRST, then arrows reference their .east/.west anchors --
+% this lands each arrow exactly on the box's own rendered edge no matter
+% how wide \scriptsize makes "Execute"/"Observe"/"Replan" actually come
+% out, instead of guessing a fixed half-width (the guess was wrong: the
+% first attempt's hand-picked coordinates landed inside the boxes, so the
+% connector was visibly cutting through the middle of each word).
+\node[rhblock] (rhExec) at (3.85,0.15) {Execute};
+\node[rhblock] (rhObs) at (2.30,0.15) {Observe};
+\node[rhblock] (rhReplan) at (0.75,0.15) {Replan};
+\draw[thinflow] (4.26,2.02) -- (4.70,2.02) -- (4.70,0.15) -- (rhExec.east);
+\draw[thinflow] (rhExec.west) -- (rhObs.east);
+\draw[thinflow] (rhObs.west) -- (rhReplan.east);
+\draw[thinflow] (rhReplan.west) -- (0.06,0.15) -- (0.06,0.33);

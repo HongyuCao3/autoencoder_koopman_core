@@ -1,5 +1,214 @@
 # FIG_STATE (method figure, TikZ)
 
+## v3 (post CP2-redo)
+
+updated: 2026-09-19  by: sonnet session (v3-0 through v3-2, this session)
+step: v3-0 prepared -> v3-1 (B/C/D redrawn) -> v3-2 (right_panel assembled) -- see
+  step log below for exact status of each.
+context: `paper/sections/02_method.tex` was rewritten (CP2-redo, commit `6be3d2b`)
+  between step-3-rev-4 (the last state recorded above) and this session. The
+  rewrite drops the xi-space encoder/decoder and the three-term training loss
+  from the main text (they now live only in the appendix) and moves the model
+  onto the raw reading window s_t with a one-line least-squares fit. See
+  `FIG_PLAN_v3_2026-09-19.md` for the full plan this session executed; do not
+  re-derive requirements from `FIG_PLAN_2026-09-19.md` (v2) except where v3
+  explicitly says something is unchanged (module A, left_loop, the 2x2 layout,
+  the glyph vocabulary, kompas_style.tex's palette/styles).
+
+### v3-0 (shared files)
+- `symbols.tex`: removed the macros the plan lists (`\symLat`, `\symLatNext`,
+  `\symLatHat`, `\symLatDim`, `\symDec`, `\symQ`, `\symReadout`, `\symLatRoll`,
+  `\symData`, `\symLrec`, `\symLlin`, `\symLpred`, `\symParams`, the xi-space
+  `\eqAffine`). Kept `\symEnc` (E_phi appears once in 3.1 P6 and once in
+  module B). Added exactly the macros the plan specifies: `\symMemRoll`,
+  `\symKhat`/`\symBhat`/`\symbhat`, `\symFit`, `\symTrans`, `\symResid`,
+  `\symBudget`, the s-space `\eqAffine`, and `\eqIdent`.
+- `kompas_style.tex`: appended exactly the two macros the plan specifies,
+  `\MemColVF` and `\WinBracket`, at the end of the file, under a new
+  "v3 additions" banner comment. Nothing else in this file was touched --
+  palette, `panel`/`ptag`/`thinflow`/`oursflow`/`bypass`/`lossline` styles and
+  the `clModA`-`clModD` colours are all byte-for-byte what step-3-rev-4 left.
+- Predicted-failure check (plan says B/C/D SHOULD fail G2 at this point,
+  before their redraw, because they still reference macros just deleted):
+  ```
+  modA_memory.tex: OK (4 atoms, 0 unmatched)
+  modB_koopman.tex: 4 UNMATCHED -> \symDec, \symLat, \symLatDim, \symLatHat
+  modC_training.tex: 10 UNMATCHED -> \symData, \symDec, \symLat, \symLatNext,
+    \symLlin, \symLpred, \symLrec, \symParams, \symQ, \theta
+  modD_control.tex: 3 UNMATCHED -> \symLat, \symLatRoll, \symReadout
+  ```
+  (These read as literal macro names, not expanded LaTeX, because the audit
+  script's macro table no longer has entries for them -- exactly the signal
+  the plan says to expect. B/C/D would also now fail to *compile*, for the
+  same reason: undefined control sequences. This is the expected, momentary
+  broken state between deleting the old symbols and redrawing the three
+  modules that used them.)
+
+### v3-1 (B, C, D redrawn) -- DONE, this session
+
+Backups made before any editing (per this task's own instructions, not part
+of the v3 plan's own step list): `paper/figs/method_fig_v2_backup_2026-09-19/`
+is a full copy of the pre-v3 `method_fig/` directory (the step-3-rev-4 state,
+never approved, never wired in), and
+`paper/figs/_colleague_backup_2026-09-18/method.png` is a copy of the
+colleague's raster figure that `02_method.tex` still `\includegraphics`'s
+(no such backup existed before this session).
+
+**modB_koopman.tex** -- full rewrite. Main chain, baseline y=1.75, entirely in
+s-space: `s_t -> [K, (L+1)x(L+1)] -> (+) -> shat_{t+1} -> [C] -> yhat_{t+1}`,
+command (B, ours) entering from below, bias (b, small, labelled to its west)
+from above. The lifting is one faded (opacity 0.45) arc from s_t's own column
+top back to shat_{t+1}'s own column top, through a de-emphasised encoder/
+decoder pair positioned in the gaps flanking the busy middle (over the s_t->K
+arrow and over shat_{t+1}), not directly over K or the bias column -- three
+earlier placements of that arc each produced a different text collision only
+visible in the render (E_phi merging into K's own (L+1)x(L+1) brace label;
+"command"/$B$ merging into "comBand" once the command column grew from the
+old 3 rows to the correct 4; the net colliding with the bias column's own
+top). `\symEnc` (E_phi) appears exactly once, under the encoder, as required.
+Deleted: both `\IdBypass` arrows, both `\Trainable` frames, "(feeds D)".
+One exemption logged (plan's own §8 risk table anticipated this class of
+bug for `\symResid`, and it recurred here for a different pair): the G2
+audit's naive string-substitution macro expander reads `\times` immediately
+followed by `\symMemDim`'s own expansion "L+1" as the literal nonexistent
+control word `\timesL`, even though real TeX tokenizes them as two separate
+control words. Fixed with a no-op `{}` between them
+(`\symMemDim\times{}\symMemDim`) -- changes nothing rendered, silences the
+false positive; the script itself was not touched, per the plan's own
+prescription for this class of issue.
+Gates: G1 pass (`preview/step_modB_koopman_v21.png`, final). G2 pass (10
+atoms, 0 unmatched). G3 pass (visual, iterated v15->v21, see history in
+this session's tool log if ever needed -- not reproduced here). G4 pass (2
+minicap nodes: "command", "optional learned lifting"; 0 banned verbs). G5
+pass (module colour only in the title bar, drawn in right_panel.tex). G7:
+one `line width=0.5pt` hit, on the sum-node circle -- carried over verbatim
+from the step-3-rev-4 version of this module (already gated pass then; not
+a new override). G8 pass (0 hits). G10 pass (`\symEnc` count = 1, in B).
+G11 pass (all main-chain horizontal arrows at y=1.75).
+
+**modC_training.tex -> modC_learning.tex** -- renamed (old file deleted from
+the working tree; it is still recoverable from
+`method_fig_v2_backup_2026-09-19/` and from git history) and rewritten.
+Left half draws 3.2 P1 (the training set is overlapping windows sliced from
+a recorded reading stream): one `\MemRow`, two `\WinBracket`s offset by one
+cell, an arrow down to three staggered small transition cards
+`(s_t, c_t, s_{t+1})` (only the front card labelled, via `\symTrans`). Right
+half draws eq:identification: the predicted side `K s_t + B c_t + b` in the
+SAME blocks and colours module B uses (cell shrunk to 0.16, per spec), one
+`\LossLink` (not two crossing ones) against the recorded `s_{t+1}` column,
+labelled `\symResid` at its midpoint; the fit `(Khat, Bhat, bhat)` drops out
+below via one `thinflow` arrow, as three small blocks with the hatted symbol
+below each. "theta frozen" is `\SnowIcon` + `\symLLM`, not a text caption.
+Zero `\EncNet`/`\DecNet`, zero `L_rec`/`L_lin`/`L_pred`, zero `q_t`, one
+lossline (was two crossing ones) -- this was the module the plan flagged as
+the largest win, and it reads far cleaner than the retired version now.
+Two collisions only visible in the render, both fixed by relocating a label
+rather than by recomputing coordinates on paper: `\symTrans`'s own bounding
+box reaches lower than a plain scriptsize line would (its triple subscript
+`(s_t,c_t,s_{t+1})`), so the first "sliding window" minicap position merged
+with it; and `\symMemNext`'s label, first placed above the recorded column,
+sat close enough to "least squares, closed form" to read as one run-on
+string, fixed by moving `\symMemNext` to above the column's own top instead
+(same trick module B already uses for `\symMemHat`) and nudging the minicap
+left.
+Gates: G1 pass (`preview/step_modC_learning_v4.png`, final). G2 pass (8
+atoms, 0 unmatched). G3 pass (visual, iterated v1->v4). G4 pass (2 minicap
+nodes: "sliding window", "least squares, closed form"; 0 banned verbs). G5
+pass. G7 pass (0 hits). G8 pass (0 hits in prose/comments; `clLatentD` -- a
+pre-existing kompas_style.tex colour-macro NAME shared with module B's K
+block, not new to this module -- matches the G8 grep's `latent` pattern
+case-insensitively but is not the banned term in the sense G8 means; logged
+as an accepted false positive rather than renaming a shared palette colour,
+which the plan's "no new colours" rule would treat as scope creep anyway).
+G10 pass (0 occurrences of `\symEnc` -- this module never lifts). G11 pass.
+
+**modD_control.tex** -- middle section rewritten, both ends kept exactly as
+specified. Section 1 (candidate set `C_t`) and section 4/5 (predicted-
+trajectory-vs-target plot, cost bars, argmin) are untouched. Section 2
+(rollout) now runs on `s_t` via `\MemColV`/`\MemColVF` (was `\LatCol`/
+`\LatColVF` on `xi_t`), baseline moved to y=1.75 (was 1.93), column spacing
+widened (now >=0.75cm centre-to-centre) since the decoder that used to eat
+the middle of this module is gone. Section 3 (readout) is now one
+`\RowSelector` (labelled `\symSel`), not a `\DecNet` + `\symReadout`. Section
+6 (the receding-horizon loop) keeps its three-block shape, only the labels
+changed: Execute/Observe/Replan -> Send/Read/Replan, so this loop, the left
+column and Algorithm 1 all use the same three verbs. One collision only
+visible in the render: `\symMemRoll` first placed below the rollout chain
+merged with the `h=1,...,H` brace label directly underneath it (that label's
+own subscript stack makes it wider than a coordinate estimate suggests);
+fixed by moving it above the chain's own top instead, mirroring the
+`\symMemHat` / `\symMemNext` fix used in B and C for the same class of bug.
+Gates: G1 pass (`preview/step_modD_control_v22.png`, final). G2 pass (12
+atoms, 0 unmatched). G3 pass (visual, iterated v20->v22). G4 pass (2 minicap
+nodes: "no LLM call", `\symBound`; 0 banned verbs). G5 pass. G7: the
+hand-drawn `line width=...` hits are all in the untouched candidate-set and
+plot sections, carried over verbatim from step-3-rev-4 (already gated pass
+then). G8: one hit on first pass, in this session's OWN new top-of-file
+comment ("not a latent xi_t") -- reworded to describe the same fact without
+the banned word ("the appendix's learned-feature variant is not drawn
+here"); 0 hits after. G10 pass (0 occurrences of `\symEnc`). G11 pass (all
+new rollout-chain arrows at y=1.75).
+
+### v3-2 (right_panel assembled) -- DONE, this session
+
+**modA_memory.tex** -- no changes. Verified against §3.1: content matches
+("内容不变"), and the `s_t` `\MemColV` is still top-left-anchored at local
+y=2.09 (unchanged), which is what the cross-module arrow depends on. The
+plan's optional mini-plot tweak (swap the two trend lines' end-dots for
+`\ScalarCell`s) was left as-is (filled dots) -- it is explicitly a
+take-it-or-leave-it choice in the plan, not a requirement, and there was no
+reason on inspection to prefer the alternative.
+
+**right_panel.tex**:
+- Title bar text updated to the plan's exact §2.2 wording: "A Finite-memory
+  state" / "B Koopman dynamics model" / "C Learning from data" / "D
+  Predictive selection".
+- Deviation, logged here: panel A's title, at one line and the shared
+  \scriptsize title font, clipped against its own panel's rounded corner --
+  A's width (2.94cm) is unchanged and is the narrowest of the four, and its
+  new required text is longer than the old "A Finite memory". G3 sets
+  \scriptsize as a FLOOR ("minimum font size"), so shrinking the font (tried
+  \tiny first) was rejected as it would violate that gate. Fixed instead by
+  wrapping A's title onto two lines ("Finite-memory\\state") and adding
+  `align=center` to the shared `\PanelTitle` macro (applies uniformly to all
+  four titles, so this is one shared-macro change, not a per-panel style
+  override) plus growing the shared `\TitleH` from 0.36 to 0.46cm (also
+  uniform across all four panels) to fit the second line. B/C/D's titles
+  still render on one line at the same \scriptsize; only A wraps.
+- Deleted the "(feeds D)" node and its surrounding comment block. Per the
+  plan, this is not replaced with anything (no line, no new caption): B's
+  `\symYhat` and D's rollout/readout are the same glyphs, same colours, same
+  symbols, and that shared identity is what the plan wants carrying the
+  relation, once every other main-text-only object is gone from the figure.
+- `\input{modC_training}` -> `\input{modC_learning}`.
+- Reworded the surviving cross-module-arrow comment, which used the word
+  "aligned" (matches G8's `align` pattern) -- not a new violation (that
+  comment predates v3), but since this file was already being edited this
+  session, it is fixed here rather than left for a future G8 run to catch.
+- Verified: the A->B cross-module arrow (`(1.91,{2.09+\RowOneY})` --
+  `(3.81,{2.09+\RowOneY})`) is unchanged and still the only cross-module
+  `\draw` in the file (G9).
+
+Gates on the full assembly: G1 pass (`preview/step_right_panel_v22.png`,
+CURRENT, supersedes v20/v21 and all step-3-rev-4 renders). G2 pass, run
+across all five fragments together (`modA_memory.tex modB_koopman.tex
+modC_learning.tex modD_control.tex right_panel.tex`): every file 0
+unmatched. G8 pass on `right_panel.tex` itself (0 hits after the reword
+above). G9 pass (exactly 1 cross-module arrow, A->B). G10 pass (`grep -c
+symEnc mod*.tex` = 1, and it is in `modB_koopman.tex`).
+
+previews_for_review (v3, current):
+  preview/step_modB_koopman_v21.png
+  preview/step_modC_learning_v4.png
+  preview/step_modD_control_v22.png
+  preview/step_right_panel_v22.png   <- the one the user should look at first
+user_verdict_on_previous: not yet recorded -- v3-2 is exactly the plan's own
+  stop point ("停：用户看右面板 PNG"). v3-3 (assemble method_figure.tex, wire
+  it into 02_method.tex's `\includegraphics`, rewrite the caption and the
+  opening-paragraph reference, run mech_audit.sh / latexmk) is NOT done and
+  was explicitly out of scope for this session -- do not do it until the
+  user has approved this right-panel render.
+
 updated: 2026-09-19  by: sonnet session (step-3 rev 4: caption trims, D's loop as 3 blocks, C redrawn left-to-right, this session)
 step: 3 (rev 4)   status: awaiting_user_review
 decisions: Q1=C-as-own-module (user, 2026-09-19, 2x2 保持四块)

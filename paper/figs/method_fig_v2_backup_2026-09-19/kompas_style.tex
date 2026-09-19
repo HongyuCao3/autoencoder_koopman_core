@@ -1,0 +1,377 @@
+% fcdiff_style.tex — shared preamble for all FCDiff figure modules
+% (semantic palette + tikz styles + tensor/NN drawing macros)
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,backgrounds,fit,
+  decorations.pathreplacing,decorations.pathmorphing}
+
+% ---------------- semantic palette (fixed across ALL modules) ----------------
+% Hue system (similar concept -> similar hue; different logic -> different hue):
+%   BLUE  = latent space / VAE substrate (what everything operates on)
+%   GOLD  = reward signal (predictor, reward value, reward gradient)
+%   VIOLET= diffusion machinery (denoiser, reverse process)
+%   GREEN = robustness throughline: micro guidance + macro consensus (= our method)
+%   RED   = fragility / failure (sharp peak, collapse, outlier)
+\definecolor{bandfill}{HTML}{F8F9FB}\definecolor{banddraw}{HTML}{A6AEB8}
+% -- blue: VAE nets + latent data --
+\definecolor{clBlue}{HTML}{D3E1F2}\definecolor{clBlueD}{HTML}{3C6FA6}
+\definecolor{clLatent}{HTML}{C2D8ED}\definecolor{clLatentD}{HTML}{2C5E8C}
+% -- gold: reward signal (name kept clPink* for compatibility) --
+\definecolor{clPink}{HTML}{F5E5C6}\definecolor{clPinkD}{HTML}{BE8A34}
+% -- violet: diffusion (name kept clOrange* for compatibility) --
+\definecolor{clOrange}{HTML}{E4DEF4}\definecolor{clOrangeD}{HTML}{6E5FA3}
+% -- green: MICRO layer (local smoothing / per-trajectory guidance) --
+\definecolor{clGreen}{HTML}{DCEBD4}\definecolor{clGreenD}{HTML}{4E9A63}
+\definecolor{good}{HTML}{3C8C58}
+% -- teal-blue: MACRO layer (consensus / ours) — distinct from micro green --
+\definecolor{ours}{HTML}{1F6FB2}\definecolor{oursFill}{HTML}{CFE6EA}
+\definecolor{basin}{HTML}{BBD5EC}\definecolor{consensus}{HTML}{1B4F72}
+% -- red: fragility / failure --
+\definecolor{bad}{HTML}{C43D2E}\definecolor{outlier}{HTML}{BE3A2B}
+% -- discrete data tokens (muted categorical, harmonised with palette) --
+\definecolor{tok1}{HTML}{6E93BE}\definecolor{tok2}{HTML}{D9B36B}
+\definecolor{tok3}{HTML}{93A7B4}\definecolor{tok4}{HTML}{7FAE86}
+
+\tikzset{
+  band/.style={draw=banddraw,line width=0.9pt,sharp corners,dashed,fill=bandfill},
+  tag/.style={rounded corners=3pt,inner sep=3pt,font=\bfseries\small,text=white},
+  box/.style={rounded corners=2pt,draw=#1,line width=0.8pt,align=center,
+              font=\footnotesize,inner sep=3pt},
+  lat/.style={circle,draw=clLatentD,line width=0.8pt,fill=clLatent,
+              minimum size=6.2mm,font=\footnotesize,inner sep=0pt},
+  flow/.style={-{Stealth[length=2.2mm]},line width=0.8pt,draw=#1},
+  flowg/.style={flow=black!62},
+  steplab/.style={font=\bfseries\footnotesize,text=black!80},
+  minicap/.style={font=\scriptsize,text=black!62,align=center,inner sep=1pt},
+  mathlab/.style={font=\scriptsize,text=black!75,align=center,inner sep=1pt},
+  % --- neural nets ---
+  neuron/.style={circle,draw=#1,line width=0.5pt,fill=#1!22,
+                 minimum size=2.0mm,inner sep=0pt},
+  nedge/.style={line width=0.3pt,draw=black!28},
+  netoutline/.style={draw=#1,line width=0.8pt,fill=#1!10,rounded corners=2pt},
+  % --- tensors ---
+  gcell/.style={draw=black!38,line width=0.3pt},
+  shapebrace/.style={decorate,decoration={brace,amplitude=2.5pt},
+                     line width=0.5pt,draw=black!55},
+}
+
+% ================= tensor macros =================
+% \MatGrid{shift}{rows}{cols}{cellsize} — token matrix, deterministic color pattern
+\newcommand{\MatGrid}[4]{%
+\begin{scope}[shift={#1}]
+  \foreach \r in {1,...,#2}{\foreach \c in {1,...,#3}{
+    \pgfmathtruncatemacro{\k}{mod(\r*2+\c*3,4)}
+    \ifcase\k \colorlet{cc}{tok1}\or\colorlet{cc}{tok2}\or
+              \colorlet{cc}{tok3}\else\colorlet{cc}{tok4}\fi
+    \fill[cc,gcell] ({(\c-1)*#4},{-(\r-1)*#4}) rectangle ++(#4,#4);}}
+\end{scope}}
+
+% \LatVec{shift}{d}{cellsize}{basecolor} — 1×d latent vector strip (lightness ramp)
+\newcommand{\LatVec}[4]{%
+\begin{scope}[shift={#1}]
+  \foreach \c in {1,...,#2}{
+    \pgfmathtruncatemacro{\p}{35+mod(\c*37,55)}
+    \fill[#4!\p,gcell] ({(\c-1)*#3},0) rectangle ++(#3,#3);}
+\end{scope}}
+
+% \LatColV{top-left}{n}{cellsize}{basecolor} — d×1 vertical latent column (cells go DOWN)
+\newcommand{\LatColV}[4]{%
+\begin{scope}[shift={#1}]
+  \foreach \r in {1,...,#2}{
+    \pgfmathtruncatemacro{\p}{35+mod(\r*41,55)}
+    \fill[#4!\p,gcell] (0,{-(\r-1)*#3}) rectangle ++(#3,-#3);}
+\end{scope}}
+
+% \TokColV{top-left}{n}{cellsize} — n×1 vertical token column (cells go DOWN)
+\newcommand{\TokColV}[3]{%
+\begin{scope}[shift={#1}]
+  \foreach \r in {1,...,#2}{
+    \pgfmathtruncatemacro{\k}{mod(\r*3+1,4)}
+    \ifcase\k \colorlet{cc}{tok1}\or\colorlet{cc}{tok2}\or
+              \colorlet{cc}{tok3}\else\colorlet{cc}{tok4}\fi
+    \fill[cc,gcell] (0,{-(\r-1)*#3}) rectangle ++(#3,-#3);}
+\end{scope}}
+
+% \NoiseColV{top-left}{n}{cellsize} — n×1 vertical grayscale (noise) column (cells go DOWN)
+\newcommand{\NoiseColV}[3]{%
+\begin{scope}[shift={#1}]
+  \foreach \r in {1,...,#2}{
+    \pgfmathtruncatemacro{\p}{40+mod(\r*47,45)}
+    \fill[black!\p,gcell] (0,{-(\r-1)*#3}) rectangle ++(#3,-#3);}
+\end{scope}}
+
+% \NNlayers{prefix}{color}{layer spec x/n csv} — columns of neurons
+\newcommand{\NNlayers}[3]{%
+  \foreach \x/\n [count=\li] in {#3}{
+    \foreach \i in {1,...,\n}{
+      \node[neuron=#2] (#1-\li-\i) at (\x,{(\i-(\n+1)/2)*0.30}) {};}}}
+
+% \NNedges{prefix}{spec la/na/nb csv} — full connections between adjacent layers
+\newcommand{\NNedges}[2]{%
+  \begin{scope}[on background layer]
+  \foreach \la/\na/\nb in {#2}{
+    \pgfmathtruncatemacro{\lb}{\la+1}
+    \foreach \i in {1,...,\na}{\foreach \j in {1,...,\nb}{
+      \draw[nedge] (#1-\la-\i)--(#1-\lb-\j);}}}
+  \end{scope}}
+
+% \EncNet{prefix}{shift} — encoder: trapezoid outline + 4-3-2 neurons
+\newcommand{\EncNet}[2]{%
+\begin{scope}[shift={#2}]
+  \path[netoutline=clBlueD] (-0.24,-0.75)--(-0.24,0.75)--(1.16,0.44)--(1.16,-0.44)--cycle;
+  \NNlayers{#1}{clBlueD}{0/4,0.46/3,0.92/2}
+  \NNedges{#1}{1/4/3,2/3/2}
+\end{scope}}
+
+% \DecNet{prefix}{shift} — decoder: mirrored trapezoid + 2-3-4 neurons
+\newcommand{\DecNet}[2]{%
+\begin{scope}[shift={#2}]
+  \path[netoutline=clBlueD] (-0.24,-0.44)--(-0.24,0.44)--(1.16,0.75)--(1.16,-0.75)--cycle;
+  \NNlayers{#1}{clBlueD}{0/2,0.46/3,0.92/4}
+  \NNedges{#1}{1/2/3,2/3/4}
+\end{scope}}
+
+% \MlpNet{prefix}{shift}{color} — reward MLP: rectangle outline + 3-4-1 neurons
+\newcommand{\MlpNet}[3]{%
+\begin{scope}[shift={#2}]
+  \path[netoutline=#3] (-0.24,-0.78) rectangle (1.16,0.78);
+  \NNlayers{#1}{#3}{0/3,0.46/4,0.92/1}
+  \NNedges{#1}{1/3/4,2/4/1}
+\end{scope}}
+
+% \UNet{prefix}{shift} — denoiser: bottleneck 4-2-4 neurons (hourglass outline)
+\newcommand{\UNet}[2]{%
+\begin{scope}[shift={#2}]
+  \path[netoutline=clOrangeD] (-0.24,-0.75)--(-0.24,0.75)--(0.46,0.42)--(1.16,0.75)
+        --(1.16,-0.75)--(0.46,-0.42)--cycle;
+  \NNlayers{#1}{clOrangeD}{0/4,0.46/2,0.92/4}
+  \NNedges{#1}{1/4/2,2/2/4}
+\end{scope}}
+
+% paper symbols
+\newcommand{\evalE}{\mathcal{E}}
+
+% =====================================================================
+% ==================  KOMPAS additions (figure 1)  ====================
+% Added 2026-09-19 per FIG_PLAN §1.5 / §3.0.  ONLY APPEND HERE.
+% =====================================================================
+
+% ---- module accent colours: corner tags + left-column dots ONLY -----
+\definecolor{clModA}{HTML}{6E93BE}   % A finite-memory state   (slate blue)
+\definecolor{clModB}{HTML}{1F6FB2}   % B Koopman model         (ours blue)
+\definecolor{clModC}{HTML}{BE8A34}   % C offline learning      (gold)
+\definecolor{clModD}{HTML}{4E9A63}   % D predictive control    (green)
+\definecolor{clOurs}{HTML}{1F6FB2}   % alias: our contribution
+\definecolor{clBad}{HTML}{C43D2E}    % alias: overshoot / loss
+\definecolor{clGood}{HTML}{3C8C58}   % alias: target reached
+
+\tikzset{
+  % left column: white text boxes
+  whitebox/.style={rounded corners=2pt,draw=black!55,line width=0.5pt,fill=white,
+                   align=left,font=\scriptsize,inner sep=2.6pt},
+  whiteboxo/.style={whitebox,draw=ours,line width=0.8pt},
+  dashbox/.style={rounded corners=2pt,draw=black!50,line width=0.5pt,dashed,
+                  fill=white,align=left,font=\scriptsize,inner sep=2.6pt},
+  % right column: module frames (SOLID, unlike the dashed `band`)
+  panel/.style={rounded corners=3pt,draw=black!40,line width=0.6pt,fill=white},
+  ptag/.style={rounded corners=2pt,inner sep=2.2pt,font=\bfseries\scriptsize,text=white},
+  % links
+  thinflow/.style={-{Stealth[length=1.7mm]},line width=0.55pt,draw=black!72},
+  microflow/.style={-{Stealth[length=0.9mm]},line width=0.45pt,draw=black!72},  % thinflow's 1.7mm arrowhead is sized for the main chains; next to a
+  % heavily-downscaled EncNet/DecNet (modD's 0.26x decoder) it was wider
+  % than the glyph it points at. Use this for arrows touching such nets.
+  oursflow/.style={-{Stealth[length=2.0mm]},line width=0.9pt,draw=ours},
+  bypass/.style={-{Stealth[length=1.7mm]},dashed,line width=0.5pt,draw=black!45},
+  lossline/.style={{Stealth[length=1.5mm]}-{Stealth[length=1.5mm]},dashed,
+                   line width=0.55pt,draw=bad},
+  losslab/.style={circle,draw=bad,fill=white,line width=0.4pt,inner sep=0.5pt,
+                  font=\scriptsize,text=bad},
+  % flat (no circle) variant -- for a losslink that crosses another one,
+  % the circle's own diameter is what collides; plain text has a much
+  % smaller footprint and still reads as the same red loss notation.
+  losslabflat/.style={font=\scriptsize,text=bad,inner sep=1pt},
+  dotA/.style={circle,fill=clModA,inner sep=0pt,minimum size=1.4mm},
+  dotB/.style={circle,fill=clModB,inner sep=0pt,minimum size=1.4mm},
+  dotC/.style={circle,fill=clModC,inner sep=0pt,minimum size=1.4mm},
+  dotD/.style={circle,fill=clModD,inner sep=0pt,minimum size=1.4mm},
+  % D's receding-horizon loop, drawn as 3 small blocks instead of one
+  % text caption (2026-09-19 request).
+  rhblock/.style={rounded corners=2pt,draw=black!45,line width=0.5pt,
+                  fill=white,font=\scriptsize,text=black!75,inner sep=2pt},
+}
+
+% ---------------- token strip (from templates/framework_figure.tex) --
+% \seqstrip[scale]{(x,y)} — fixed 6-token row, bottom-left at (x,y)
+\newcommand{\seqstrip}[2][1]{%
+  \begin{scope}[shift={#2},scale=#1]
+    \foreach \i/\c in {0/tok1,1/tok2,2/tok3,3/tok1,4/tok4,5/tok2}{
+      \fill[\c,draw=black!35,line width=0.3pt] (\i*0.26,0) rectangle ++(0.22,0.24);}
+  \end{scope}}
+
+% \TokRow{(x,y)}{n}{cell} — n×1 HORIZONTAL token row, top-left at (x,y)
+\newcommand{\TokRow}[3]{%
+\begin{scope}[shift={#1}]
+  \foreach \c in {1,...,#2}{
+    \pgfmathtruncatemacro{\k}{mod(\c*3+1,4)}
+    \ifcase\k \colorlet{cc}{tok1}\or\colorlet{cc}{tok2}\or
+              \colorlet{cc}{tok3}\else\colorlet{cc}{tok4}\fi
+    \fill[cc,gcell] ({(\c-1)*#3},0) rectangle ++(#3,-#3);}
+\end{scope}}
+
+% ================= KOMPAS glyph macros (§1.5.1) ======================
+% A SCALAR is one cell.  \ScalarCell{(x,y)}{colour}{label}  (label BELOW)
+% top-left corner at (x,y); cell side 0.22cm.
+\newcommand{\ScalarCell}[3]{%
+\begin{scope}[shift={#1}]
+  \fill[#2!22] (0,0) rectangle (0.22,-0.22);
+  \draw[draw=#2,line width=0.5pt] (0,0) rectangle (0.22,-0.22);
+  \node[mathlab,anchor=north,inner sep=1.2pt] at (0.11,-0.24) {#3};
+\end{scope}}
+% ... label ABOVE
+\newcommand{\ScalarCellT}[3]{%
+\begin{scope}[shift={#1}]
+  \fill[#2!22] (0,0) rectangle (0.22,-0.22);
+  \draw[draw=#2,line width=0.5pt] (0,0) rectangle (0.22,-0.22);
+  \node[mathlab,anchor=south,inner sep=1.2pt] at (0.11,0.02) {#3};
+\end{scope}}
+
+% A MATRIX is a grid of cells.  \MatBlock{(x,y)}{rows}{cols}{cell}{colour}
+% top-left at (x,y); single-hue lightness ramp + outline.
+\newcommand{\MatBlock}[5]{%
+\begin{scope}[shift={#1}]
+  \foreach \r in {1,...,#2}{\foreach \c in {1,...,#3}{
+    \pgfmathtruncatemacro{\p}{26+mod(\r*23+\c*31,40)}
+    \fill[#5!\p,gcell] ({(\c-1)*#4},{-(\r-1)*#4}) rectangle ++(#4,-#4);}}
+  \draw[draw=#5!80,line width=0.45pt] (0,0) rectangle ({#3*#4},{-#2*#4});
+\end{scope}}
+
+% The SELECTION ROW C=[1,0,...,0].  \RowSelector{(x,y)}{n}{cell}
+\newcommand{\RowSelector}[3]{%
+\begin{scope}[shift={#1}]
+  \foreach \c in {1,...,#2}{
+    \ifnum\c=1\relax\fill[black!70] ({(\c-1)*#3},0) rectangle ++(#3,-#3);\fi
+    \draw[black!60,line width=0.45pt] ({(\c-1)*#3},0) rectangle ++(#3,-#3);}
+\end{scope}}
+
+% The LINEAR SPECIAL CASE E_phi = D_psi = id.  \IdBypass{(a)}{(b)}
+\newcommand{\IdBypass}[2]{%
+  \draw[bypass] #1 -- node[mathlab,above,inner sep=1.2pt]{$\mathrm{id}$} #2;}
+
+% A LOSS is a red dashed link between the two blocks it compares.
+% \LossLink{(a)}{(b)}{$\mathcal{L}_{...}$}
+\newcommand{\LossLink}[3]{%
+  \draw[lossline] #1 -- node[losslab]{#3} #2;}
+
+% The FROZEN LLM.  \FrozenLLM[scale]{(centre)} — snowflake, never a logo.
+\newcommand{\FrozenLLM}[2][1]{%
+\begin{scope}[shift={#2},scale=#1]
+  \draw[rounded corners=2pt,draw=black!55,line width=0.6pt,fill=black!4]
+        (-0.46,-0.24) rectangle (0.46,0.24);
+  \begin{scope}[shift={(-0.28,0)}]
+    \foreach \a in {0,60,120}{\draw[black!52,line width=0.4pt] (\a:0.105)--(\a+180:0.105);}
+    \foreach \a in {0,60,120,180,240,300}{%
+      \draw[black!52,line width=0.35pt] (\a:0.105)--++(\a+140:0.042);
+      \draw[black!52,line width=0.35pt] (\a:0.105)--++(\a-140:0.042);}
+  \end{scope}
+  \node[mathlab,anchor=west,inner sep=1pt] at (-0.13,0) {$p_{\theta}$};
+\end{scope}}
+
+% The VERIFIER V: a ruler.  \RulerV[scale]{(centre of the ruler)}
+\newcommand{\RulerV}[2][1]{%
+\begin{scope}[shift={#2},scale=#1]
+  \draw[black!65,line width=0.5pt,fill=white] (-0.30,-0.085) rectangle (0.30,0.085);
+  \foreach \x in {-0.20,-0.10,0,0.10,0.20}{%
+    \draw[black!65,line width=0.35pt] (\x,0.085)--(\x,0.015);}
+  \node[mathlab,anchor=west,inner sep=1.4pt] at (0.32,0) {$V$};
+\end{scope}}
+
+% A MINI PLOT.  \MiniAxes{(origin)}{w}{h} — L-shaped axes only;
+% the caller draws the curves and writes the two axis symbols.
+\newcommand{\MiniAxes}[3]{%
+\begin{scope}[shift={#1}]
+  \draw[black!60,line width=0.5pt] (0,#3) -- (0,0) -- (#2,0);
+\end{scope}}
+
+% A SHAPE BRACE with a dimension label.
+% \DimBraceR{(top)}{(bottom)}{label} — brace on the RIGHT of a column
+\newcommand{\DimBraceR}[3]{%
+  \draw[shapebrace] #1 -- #2 node[midway,mathlab,anchor=west,inner sep=2.4pt]{#3};}
+% \DimBraceT{(left)}{(right)}{label} — brace ABOVE a row
+\newcommand{\DimBraceT}[3]{%
+  \draw[shapebrace] #1 -- #2 node[midway,mathlab,anchor=south,inner sep=2.4pt]{#3};}
+% \DimBraceB{(left)}{(right)}{label} — brace BELOW a row (mirrored)
+\newcommand{\DimBraceB}[3]{%
+  \draw[shapebrace,decoration={mirror}] #1 -- #2
+        node[midway,mathlab,anchor=north,inner sep=2.4pt]{#3};}
+
+% A TRAINABLE BLOCK marker: thin orange dashed frame.
+% \Trainable{(south west)}{(north east)}
+\newcommand{\Trainable}[2]{%
+  \draw[clPinkD,dashed,line width=0.45pt,rounded corners=1.5pt] #1 rectangle #2;}
+
+% ---- v2 (after glyph-sheet v1 review): one quantity = one hue -------
+% The skill's \TokColV / \MatGrid use FOUR categorical token colours.  A
+% memory window holds many samples of ONE quantity, so categorical colour
+% is a lie there: use a single hue with a lightness ramp instead.
+% \MemColV{(top-left)}{n}{cell} — vertical observation column (hue tok1)
+\newcommand{\MemColV}[3]{%
+\begin{scope}[shift={#1}]
+  \foreach \r in {1,...,#2}{%
+    \pgfmathtruncatemacro{\p}{22+18*mod(\r*5+2,4)}
+    \fill[tok1!\p,gcell] (0,{-(\r-1)*#3}) rectangle ++(#3,-#3);}
+  \draw[tok1!90,line width=0.45pt] (0,0) rectangle (#3,{-#2*#3});
+\end{scope}}
+% \MemRow{(top-left)}{n}{cell} — horizontal observation row (hue tok1)
+\newcommand{\MemRow}[3]{%
+\begin{scope}[shift={#1}]
+  \foreach \c in {1,...,#2}{%
+    \pgfmathtruncatemacro{\p}{22+18*mod(\c*5+2,4)}
+    \fill[tok1!\p,gcell] ({(\c-1)*#3},0) rectangle ++(#3,-#3);}
+  \draw[tok1!90,line width=0.45pt] (0,0) rectangle ({#2*#3},-#3);
+\end{scope}}
+% \LatColVF{(top-left)}{n}{cell}{fade 0..100} — latent column; `fade` is how
+% strong the colour is, so a rollout can go pale as h grows.
+\newcommand{\LatColVF}[4]{%
+\begin{scope}[shift={#1}]
+  \foreach \r in {1,...,#2}{%
+    \pgfmathtruncatemacro{\p}{(22+18*mod(\r*5+2,4))*#4/100}
+    \fill[clLatentD!\p,gcell] (0,{-(\r-1)*#3}) rectangle ++(#3,-#3);}
+  \pgfmathtruncatemacro{\pe}{90*#4/100}
+  \draw[clLatentD!\pe,line width=0.45pt] (0,0) rectangle (#3,{-#2*#3});
+\end{scope}}
+% \LatCol{(top-left)}{n}{cell} — full-strength latent column
+\newcommand{\LatCol}[3]{\LatColVF{#1}{#2}{#3}{100}}
+
+% ---- 0.35cm icons for the left column (FIG_PLAN §1.5.2) -------------
+% \ProtoIcon[scale]{(centre)} — a prompt template: box with two text rules
+\newcommand{\ProtoIcon}[2][1]{%
+\begin{scope}[shift={#2},scale=#1]
+  \draw[rounded corners=1pt,draw=black!60,line width=0.5pt,fill=white]
+        (-0.17,-0.17) rectangle (0.17,0.17);
+  \draw[black!55,line width=0.4pt] (-0.11,0.06)--(0.11,0.06);
+  \draw[black!55,line width=0.4pt] (-0.11,-0.02)--(0.05,-0.02);
+  \fill[ours!70] (-0.11,-0.12) rectangle (-0.01,-0.08);
+\end{scope}}
+% \RulerIcon[scale]{(centre)} — the verifier ruler, without its V label
+\newcommand{\RulerIcon}[2][1]{%
+\begin{scope}[shift={#2},scale=#1]
+  \draw[black!65,line width=0.5pt,fill=white] (-0.20,-0.08) rectangle (0.20,0.08);
+  \foreach \x in {-0.12,-0.04,0.04,0.12}{%
+    \draw[black!65,line width=0.35pt] (\x,0.08)--(\x,0.015);}
+\end{scope}}
+% \StarIcon[scale]{(centre)} — the selected command
+\newcommand{\StarIcon}[2][1]{%
+  \node[star,star points=5,star point ratio=2.1,fill=ours,draw=none,
+        inner sep=0pt,minimum size={#1*3.2mm}] at #2 {};}
+% \SnowIcon[scale]{(centre)} — the frozen model, icon only (no p_theta label)
+\newcommand{\SnowIcon}[2][1]{%
+\begin{scope}[shift={#2},scale=#1]
+  \draw[rounded corners=1pt,draw=black!55,line width=0.5pt,fill=black!4]
+        (-0.17,-0.17) rectangle (0.17,0.17);
+  \foreach \a in {0,60,120}{\draw[black!55,line width=0.4pt] (\a:0.105)--(\a+180:0.105);}
+  \foreach \a in {0,60,120,180,240,300}{%
+    \draw[black!55,line width=0.35pt] (\a:0.105)--++(\a+140:0.042);
+    \draw[black!55,line width=0.35pt] (\a:0.105)--++(\a-140:0.042);}
+\end{scope}}
