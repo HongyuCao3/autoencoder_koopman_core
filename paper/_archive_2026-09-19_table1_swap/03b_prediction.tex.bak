@@ -1,0 +1,24 @@
+% Phase 3 CP3b. Modeling line: does the learned operator predict? Table 1 = tables/tab_prediction.tex.
+\subsection{Predictive Accuracy of the Learned Operator}
+\label{sec:exp_prediction}
+
+\textbf{Question.} (RQ1) Does the operator need several turns of history to predict a multi-turn attribute well? (RQ2) Does a nonlinear lifting or a sequence model predict better than the linear special case reported as ours?
+\textbf{Setup.} Setup, tasks and baselines follow \S\ref{sec:exp_setup}; Table~\ref{tab:prediction} reports the skill score defined there.
+
+\input{tables/tab_prediction.tex}
+
+\textbf{Findings, ranking and history.} The linear special case, KOMPAS (linear), ranks first on four of seven columns: sentence length, items (s2), items (s1) and CEFR.  % c4; ours_best_of_7=4 (n_main_004 n_main_036 n_main_020 n_main_179)
+It ranks second on constraint and third on character length and formality.
+The driver is that those two third places are the columns where a recurrent baseline fits the residual better.  % c4 driver_keyword  % ours_second_of_7=1 (n_main_131 constraint; n_main_068 char.len; n_main_084 formality)
+History beyond the current turn beats the current reading on five of seven columns, with paired bootstrap intervals excluding zero.  % c1; contrasts.ours_minus_last_turn (n_main_013 n_main_045 n_main_029 n_main_077 n_main_093 n_main_132 n_main_180)
+The two exceptions are items (s1), whose interval contains zero, and formality, whose point estimate is negative with an interval containing zero.  % n_main_029 items-s1; n_main_093 formality
+The driver is that the window exposes both level and trend, which a single reading cannot carry.  % m1
+
+\textbf{Findings, lifting and LSTM.} A learned nonlinear lifting never beats the identity lifting with an interval excluding zero, on any of the seven columns.  % c2; contrasts.ours_minus_nonlinear
+It loses on four of them, with the largest gap on CEFR at +0.599 in favor of the linear case.  % contrasts.ours_minus_nonlinear:tsar_cefr=0.599 (n_main_183)
+The driver is that the attribute readouts are one-dimensional, leaving a learned lifting little structure to expose.  % m4
+Against an LSTM sequence baseline neither side dominates: two columns each favor a different model with intervals excluding zero.  % c3; contrasts.ours_minus_lstm
+Items (s2) and CEFR favor the linear case, while character length and constraint favor the LSTM.  % n_main_048 n_main_182 favor linear; n_main_080 n_main_134 favor LSTM
+No mechanism is established for the two LSTM wins, and none is proposed here.  % c3 driver_keyword: no mechanism established
+
+Together, \uline{history beyond the current turn beats the current reading on five of seven tracked attributes, answering RQ1 yes. Neither a learned lifting nor an LSTM sequence model beats the reported linear special case on balance, answering RQ2 no.}

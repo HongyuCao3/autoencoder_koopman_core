@@ -4,9 +4,8 @@
 
 Experiments cover two task groups.
 The first is eleven self-built multi-turn tasks that form the modeling line.  % RECOVERED 2026-09-19 (Opus); semantic.md Experiments P1
-Table~\ref{tab:prediction} carries seven of them: sentence length, items (s2), items (s1), sentiment, defense, constraint and CEFR.  % tab_prediction.tex column headers, updated 2026-09-19
-Appendix~\ref{app:A2_small_columns} separately reports sentiment, average word length, defense and GSM8K-sharded for completeness.  % _build_report.json:prediction_appendix
-Character length and formality are not shown in either table this round.  % table1_swap_2026-09-19
+Table~\ref{tab:prediction} carries seven of them: sentence length, items (s2), items (s1), character length, formality, constraint and CEFR.  % tab_prediction.tex column headers
+The remaining four appear in Appendix~\ref{app:A2_small_columns}: sentiment, average word length, defense and GSM8K-sharded.  % _build_report.json:prediction_appendix
 The second group is three public instruction-following benchmarks that form the control line: IFBench, IFEval and COLLIE.  % contract.yaml meta.benchmarks
 Together they carry eleven subtasks: WC, UWC, NS and NP for IFBench; KF, WC, NS and NP for IFEval; Word, Sent. and Para. for COLLIE.  % contract.yaml meta.benchmarks
 The modeling line runs on a single model, Qwen3-4B-Instruct-2507, which both produces and scores the self-built trajectories.  % RECOVERED 2026-09-19 (Opus, docs/LEDGER.md lines 201-202, 549)

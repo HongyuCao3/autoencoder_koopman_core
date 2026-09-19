@@ -16,9 +16,9 @@ This is a structural property of the model and needs no measurement.  % c8 notes
 \textbf{Cross-check, the equal-cost boundary.} On the four self-built behavioral tasks, the closed loop ties the best equal-cost fixed schedule, with per-task numbers in Appendix~\ref{app:A4_equal_cost}.  % nc_2
 On those four tasks the instruction's effect depends little on when it is issued, which leaves planning almost nothing to exploit.  % nc_2
 
-\textbf{Cross-check, the command-channel scope.} This command-channel scope belongs only here: on four of the seven modeling columns the applied command equals the tracking error, an exact affine function of the memory state.  % m5, updated 2026-09-19
-The prediction design cannot estimate an independent action effect on those four columns.  % nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110
-On the remaining three columns, defense, constraint and CEFR, the paired difference is +0.0121, +0.0015 and +0.0061, with intervals containing zero.  % contrasts.ours_minus_memory_no_action defense=0.0121 (n_main_149), constraint=0.0015 (n_main_133), tsar_cefr=0.0061 (n_main_181)
+\textbf{Cross-check, the command-channel scope.} This command-channel scope belongs only here: on five of the seven modeling columns the applied command equals the tracking error, an exact affine function of the memory state.  % m5
+The prediction design cannot estimate an independent action effect on those five columns.  % nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_078 n_main_094
+On the remaining two columns, constraint and CEFR, the paired difference is +0.0015 and +0.0061, with intervals containing zero.  % contrasts.ours_minus_memory_no_action constraint=0.0015 (n_main_133), tsar_cefr=0.0061 (n_main_181)
 This is a property of how those trajectories were collected, not a result about the controller.  % m5 notes
 
 Combined, \uline{prediction quality bounds the cost of the command selected at a single step, at no added query cost, which answers RQ4. Planning ties a fixed schedule at equal cost on the self-built behavioral tasks, and the modeling experiments cannot see the command channel on most of their columns.}

@@ -13,12 +13,12 @@
 \cmidrule(lr){4-7} \cmidrule(lr){8-11} \cmidrule(lr){12-14}
  &  &  & WC & UWC & NS & NP & KF & WC & NS & NP & Word & Sent. & Para. &  \\
 \midrule
-\multirow{4}{*}{\rotatebox{90}{Qwen3-4B}} & Base & -- & 25.5 & 7.0 & 36.7 & 12.4 & 20.7 & 44.6 & 33.9 & 28.9 & 23.0 & 51.3 & 11.9 & 26.9 \\  % n_bench_001 n_bench_002 n_bench_003 n_bench_004 n_bench_005 n_bench_006 n_bench_007 n_bench_008 n_bench_009 n_bench_010 n_bench_011
+\multirow{4}{*}{Qwen3-4B} & Base & -- & 25.5 & 7.0 & 36.7 & 12.4 & 20.7 & 44.6 & 33.9 & 28.9 & 23.0 & 51.3 & 11.9 & 26.9 \\  % n_bench_001 n_bench_002 n_bench_003 n_bench_004 n_bench_005 n_bench_006 n_bench_007 n_bench_008 n_bench_009 n_bench_010 n_bench_011
  & TMPC & white-box & 35.2 & 9.9 & 46.3 & 19.0 & 29.1 & 53.4 & 43.1 & 37.5 & 33.2 & 59.6 & 21.3 & 35.2 \\  % n_bench_023 n_bench_024 n_bench_025 n_bench_026 n_bench_027 n_bench_028 n_bench_029 n_bench_030 n_bench_031 n_bench_032 n_bench_033
  & RE-Control & white-box & 38.2 & 10.4 & 47.1 & 19.7 & 29.8 & 54.2 & 43.8 & 38.1 & 34.0 & 60.2 & 21.9 & 36.1 \\  % n_bench_034 n_bench_035 n_bench_036 n_bench_037 n_bench_038 n_bench_039 n_bench_040 n_bench_041 n_bench_042 n_bench_043 n_bench_044
  & KOMPAS & black-box & \textbf{44.6} & \textbf{12.8} & \textbf{53.4} & \textbf{24.1} & \textbf{35.2} & \textbf{59.8} & \textbf{49.6} & \textbf{43.7} & \textbf{39.8} & \textbf{65.4} & \textbf{26.7} & \textbf{41.4} \\  % n_bench_012 n_bench_013 n_bench_014 n_bench_015 n_bench_016 n_bench_017 n_bench_018 n_bench_019 n_bench_020 n_bench_021 n_bench_022
 \midrule
-\multirow{4}{*}{\rotatebox{90}{Qwen3-8B}} & Base & -- & 31.8 & 9.6 & 42.8 & 16.7 & 26.8 & 50.9 & 39.7 & 34.8 & 29.1 & 57.4 & 17.2 & 32.4 \\  % n_bench_045 n_bench_046 n_bench_047 n_bench_048 n_bench_049 n_bench_050 n_bench_051 n_bench_052 n_bench_053 n_bench_054 n_bench_055
+\multirow{4}{*}{Qwen3-8B} & Base & -- & 31.8 & 9.6 & 42.8 & 16.7 & 26.8 & 50.9 & 39.7 & 34.8 & 29.1 & 57.4 & 17.2 & 32.4 \\  % n_bench_045 n_bench_046 n_bench_047 n_bench_048 n_bench_049 n_bench_050 n_bench_051 n_bench_052 n_bench_053 n_bench_054 n_bench_055
  & TMPC & white-box & 41.4 & 12.8 & 52.1 & 23.7 & 35.4 & 59.4 & 49.5 & 43.7 & 39.3 & 65.2 & 27.0 & 40.9 \\  % n_bench_067 n_bench_068 n_bench_069 n_bench_070 n_bench_071 n_bench_072 n_bench_073 n_bench_074 n_bench_075 n_bench_076 n_bench_077
  & RE-Control & white-box & 42.6 & 13.2 & 52.9 & 24.2 & 36.0 & 60.1 & 50.2 & 44.3 & 40.0 & 65.9 & 27.6 & 41.5 \\  % n_bench_078 n_bench_079 n_bench_080 n_bench_081 n_bench_082 n_bench_083 n_bench_084 n_bench_085 n_bench_086 n_bench_087 n_bench_088
  & KOMPAS & black-box & \textbf{50.8} & \textbf{15.9} & \textbf{59.7} & \textbf{29.3} & \textbf{41.8} & \textbf{65.7} & \textbf{55.8} & \textbf{49.9} & \textbf{46.1} & \textbf{71.4} & \textbf{32.8} & \textbf{47.2} \\  % n_bench_056 n_bench_057 n_bench_058 n_bench_059 n_bench_060 n_bench_061 n_bench_062 n_bench_063 n_bench_064 n_bench_065 n_bench_066
