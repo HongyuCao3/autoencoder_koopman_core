@@ -1,7 +1,7 @@
 # FIG_STATE (method figure, TikZ)
 
-updated: 2026-09-19  by: opus session (bookkeeping catch-up + step 3, this session)
-step: 3   status: awaiting_user_review
+updated: 2026-09-19  by: opus session (bookkeeping catch-up + step 3 + step-3 revision, this session)
+step: 3 (rev 2)   status: awaiting_user_review
 decisions: Q1=C-as-own-module (user, 2026-09-19, 2x2 保持四块)
            Q2=sentence-length (user, 默认)
            Q3=no-bound-glyph, minicap only (user, 默认)
@@ -40,13 +40,14 @@ gates (step 2, four modules, this session):
           \draw[line width=...] for hand-drawn plot lines and connectors is
           expected per FIG_PLAN 2a/2d spec, not a style override)
 previews_for_review: preview/step_left_loop_v6.png (step 1, rev 2),
-                     preview/step_modA_memory_v5.png,
-                     preview/step_modB_koopman_v10.png,
-                     preview/step_modC_training_v10.png,
-                     preview/step_modD_control_v8.png,
-                     preview/step_right_panel_v1.png (step 3, NEW -- the
-                       four modules assembled with panel borders, corner
-                       tags, and the two cross-module relations)
+                     preview/step_modA_memory_v3.png,
+                     preview/step_modB_koopman_v12.png,
+                     preview/step_modC_training_v14.png,
+                     preview/step_modD_control_v17.png,
+                     preview/step_right_panel_v12.png (step 3 rev 2, CURRENT
+                       -- supersedes v1: fixed the neuron-overlap bug in
+                       every scaled net and 4 separate text-overlap bugs,
+                       see the note above)
 user_verdict_on_previous: not yet recorded in this file for step 1 rev2 or step 2 --
   rev2's changes already encode detailed user feedback from a prior review (see
   notes below), but no explicit approved/revise verdict was logged before the
@@ -65,6 +66,77 @@ next_action: step 3 (right_panel.tex) has now been drafted and rendered in
              render the real page). On revise -> iterate the named
              module/panel only, bump version, re-run gates.
 notes:
+  - THIS SESSION, step 3 rev 2 (user feedback: "有一些文字overlap问题需要解决,
+    神经网络设计元素中的圆形半径减小,因为现在重叠比较严重"):
+    ROOT CAUSE of the neuron overlap (affects every scaled EncNet/DecNet
+    instance, i.e. all of B, C x4, D): TikZ's `scale` on a `\begin{scope}`
+    shrinks coordinates but NOT a node's `minimum size` unless the scope also
+    sets `transform shape`. The 7 call sites (modB x2 @0.62, modC x4
+    @0.40/0.40/0.40/0.30, modD x1 @0.26) were missing it, so the neuron
+    circles stayed at their full 2.5mm diameter while the trapezoid and the
+    inter-neuron spacing shrank around them -- worse at smaller scale, which
+    is exactly the pattern the user reported. Fixed by adding
+    `,transform shape` to all 7 scopes, plus shrank the base neuron
+    `minimum size` 2.5mm -> 2.0mm in kompas_style.tex for extra margin (the
+    literal "reduce the radius" ask). Confirmed by re-rendering and cropping
+    B/C/D's nets at 3-8x zoom: all neurons now read as distinct circles.
+    TEXT-OVERLAP fixes, each found by cropping+zooming the actual render
+    (not by re-deriving coordinates on paper -- that approach was tried
+    first and got the diagnosis wrong twice before the crop caught the real
+    node; left in git history as a record of what NOT to do next time):
+      1. D: my own step-3 "model: from B" caption sat on top of D's own
+         xi_t label. Deleted; replaced with "(feeds D)" inside B's own scope,
+         below its y-hat cell (genuinely empty margin there), so the note
+         reads at the source instead of colliding at the destination.
+      2. C: "trains B" caption was effectively glued to the tag's own box
+         (0.03cm clearance) and set in the tag's own gold colour (near
+         -invisible against it). DROPPED rather than re-positioned: C's own
+         bottom caption "updates (phi,psi,K,B,b); theta frozen" already
+         names B as a trained parameter, so the relation is stated without
+         adding a label that collides with either the tag or the s_t glyph
+         (checked: C's top strip has no genuinely free band -- tag on the
+         left, q_t/D_psi(q_t) labels on the right).
+      3. D's readout cluster (decoder -> row-selector -> g_psi, the
+         eq:rollout readout once per FIG_PLAN 2d): three compounding bugs,
+         found one at a time by re-cropping after each fix --
+         (a) the decoder was drawn at scale 0.26, half of FIG_PLAN \S3.2's
+             own "50%" spec, which is why everything downstream was too
+             tight to begin with. Grown to 0.35 and every arrow/selector
+             coordinate recomputed from its actual bounding box.
+         (b) thinflow's 1.7mm arrowhead is sized for the main chain; next to
+             a net this small it was wider than the glyph itself. Added a
+             new `microflow` style (0.9mm head) in kompas_style.tex and used
+             it for the three arrows touching this cluster.
+         (c) the actual worst offender, found only after (a) and (b) still
+             looked wrong under an 800dpi crop: the mini-axes' own y-roll
+             label (section 4 of the file, unrelated to the readout cluster
+             in section 3) was anchor=south-east, which grows LEFT/UP from
+             its point and was reaching back into the decoder from across
+             the module. Every earlier fix in this cluster left it untouched
+             because it lives in a different part of the file. Re-anchored
+             south-west so it grows away from the decoder instead.
+      4. C: the middle decoder's (mcD1) own $D_\psi$ tag was anchor=south at
+         a y already inside the trapezoid's own vertical span (the one label
+         in the file not following the sibling anchor=north-below-the-shape
+         convention used by mcE1/mcE2/mcD3). Moving it to anchor=north below
+         the shape only traded this collision for another -- that band sits
+         exactly where the L_lin/L_pred loss circles are -- so DROPPED it
+         instead: this decoder is already named by the labelled encoder
+         right before it in the same chain and by the "D_psi(q_t)" caption
+         directly above it, so the third, colliding copy loses no
+         information.
+    HOUSEKEEPING found along the way: two of my own inline .tex comments
+    contained literal $...$ math (e.g. explaining a label via "$\hat\xi_{t+
+    h|t}$" in a % comment); fig_symbol_audit.py does not strip TeX comments,
+    so these were briefly flagged as new unmatched symbols. Rewrote the
+    comments in plain text. Re-ran G2 on all 5 fragments after every change
+    in this note: modA/B/D/right_panel all OK 0 unmatched; modC still shows
+    its known 7 (the D19-vs-Q1 appendix gap logged above), unchanged by any
+    edit in this pass.
+    Final artefact for review: preview/step_right_panel_v12.png (also
+    step_modA_memory_v3, step_modB_koopman_v12, step_modC_training_v14,
+    step_modD_control_v17 -- same content as v11/v13/v16 respectively, just
+    recompiled after the comment cleanup, no visual change).
   - THIS SESSION, continued (step 3, per user's explicit "先补记账再进入步骤3"):
     wrote right_panel.tex per FIG_PLAN §3.3. Native module canvases read off
     each modX_*.tex \path rectangle: A 2.94x3.03, B 6.53x3.03, C 4.735x3.03,

@@ -24,7 +24,7 @@
 \LatColVF{(0.69,2.20)}{3}{0.18}{78}
 \LatColVF{(1.33,2.20)}{3}{0.18}{58}
 \LatColVF{(1.97,2.20)}{3}{0.18}{42}
-\node[mathlab,anchor=north] at (2.06,1.62) {$\symLatRoll$};
+\node[mathlab,anchor=north east] at (2.16,1.62) {$\symLatRoll$};  % v4: this label is wide (xi-hat-t-plus-h-given-t); centred at 2.06 its right half reached into the decoder (now starting at x=2.25). Right-anchored instead so it grows left, away from it.
 
 \draw[thinflow] (0.25,1.93) -- (0.67,1.93);
 \draw[thinflow] (0.89,1.93) -- (1.31,1.93);
@@ -42,19 +42,24 @@
 
 % ---------------- 3. decode to an attribute (readout, once) -----------
 % sits on the chain's own line, to the right of it -- not stacked below.
-\draw[thinflow] (2.17,1.93) -- (2.36,1.83);
-\begin{scope}[shift={(2.42,1.80)},scale=0.26]
+% v4: the decoder was drawn at scale 0.26 -- half of FIG_PLAN \S3.2's own
+% "scaled to 50%" spec for this glyph -- which is what made the readout
+% cluster this tight in the first place (neurons + row-selector + label all
+% competing for under 0.4cm). Grown to 0.35 and every downstream coordinate
+% recomputed from its actual bounding box, not eyeballed.
+\draw[microflow] (2.17,1.93) -- (2.22,1.85);  % v5: found the real culprit -- this arrow's tip (x=2.32) was left over from the scale-0.26 decoder and landed 0.07cm INSIDE the scale-0.35 decoder's new left edge (x=2.25), drawing the arrowhead on top of the first neuron column. Pulled back to just outside it.
+\begin{scope}[shift={(2.334,1.80)},scale=0.35,transform shape]
   \DecNet{mdDec}{(0,0)}
 \end{scope}
-\draw[thinflow] (2.72,1.80) -- (2.75,1.78);
-\RowSelector{(2.75,1.87)}{3}{0.06}
-\node[mathlab,anchor=south] at (2.84,1.87) {$\symReadout$};
-\draw[thinflow] (2.93,1.78) -- (2.95,1.55);
+\draw[microflow] (2.74,1.80) -- (2.82,1.80);
+\RowSelector{(2.82,1.835)}{3}{0.07}
+\node[mathlab,anchor=south] at (2.925,1.845) {$\symReadout$};
+\draw[microflow] (3.03,1.80) -- (2.95,1.66);
 
 % ---------------- 4. predicted trajectory vs. target -------------------
 \MiniAxes{(2.95,0.55)}{1.50}{1.10}
 \node[mathlab,anchor=west] at (4.47,0.55) {$\symStep$};
-\node[mathlab,anchor=south east] at (2.98,1.66) {$\symYroll$};
+\node[mathlab,anchor=south west] at (3.06,1.60) {$\symYroll$};  % v6-v7: this WAS the actual source of the mangled glyph inside the decoder trapezoid in every earlier render -- anchor=south east at (2.98,1.66) grows left/up from that point, so this (wide) label was reaching back into the decoder the whole time; none of the arrow/selector/other-label edits touched it because it belongs to section 4 (the mini-axes y-label), not section 3. Re-anchored south-west so it grows right/up above the axes' own top-left corner, then nudged further right/down once more for clean air from g_psi.
 \draw[dashed,draw=good,line width=0.5pt] (2.95,1.10) -- (4.45,1.10);
 \node[mathlab,anchor=west,text=good] at (4.47,1.10) {$\symTarget$};
 \draw[draw=bad,line width=0.6pt]  (3.00,0.70) -- (3.45,1.40) -- (3.90,1.50) -- (4.40,1.35);

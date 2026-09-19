@@ -48,7 +48,7 @@
   mathlab/.style={font=\scriptsize,text=black!75,align=center,inner sep=1pt},
   % --- neural nets ---
   neuron/.style={circle,draw=#1,line width=0.5pt,fill=#1!22,
-                 minimum size=2.5mm,inner sep=0pt},
+                 minimum size=2.0mm,inner sep=0pt},
   nedge/.style={line width=0.3pt,draw=black!28},
   netoutline/.style={draw=#1,line width=0.8pt,fill=#1!10,rounded corners=2pt},
   % --- tensors ---
@@ -179,6 +179,9 @@
   ptag/.style={rounded corners=2pt,inner sep=2.2pt,font=\bfseries\scriptsize,text=white},
   % links
   thinflow/.style={-{Stealth[length=1.7mm]},line width=0.55pt,draw=black!72},
+  microflow/.style={-{Stealth[length=0.9mm]},line width=0.45pt,draw=black!72},  % thinflow's 1.7mm arrowhead is sized for the main chains; next to a
+  % heavily-downscaled EncNet/DecNet (modD's 0.26x decoder) it was wider
+  % than the glyph it points at. Use this for arrows touching such nets.
   oursflow/.style={-{Stealth[length=2.0mm]},line width=0.9pt,draw=ours},
   bypass/.style={-{Stealth[length=1.7mm]},dashed,line width=0.5pt,draw=black!45},
   lossline/.style={{Stealth[length=1.5mm]}-{Stealth[length=1.5mm]},dashed,

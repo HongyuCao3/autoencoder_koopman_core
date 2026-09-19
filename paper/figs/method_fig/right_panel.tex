@@ -44,8 +44,15 @@
 % (bottom-right of B) down to D's mini-axes would cross D's own receding-
 % horizon feedback line and skim its cost bars -- exactly the collision
 % case FIG_PLAN §3.3 anticipates. Per that fallback, use a minicap instead.
-\node[minicap,anchor=west,text=clModB] at (5.05,1.55) {model: from B};
+\node[minicap,anchor=north] at (8.94,3.73) {(feeds D)};  % v2: moved out of D's crowded interior (was sitting on top of D's xi_t label) into B's own empty bottom margin below its y-hat cell
 
 % ---- C trains B (caption instead of a line; the two panels are not
 % adjacent at this row spacing) ----
-\node[minicap,anchor=north west,text=clModC] at (0.06,2.88) {trains B};
+% v3: DROPPED. Checked C's actual top strip after rendering v2: the tag box
+% itself (font=\bfseries\scriptsize + 2.2pt inner sep) is taller than
+% estimated and reaches almost down to s_t's own column top (y~2.67), and
+% C's top-right is separately occupied by the q_t / D_psi(q_t) labels -- so
+% there is no genuinely free horizontal band left for a caption here. C's
+% own bottom caption "updates (phi,psi,K,B,b); theta frozen" already names
+% B as one of the trained parameters, so the relation is stated without an
+% extra label that would only collide with the tag or the s_t glyph.
