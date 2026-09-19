@@ -1,0 +1,1942 @@
+# Colleague-supplied benchmark results (IFBench / IFEval / COLLIE), transcribed verbatim from
+# paper/iclr2027_koopman_alignment/4-experiment.tex on 2026-09-18. User decision 2026-09-18: treat as reliable for
+# now (status=current) although no raw logs, seeds, CI or configs exist in this repo. Base = frozen LLM with no
+# added control; TMPC and RE-Control are colleague reproductions. Metric = constraint-satisfaction score as printed
+# (exact definition pending). Same entry schema as numbers.yaml; extra keys model/method/benchmark/subtask for
+# table assembly. Update supersede_reason/ci once the colleague supplies provenance.
+- id: n_bench_001
+  value: 25.5
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on IFBench WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: IFBench
+  subtask: WC
+- id: n_bench_002
+  value: 7.0
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on IFBench UWC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: IFBench
+  subtask: UWC
+- id: n_bench_003
+  value: 36.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on IFBench NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: IFBench
+  subtask: NS
+- id: n_bench_004
+  value: 12.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on IFBench NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: IFBench
+  subtask: NP
+- id: n_bench_005
+  value: 20.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on IFEval KF. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: IFEval
+  subtask: KF
+- id: n_bench_006
+  value: 44.6
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on IFEval WC. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: IFEval
+  subtask: WC
+- id: n_bench_007
+  value: 33.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on IFEval NS. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: IFEval
+  subtask: NS
+- id: n_bench_008
+  value: 28.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on IFEval NP. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: IFEval
+  subtask: NP
+- id: n_bench_009
+  value: 23.0
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on COLLIE Word. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: COLLIE
+  subtask: Word
+- id: n_bench_010
+  value: 51.3
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on COLLIE Sent.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: COLLIE
+  subtask: Sent.
+- id: n_bench_011
+  value: 11.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Base on COLLIE Para.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Base
+  benchmark: COLLIE
+  subtask: Para.
+- id: n_bench_012
+  value: 44.6
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on IFBench WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: IFBench
+  subtask: WC
+- id: n_bench_013
+  value: 12.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on IFBench UWC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: IFBench
+  subtask: UWC
+- id: n_bench_014
+  value: 53.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on IFBench NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: IFBench
+  subtask: NS
+- id: n_bench_015
+  value: 24.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on IFBench NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: IFBench
+  subtask: NP
+- id: n_bench_016
+  value: 35.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on IFEval KF. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: IFEval
+  subtask: KF
+- id: n_bench_017
+  value: 59.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on IFEval WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: IFEval
+  subtask: WC
+- id: n_bench_018
+  value: 49.6
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on IFEval NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: IFEval
+  subtask: NS
+- id: n_bench_019
+  value: 43.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on IFEval NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: IFEval
+  subtask: NP
+- id: n_bench_020
+  value: 39.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on COLLIE Word. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: COLLIE
+  subtask: Word
+- id: n_bench_021
+  value: 65.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on COLLIE Sent.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: COLLIE
+  subtask: Sent.
+- id: n_bench_022
+  value: 26.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / Koopman on COLLIE Para.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: Koopman
+  benchmark: COLLIE
+  subtask: Para.
+- id: n_bench_023
+  value: 35.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on IFBench WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: IFBench
+  subtask: WC
+- id: n_bench_024
+  value: 9.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on IFBench UWC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: IFBench
+  subtask: UWC
+- id: n_bench_025
+  value: 46.3
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on IFBench NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: IFBench
+  subtask: NS
+- id: n_bench_026
+  value: 19.0
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on IFBench NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: IFBench
+  subtask: NP
+- id: n_bench_027
+  value: 29.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on IFEval KF. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: IFEval
+  subtask: KF
+- id: n_bench_028
+  value: 53.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on IFEval WC. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: IFEval
+  subtask: WC
+- id: n_bench_029
+  value: 43.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on IFEval NS. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: IFEval
+  subtask: NS
+- id: n_bench_030
+  value: 37.5
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on IFEval NP. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: IFEval
+  subtask: NP
+- id: n_bench_031
+  value: 33.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on COLLIE Word. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: COLLIE
+  subtask: Word
+- id: n_bench_032
+  value: 59.6
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on COLLIE Sent.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: COLLIE
+  subtask: Sent.
+- id: n_bench_033
+  value: 21.3
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / TMPC on COLLIE Para.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: TMPC
+  benchmark: COLLIE
+  subtask: Para.
+- id: n_bench_034
+  value: 38.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on IFBench WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: IFBench
+  subtask: WC
+- id: n_bench_035
+  value: 10.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on IFBench UWC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: IFBench
+  subtask: UWC
+- id: n_bench_036
+  value: 47.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on IFBench NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: IFBench
+  subtask: NS
+- id: n_bench_037
+  value: 19.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on IFBench NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: IFBench
+  subtask: NP
+- id: n_bench_038
+  value: 29.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on IFEval KF. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: IFEval
+  subtask: KF
+- id: n_bench_039
+  value: 54.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on IFEval WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: IFEval
+  subtask: WC
+- id: n_bench_040
+  value: 43.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on IFEval NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: IFEval
+  subtask: NS
+- id: n_bench_041
+  value: 38.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on IFEval NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: IFEval
+  subtask: NP
+- id: n_bench_042
+  value: 34.0
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on COLLIE Word. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: COLLIE
+  subtask: Word
+- id: n_bench_043
+  value: 60.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on COLLIE Sent.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: COLLIE
+  subtask: Sent.
+- id: n_bench_044
+  value: 21.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-4B / RE-Control on COLLIE Para.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-4B
+  method: RE-Control
+  benchmark: COLLIE
+  subtask: Para.
+- id: n_bench_045
+  value: 31.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on IFBench WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: IFBench
+  subtask: WC
+- id: n_bench_046
+  value: 9.6
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on IFBench UWC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: IFBench
+  subtask: UWC
+- id: n_bench_047
+  value: 42.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on IFBench NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: IFBench
+  subtask: NS
+- id: n_bench_048
+  value: 16.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on IFBench NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: IFBench
+  subtask: NP
+- id: n_bench_049
+  value: 26.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on IFEval KF. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: IFEval
+  subtask: KF
+- id: n_bench_050
+  value: 50.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on IFEval WC. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: IFEval
+  subtask: WC
+- id: n_bench_051
+  value: 39.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on IFEval NS. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: IFEval
+  subtask: NS
+- id: n_bench_052
+  value: 34.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on IFEval NP. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: IFEval
+  subtask: NP
+- id: n_bench_053
+  value: 29.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on COLLIE Word. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: COLLIE
+  subtask: Word
+- id: n_bench_054
+  value: 57.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on COLLIE Sent.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: COLLIE
+  subtask: Sent.
+- id: n_bench_055
+  value: 17.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Base on COLLIE Para.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Base
+  benchmark: COLLIE
+  subtask: Para.
+- id: n_bench_056
+  value: 50.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on IFBench WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: IFBench
+  subtask: WC
+- id: n_bench_057
+  value: 15.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on IFBench UWC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: IFBench
+  subtask: UWC
+- id: n_bench_058
+  value: 59.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on IFBench NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: IFBench
+  subtask: NS
+- id: n_bench_059
+  value: 29.3
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on IFBench NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: IFBench
+  subtask: NP
+- id: n_bench_060
+  value: 41.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on IFEval KF. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: IFEval
+  subtask: KF
+- id: n_bench_061
+  value: 65.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on IFEval WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: IFEval
+  subtask: WC
+- id: n_bench_062
+  value: 55.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on IFEval NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: IFEval
+  subtask: NS
+- id: n_bench_063
+  value: 49.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on IFEval NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: IFEval
+  subtask: NP
+- id: n_bench_064
+  value: 46.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on COLLIE Word. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: COLLIE
+  subtask: Word
+- id: n_bench_065
+  value: 71.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on COLLIE Sent.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: COLLIE
+  subtask: Sent.
+- id: n_bench_066
+  value: 32.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / Koopman on COLLIE Para.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: Koopman
+  benchmark: COLLIE
+  subtask: Para.
+- id: n_bench_067
+  value: 41.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on IFBench WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: IFBench
+  subtask: WC
+- id: n_bench_068
+  value: 12.8
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on IFBench UWC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: IFBench
+  subtask: UWC
+- id: n_bench_069
+  value: 52.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on IFBench NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: IFBench
+  subtask: NS
+- id: n_bench_070
+  value: 23.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on IFBench NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: IFBench
+  subtask: NP
+- id: n_bench_071
+  value: 35.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on IFEval KF. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: IFEval
+  subtask: KF
+- id: n_bench_072
+  value: 59.4
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on IFEval WC. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: IFEval
+  subtask: WC
+- id: n_bench_073
+  value: 49.5
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on IFEval NS. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: IFEval
+  subtask: NS
+- id: n_bench_074
+  value: 43.7
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on IFEval NP. Colleague-supplied benchmark result, recorded 2026-09-18
+    and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: IFEval
+  subtask: NP
+- id: n_bench_075
+  value: 39.3
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on COLLIE Word. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: COLLIE
+  subtask: Word
+- id: n_bench_076
+  value: 65.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on COLLIE Sent.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: COLLIE
+  subtask: Sent.
+- id: n_bench_077
+  value: 27.0
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / TMPC on COLLIE Para.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: TMPC
+  benchmark: COLLIE
+  subtask: Para.
+- id: n_bench_078
+  value: 42.6
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on IFBench WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: IFBench
+  subtask: WC
+- id: n_bench_079
+  value: 13.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on IFBench UWC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: IFBench
+  subtask: UWC
+- id: n_bench_080
+  value: 52.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on IFBench NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: IFBench
+  subtask: NS
+- id: n_bench_081
+  value: 24.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on IFBench NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: IFBench
+  subtask: NP
+- id: n_bench_082
+  value: 36.0
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on IFEval KF. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: IFEval
+  subtask: KF
+- id: n_bench_083
+  value: 60.1
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on IFEval WC. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: IFEval
+  subtask: WC
+- id: n_bench_084
+  value: 50.2
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on IFEval NS. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: IFEval
+  subtask: NS
+- id: n_bench_085
+  value: 44.3
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on IFEval NP. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: IFEval
+  subtask: NP
+- id: n_bench_086
+  value: 40.0
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on COLLIE Word. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: COLLIE
+  subtask: Word
+- id: n_bench_087
+  value: 65.9
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on COLLIE Sent.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: COLLIE
+  subtask: Sent.
+- id: n_bench_088
+  value: 27.6
+  unit: constraint-satisfaction score (%, as printed; metric definition pending from colleague)
+  what: 'Table (4-experiment.tex): Qwen3-8B / RE-Control on COLLIE Para.. Colleague-supplied benchmark result, recorded
+    2026-09-18 and provisionally treated as reliable (user decision); no raw logs, seeds or CI in this repo yet.'
+  line: benchmark
+  source_doc: paper/iclr2027_koopman_alignment/4-experiment.tex
+  source_run: null
+  job_id: null
+  n: null
+  stat: point estimate as printed
+  test: null
+  p: null
+  ci: null
+  date: '2026-09-18'
+  status: current
+  superseded_by: null
+  supersede_reason: null
+  model: Qwen3-8B
+  method: RE-Control
+  benchmark: COLLIE
+  subtask: Para.
