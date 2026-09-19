@@ -259,6 +259,18 @@ symbol_lattice:
     first_defined: method
     scope: "text, distinguished from its measured attribute"
     appears_in: [method]
+  - id: s_yhat
+    symbol: '\widehat y_{t+h\mid t}'
+    gloss: "the model's forecast of the attribute h steps ahead, formed from what is known now"
+    first_defined: problem_formulation
+    scope: "the forecast itself; how it is produced is Method's business"
+    appears_in: [problem_formulation, method, experiments]
+  - id: s_ell
+    symbol: '\ell_h'
+    gloss: "squared error of the h-step forecast"
+    first_defined: problem_formulation
+    scope: "one horizon step; the reported metric aggregates it over the horizon"
+    appears_in: [problem_formulation, experiments]
   - id: s_y
     symbol: 'y_t'
     gloss: "measured attribute of the reply at step t"
@@ -427,9 +439,18 @@ equation_lattice:
     label: "eq:interaction"
     operation_name: "sampling a reply from the frozen model and measuring its attribute"
     rhs_symbols: [s_ptheta, s_x, s_hist, s_u, s_V, s_o]
-    in_section: method
+    in_section: problem_formulation   # D22
     has_gloss: true
     role: definition
+  - id: eq_modeling_objective
+    label: "eq:modeling_objective"
+    operation_name: "squared error between the realized attribute and its h-step-ahead forecast, at each horizon step"
+    rhs_symbols: [s_y, s_yhat, s_H, s_ell]
+    in_section: problem_formulation   # D22: added when Problem Formulation split into Modeling
+                                      # and Control. It is what makes the paper's reported metric
+                                      # a multi-step quantity rather than a one-step one.
+    has_gloss: true
+    role: quality_claim
   - id: eq_prompt_protocol
     label: "eq:prompt_protocol"
     operation_name: "construction of the prompt from a numerical command and the dialogue"

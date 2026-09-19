@@ -95,6 +95,41 @@ def first_occurrence(lines, latex):
     return None
 
 
+def doc_order(main_tex):
+    """The \input order in main.tex, as paths relative to the paper directory.
+
+    A symbol introduced in an earlier section is already introduced by the time a later
+    section uses it. Without this the gate reads each file as if it were the whole paper
+    and demands a re-gloss the prose should not contain (Rule 10).
+    """
+    try:
+        with open(main_tex, encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError:
+        return []
+    out = []
+    for m in re.finditer(r"\\input\{([^}]*)\}", text):
+        rel = m.group(1)
+        if not rel.endswith(".tex"):
+            rel += ".tex"
+        out.append(os.path.join(PAPER, rel))
+    return out
+
+
+def prior_text(target, order):
+    """Everything that appears before `target` in document order, concatenated."""
+    chunks = []
+    for path in order:
+        if os.path.abspath(path) == os.path.abspath(target):
+            break
+        try:
+            with open(path, encoding="utf-8") as fh:
+                chunks.append(fh.read())
+        except OSError:
+            continue
+    return "\n".join(chunks)
+
+
 def gloss_after(lines, end_idx, wanted):
     """Which of `wanted` [(sid, latex)] do not appear in the prose after the equation."""
     window = []
@@ -114,7 +149,7 @@ def gloss_after(lines, end_idx, wanted):
     return missing
 
 
-def check(path, eqs):
+def check(path, eqs, earlier=""):
     with open(path, encoding="utf-8") as fh:
         lines = fh.read().split("\n")
     problems = []
@@ -133,6 +168,8 @@ def check(path, eqs):
             # would push the prose into repeating itself, which Rule 9 and Rule 10 both fight.
             fresh = []
             for sid, latex in eqs[label]:
+                if latex in earlier:
+                    continue          # already introduced in an earlier section
                 first = first_occurrence(lines, latex)
                 if first is None or b <= first <= e:
                     fresh.append((sid, latex))
@@ -153,9 +190,10 @@ def main(argv):
         print("usage: equation_gate.py <file.tex> [more.tex ...]", file=sys.stderr)
         return 2
     eqs = load_contract()
+    order = doc_order(os.path.join(PAPER, "main.tex"))
     total, all_problems = 0, []
     for path in argv[1:]:
-        seen, problems = check(path, eqs)
+        seen, problems = check(path, eqs, earlier=prior_text(path, order))
         total += seen
         all_problems.extend(problems)
     if not all_problems:
