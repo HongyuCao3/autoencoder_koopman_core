@@ -1,0 +1,60 @@
+\section{Problem Formulation}
+\label{sec:problem}
+
+\subsection{Modeling}
+\label{sec:problem_modeling}
+
+Let $x$ denote a task input and $p_{\theta}$ a frozen large language
+model (LLM). We track one output attribute at a time, such as sentence
+length or sentiment polarity. At interaction step $t$, the model has
+produced a dialogue history $\mathcal{H}_t$, and a controller supplies
+a textual intervention $u_t$. A step is one complete prompt-response
+exchange.
+
+The next response and its measured attribute are
+\begin{equation}
+    o_{t+1}\sim
+    p_{\theta}(\,\cdot\mid x,\mathcal{H}_t,u_t),
+    \qquad
+    y_{t+1}=V(o_{t+1}),
+    \label{eq:interaction}
+\end{equation}
+where $V$ is a task-specific verifier that reads a finished reply into
+a scalar attribute. The reply $o_{t+1}$ is text; $y_{t+1}$ is its
+measured attribute value.
+
+A model of this interaction is useful only if it stays accurate over
+several future steps, since a controller reasons about the consequences
+of an intervention several turns ahead, not only the very next one. We
+therefore state the modeling objective as multi-step attribute
+prediction accuracy: for a horizon of $H$ steps, a model's forecast
+$\widehat y_{t+h\mid t}$ of the attribute at step $t+h$, formed from
+information available at step $t$, should keep the discrepancy
+\begin{equation}
+    \ell_h
+    =
+    \big(y_{t+h}-\widehat y_{t+h\mid t}\big)^2,
+    \qquad h=1,\ldots,H,
+    \label{eq:modeling_objective}
+\end{equation}
+small across the whole horizon, not only at $h=1$. Here $\widehat
+y_{t+h\mid t}$ denotes the model's $h$-step-ahead forecast of the
+attribute, and $\ell_h$ is the resulting squared error at horizon step
+$h$. Section~\ref{sec:koopman_operator} specifies how this forecast is
+formed and what is held fixed to make it well defined.
+
+\subsection{Control}
+\label{sec:problem_control}
+
+Let $r\in\mathbb{R}$ denote the desired value of the tracked attribute.
+The tracking error is $e_t=r-y_t$, and the control objective is to
+drive this error toward zero within a finite interaction budget. At
+each step the controller's action is a scalar command $c_t$, which
+determines the intervention $u_t$ applied to the model.
+
+The desired output $r$ and the applied command $c_t$ play distinct
+roles: $r$ states the objective, and $c_t$ is the controller's choice.
+In target-following control, $c_t$ equals $r$. Predictive control
+instead lets $c_t$ differ from $r$ to compensate for a predicted
+response, which requires a state that carries enough history to
+support that prediction.

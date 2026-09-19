@@ -1,7 +1,7 @@
 \section{Method}
 
-We formulate test-time alignment as feedback control over the
-observable attributes of a frozen large language model (LLM).
+We formulate multi-turn attribute tracking as feedback control over
+the observable attributes of a frozen LLM.
 Figure~\ref{fig:placeholder} shows four pipeline stages, from a
 finite-memory state built out of recent attribute readings to a
 command-conditioned latent prediction of the next reading. A scoring
@@ -17,53 +17,6 @@ only the external dynamics model is learned offline.
     scoring, and execution with replanning.}
     \label{fig:placeholder}
 \end{figure}
-
-\subsection{Problem Formulation}
-\label{sec:problem}
-
-Let $x$ denote a task input, $p_{\theta}$ a frozen LLM, and
-$r\in\mathbb{R}$ the desired value of an output attribute. We consider
-one attribute at a time, such as sentence length or sentiment polarity.
-At interaction step $t$, the controller observes the dialogue history
-$\mathcal{H}_t$ and chooses a textual intervention $u_t$. A step is one
-entire prompt-response exchange, rather than a single generated token.
-
-The control objective is stated only in terms of a verifier's reading
-of a finished reply, never a partial generation. The next response and
-its measured attribute are
-\begin{equation}
-    o_{t+1}\sim
-    p_{\theta}(\,\cdot\mid x,\mathcal{H}_t,u_t),
-    \qquad
-    y_{t+1}=V(o_{t+1}),
-    \label{eq:interaction}
-\end{equation}
-where $V$ is a task-specific verifier. The reply $o_{t+1}$ is text, kept
-distinct from its measured attribute $y_{t+1}$. The alignment error is
-$e_t=r-y_t$, and the objective is to reduce this error within a finite
-interaction budget using prompt interventions alone.
-
-A candidate intervention must be represented inside the predictor for
-its effect to be distinguishable from another candidate's. We therefore
-assume a command-conditioned prompting protocol
-\begin{equation}
-    u_t=\mathcal{P}(x,\mathcal{H}_t,c_t),
-    \qquad
-    c_t\in\mathcal{C}\subseteq\mathbb{R},
-    \label{eq:prompt_protocol}
-\end{equation}
-where $\mathcal{P}$ constructs a prompt from a numerical command $c_t$
-and the current dialogue. The set $\mathcal{C}$ is the range of
-admissible commands, from which every candidate is later drawn. This formulation concerns the specified
-prompting protocol, not arbitrary textual interventions with an
-unspecified encoding.
-
-The desired output $r$ and the applied command $c_t$ play distinct
-roles: the former states the alignment objective, and the latter is
-chosen by the controller. In ordinary target-following, $c_t$ equals
-$r$. Predictive control instead lets $c_t$ differ from $r$ to
-compensate for a predicted response, which requires a state that
-carries enough history to support that prediction.
 
 \subsection{Finite-Memory Interaction State}
 \label{sec:memory_state}
@@ -120,6 +73,17 @@ therefore a property of the protocol generating the instruction, not of
 the instruction's surface wording. \uline{An instruction carries a
 command coordinate only because the protocol generating it is built
 from that coordinate in the first place.}
+
+We make this concrete with a command-conditioned prompting protocol
+\begin{equation}
+    u_t=\mathcal{P}(x,\mathcal{H}_t,c_t),
+    \qquad
+    c_t\in\mathcal{C}\subseteq\mathbb{R},
+    \label{eq:prompt_protocol}
+\end{equation}
+where $\mathcal{P}$ constructs a prompt from a numerical command $c_t$
+and the current dialogue, and $\mathcal{C}$ is the range of admissible
+commands from which every candidate is later drawn.
 
 Before approximating anything, the population object is the conditional
 expectation of an observable one step ahead, given the state and the

@@ -28,7 +28,11 @@ meta:
                                 # arxiv" (2026-09-18) returned no ML method of this name.
   venue: ICLR
   page_limit: 9
-  subfield: "test-time alignment and multi-turn behavior control of frozen LLMs"
+  subfield: "inference-time attribute control and multi-turn behavior control of frozen LLMs"
+              # D22 (2026-09-19): "test-time alignment" removed. That term denotes
+              # preference/reward alignment; this paper tracks a scalar attribute to a
+              # reference on instruction-following benchmarks. User-approved change to a
+              # signed Tier-1 contract (D20 requires user sign-off; granted 2026-09-19).
   benchmarks: # Tier-1 cold review of the Intro outline (f2, 2026-09-19): the names were being
               # cited by Tier 2 without ever passing through the contract. Verified against
               # evidence/numbers_benchmark.yaml, which carries a `benchmark` field on all 88 rows,

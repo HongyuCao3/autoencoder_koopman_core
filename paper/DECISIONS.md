@@ -28,6 +28,7 @@
 | D18 | 2026-09-19 | **主文恰好两张表**：Table 1 建模线（`tab_prediction`），Table 2 控制线（`tab_control`）。四个小样本列那张是附录 A2（`tab:prediction_small_app`），不计入主文。 | 明确 D4 |
 | D21 | 2026-09-19 | CP1 **approved**。用户改变审核节奏：**不再逐 checkpoint 停下**，一口气把全文过一遍，之后统一回看。闸门、冷审、每 checkpoint 一次 commit 全部照旧，只是不等用户答复就进下一阶段。 | 放宽 D8 的"每章审核"与 WRITING_PLAN §5 的停点 |
 | D20 | 2026-09-19 | 用户通读 `contract_zh_2026-09-19.md` 后**签字**，Tier-1 contract 生效。Phase 1 开工。后续任何对 contract 的改动都要回到用户，不能由写作会话自行修改。 | — |
+| D22 | 2026-09-19 | 全文**禁用 alignment 描述本方法**。`02_method.tex` 开篇改为 "multi-turn attribute tracking"；`02_problem.tex` 的 alignment error 改为 **tracking error**（控制论标准叫法）；`semantic.md` §3.1 P1/P3 同步；`contract.yaml` `subfield` 改为 "inference-time attribute control..."（D20 要求用户签字，已于本日获准）。理由不是该词在文献中不存在（ARGS / Aligner / best-of-N / test-time preference optimization 构成一条明确的线），而是那条线的 alignment 指向偏好与 reward model，本文的对象是把标量属性追踪到参考值、评测跑在 IFBench / IFEval / COLLIE 上，两者对不上，会被记成 overclaim；且与 D14 已定的标题定位自相矛盾。**例外**：Related Work 中把 alignment 作为**他人工作的名称**引用不受限制。**不改**：`DECISIONS.md` D10 / 历史条目、`audit/`、`_archive_*`、`_colleague_backup_*`（历史记录与冻结副本）；`evidence/numbers.yaml` 的 alignment 指时间索引对齐，与本条无关。 | 覆盖 D10 遗留、细化 D14 |
 | D19 | 2026-09-19 | 四个设计选择并成三个：**联合训练目标降进附录 A1**（连同 `eq:training_transition`、`eq:training_objective`），主文留 有限记忆状态 / 命令条件化算子 / 预测式候选选择。**三个 Why 段全部改成论证"实例化"而不是论证机制**：延迟嵌入、仿射输入列、提升空间 MPC 都是学界共识（Korda & Mezić 2018），再论证一遍只会招来"这不就是把它套到文本上"。 | 覆盖 WRITING_PLAN §2.2 的四条 design_choice_lattice |
 
 ## 已执行的操作性裁决（不进表，但有约束力）
