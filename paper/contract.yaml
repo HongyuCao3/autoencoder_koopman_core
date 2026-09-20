@@ -133,24 +133,37 @@ design_choice_lattice:
 claim_ledger:
   # --- Modeling line: what the operator predicts (self-built multi-turn tasks) ---
   - id: c1
-    claim: "A window of past attribute readings predicts better than the current reading alone on five of seven tasks, with paired bootstrap intervals excluding zero."
+    claim: "A window of past attribute readings predicts better than the current reading alone on four of seven tasks, with paired bootstrap intervals excluding zero."
     strength: scoped
     evidence:
-      - "figure_panel:fig_memory_forest:all (n_main_013 n_main_045 n_main_029 n_main_077 n_main_093 n_main_132 n_main_180)"
+      - "figure_panel:fig_memory_forest:all (n_main_013 n_main_045 n_main_029 n_main_109 n_main_148 n_main_132 n_main_180)"
     appears_in: [intro, experiments, conclusion]
     driver_keyword: "the window exposes the direction of travel, which a single reading cannot carry"
-    notes: "RECOUNT: five of seven, not all. vector_count_stage1 has an interval containing zero (+0.246, [-0.023, +0.415]); formality is negative and not separated from zero (-0.035). The prose names the two exceptions."
+    notes: >-
+      RECOUNT 2026-09-20, on the seven columns build_tables.py PRED_COLUMNS prints: four of
+      seven, not five. The count and the ids here were still the pre-2026-09-19-swap set
+      (character_length_t5, formality_t5) while sections/04b_prediction.tex and
+      sections/01_introduction.tex had already been recounted on 2026-09-20. The three
+      exceptions are Joint-2 (+0.246, [-0.023, +0.415]), sentiment (+0.221, [-0.051, +0.329])
+      and defense (-0.033, [-0.103, +0.013], caveated). The prose names all three.
 
   - id: c2
-    claim: "A learned nonlinear lifting does not predict better than the identity lifting on any of the seven tasks, and predicts worse on four of them with intervals excluding zero."
+    claim: "A learned nonlinear lifting does not predict better than the identity lifting on any of the seven tasks, and predicts worse on three of them with intervals excluding zero."
     strength: scoped
     evidence:
-      - "table_cell:tab_prediction:R{KOMPAS (learned lifting)}:C{all 7} (n_main_010 n_main_042 n_main_026 n_main_074 n_main_090 n_main_129 n_main_177)"
-      - "table_cell:tab_prediction:R{KOMPAS (linear)}:C{all 7} (n_main_004 n_main_036 n_main_020 n_main_068 n_main_084 n_main_131 n_main_179)"
-      - "figure_panel:fig_lifting_contrast:all (n_main_015 n_main_047 n_main_031 n_main_079 n_main_095 n_main_135 n_main_183)"
+      - "table_cell:tab_prediction:R{KOMPAS (learned lifting)}:C{all 7} (n_main_010 n_main_042 n_main_026 n_main_106 n_main_145 n_main_129 n_main_177)"
+      - "table_cell:tab_prediction:R{KOMPAS (linear)}:C{all 7} (n_main_004 n_main_036 n_main_020 n_main_100 n_main_147 n_main_131 n_main_179)"
+      - "figure_panel:fig_lifting_contrast:all (n_main_015 n_main_047 n_main_031 n_main_111 n_main_151 n_main_135 n_main_183)"
     appears_in: [experiments, conclusion]
     driver_keyword: "the attribute readouts are already low-dimensional, so a lifting has little structure left to expose"
-    notes: "RECOUNT: the story framework said the gap was at most 0.031 with signs flipping. The CEFR column is +0.599 in favour of the linear case, which is not a tie. The claim is stated as 'no gain from lifting', not as 'equivalent'."
+    notes: >-
+      RECOUNT: the story framework said the gap was at most 0.031 with signs flipping. The
+      CEFR column is +0.599 in favour of the linear case, which is not a tie. The claim is
+      stated as 'no gain from lifting', not as 'equivalent'. 2026-09-20: all three evidence
+      lines still carried the pre-2026-09-19-swap seven (character_length_t5, formality_t5)
+      and the count "four" came from that set; on the printed seven the intervals exclude
+      zero on three (Joint-3, constraint, CEFR), which is what
+      sections/04b_prediction.tex already says. fig_lifting_contrast now exists.
 
   - id: c3
     claim: "Against an LSTM sequence baseline neither model dominates: the linear operator wins two columns and loses two, each with intervals excluding zero."
@@ -197,7 +210,7 @@ claim_ledger:
       abstract's memory claim must not be worded as holding on every column.
 
   - id: c11
-    claim: "A per-item intercept added to the one-reading state recovers 81% of the memory gain on constraint and 67% on Joint-3 (vector_count_stage2; formerly "Joint-3"); the remainder beyond the intercept, +0.045 and +0.075, has intervals excluding zero on those two tasks and on no other Table 2 task."
+    claim: "A per-item intercept added to the one-reading state recovers 81% of the memory gain on constraint and 67% on Joint-3 (vector_count_stage2; formerly \"Joint-3\"); the remainder beyond the intercept, +0.045 and +0.075, has intervals excluding zero on those two tasks and on no other Table 2 task."
     strength: scoped
     evidence:
       - "figure_panel:fig_item_effect:all (n_mech_060 n_mech_061 n_mech_059 n_mech_057 n_mech_058 n_mech_056 n_mech_051 n_mech_052 n_mech_050 n_mech_054 n_mech_055 n_mech_053 n_mech_048 n_mech_049 n_mech_047 n_mech_069 n_mech_070 n_mech_068 n_mech_063 n_mech_064 n_mech_062)"
@@ -682,11 +695,20 @@ mechanism_lattice:
     appears_in_experiments: true
     notes: "The driver sentence behind the headline numbers."
   - id: m4
-    mechanism: "The attribute readouts are already one-dimensional, so a learned lifting has little extra structure to expose and mainly adds estimation variance on trajectories that number in the tens or hundreds."
+    mechanism: "The attribute readouts are already one-dimensional, so a learned lifting has little extra structure to expose."
     supports_claim: [c2]
     appears_in_method: false
     appears_in_experiments: true
-    notes: "Kept out of Method: Rule 21 bans results-shaped reasoning there. D19: its design counterpart, the training objective, now lives in appendix A1."
+    notes: >-
+      Kept out of Method: Rule 21 bans results-shaped reasoning there. D19: its design
+      counterpart, the training objective, now lives in appendix A1. 2026-09-20: the clause
+      "and mainly adds estimation variance on trajectories that number in the tens or
+      hundreds" was removed because fig_lifting_contrast contradicts it -- CEFR carries the
+      largest cost on the largest task (n=100, +0.599) and Joint-3 the smallest on the second
+      largest (n=90, +0.005), so the cost does not fall with the trajectory count. The
+      surviving clause is what the figure shows: the two multi-dimensional readouts
+      (Joint-2, Joint-3) sit at zero and the large costs are all on one-dimensional
+      readouts. sections/04b_prediction.tex only ever asserted the surviving clause.
   - id: m5
     mechanism: "On the seven attribute-tracking tasks the applied command is the tracking error itself, an exact affine function of the memory state, so the command column carries no information the state does not already carry and the prediction design cannot see an action effect at all."
     supports_claim: []

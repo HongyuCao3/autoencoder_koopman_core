@@ -12,7 +12,16 @@ Figures (2026-09-19, side experiments P1 and P2 of claude/side_experiments_plan_
                              remainder beyond it (section 3)
 
 Usage:
-    python3 tools/build_figs.py
+    /scratch/hcao2/envs/research-template/bin/python tools/build_figs.py
+
+matplotlib is not in the persona_drift_pilot env; research-template has it.
+
+To look at a typeset page (no pdftoppm, pdftocairo, gs or ImageMagick on this host),
+rasterise main.pdf with the typst that ships inside quarto:
+
+    T=~/.local/share/quarto-1.10.18/bin/tools/x86_64/typst
+    printf '#set page(width: 8.5in, height: 11in, margin: 0pt)\n#image("main.pdf", page: 9, width: 100%%)\n' > p.typ
+    $T compile --format png --ppi 120 p.typ page_9.png
 """
 import json
 import os
@@ -233,12 +242,242 @@ def fig_item_effect(rows, report):
                                  "row_order": [NAMES[t] for t in order], "ids": used}
 
 
+
+# ---------------------------------------------------------------------------
+# Mechanism figures (2026-09-20). Three scatters, one per mechanism of
+# contract.yaml's mechanism_lattice that the main text asserts without showing:
+#   fig_two_futures.pdf       m1  one reading is consistent with two opposite next steps
+#   fig_command_channel.pdf   m5  the applied command does not vary with the state
+#   fig_lifting_contrast.pdf  m4  what a learned lifting costs, against trajectory count
+# A and B read the bundled trajectory files directly, not the evidence ledger, because
+# they display the collected data rather than an estimate. Provenance for those two is
+# the file sha256 plus the transform, both written to _fig_report.json. C reads the
+# ledger like every other figure. Neither A nor B is a Skill_H number and neither may be
+# quoted as one (.claude/global.md -> report caliber).
+# ---------------------------------------------------------------------------
+import collections
+import hashlib
+
+DATASETS = os.path.join(os.path.dirname(PAPER), "datasets")
+
+# Table 1 columns whose raw trajectories ship in datasets/. The other three columns
+# (Defense, Constraint, CEFR) are collected elsewhere and have no file here.
+RAW = {
+    "sentence_length_t10": ("scalar/sentence_length_t10", "normalized_output"),
+    "vector_count_stage2_t10": ("vector/vector_count_stage2_t10", "word_count_norm"),
+    "vector_count_stage1_t10": ("vector/vector_count_stage1_t10", "word_count_norm"),
+    "sentiment_t5": ("scalar/sentiment_t5", "normalized_output"),
+}
+
+
+def trajectories(task):
+    """Group one bundled dataset into turn-ordered trajectories; return (rows, sha256)."""
+    path = os.path.join(DATASETS, RAW[task][0], "trajectories.jsonl")
+    with open(path, "rb") as f:
+        sha = hashlib.sha256(f.read()).hexdigest()
+    grouped = collections.defaultdict(list)
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            row = json.loads(line)
+            grouped[row["trajectory_id"]].append(row)
+    for rows in grouped.values():
+        rows.sort(key=lambda r: r["turn"])
+    return grouped, sha, os.path.relpath(path, os.path.dirname(PAPER))
+
+
+def binned_mean(xs, ys, edges):
+    """Mean of ys inside each x bin; bins holding under 5 points are dropped."""
+    out = []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        vals = [y for x, y in zip(xs, ys) if lo <= x < hi]
+        if len(vals) >= 5:
+            out.append(((lo + hi) / 2, sum(vals) / len(vals)))
+    return [p[0] for p in out], [p[1] for p in out]
+
+
+# ---------------------------------------------------------------------------
+# m1. One reading, two futures.
+# ---------------------------------------------------------------------------
+def fig_two_futures(report):
+    tasks = ["sentence_length_t10", "vector_count_stage2_t10",
+             "vector_count_stage1_t10", "sentiment_t5"]
+    fig, axes = plt.subplots(1, 4, figsize=(5.5, 1.8), sharey=False)
+    ids = {}
+    for ax, task in zip(axes, tasks):
+        grouped, sha, rel = trajectories(task)
+        col = RAW[task][1]
+        up_x, up_y, dn_x, dn_y, ties = [], [], [], [], 0
+        for rows in grouped.values():
+            series = [r.get(col) for r in rows]
+            for i in range(1, len(series) - 1):
+                a, b, c = series[i - 1], series[i], series[i + 1]
+                if None in (a, b, c):
+                    continue
+                prev, nxt = b - a, c - b
+                if prev == 0:
+                    ties += 1
+                elif prev > 0:
+                    up_x.append(b); up_y.append(nxt)
+                else:
+                    dn_x.append(b); dn_y.append(nxt)
+        ax.axhline(0, color=GRID, linewidth=0.6, zorder=1)
+        for xs, ys, colour, marker in ((up_x, up_y, PALETTE[0], "o"),
+                                       (dn_x, dn_y, PALETTE[1], "^")):
+            ax.scatter(xs, ys, s=2.5, c=colour, marker=marker, alpha=0.22,
+                       linewidths=0, zorder=2)
+        lo = min(up_x + dn_x); hi = max(up_x + dn_x)
+        edges = [lo + (hi - lo) * i / 8 for i in range(9)]
+        for xs, ys, colour, marker in ((up_x, up_y, PALETTE[0], "o"),
+                                       (dn_x, dn_y, PALETTE[1], "^")):
+            bx, by = binned_mean(xs, ys, edges)
+            ax.plot(bx, by, color=colour, linewidth=1.3, marker=marker,
+                    markersize=3.2, zorder=3,
+                    label="previous step up" if colour == PALETTE[0] else "previous step down")
+        style_axes(ax)
+        ax.set_title(NAMES[task], pad=3)
+        ax.set_xlabel("reading $y_t$")
+        gap = (sum(dn_y) / len(dn_y)) - (sum(up_y) / len(up_y))
+        ids[task] = {"file": rel, "sha256": sha, "column": col,
+                     "n_up": len(up_x), "n_down": len(dn_x), "n_flat_dropped": ties,
+                     "mean_next_change_up": sum(up_y) / len(up_y),
+                     "mean_next_change_down": sum(dn_y) / len(dn_y),
+                     "separation_down_minus_up": gap}
+    axes[0].set_ylabel("next change $y_{t+1}-y_t$")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, frameon=False, ncol=2, loc="upper center",
+               bbox_to_anchor=(0.5, 1.09), handlelength=1.6, columnspacing=1.6)
+    fig.tight_layout(pad=0.4)
+    out = os.path.join(FIGS, "fig_two_futures.pdf")
+    fig.savefig(out, bbox_inches="tight"); plt.close(fig)
+    report["fig_two_futures"] = {
+        "file": os.path.relpath(out, PAPER), "mechanism": "m1",
+        "caliber": "descriptive, raw readings -- NOT Skill_H, never quote as a result number",
+        "transform": "per trajectory: x=y_t, y=y_{t+1}-y_t, grouped by sign(y_t-y_{t-1}); "
+                     "exact ties on the previous step dropped; line overlay = mean of y in 8 "
+                     "equal-width x bins, bins under 5 points dropped",
+        "sources": ids}
+    return out
+
+
+# ---------------------------------------------------------------------------
+# m5. The command channel does not move.
+# ---------------------------------------------------------------------------
+def fig_command_channel(report):
+    tasks = ["sentence_length_t10", "sentiment_t5"]  # the Table 1 columns logging a per-turn command
+    fig, axes = plt.subplots(1, 2, figsize=(5.5, 2.1))
+    ids = {}
+    for ax, task in zip(axes, tasks):
+        grouped, sha, rel = trajectories(task)
+        xs, ys, targets, same = [], [], [], 0
+        for rows in grouped.values():
+            for a, b in zip(rows, rows[1:]):
+                u, r_, y = b.get("requested_norm"), a.get("effective_norm"), a.get("normalized_output")
+                if None in (u, r_, y):
+                    continue
+                xs.append(r_ - y); ys.append(u); targets.append(r_)
+                same += abs(u - r_) < 1e-9
+        sc = ax.scatter(xs, ys, s=3.5, c=targets, cmap="Blues", vmin=-0.45,
+                        alpha=0.55, linewidths=0, zorder=2)
+        ax.axvline(0, color=GRID, linewidth=0.6, zorder=1)
+        style_axes(ax)
+        ax.grid(True, axis="x", color=GRID, linewidth=0.5)
+        ax.set_title(NAMES[task], pad=3)
+        ax.set_xlabel("tracking error $r-y_t$")
+        ax.annotate(f"{same}/{len(xs)} transitions\nhave command $=r$",
+                    xy=(0.04, 0.04), xycoords="axes fraction", fontsize=6.5,
+                    color=MUTED, ha="left", va="bottom",
+                    bbox=dict(boxstyle="square,pad=0.25", facecolor="white",
+                              edgecolor="none", alpha=0.85))
+        ids[task] = {"file": rel, "sha256": sha, "n_transitions": len(xs),
+                     "n_command_equals_target": same}
+    axes[0].set_ylabel("applied command $u_{t+1}$")
+    cb = fig.colorbar(sc, ax=axes, fraction=0.035, pad=0.02)
+    cb.set_label("target $r$", size=7); cb.ax.tick_params(labelsize=6.5, length=2)
+    cb.outline.set_linewidth(0.4)
+    out = os.path.join(FIGS, "fig_command_channel.pdf")
+    fig.savefig(out, bbox_inches="tight"); plt.close(fig)
+    report["fig_command_channel"] = {
+        "file": os.path.relpath(out, PAPER), "mechanism": "m5",
+        "caliber": "descriptive, raw collection log -- NOT Skill_H, never quote as a result number",
+        "transform": "per consecutive turn pair: x=effective_norm-normalized_output at t, "
+                     "y=requested_norm at t+1, colour=effective_norm",
+        "note": "Joint-2 / Joint-3 log no per-turn scalar command; their command channel was "
+                "checked by the rank test in docs/experiments/core_multiobjective_planning_headroom.md 2.1",
+        "sources": ids}
+    return out
+
+
+# ---------------------------------------------------------------------------
+# m4. What the learned lifting costs, against how much structure the readout has.
+# ---------------------------------------------------------------------------
+# Ids are the paired Ours - AE-Koopman contrast for the seven columns
+# build_tables.py::PRED_COLUMNS prints. x is the readout dimension, the half of m4 the
+# data supports; the trajectory count rides along as an annotation because the other
+# half of m4 -- that the cost is estimation variance at small n -- is not what the
+# numbers show (CEFR carries the largest cost on the largest task).
+# (task, ledger id, readout dimension, x offset inside its category, label offset in pt)
+LIFTING = [("sentence_length_t10", "n_main_015", 1, -0.36, (-27, -17)),
+           ("vector_count_stage2_t10", "n_main_047", 3, 0.0, (-20, 9)),
+           ("vector_count_stage1_t10", "n_main_031", 2, 0.0, (-18, 9)),
+           ("sentiment_t5", "n_main_111", 1, 0.0, (-33, -3)),
+           ("defense", "n_main_151", 1, -0.18, (3, -18)),
+           ("constraint", "n_main_135", 1, 0.18, (4, -3)),
+           ("tsar_cefr", "n_main_183", 1, 0.36, (-13, 9))]
+
+
+def fig_lifting_contrast(rows, report):
+    by = {r["id"]: r for r in rows}
+    fig, ax = plt.subplots(figsize=(4.6, 2.0))
+    ax.axhline(0, color=MUTED, linewidth=0.7, zorder=1)
+    ids = {}
+    for task, rid, dim, dx, offset in LIFTING:
+        r = by[rid]
+        n, v, ci = r["n"], r["value"], r["ci"]
+        excl = ci[0] > 0 or ci[1] < 0
+        caveated = r.get("status") == "caveated"
+        x = dim + dx
+        ax.plot([x, x], ci, color=MUTED, linewidth=0.7, zorder=2)
+        ax.scatter([x], [v], s=26, marker="o", zorder=3,
+                   facecolor=(PALETTE[0] if excl else "white"),
+                   edgecolor=(MUTED if caveated else PALETTE[0]),
+                   linewidths=(1.1 if caveated else 0.9))
+        dagger = "$^{\\dagger}$" if caveated else ""
+        ax.annotate(NAMES[task] + dagger + "\n$n{=}$" + str(n),
+                    xy=(x, v), xytext=offset, textcoords="offset points",
+                    fontsize=6.2, color=INK, linespacing=1.0)
+        ids[task] = {"id": rid, "n_trajectories": n, "value": v, "ci": ci,
+                     "readout_dim": dim, "interval_excludes_zero": bool(excl),
+                     "status": r.get("status")}
+    style_axes(ax)
+    ax.set_xticks([1, 2, 3])
+    ax.set_xticklabels(["1-d", "2-d", "3-d"])
+    ax.set_xlim(0.40, 3.45)
+    ax.set_xlabel("dimension of the attribute readout")
+    ax.set_ylabel("$\\mathrm{Skill}_H$: linear $-$ learned lifting")
+    fig.tight_layout(pad=0.4)
+    out = os.path.join(FIGS, "fig_lifting_contrast.pdf")
+    fig.savefig(out, bbox_inches="tight"); plt.close(fig)
+    report["fig_lifting_contrast"] = {
+        "file": os.path.relpath(out, PAPER), "mechanism": "m4",
+        "caliber": "paired grouped bootstrap, evidence ledger",
+        "marker_rule": "filled = 95% interval excludes zero; grey edge + dagger = caveated id; "
+                       "x position inside a category is a fixed spacing offset, not data",
+        "not_shown": "the cost does not fall with the trajectory count: CEFR (n=100) carries "
+                     "the largest cost and Joint-3 (n=90) the smallest. m4's estimation-variance "
+                     "clause is unsupported and was removed from the mechanism lattice.",
+        "ids": ids}
+    return out
+
+
 def main():
     rows = load()
     os.makedirs(FIGS, exist_ok=True)
     report = {}
     fig_memory_depth(rows, report)
     fig_item_effect(rows, report)
+    fig_two_futures(report)
+    fig_command_channel(report)
+    fig_lifting_contrast(rows, report)
     with open(os.path.join(FIGS, "_fig_report.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
     print(json.dumps(report, indent=1))

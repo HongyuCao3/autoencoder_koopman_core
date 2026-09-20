@@ -83,5 +83,171 @@
         "n_mech_062"
       ]
     }
+  },
+  "fig_two_futures": {
+    "file": "figs/fig_two_futures.pdf",
+    "mechanism": "m1",
+    "caliber": "descriptive, raw readings -- NOT Skill_H, never quote as a result number",
+    "transform": "per trajectory: x=y_t, y=y_{t+1}-y_t, grouped by sign(y_t-y_{t-1}); exact ties on the previous step dropped; line overlay = mean of y in 8 equal-width x bins, bins under 5 points dropped",
+    "sources": {
+      "sentence_length_t10": {
+        "file": "datasets/scalar/sentence_length_t10/trajectories.jsonl",
+        "sha256": "244230a84f99bc8367a774b5317cab547922e0398fbc087ca1867bddaa95209f",
+        "column": "normalized_output",
+        "n_up": 788,
+        "n_down": 502,
+        "n_flat_dropped": 726,
+        "mean_next_change_up": -0.004461661768634787,
+        "mean_next_change_down": 0.020276787586496096,
+        "separation_down_minus_up": 0.024738449355130882
+      },
+      "vector_count_stage2_t10": {
+        "file": "datasets/vector/vector_count_stage2_t10/trajectories.jsonl",
+        "sha256": "28afaf57f7c612be8b57ef671bdc91bc85e2e525092c2496350d18f9a61da223",
+        "column": "word_count_norm",
+        "n_up": 802,
+        "n_down": 746,
+        "n_flat_dropped": 2772,
+        "mean_next_change_up": -0.04594763092269337,
+        "mean_next_change_down": 0.05449061662198397,
+        "separation_down_minus_up": 0.10043824754467734
+      },
+      "vector_count_stage1_t10": {
+        "file": "datasets/vector/vector_count_stage1_t10/trajectories.jsonl",
+        "sha256": "90c240a2b1fb0bbe6a74aaed826d12645d15e1ac53dd956807cbf03a6be939b9",
+        "column": "word_count_norm",
+        "n_up": 433,
+        "n_down": 355,
+        "n_flat_dropped": 1516,
+        "mean_next_change_up": -0.021524249422632792,
+        "mean_next_change_down": 0.048901408450704086,
+        "separation_down_minus_up": 0.07042565787333688
+      },
+      "sentiment_t5": {
+        "file": "datasets/scalar/sentiment_t5/trajectories.jsonl",
+        "sha256": "69682275f87b0b4afc57b247caf61f71579638e4263182a54a9aed875df3434f",
+        "column": "normalized_output",
+        "n_up": 89,
+        "n_down": 79,
+        "n_flat_dropped": 12,
+        "mean_next_change_up": -0.023940915147658816,
+        "mean_next_change_down": 0.03359922978001399,
+        "separation_down_minus_up": 0.05754014492767281
+      }
+    }
+  },
+  "fig_command_channel": {
+    "file": "figs/fig_command_channel.pdf",
+    "mechanism": "m5",
+    "caliber": "descriptive, raw collection log -- NOT Skill_H, never quote as a result number",
+    "transform": "per consecutive turn pair: x=effective_norm-normalized_output at t, y=requested_norm at t+1, colour=effective_norm",
+    "note": "Joint-2 / Joint-3 log no per-turn scalar command; their command channel was checked by the rank test in docs/experiments/core_multiobjective_planning_headroom.md 2.1",
+    "sources": {
+      "sentence_length_t10": {
+        "file": "datasets/scalar/sentence_length_t10/trajectories.jsonl",
+        "sha256": "244230a84f99bc8367a774b5317cab547922e0398fbc087ca1867bddaa95209f",
+        "n_transitions": 2268,
+        "n_command_equals_target": 2268
+      },
+      "sentiment_t5": {
+        "file": "datasets/scalar/sentiment_t5/trajectories.jsonl",
+        "sha256": "69682275f87b0b4afc57b247caf61f71579638e4263182a54a9aed875df3434f",
+        "n_transitions": 240,
+        "n_command_equals_target": 240
+      }
+    }
+  },
+  "fig_lifting_contrast": {
+    "file": "figs/fig_lifting_contrast.pdf",
+    "mechanism": "m4",
+    "caliber": "paired grouped bootstrap, evidence ledger",
+    "marker_rule": "filled = 95% interval excludes zero; grey edge + dagger = caveated id; x position inside a category is a fixed spacing offset, not data",
+    "not_shown": "the cost does not fall with the trajectory count: CEFR (n=100) carries the largest cost and Joint-3 (n=90) the smallest. m4's estimation-variance clause is unsupported and was removed from the mechanism lattice.",
+    "ids": {
+      "sentence_length_t10": {
+        "id": "n_main_015",
+        "n_trajectories": 42,
+        "value": 0.017001097144927264,
+        "ci": [
+          -0.014249097042116889,
+          0.05754084559998288
+        ],
+        "readout_dim": 1,
+        "interval_excludes_zero": false,
+        "status": "current"
+      },
+      "vector_count_stage2_t10": {
+        "id": "n_main_047",
+        "n_trajectories": 90,
+        "value": 0.0046938060859000215,
+        "ci": [
+          0.0004276811032766892,
+          0.009253675225601594
+        ],
+        "readout_dim": 3,
+        "interval_excludes_zero": true,
+        "status": "current"
+      },
+      "vector_count_stage1_t10": {
+        "id": "n_main_031",
+        "n_trajectories": 48,
+        "value": 0.01381738601137163,
+        "ci": [
+          -0.005401845596284279,
+          0.03239494293486803
+        ],
+        "readout_dim": 2,
+        "interval_excludes_zero": false,
+        "status": "current"
+      },
+      "sentiment_t5": {
+        "id": "n_main_111",
+        "n_trajectories": 10,
+        "value": 0.10058320824882183,
+        "ci": [
+          -0.054370123957318536,
+          0.31250494124197337
+        ],
+        "readout_dim": 1,
+        "interval_excludes_zero": false,
+        "status": "current"
+      },
+      "defense": {
+        "id": "n_main_151",
+        "n_trajectories": 30,
+        "value": 0.01394349695689625,
+        "ci": [
+          -0.0011192071104520272,
+          0.03241962670207235
+        ],
+        "readout_dim": 1,
+        "interval_excludes_zero": false,
+        "status": "caveated"
+      },
+      "constraint": {
+        "id": "n_main_135",
+        "n_trajectories": 40,
+        "value": 0.048194723250580135,
+        "ci": [
+          0.01853818110223725,
+          0.0730720842723128
+        ],
+        "readout_dim": 1,
+        "interval_excludes_zero": true,
+        "status": "current"
+      },
+      "tsar_cefr": {
+        "id": "n_main_183",
+        "n_trajectories": 100,
+        "value": 0.5991755523471519,
+        "ci": [
+          0.4780414704282848,
+          0.7410904821846424
+        ],
+        "readout_dim": 1,
+        "interval_excludes_zero": true,
+        "status": "current"
+      }
+    }
   }
 }
