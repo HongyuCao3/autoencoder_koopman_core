@@ -410,8 +410,8 @@
       "sentence_length_t10": 0.0,
       "vector_count_stage2_t10": 0.0,
       "vector_count_stage1_t10": 0.0,
-      "character_length_t5": 0.0,
-      "formality_t5": 0.0,
+      "sentiment_t5": 0.0,
+      "defense": 0.0,
       "constraint": 0.0,
       "tsar_cefr": 0.0
     },
@@ -419,8 +419,8 @@
       "sentence_length_t10": 0.1661270153688641,
       "vector_count_stage2_t10": 0.5142942990240644,
       "vector_count_stage1_t10": 0.39487232564337293,
-      "character_length_t5": 0.034478790611486065,
-      "formality_t5": 0.41373847220859117,
+      "sentiment_t5": 0.2755230600530112,
+      "defense": 0.06747681589417043,
       "constraint": 0.2845627682203038,
       "tsar_cefr": 0.5183237201655577
     },
@@ -428,8 +428,8 @@
       "sentence_length_t10": 0.7636381877654917,
       "vector_count_stage2_t10": 0.8244206172658395,
       "vector_count_stage1_t10": 0.6149798916616964,
-      "character_length_t5": 0.29050062228065743,
-      "formality_t5": 0.35738298133081026,
+      "sentiment_t5": 0.5301679755771931,
+      "defense": 0.022776188112541118,
       "constraint": 0.5174746938679348,
       "tsar_cefr": 0.5609470296991876
     },
@@ -437,8 +437,8 @@
       "sentence_length_t10": 0.750007747946268,
       "vector_count_stage2_t10": 0.808251921180295,
       "vector_count_stage1_t10": 0.6338070621107313,
-      "character_length_t5": 0.30066686903148176,
-      "formality_t5": 0.37251786171477796,
+      "sentiment_t5": 0.42308462642607947,
+      "defense": -0.05386044603372131,
       "constraint": 0.5456891391644021,
       "tsar_cefr": -0.10057855084739753
     },
@@ -446,8 +446,8 @@
       "sentence_length_t10": 0.7518412601481426,
       "vector_count_stage2_t10": 0.8211680454177541,
       "vector_count_stage1_t10": 0.6265536700721379,
-      "character_length_t5": 0.23930705406035613,
-      "formality_t5": 0.385156341649985,
+      "sentiment_t5": 0.39558508840859086,
+      "defense": 0.020928648144816542,
       "constraint": 0.47079769514651404,
       "tsar_cefr": -0.03210904394577474
     },
@@ -455,8 +455,8 @@
       "sentence_length_t10": 0.7688423572930698,
       "vector_count_stage2_t10": 0.8258618515036541,
       "vector_count_stage1_t10": 0.6403710560835096,
-      "character_length_t5": 0.2693981056961533,
-      "formality_t5": 0.37890644225283066,
+      "sentiment_t5": 0.4961682966574127,
+      "defense": 0.03487214510171277,
       "constraint": 0.5189924183970942,
       "tsar_cefr": 0.5670665084013773
     }
@@ -630,7 +630,7 @@
     }
   },
   "ours_best_of_7": 4,
-  "ours_second_of_7": 1,
+  "ours_second_of_7": 3,
   "control_deltas": {
     "Qwen3-4B/TMPC - Base": 8.34,
     "Qwen3-4B/RE-Control - Base": 9.23,

@@ -31,8 +31,8 @@ FIGS = os.path.join(PAPER, "figs")
 # Paper-facing column names, same vocabulary as build_tables.py PRED_COLUMNS / tab_prediction.
 NAMES = {
     "sentence_length_t10": "Sentence len.",
-    "vector_count_stage2_t10": "Items (s2)",
-    "vector_count_stage1_t10": "Items (s1)",
+    "vector_count_stage2_t10": "Joint-3",
+    "vector_count_stage1_t10": "Joint-2",
     "sentiment_t5": "Sentiment",
     "defense": "Defense",
     "constraint": "Constraint",

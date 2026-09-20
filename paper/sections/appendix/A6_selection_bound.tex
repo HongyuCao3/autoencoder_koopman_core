@@ -1,10 +1,10 @@
 % New in Phase R1 (D28). Carries what Proposition 1 leaves out: the residual assumptions in the
 % lifted coordinates, the constants L_g and kappa, the uniform range R, the cost bound, and the
 % proof of both lines of the proposition.
-\section{Assumptions and Proof for Proposition~\ref{prop:selection}}
+\section{Assumptions and Proof for the Selection Bound, Eq.~\eqref{eq:selection_bound}}
 \label{app:A6_selection_bound}
 
-Proposition~\ref{prop:selection} is stated on the memory state, which is the
+The selection bound of Eq.~\eqref{eq:selection_bound} is stated on the memory state, which is the
 form the reported instance uses. The proof is written in the lifted
 coordinates of Appendix~\ref{app:A1_estimator}, so that it covers the learned
 variant as well. Set $\xi_t=E_{\phi}(s_t)$ and write $g_{\psi}=C\circ D_{\psi}$
@@ -53,7 +53,7 @@ between them is the accumulated one-step residual carried through the readout,
     \label{eq:prediction_bound_full}
 \end{equation}
 Here $\Delta_h$ is the $h$-step attribute error bound of
-Proposition~\ref{prop:selection}. It trades against the horizon: a longer
+the selection bound of Eq.~\eqref{eq:selection_bound}. It trades against the horizon: a longer
 horizon covers more distant consequences and asks the dynamics to hold over
 more steps. A contraction, $\kappa<1$, would bound the geometric sum by
 $1/(1-\kappa)$, and no contraction is assumed for the fitted model.
@@ -91,7 +91,7 @@ close the argument,
     \label{eq:selection_bound_proof}
 \end{equation}
 The middle line holds because $c_t^{\star}$ minimizes the predicted cost. This
-is the second line of Proposition~\ref{prop:selection}. It concerns the
+is the second line of the selection bound of Eq.~\eqref{eq:selection_bound}. It concerns the
 current held-command comparison, not the cumulative cost of the replanned
 loop, and it assumes nothing about the candidate set beyond its being finite
 and nonempty.

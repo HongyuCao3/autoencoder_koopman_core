@@ -3,7 +3,8 @@
 
 Experiments cover two task groups.
 The first is self-built multi-turn tasks that form the modeling line.  % RECOVERED 2026-09-19 (Opus); semantic.md Experiments P1
-Table~\ref{tab:prediction} carries seven of them: sentence length, items (s2), items (s1), sentiment, defense, constraint and CEFR.  % tab_prediction.tex column headers, updated 2026-09-19
+Table~\ref{tab:prediction} carries seven of them: sentence length, Joint-3, Joint-2, sentiment, defense, constraint and CEFR.  % tab_prediction.tex column headers, updated 2026-09-20 (Items (s1)/(s2) renamed)
+Joint-2 tracks two attributes of one sentence at once, word count and average word length, and Joint-3 adds comma count as a third; the other five tasks track a single attribute.  % configs/dataset/vector_count_stage1_t10.yaml, vector_count_stage2_t10.yaml; DATASETS.md
 Appendix~\ref{app:A2_small_columns} separately reports sentiment, average word length, defense and GSM8K-sharded for completeness.  % _build_report.json:prediction_appendix
 Character length and formality are not shown in either table this round.  % table1_swap_2026-09-19
 The second group is three public instruction-following benchmarks that form the control line: IFBench, IFEval and COLLIE.  % contract.yaml meta.benchmarks

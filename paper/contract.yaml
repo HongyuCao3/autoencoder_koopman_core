@@ -192,12 +192,12 @@ claim_ledger:
       caliber, and the prose says so in one sentence with the sentence-length pair (+0.603 default,
       n_main_013, vs +0.109 matched, n_abl_127). n_abl_151 (sentiment) is caveated because that
       design has two cells only; the prose reports it under panel (b) as a two-depth design.
-      The items (s1) interval contains zero at every depth (n_abl_157 n_abl_158 n_abl_160). CEFR
+      The Joint-2 (vector_count_stage1; formerly "Joint-2") interval contains zero at every depth (n_abl_157 n_abl_158 n_abl_160). CEFR
       shows no gain under the matched window (n_abl_262, +0.005), which the prose states; the
       abstract's memory claim must not be worded as holding on every column.
 
   - id: c11
-    claim: "A per-item intercept added to the one-reading state recovers 81% of the memory gain on constraint and 67% on items (s2); the remainder beyond the intercept, +0.045 and +0.075, has intervals excluding zero on those two tasks and on no other Table 2 task."
+    claim: "A per-item intercept added to the one-reading state recovers 81% of the memory gain on constraint and 67% on Joint-3 (vector_count_stage2; formerly "Joint-3"); the remainder beyond the intercept, +0.045 and +0.075, has intervals excluding zero on those two tasks and on no other Table 2 task."
     strength: scoped
     evidence:
       - "figure_panel:fig_item_effect:all (n_mech_060 n_mech_061 n_mech_059 n_mech_057 n_mech_058 n_mech_056 n_mech_051 n_mech_052 n_mech_050 n_mech_054 n_mech_055 n_mech_053 n_mech_048 n_mech_049 n_mech_047 n_mech_069 n_mech_070 n_mech_068 n_mech_063 n_mech_064 n_mech_062)"
@@ -210,7 +210,7 @@ claim_ledger:
       inter-turn dynamics, and the dynamics remainder is measured on two tasks only. n_mech_068-070
       (CEFR) are caveated: that task's first reading is a synthetic seed, so the intercept is near
       free, and there is no gain to decompose there (ours minus Last-turn itself contains zero);
-      the prose does not present CEFR as the same mechanism as constraint or items (s2).
+      the prose does not present CEFR as the same mechanism as constraint or Joint-3.
 
   # --- Control line: what the controller achieves (colleague benchmark data; D3) ---
   - id: c5
@@ -699,7 +699,7 @@ mechanism_lattice:
     supports_claim: [c11]
     appears_in_method: false
     appears_in_experiments: true
-    notes: "Side experiment P2 (2026-09-19). Measured, not assumed: the intercept share is 81% on constraint and 67% on items (s2). This mechanism also explains why planning has little headroom on the self-built tasks (nc_2): a level is not something a command sequence can exploit."
+    notes: "Side experiment P2 (2026-09-19). Measured, not assumed: the intercept share is 81% on constraint and 67% on Joint-3. This mechanism also explains why planning has little headroom on the self-built tasks (nc_2): a level is not something a command sequence can exploit."
 
 intuition_lattice:
   priors:

@@ -39,9 +39,9 @@
     "caliber": "matched window",
     "row_order": [
       "Constraint",
-      "Items (s2)",
+      "Joint-3",
       "Sentiment",
-      "Items (s1)",
+      "Joint-2",
       "Sentence len.",
       "CEFR",
       "Defense"

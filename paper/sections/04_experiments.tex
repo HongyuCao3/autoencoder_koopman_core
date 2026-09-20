@@ -3,6 +3,15 @@
 % narrative arc. The headline number therefore lands in 03c, not 03b.
 \section{Experiments}
 \label{sec:exp}
+% RQ lead added 2026-09-20. Two top-level questions, one per experiment line, each with named
+% sub-questions so that the subsection conclusions can answer them by label. Mapping to the
+% Introduction: contribution 1 <-> RQ1a, contribution 2 <-> RQ1b, contribution 3 <-> RQ2.
+The experiments answer two questions, one per experiment line.
+\textbf{RQ1 (modeling).} Does the learned operator predict a multi-turn attribute from observable readings alone?
+It splits into three parts: (1a) whether history beyond the current turn improves prediction over the current reading alone (\S\ref{sec:exp_prediction}); (1b) whether the linear special case reported as ours is matched or beaten by a learned nonlinear lifting or by a recurrent sequence model (\S\ref{sec:exp_prediction}); and (1c) what the memory state carries, how many past readings it needs and whether its gain is inter-turn dynamics or a fixed level per prompt item (\S\ref{sec:exp_memory}).
+\textbf{RQ2 (control).} Does predictive control built on that operator raise constraint satisfaction on a frozen model?
+It splits into two parts: (2a) against the same model with no control, and (2b) against two white-box latent controllers that read the model's activations, where ours reads only text (\S\ref{sec:exp_control}).
+\S\ref{sec:exp_analysis} is an analysis rather than a further question: it states the conditions under which a gain on RQ1 can become a gain on RQ2.
 \input{sections/04a_setup.tex}
 \input{sections/04b_prediction.tex}
 \input{sections/04b_ablation.tex}

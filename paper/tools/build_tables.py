@@ -36,14 +36,21 @@ ROW_ORDER = [
     ("delay-embedded linear operator with control", "KOMPAS (linear)"),
 ]
 
-# Seven columns that carry a conclusion (story framework §6). The four small-sample
-# columns (sentiment_t5, average_word_length_t5, defense, gsm8k_sharded) go to appendix A2.
+# Seven main-text columns. 2026-09-19: user swapped character_length_t5 and formality_t5
+# out for sentiment_t5 and defense (both also stay in appendix A2). 2026-09-20: the two
+# vector_count tasks are joint multi-attribute tracking tasks (stage1 = word count +
+# average word length, stage2 = + comma count; see configs/dataset/vector_count_stage*.yaml),
+# so the paper-facing names are "Joint-2" / "Joint-3", not "Items (s1)/(s2)", which
+# collided with the "per-item intercept" of the P2 side experiment.
+# Defense carries a known self-judge caveat (evidence/numbers.yaml n_main_136-151: judge_kind=self,
+# n_seed=2) that D4/D18 had kept out of the main text; the user chose to include it without an
+# in-text caveat sentence (decision recorded in chat, not yet logged as a DECISIONS.md entry).
 PRED_COLUMNS = [
     ("sentence_length_t10", "Sentence len."),
-    ("vector_count_stage2_t10", "Items (s2)"),
-    ("vector_count_stage1_t10", "Items (s1)"),
-    ("character_length_t5", "Char. len."),
-    ("formality_t5", "Formality"),
+    ("vector_count_stage2_t10", "Joint-3"),
+    ("vector_count_stage1_t10", "Joint-2"),
+    ("sentiment_t5", "Sentiment"),
+    ("defense", "Defense"),
     ("constraint", "Constraint"),
     ("tsar_cefr", "CEFR"),
 ]
@@ -317,7 +324,9 @@ def build_control(grid, method_name):
             if meth == "Koopman":
                 avg_s = r"\textbf{" + avg_s + "}"
             label = method_name if meth == "Koopman" else meth
-            first = r"\multirow{" + str(len(CONTROL_ROWS)) + r"}{*}{" + model + "}" if ri == 0 else ""
+            # Model label rotated 90 degrees (manual edit of 2026-09-19, now reproduced here).
+            first = (r"\multirow{" + str(len(CONTROL_ROWS)) + r"}{*}{\rotatebox{90}{" + model + "}}"
+                     if ri == 0 else "")
             lines.append(
                 f"{first} & {label} & {access} & " + " & ".join(cells) + f" & {avg_s}" + r" \\"
                 + "  % " + " ".join(ids)
