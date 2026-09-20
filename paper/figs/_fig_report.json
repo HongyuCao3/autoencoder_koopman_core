@@ -1,0 +1,87 @@
+{
+  "fig_memory_depth": {
+    "file": "figs/fig_memory_depth.pdf",
+    "caliber": "matched window",
+    "ids": {
+      "sentence_length_t10": [
+        "n_abl_124",
+        "n_abl_125",
+        "n_abl_127"
+      ],
+      "vector_count_stage2_t10": [
+        "n_abl_184",
+        "n_abl_185",
+        "n_abl_187"
+      ],
+      "vector_count_stage1_t10": [
+        "n_abl_157",
+        "n_abl_158",
+        "n_abl_160"
+      ],
+      "constraint": [
+        "n_abl_235",
+        "n_abl_236",
+        "n_abl_238"
+      ],
+      "sentiment_t5": [
+        "n_abl_151"
+      ],
+      "defense": [
+        "n_abl_245"
+      ],
+      "tsar_cefr": [
+        "n_abl_262"
+      ]
+    }
+  },
+  "fig_item_effect": {
+    "file": "figs/fig_item_effect.pdf",
+    "caliber": "matched window",
+    "row_order": [
+      "Constraint",
+      "Items (s2)",
+      "Sentiment",
+      "Items (s1)",
+      "Sentence len.",
+      "CEFR",
+      "Defense"
+    ],
+    "ids": {
+      "constraint": [
+        "n_mech_060",
+        "n_mech_061",
+        "n_mech_059"
+      ],
+      "vector_count_stage2_t10": [
+        "n_mech_057",
+        "n_mech_058",
+        "n_mech_056"
+      ],
+      "sentiment_t5": [
+        "n_mech_051",
+        "n_mech_052",
+        "n_mech_050"
+      ],
+      "vector_count_stage1_t10": [
+        "n_mech_054",
+        "n_mech_055",
+        "n_mech_053"
+      ],
+      "sentence_length_t10": [
+        "n_mech_048",
+        "n_mech_049",
+        "n_mech_047"
+      ],
+      "tsar_cefr": [
+        "n_mech_069",
+        "n_mech_070",
+        "n_mech_068"
+      ],
+      "defense": [
+        "n_mech_063",
+        "n_mech_064",
+        "n_mech_062"
+      ]
+    }
+  }
+}

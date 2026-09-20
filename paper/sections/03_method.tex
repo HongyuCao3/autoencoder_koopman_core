@@ -115,7 +115,8 @@ $(s_t,c_t,s_{t+1})$, where $c_t$ is the command applied before observing the
 successor state.
 
 Because $K$, $B$, and $b$ enter the one-step prediction linearly, the
-identity-lifting model is estimated by least squares,
+identity-lifting model (i.e., the state is used directly without an additional
+feature transformation) is estimated by least squares,
 \begin{equation}
     (\widehat K,\widehat B,\widehat b)
     =
@@ -130,13 +131,15 @@ The fit is performed entirely offline and does not modify the parameters
 $\theta$ of the target LLM. The range in which the learned dynamics can be
 trusted is consequently determined by the state--command combinations
 represented in the recorded trajectories. In particular, prediction under a
-new command history is an interpolation assumption unless comparable
-transitions are present in the training data.
+new command history relies on generalization beyond the combinations observed
+during training.
 
-The learned-lifting variant replaces the identity representation with an
-encoder and decoder and jointly fits the representation and affine
-transition. Its objective is given in Appendix~\ref{app:A1_estimator}; the
-main method uses the closed-form linear estimator above.
+For comparison, we also consider a learned-lifting variant (i.e., the state is
+first mapped by a trainable encoder into a feature space before applying the
+same affine dynamics). This variant jointly learns the representation and the
+state transition, with its training objective given in
+Appendix~\ref{app:A1_estimator}. The main method uses the identity-lifting
+model and the closed-form least-squares estimator above.
 
 
 \subsection{Receding-Horizon Prompt Control}
@@ -190,30 +193,19 @@ the desired attribute,
 Scoring the whole predicted trajectory allows the selected command to differ
 from the reference while the attribute is still moving toward it.
 
-Only the first command $c_t^\star$ is executed. The controller sends
-$u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^\star)$, receives the actual next
-response, measures $y_{t+1}$, shifts that observation into the memory state,
-and replans from the updated state. Thus, holding $c$ fixed is only a device
-for comparing candidate trajectories; the executed command sequence is
-receding-horizon and may change at every interaction.
+The controller then executes only the selected command $c_t^\star$.
+Specifically, it constructs
+$u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^\star)$ and sends the instruction to
+the frozen LLM. After receiving the actual response $o_{t+1}$, the controller
+measures $y_{t+1}=V(o_{t+1})$, shifts this observation into the memory state
+to obtain $s_{t+1}$, and repeats the candidate evaluation from the updated
+state. This observe--predict--select--execute cycle continues until the
+interaction budget is exhausted.
 
-\begin{algorithm}[t]
-\caption{KOMPAS receding-horizon control}
-\label{alg:kompas}
-\begin{algorithmic}[1]
-\STATE Measure the current attribute $y_t=V(o_t)$ and update the state $s_t$.
-\FOR{each $c\in\mathcal{C}_t$}
-    \STATE Roll $s_t$ forward for $H$ steps using
-    Eq.~\eqref{eq:closed_form_rollout}.
-    \STATE Compute $\widehat J_t(c)$ using
-    Eq.~\eqref{eq:predictive_control}.
-\ENDFOR
-\STATE Select $c_t^\star\in\arg\min_{c\in\mathcal{C}_t}\widehat J_t(c)$.
-\STATE Send $u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^\star)$ and receive
-$o_{t+1}$.
-\STATE Repeat until the interaction budget is exhausted.
-\end{algorithmic}
-\end{algorithm}
+Importantly, the assumption that a candidate command $c$ is held fixed applies
+only to its hypothetical rollout used for comparison. The executed command
+sequence is receding-horizon: after every real interaction, the controller
+re-observes the system and may select a different command at the next step.
 
 
 \subsection{Why Prediction Accuracy Matters}

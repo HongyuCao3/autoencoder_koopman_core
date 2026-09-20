@@ -177,6 +177,41 @@ claim_ledger:
     driver_keyword: "the two third places are the two columns where a recurrent baseline fits the residual better"
     notes: "RECOUNT: the story framework said four firsts and the rest seconds. The rest are one second and two thirds."
 
+  - id: c10
+    claim: "Under a matched training window, a second past reading buys the whole memory gain on three of the four tasks whose design allows a depth sweep, while constraint keeps gaining through four readings with every increment's interval excluding zero."
+    strength: scoped
+    evidence:
+      - "figure_panel:fig_memory_depth:a (n_abl_124 n_abl_125 n_abl_127 n_abl_184 n_abl_185 n_abl_187 n_abl_157 n_abl_158 n_abl_160 n_abl_235 n_abl_236 n_abl_238)"
+      - "figure_panel:fig_memory_depth:b (n_abl_151 n_abl_245 n_abl_262)"
+    appears_in: [experiments]
+    driver_keyword: "a level and a trend take two readings to express; no mechanism established for constraint's continued gain"
+    notes: >-
+      Side experiment P1 (2026-09-19), from docs/experiments/paper_side_experiments_results.md
+      sections 1 and 6.1. Matched caliber only: every depth is fitted on the same transitions, which
+      is what separates depth from training-set size; Table 2's Last-turn row uses the default
+      caliber, and the prose says so in one sentence with the sentence-length pair (+0.603 default,
+      n_main_013, vs +0.109 matched, n_abl_127). n_abl_151 (sentiment) is caveated because that
+      design has two cells only; the prose reports it under panel (b) as a two-depth design.
+      The items (s1) interval contains zero at every depth (n_abl_157 n_abl_158 n_abl_160). CEFR
+      shows no gain under the matched window (n_abl_262, +0.005), which the prose states; the
+      abstract's memory claim must not be worded as holding on every column.
+
+  - id: c11
+    claim: "A per-item intercept added to the one-reading state recovers 81% of the memory gain on constraint and 67% on items (s2); the remainder beyond the intercept, +0.045 and +0.075, has intervals excluding zero on those two tasks and on no other Table 2 task."
+    strength: scoped
+    evidence:
+      - "figure_panel:fig_item_effect:all (n_mech_060 n_mech_061 n_mech_059 n_mech_057 n_mech_058 n_mech_056 n_mech_051 n_mech_052 n_mech_050 n_mech_054 n_mech_055 n_mech_053 n_mech_048 n_mech_049 n_mech_047 n_mech_069 n_mech_070 n_mech_068 n_mech_063 n_mech_064 n_mech_062)"
+    appears_in: [experiments]
+    driver_keyword: "each prompt item holds its own level across turns; several readings estimate it where one cannot"
+    notes: >-
+      Side experiment P2 (2026-09-19), from paper_side_experiments_results.md section 3 and 6.2.
+      Shares: 0.1861/0.2306 = 0.807 and 0.1543/0.2293 = 0.673. The prose must carry the share
+      sentence: most of what the delay embedding buys is persistent per-item heterogeneity, not
+      inter-turn dynamics, and the dynamics remainder is measured on two tasks only. n_mech_068-070
+      (CEFR) are caveated: that task's first reading is a synthetic seed, so the intercept is near
+      free, and there is no gain to decompose there (ours minus Last-turn itself contains zero);
+      the prose does not present CEFR as the same mechanism as constraint or items (s2).
+
   # --- Control line: what the controller achieves (colleague benchmark data; D3) ---
   - id: c5
     claim: "Predictive control over prompt-level commands raises constraint satisfaction over the same frozen model with no control, by 14.5 points on Qwen3-4B and 14.8 points on Qwen3-8B averaged over eleven subtasks."
@@ -658,6 +693,13 @@ mechanism_lattice:
     appears_in_method: false
     appears_in_experiments: true
     notes: "This is why nc_1 exists. It is a property of how those trajectories were collected, not a result. It belongs in the analysis subsection, as the reason the prediction table is silent about the command channel."
+
+  - id: m6
+    mechanism: "Each prompt item holds its own attribute level across turns, so several past readings estimate that level where a single reading cannot; most of what the delay embedding buys is this per-item level, and the part attributable to inter-turn dynamics is the smaller remainder."
+    supports_claim: [c11]
+    appears_in_method: false
+    appears_in_experiments: true
+    notes: "Side experiment P2 (2026-09-19). Measured, not assumed: the intercept share is 81% on constraint and 67% on items (s2). This mechanism also explains why planning has little headroom on the self-built tasks (nc_2): a level is not something a command sequence can exploit."
 
 intuition_lattice:
   priors:
