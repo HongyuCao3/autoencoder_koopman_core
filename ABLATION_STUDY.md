@@ -22,7 +22,7 @@ Autoencoder–Koopman 任务**（`sentence_length_t10` 句子长度控制，以�
 | 2 | AE 非线性提升 vs 直接线性 Koopman baseline | `DeepAugmentedKoopmanAutoencoder` 的非线性 encoder/decoder 相对 `AugmentedKoopmanModel`（仓库里已有但从未接入 CLI 的纯仿射 baseline）是否有增益——对应"为什么要用 Koopman"的核心论点 | **已完成，见下** |
 | 3 | 训练方式（joint vs reconstruction_then_ridge） | 把 `CODE_DESIGN.md` 里的定性判断换成数据 | **已完成，见下** |
 | 4a | `latent_dim` 扫描（8/16/32） | 是否存在明显更优的容量 | **已完成，见下** |
-| 4b | loss 权重（`lambda_latent`、`lambda_multi`）、joint + 多步 rollout loss 组合 | **不只是调参**：第三阶段判 `joint` 更差时 `lambda_multi=0`，等于关掉了 joint 的卖点再比 rollout——这是「AE 无增益」这个总结论目前最大的未封口处 | 待做（前置条件见文末） |
+| 4b | loss 权重（`lambda_latent`、`lambda_multi`）、joint + 多步 rollout loss 组合 | **不只是调参**：第三阶段判 `joint` 更差时 `lambda_multi=0`，等于关掉了 joint 的卖点再比 rollout——这是「AE 无增益」这个总结论目前最大的未封口处 | **`lambda_multi` 一支已完成（单任务），见下**；`lambda_latent` 一支待做（前置条件见文末） |
 
 其他 7 个标量/向量任务（`character_length_t5` 等）优先级低于 `sentence_length_t10`——它是文档里
 唯一被称为"主要长时域标量实验"的任务，其余几个要么是 smoke 规模、要么受 scorer/readout 质量限制
@@ -157,6 +157,97 @@ python scripts/train.py dataset=sentence_length_t10 state=memory state.lag=3 \
 `latent_dim` 不是敏感超参数**，默认值 16 没有问题，但也谈不上被证明是最优选择。结合第二阶段
 的结果（纯线性、也就是"`latent_dim` 等价于原始 4 维状态、没有非线性 lift"反而更好），这进一步
 削弱了"更大的隐空间维度能带来增益"这个假设。
+
+## 第四阶段（b）：打开多步 rollout loss 后重比 `joint` vs `reconstruction_then_ridge`（已完成，2026-09-20）
+
+### 动机
+
+第三阶段判 `joint` 在 rollout 上明显更差，但那次对照固定 `lambda_multi=0`——第三阶段结论段
+自己写明了这一点："`joint` 的一个卖点正是可以打开 `lambda_multi`/`multi_step_horizon` 直接
+优化多步 rollout loss，这次没测"。本阶段把这个卖点打开，检验第三阶段的次序会不会翻转。
+
+### 设计
+
+与第三阶段逐项对齐（`sentence_length_t10`、`state=memory lag=3`、`latent_dim=16`、
+`training_mode=joint`、`trainer.epochs=200`、CPU、seed 0/1/2），**只动 `lambda_multi` 与
+`multi_step_horizon` 两个字段**，四个臂：`(0.0, 0)`（＝第三阶段 joint，作为复现对照）、
+`(0.1, 3)`、`(1.0, 3)`、`(1.0, 5)`。其中 `(0.1, 3)` 取自同事 2026-09-20 打包的
+`autoencoder_koopman_core` 独立包里 `configs/sentence_length_rank4.json` 的点位。
+
+```bash
+python scripts/train.py dataset=sentence_length_t10 state=memory state.lag=3 \
+  model.training_mode=joint model.latent_dim=16 \
+  model.lambda_multi=<0.0|0.1|1.0> model.multi_step_horizon=<0|3|5> \
+  trainer.epochs=200 trainer.device=cpu trainer.seed=<0|1|2> \
+  trainer.run_name=sentence_length_t10-memory-lag3-joint-k16-<arm>-seed<N> \
+  trainer.checkpoint_root=/scratch/hcao2/checkpoints/autoencoder_koopman_core_ablation
+```
+
+`trainer.run_name` 必须显式给：默认 run_name 是
+`<dataset>-<family>-lag<L>-<training_mode>-k<latent>-seed<N>`，**不含 `lambda_multi` 和
+`multi_step_horizon`**，四个臂会撞进同一个 checkpoint 目录和同一个结果目录。
+
+两条范围限制，写在跑之前：
+
+1. **只跑 `sentence_length_t10` 一个任务**，因为文末「后续阶段」列出的前置条件 2
+   （`lambda_multi` 的实际强度被数据规模混淆——多步项每 epoch 只占 `1/(n_batches+1)` 的
+   optimizer step）**仍未处理**。在它处理之前跨任务扫 `lambda_multi` 扫出来的是
+   "数据规模 × lambda_multi" 的混合效应，不是 `lambda_multi` 本身。
+2. **未开早停**，与第三阶段保持一致（`early_stopping_patience=null`，训满 200 epoch，
+   不发生 `best_state` 选择）。第八阶段记录本任务 `reconstruction_then_ridge` 侧早停落在
+   198–263 epoch，所以固定 200 对本任务接近收敛点；但那是 ridge 侧的证据，**`joint` 侧
+   需要多少预算才收敛本阶段没有单独检验**，这是本阶段最主要的限制。
+
+单次运行约 1.5–2 分钟（CPU），比本文件开头记录的 `reconstruction_then_ridge` 侧 30–40 秒慢，
+因为 `joint` 每个 epoch 多走一次多步 rollout 前向。
+
+### 结果（test split，y 空间，3 seed 均值 ± 总体标准差，n=3）
+
+按 `.claude/global.md` → *报告口径*，`one_step_mse` 属于「一步预测误差」这类拟合诊断量，
+不作跨臂结论依据；判定只看 `rollout_mse`，单步列仅供诊断。
+
+| 臂 | `lambda_multi` | `multi_step_horizon` | rollout_mse | one_step_mse（诊断） |
+|---|---:|---:|---:|---:|
+| `reconstruction_then_ridge`（第一 / 四a 阶段基准） | — | — | **0.000941 ± 0.000021** | 0.000810 ± 0.000014 |
+| `joint` m0_h0（＝第三阶段） | 0.0 | 0 | 0.001371 ± 0.000084 | 0.000817 ± 0.000015 |
+| `joint` m0.1_h3（同事 config 点位） | 0.1 | 3 | 0.002108 ± 0.000760 | 0.000865 ± 0.000051 |
+| `joint` m1_h3 | 1.0 | 3 | 0.001252 ± 0.000241 | 0.000810 ± 0.000020 |
+| `joint` m1_h5 | 1.0 | 5 | 0.001643 ± 0.000466 | 0.000841 ± 0.000037 |
+
+逐 seed `rollout_mse`（seed 0 / 1 / 2），因为均值之间的差被种子散布吃掉，必须同址列出：
+
+| 臂 | seed 0 | seed 1 | seed 2 |
+|---|---:|---:|---:|
+| m0_h0 | 0.001263 | 0.001382 | 0.001469 |
+| m0.1_h3 | 0.001421 | 0.003166 | 0.001735 |
+| m1_h3 | 0.001290 | 0.000940 | 0.001526 |
+| m1_h5 | 0.002088 | 0.001841 | 0.001000 |
+
+复现对照：m0_h0 跑出 0.001371 ± 0.000084 / 0.000817 ± 0.000015，与第三阶段归档的 `joint`
+数字**逐位相同**。
+
+### 结论
+
+1. **打开多步 rollout loss 没有翻转第三阶段的次序。** 最好的 `joint` 臂（m1_h3）
+   `rollout_mse` 0.001252 仍比 `reconstruction_then_ridge` 的 0.000941 高 33%（第三阶段是
+   46%，差距收窄但方向不变），而且种子标准差是 ridge 侧的 11 倍（0.000241 vs 0.000021）。
+2. **四个 `joint` 臂彼此在 n=3 下分不开。** m1_h3 逐 seed 0.00094/0.00129/0.00153 与 m0_h0 的
+   0.00126/0.00138/0.00147 区间重叠，m1_h3 的 seed 1 单独看已经打平 ridge 的均值。可以说的是
+   "`joint` 打开多步项后仍打不过 ridge"，**不能**说 "m1_h3 比 m0_h0 好"。
+3. **同事那个点位 `(0.1, 3)` 在本架构上是四臂里最差的**，比干脆关掉多步项还差 54%，种子标准差
+   是 m0_h0 的 9 倍。但这不能读成"那个配置有问题"：他那套配的是 7 维状态、`latent_dim=32`、
+   300 epoch，并且同时挂着 `lambda_pair` / `lambda_projection` / `lambda_stability` 三个本仓库
+   `core.py` 里不存在的损失项。能得到的结论只是**该点位不可照搬到本架构**。
+4. **第三阶段结论的适用范围因此扩大**：`reconstruction_then_ridge` 在本任务多步 rollout 上优于
+   `joint`，不再只在 `lambda_multi=0` 下成立，而是在 `(lambda_multi, horizon)` 的
+   `{0, 0.1, 1.0} × {0, 3, 5}` 四个组合上都成立。本文件「待验证模块」表里 4b 那条
+   「『AE 无增益』最大的未封口处」到此封口——但封口范围是**单任务**，不是八任务。
+5. **仍未检验的**：`lambda_latent` 这一支（4b 原本还列了它）本阶段没动，固定在默认 0.1；
+   `joint` 侧的收敛预算（见上文限制 2）；以及跨任务扩展，它被前置条件 2 挡着。
+
+产物：`results/sentence_length_t10-memory-lag3-joint-k16-<m0_h0|m0.1_h3|m1_h3|m1_h5>-seed<0|1|2>/`
+（4 臂 × 3 seed = 12 个新增结果目录）。未修改 `src/koopman_ae/core.py`、`scripts/train.py`
+或任何既有产物。
 
 ## 第五阶段：其余 7 个任务上重复"AE vs 纯线性"对照（已完成）
 
@@ -433,7 +524,9 @@ seed 实际训练到的轮数范围，对照组固定为 200）
 
 ## 后续阶段（未执行，计划）
 
-- **第四阶段（b）**：`lambda_latent`、`lambda_multi` 消融；以及把 `joint` 训练方式和
+- **第四阶段（b）**（**2026-09-20：`lambda_multi` 一支已执行，见上文「第四阶段（b）」；
+  下列前置条件 2 仍未处理，所以那次只跑了 `sentence_length_t10` 一个任务，`lambda_latent`
+  一支和跨任务扩展都还挡在这里**）：`lambda_latent`、`lambda_multi` 消融；以及把 `joint` 训练方式和
   `multi_step_horizon>0` 的多步 rollout loss 一起打开，重新对比 `joint` vs
   `reconstruction_then_ridge`（第三阶段的结论目前只在 `lambda_multi=0` 下成立）。
   **开跑前的两个前置条件（2026-09-03 已处理其一）**：
