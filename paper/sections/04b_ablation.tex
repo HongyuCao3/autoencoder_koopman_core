@@ -12,9 +12,19 @@ Under that matched window the memory gain on sentence length shrinks from +0.603
 
 \begin{figure}[t]
 \centering
+\begin{minipage}[t]{0.48\linewidth}
+\centering
 \includegraphics[width=\linewidth]{figs/fig_memory_depth.pdf}
-\caption{Memory depth under a matched training window. (a) Paired $\mathrm{Skill}_H$ gain of a state holding $d$ past readings over a state holding one, on the four tasks whose design allows a sweep. (b) The same gain for one extra reading on the three tasks whose design allows two depths. Filled markers: the 95\% paired bootstrap interval excludes zero.}
+\captionof{figure}{Memory depth under a matched training window. (a) Paired $\mathrm{Skill}_H$ gain of a state holding $d$ past readings over a state holding one, on the four tasks whose design allows a sweep. (b) The same gain for one extra reading on the three tasks whose design allows two depths. Filled markers: the 95\% paired bootstrap interval excludes zero.}
 \label{fig:memory_depth}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figs/fig_item_effect.pdf}
+\captionof{figure}{What the memory gain decomposes into. For each task of Table~\ref{tab:prediction}, three paired $\mathrm{Skill}_H$ differences under the matched window: the memory gain of KOMPAS (linear) over Last-turn; the part recovered by adding a per-item intercept to Last-turn; and the remainder of KOMPAS (linear) over Last-turn with that intercept. Intercepts are estimated on turns outside the scored window. Filled markers: the 95\% interval excludes zero.}
+\label{fig:item_effect}
+\end{minipage}
 \end{figure}
 
 \textbf{Findings, depth.} On three of the four sweepable tasks the second reading buys the whole gain: +0.112 on sentence length, +0.228 on items (s2), +0.127 on items (s1).  % c10; n_abl_124 n_abl_184 n_abl_157
@@ -24,13 +34,6 @@ Constraint is the exception: each added turn keeps paying, +0.149, +0.054 and +0
 Of the three two-depth tasks, sentiment gains +0.155 from one extra reading, while defense and CEFR do not separate from zero.  % n_abl_151 (caveated: two cells) n_abl_245 n_abl_262
 The driver is that a level and a trend take two readings to express, and the attribute tasks carry little structure beyond that pair.  % m1
 No mechanism is established for why constraint keeps gaining, and none is proposed here.  % c10 notes
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figs/fig_item_effect.pdf}
-\caption{What the memory gain decomposes into. For each task of Table~\ref{tab:prediction}, three paired $\mathrm{Skill}_H$ differences under the matched window: the memory gain of KOMPAS (linear) over Last-turn; the part recovered by adding a per-item intercept to Last-turn; and the remainder of KOMPAS (linear) over Last-turn with that intercept. Intercepts are estimated on turns outside the scored window. Filled markers: the 95\% interval excludes zero.}
-\label{fig:item_effect}
-\end{figure}
 
 \textbf{Findings, item intercept.} A per-item intercept added to the one-reading state recovers most of the memory gain: 81\% on constraint and 67\% on items (s2).  % c11; n_mech_061/n_mech_060=0.807, n_mech_058/n_mech_057=0.673
 What remains after the intercept is +0.045 on constraint and +0.075 on items (s2), both with intervals excluding zero.  % n_mech_059 n_mech_056
