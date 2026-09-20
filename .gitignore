@@ -19,7 +19,12 @@ paper/**/*.fls
 paper/**/*.fdb_latexmk
 paper/**/*.bbl
 paper/**/*.blg
-paper/**/*.pdf
+
+# Compiled paper PDFs, rebuilt locally on every compile.
+# Figure PDFs under paper/figs/ are NOT ignored: another machine needs them
+# to compile the paper without regenerating every figure from source.
+paper/main.pdf
+paper/iclr2027_koopman_alignment/*.pdf
 
 # Scratch files from the git-hygiene workaround in paper/ (see claude/repo_git_hygiene_notes)
 paper/tmp*.tmp
