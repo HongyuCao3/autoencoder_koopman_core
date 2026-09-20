@@ -2,7 +2,7 @@
 \subsection{Constraint Satisfaction under Predictive Control}
 \label{sec:exp_control}
 
-\textbf{Question.} (RQ3) Does predictive control built on the learned operator raise constraint satisfaction over the same frozen model with no control and over the two white-box latent controllers?
+\textbf{Question.} To answer RQ2, we examine whether predictive control built on the learned operator raises constraint satisfaction over the same frozen model with no control and over the two white-box latent controllers.
 \textbf{Setup.} Setup, benchmarks and baselines follow \S\ref{sec:exp_setup}; Table~\ref{tab:control} reports the constraint-satisfaction score defined there.
 
 \input{tables/tab_control.tex}
@@ -17,4 +17,4 @@ The access requirement is uneven, and it is uneven against us: RE-Control reads 
 Across the two models and eleven subtasks, the controller ranks best in all twenty-two cells, reported as a count rather than a significance claim.  % c7; tab_control all-cells (n_bench_012 n_bench_022 n_bench_056 n_bench_066)
 The margin is largest where the constraint is hardest to satisfy in one shot.  % c7 driver_keyword
 
-Taken together, \uline{predictive control raises constraint satisfaction over the uncontrolled baseline and both white-box controllers in all twenty-two model-by-subtask cells, answering RQ3 yes. It does so at the weaker access requirement of the two comparisons.}
+Taken together, \uline{predictive control raises constraint satisfaction over the uncontrolled baseline and both white-box controllers in all twenty-two model-by-subtask cells. These results support RQ2 under a weaker access requirement than the white-box baselines.}

@@ -2,7 +2,7 @@
 \subsection{Predictive Accuracy of the Learned Operator}
 \label{sec:exp_prediction}
 
-\textbf{Question.} (RQ1) Does the operator need several turns of history to predict a multi-turn attribute well? (RQ2) Does a nonlinear lifting or a sequence model predict better than the linear special case reported as ours?
+\textbf{Question.} To answer RQ1, we examine two aspects of predictive performance: whether multi-turn history improves prediction over the current observation alone, and whether nonlinear lifting or a sequence model improves over the linear special case reported as ours.
 \textbf{Setup.} Setup, tasks and baselines follow \S\ref{sec:exp_setup}; Table~\ref{tab:prediction} reports the skill score defined there.
 
 \input{tables/tab_prediction.tex}
@@ -21,4 +21,4 @@ Against an LSTM sequence baseline, comparisons split three ways with intervals e
 Items (s2) and CEFR favor the linear case, while constraint favors the LSTM.  % n_main_048 n_main_182 favor linear; n_main_134 favor LSTM
 No mechanism is established for the LSTM win, and none is proposed here.  % c3 driver_keyword: no mechanism established
 
-Together, \uline{history beyond the current turn beats the current reading on four of seven tracked attributes, answering RQ1 yes. Neither a learned lifting nor an LSTM sequence model beats the reported linear special case on balance, answering RQ2 no.}
+Together, \uline{history beyond the current turn beats the current reading on four of seven tracked attributes, while neither a learned lifting nor an LSTM sequence model beats the reported linear special case on balance. These results support the predictive component of RQ1.}

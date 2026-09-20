@@ -2,7 +2,7 @@
 \subsection{From Prediction Quality to Control Quality}
 \label{sec:exp_analysis}
 
-\textbf{Question.} (RQ4) Does prediction quality translate into control quality, and at what inference cost does the controller evaluate a candidate?
+\textbf{Question.} To connect RQ1 and RQ2, we examine how prediction quality relates to control quality, and the inference cost of evaluating a candidate command.
 \textbf{Setup.} Setup follows \S\ref{sec:exp_setup}; the derivation is the selection bound of \S\ref{sec:guarantee}, not repeated here.
 
 \textbf{Findings, the bound.} The selection bound of \S\ref{sec:guarantee} explains why more accurate rollouts keep the selected command's cost within twice the best achievable estimation error.  % c9
@@ -21,4 +21,4 @@ The prediction design cannot estimate an independent action effect on those four
 On the remaining three columns, defense, constraint and CEFR, the paired difference is +0.0121, +0.0015 and +0.0061, with intervals containing zero.  % contrasts.ours_minus_memory_no_action defense=0.0121 (n_main_149), constraint=0.0015 (n_main_133), tsar_cefr=0.0061 (n_main_181)
 This is a property of how those trajectories were collected, not a result about the controller.  % m5 notes
 
-Combined, \uline{prediction quality bounds the cost of the command selected at a single step, at no added query cost, which answers RQ4. Planning ties a fixed schedule at equal cost on the self-built behavioral tasks, and the modeling experiments cannot see the command channel on most of their columns.}
+Combined, \uline{the selection bound links prediction error to the quality of the command selected at a single step, while candidate evaluation adds no target-model queries. The equal-cost and command-channel cross-checks delimit the conditions under which the predictive gains studied in RQ1 can translate into the control gains studied in RQ2.}
