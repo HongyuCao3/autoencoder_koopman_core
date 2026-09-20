@@ -1,76 +1,48 @@
-% Phase R2 (2026-09-19). D30: bridge from the tracking objective to the reported satisfaction
-% score, wording pending the colleague's metric definition. D32: the observability fact that used
-% to be Method's first Why paragraph is stated here. D29: the banned input word is replaced by "instruction".
 \section{Problem Formulation}
 \label{sec:problem}
 
 \subsection{Modeling}
 \label{sec:problem_modeling}
 
-Let $x$ denote a task input and $p_{\theta}$ a frozen large language
-model (LLM). We track one output attribute at a time, such as sentence
-length or sentiment polarity. At interaction step $t$, the model has
-produced a dialogue history $\mathcal{H}_t$, and a controller supplies
-a textual instruction $u_t$. A step is one complete prompt-response
-exchange.
+Our modeling objective is to capture the dynamics of a measurable LLM output attribute under prompt-based control, so that its future evolution can be predicted over multiple interaction steps.
 
-The next response and its measured attribute are
+At interaction step \(t\), a frozen large language model receives a task input, the accumulated dialogue history, and a textual control instruction, and produces the next response. The resulting input--output interaction is
 \begin{equation}
-    o_{t+1}\sim
-    p_{\theta}(\,\cdot\mid x,\mathcal{H}_t,u_t),
-    \qquad
-    y_{t+1}=V(o_{t+1}),
-    \label{eq:interaction}
+o_{t+1}\sim
+p_{\theta}(\cdot\mid x,\mathcal{H}_t,u_t),
+\qquad
+y_{t+1}=V(o_{t+1}),
+\label{eq:interaction}
 \end{equation}
-Here $V$ is a task-specific verifier that reads a finished reply into
-a scalar attribute. The reply $o_{t+1}$ is text; $y_{t+1}$ is its
-measured attribute value. A caller outside the model sees $y_{t+1}$ and
-nothing else of the model's internals. The activations that produced the
-reply are out of reach, so the reading of the verifier is both the signal
-available and the quantity the objective is stated in.
+Here \(x\) denotes the task input, \(p_{\theta}\) the frozen LLM, \(\mathcal{H}_t\) the dialogue history available at step \(t\), and \(u_t\) the textual instruction supplied by the controller. The response \(o_{t+1}\) is text, while \(V\) is a task-specific verifier that maps the completed response to a scalar attribute \(y_{t+1}\), such as sentence length or sentiment polarity. We track one such attribute at a time. A step corresponds to one complete prompt--response exchange.
 
-A model of this interaction is useful only if it stays accurate over
-several future steps. A controller reasons about an instruction's
-consequences several turns ahead, not only the very next one. We
-therefore state the modeling objective as multi-step prediction
-accuracy: the model's forecast should track the actual attribute
-across a horizon of $H$ steps,
+The verifier output is the observable signal available to the controller. The internal activations that generate the response are inaccessible, so the measured attribute \(y_t\) is both the quantity available for system identification and the quantity in which the control objective is expressed.
+
+A useful model must remain accurate beyond the next interaction, since control decisions depend on the consequences of an instruction over multiple future turns. We therefore evaluate the model through multi-step prediction error,
 \begin{equation}
-    \ell_h
-    =
-    \big(y_{t+h}-\widehat y_{t+h\mid t}\big)^2,
-    \qquad h=1,\ldots,H,
-    \label{eq:modeling_objective}
+\ell_h
+=
+\bigl(y_{t+h}-\widehat y_{t+h\mid t}\bigr)^2,
+\qquad h=1,\ldots,H.
+\label{eq:modeling_objective}
 \end{equation}
-Here $\widehat y_{t+h\mid t}$ is the model's forecast of the attribute
-at step $t+h$, made from information available at step $t$, and
-$y_{t+h}$ is the actual reading. The discrepancy $\ell_h$ should stay
-small for every $h$ up to $H$, not only at $h=1$.
-Section~\ref{sec:model} specifies how this forecast is
-formed and what is held fixed to make it well defined.
+Here \(\widehat y_{t+h\mid t}\) denotes the prediction of the attribute at step \(t+h\) using information available at step \(t\), while \(y_{t+h}\) denotes the corresponding realized measurement. The prediction error should remain small throughout the horizon \(H\), rather than only for the one-step prediction \(h=1\). Section~\ref{sec:model} specifies how these forecasts are constructed and what information is held fixed during multi-step prediction.
 
 \subsection{Control}
 \label{sec:problem_control}
 
-Let $r\in\mathbb{R}$ denote the desired value of the tracked attribute.
-The tracking error is $e_t=r-y_t$, and the control objective is to
-drive this error toward zero within a finite interaction budget. At
-each step the controller's action is a scalar command $c_t$, which
-determines the instruction $u_t$ applied to the model.
+Our control objective is to regulate the measured output attribute toward a desired value through prompt-based commands within a finite interaction budget.
 
-The tracked quantity is a number, and what the control experiments report
-is a rate of constraint satisfaction. The two meet through the task's own
-feasible set $\mathcal{Y}$: a reply counts as satisfying the constraint when
-its reading $y_t$ lands in $\mathcal{Y}$, and $r$ is chosen inside
-$\mathcal{Y}$. Driving the tracking error toward zero is therefore the means,
-and the reported satisfaction rate is the outcome.
-% TODO(data): the exact definition of the satisfaction metric is pending from the colleague
-% (evidence/numbers_benchmark.yaml header). Until it arrives this paragraph states the relation
-% and does not paraphrase what the metric counts per subtask. D30.
+At each interaction step, the controller selects a scalar command \(c_t\), which determines the textual instruction \(u_t\) applied to the LLM. Over a finite horizon of \(H\) steps, the control objective is
+\begin{equation}
+J_t
+=
+\sum_{h=1}^{H}
+\bigl(r-y_{t+h}\bigr)^2.
+\label{eq:control_objective}
+\end{equation}
+Here \(r\in\mathbb{R}\) denotes the desired value of the tracked attribute, and \(e_t=r-y_t\) is the corresponding tracking error. The objective therefore seeks to keep the tracking error small over the interaction horizon, subject to the dynamics in Eq.~\eqref{eq:interaction}. In predictive control, the future measurements \(y_{t+h}\), which are unavailable at decision time, are replaced by their predictions \(\widehat y_{t+h\mid t}\) when selecting the control commands.
 
-The desired output $r$ and the applied command $c_t$ play distinct
-roles: $r$ states the objective, and $c_t$ is the controller's choice.
-In target-following control, $c_t$ equals $r$. Predictive control
-instead lets $c_t$ differ from $r$ to compensate for a predicted
-response, which requires a state that carries enough history to
-support that prediction.
+The controlled quantity is continuous, whereas the experiments ultimately report constraint satisfaction. We connect these two views through the task-specific feasible set \(\mathcal{Y}\): a response satisfies the constraint when \(y_t\in\mathcal{Y}\), and the reference is chosen such that \(r\in\mathcal{Y}\). Reducing the tracking error therefore provides a continuous control objective, while constraint satisfaction provides the corresponding task-level evaluation criterion. Driving \(y_t\) toward \(r\) is thus the mechanism through which the controller seeks to increase the rate of feasible responses.
+
+The reference \(r\) and the command \(c_t\) have distinct roles. The reference specifies the desired output, whereas \(c_t\) is the action chosen by the controller and encoded as the instruction \(u_t\). A direct target-following controller uses \(c_t=r\). Predictive control instead allows \(c_t\neq r\) to compensate for the predicted response of the LLM. This requires a state representation that retains sufficient information from the interaction history to support accurate multi-step prediction.
