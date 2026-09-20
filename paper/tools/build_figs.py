@@ -112,135 +112,115 @@ def style_axes(ax):
 # ---------------------------------------------------------------------------
 # P1. Memory depth: paired gain over a single reading, matched caliber.
 # ---------------------------------------------------------------------------
-def fig_memory_depth(rows, report):
-    run = "ablation_memory_depth_matched"
-    # (task, x = readings in the state, pattern for "that depth minus single reading")
+def fig_memory(rows, report):
+    """P1 + P2 in one row: depth sweep, two-depth designs, and the intercept decomposition."""
+    run1, run2 = "ablation_memory_depth_matched", "mechanism_item_effect"
     sweep = {
         "sentence_length_t10":     ("lag {k} minus lag 0", "matched caliber, primary anchor", [1, 2, 3]),
         "vector_count_stage2_t10": ("lag {k} minus lag 0", "matched caliber, primary anchor", [1, 2, 3]),
         "vector_count_stage1_t10": ("lag {k} minus lag 0", "matched caliber, primary anchor", [1, 2, 3]),
         "constraint":              ("nu {k} minus nu 1",   "matched caliber",                 [2, 3, 4]),
     }
-    two_cell = {  # designs with two depths only: the single extra reading
+    two_cell = {
         "sentiment_t5": ("lag 1 minus lag 0", "matched caliber, primary anchor"),
         "defense":      ("nu 2 minus nu 1",   "matched caliber"),
         "tsar_cefr":    ("lag 1 minus lag 0", "matched caliber"),
     }
-    used = {}
-    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(5.5, 2.25), gridspec_kw={"width_ratios": [3.0, 1.35]})
+    series = [  # (short legend label, regex on `what`, palette slot, marker)
+        ("Memory gain", r"ours minus markov =", 0, "o"),
+        ("Item intercept", r"markov plus item minus markov =", 1, "s"),
+        ("Remainder", r"ours minus markov plus item =", 2, "^"),
+    ]
+    used_depth, used_item = {}, {}
+    fig, (ax, ax2, ax3) = plt.subplots(
+        1, 3, figsize=(5.5, 2.15), gridspec_kw={"width_ratios": [1.55, 0.95, 2.05]})
+
+    # (a) depth sweep. Filled marker = the paired gain over one reading has a 95% interval
+    # excluding zero; hollow = it contains zero. The same rule holds in (b) and (c).
     slot = 0
     for task, (pat, anchor, ks) in sweep.items():
         xs, ys, lo, hi, ids = [1], [0.0], [0.0], [0.0], []
         for k in ks:
-            r = pick(rows, run, task, re.escape(anchor) + r".*" + re.escape(pat.format(k=k)) + r" =")
+            r = pick(rows, run1, task, re.escape(anchor) + r".*" + re.escape(pat.format(k=k)) + r" =")
             depth = k + 1 if pat.startswith("lag") else k
             xs.append(depth); ys.append(r["value"]); lo.append(r["ci"][0]); hi.append(r["ci"][1])
             ids.append(r["id"])
-        used[task] = ids
+        used_depth[task] = ids
         c, m = PALETTE[slot], MARKERS[slot]
-        # Same encoding as panel (b) and fig_item_effect: filled marker = the paired gain over a
-        # single reading has a 95% interval excluding zero; hollow = interval contains zero.
-        ax.plot(xs, ys, color=c, linewidth=1.6, zorder=2, label=NAMES[task])
+        ax.plot(xs, ys, color=c, linewidth=1.4, zorder=2)
         for x, y, l, h in zip(xs, ys, lo, hi):
             excl = (x > 1) and ((l > 0) or (h < 0))
-            ax.plot(x, y, marker=m, markersize=5, color=c if excl else "white",
-                    markeredgecolor=c, markeredgewidth=1.0, zorder=3)
-        dy = {"constraint": 5, "vector_count_stage2_t10": -5}.get(task, 0)
-        ax.annotate(NAMES[task], (xs[-1], ys[-1]), xytext=(5, dy), textcoords="offset points",
-                    va="center", ha="left", fontsize=7, color=INK)
+            ax.plot(x, y, marker=m, markersize=4.2, color=c if excl else "white",
+                    markeredgecolor=c, markeredgewidth=0.9, zorder=3)
+        dy = {"constraint": 6, "vector_count_stage2_t10": -6}.get(task, 0)
+        ax.annotate(NAMES[task], (xs[-1], ys[-1]), xytext=(3, dy), textcoords="offset points",
+                    va="center", ha="left", fontsize=6, color=INK)
         slot += 1
     ax.axhline(0, color=MUTED, linewidth=0.6, zorder=1)
-    ax.set_xticks([1, 2, 3, 4])
-    ax.set_xlim(0.8, 5.0)
-    ax.set_xlabel("Past readings in the state (filled = interval excludes 0)")
+    ax.set_xticks([1, 2, 3, 4]); ax.set_xlim(0.85, 5.6)
+    ax.set_xlabel("past readings in the state")
     ax.set_ylabel(r"$\mathrm{Skill}_H$ gain over one reading")
-    ax.set_title("(a) Depth sweep, matched training window", loc="left", fontsize=8)
+    ax.set_title("(a) Depth sweep", loc="left", fontsize=7.5)
     style_axes(ax)
 
-    # (b) two-depth designs.
+    # (b) designs with two depths only.
     labels, vals, los, his = [], [], [], []
     for task, (pat, anchor) in two_cell.items():
-        r = pick(rows, run, task, re.escape(anchor) + r".*" + re.escape(pat) + r" =")
-        used[task] = [r["id"]]
+        r = pick(rows, run1, task, re.escape(anchor) + r".*" + re.escape(pat) + r" =")
+        used_depth[task] = [r["id"]]
         labels.append(NAMES[task]); vals.append(r["value"]); los.append(r["ci"][0]); his.append(r["ci"][1])
     ypos = list(range(len(labels)))[::-1]
     ax2.axvline(0, color=MUTED, linewidth=0.6, zorder=1)
     for y, v, l, h in zip(ypos, vals, los, his):
         excl = (l > 0) or (h < 0)
         ax2.plot([l, h], [y, y], color=INK, linewidth=0.8, zorder=2)
-        ax2.plot(v, y, marker="o", markersize=5, color=INK if excl else "white",
+        ax2.plot(v, y, marker="o", markersize=4.2, color=INK if excl else "white",
                  markeredgecolor=INK, markeredgewidth=0.8, zorder=3)
-    ax2.set_yticks(ypos)
-    ax2.set_yticklabels(labels)
-    ax2.set_xlabel("Gain from one extra reading")
-    ax2.set_title("(b) Two-depth designs", loc="left", fontsize=8)
+    ax2.set_yticks(ypos); ax2.set_yticklabels(labels)
+    ax2.set_xlabel("one extra reading")
+    ax2.set_title("(b) Two depths", loc="left", fontsize=7.5)
     ax2.set_ylim(-0.6, len(labels) - 0.4)
     style_axes(ax2)
-    ax2.grid(True, axis="x", color=GRID, linewidth=0.5)
-    ax2.grid(False, axis="y")
+    ax2.grid(True, axis="x", color=GRID, linewidth=0.5); ax2.grid(False, axis="y")
 
-    fig.tight_layout(w_pad=1.5)
-    out = os.path.join(FIGS, "fig_memory_depth.pdf")
-    fig.savefig(out)
-    plt.close(fig)
-    report["fig_memory_depth"] = {"file": os.path.relpath(out, PAPER), "caliber": "matched window",
-                                  "ids": used}
-
-
-# ---------------------------------------------------------------------------
-# P2. Item intercept: what the memory gain decomposes into.
-# ---------------------------------------------------------------------------
-def fig_item_effect(rows, report):
-    run = "mechanism_item_effect"
-    series = [  # (label, regex on `what`, palette slot, marker)
-        ("Memory gain: ours $-$ Last-turn", r"ours minus markov =", 0, "o"),
-        ("Bought by an item intercept", r"markov plus item minus markov =", 1, "s"),
-        ("Remainder: ours $-$ (Last-turn + intercept)", r"ours minus markov plus item =", 2, "^"),
-    ]
-    data = {}
-    for task in TABLE2:
-        data[task] = {}
-        for label, pat, _, _ in series:
-            r = pick(rows, run, task, pat)
-            data[task][label] = r
+    # (c) what the gain decomposes into.
+    data = {t: {lab: pick(rows, run2, t, pat) for lab, pat, _, _ in series} for t in TABLE2}
     order = sorted(TABLE2, key=lambda t: -data[t][series[0][0]]["value"])
-    fig, ax = plt.subplots(figsize=(5.5, 2.5))
     off = [0.24, 0.0, -0.24]
-    ypos = {t: i for i, t in enumerate(order[::-1])}
-    ax.axvline(0, color=MUTED, linewidth=0.6, zorder=1)
+    ypos3 = {t: i for i, t in enumerate(order[::-1])}
+    ax3.axvline(0, color=MUTED, linewidth=0.6, zorder=1)
     for t in order:
-        ax.axhline(ypos[t] - 0.5, color=GRID, linewidth=0.4, zorder=0)
-    used = {}
+        ax3.axhline(ypos3[t] - 0.5, color=GRID, linewidth=0.4, zorder=0)
     for (label, pat, slot, m), o in zip(series, off):
-        c = PALETTE[slot]
-        first = True
+        c, first = PALETTE[slot], True
         for t in order:
             r = data[t][label]
-            used.setdefault(t, []).append(r["id"])
-            y = ypos[t] + o
-            lo, hi = r["ci"]
-            v = r["value"]
+            used_item.setdefault(t, []).append(r["id"])
+            lo, hi = r["ci"]; v = r["value"]
             excl = (lo > 0) or (hi < 0)
-            ax.plot([lo, hi], [y, y], color=c, linewidth=1.0, zorder=2)
-            ax.plot(v, y, marker=m, markersize=4.8, color=c if excl else "white",
-                    markeredgecolor=c, markeredgewidth=0.9, zorder=3,
-                    label=label if first else None)
+            ax3.plot([lo, hi], [ypos3[t] + o, ypos3[t] + o], color=c, linewidth=0.9, zorder=2)
+            ax3.plot(v, ypos3[t] + o, marker=m, markersize=4.0, color=c if excl else "white",
+                     markeredgecolor=c, markeredgewidth=0.8, zorder=3,
+                     label=label if first else None)
             first = False
-    ax.set_yticks([ypos[t] for t in order])
-    ax.set_yticklabels([NAMES[t] for t in order])
-    ax.set_xlabel(r"Paired $\mathrm{Skill}_H$ difference (95% interval; filled = interval excludes 0)")
-    ax.set_ylim(-0.6, len(order) - 0.4)
-    ax.legend(loc="lower right", frameon=False, handlelength=1.2)
-    style_axes(ax)
-    ax.grid(True, axis="x", color=GRID, linewidth=0.5)
-    ax.grid(False, axis="y")
-    fig.tight_layout()
-    out = os.path.join(FIGS, "fig_item_effect.pdf")
-    fig.savefig(out)
-    plt.close(fig)
-    report["fig_item_effect"] = {"file": os.path.relpath(out, PAPER), "caliber": "matched window",
-                                 "row_order": [NAMES[t] for t in order], "ids": used}
+    ax3.set_yticks([ypos3[t] for t in order]); ax3.set_yticklabels([NAMES[t] for t in order])
+    ax3.set_xlabel(r"paired $\mathrm{Skill}_H$ difference")
+    ax3.set_title("(c) What the gain decomposes into", loc="left", fontsize=7.5)
+    ax3.set_ylim(-0.6, len(order) - 0.4)
+    ax3.legend(loc="lower right", frameon=True, framealpha=0.88, edgecolor="none",
+               handlelength=1.0, fontsize=6, labelspacing=0.25, borderpad=0.2)
+    style_axes(ax3)
+    ax3.grid(True, axis="x", color=GRID, linewidth=0.5); ax3.grid(False, axis="y")
 
+    fig.tight_layout(pad=0.4, w_pad=1.1)
+    out = os.path.join(FIGS, "fig_memory.pdf")
+    fig.savefig(out, bbox_inches="tight"); plt.close(fig)
+    report["fig_memory"] = {
+        "file": os.path.relpath(out, PAPER), "caliber": "matched window",
+        "panels": {"a": "depth sweep", "b": "two-depth designs", "c": "intercept decomposition"},
+        "marker_rule": "filled = 95% paired interval excludes zero, in all three panels",
+        "ids_depth": used_depth, "ids_item": used_item}
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -362,110 +342,95 @@ def fig_two_futures(report):
 # ---------------------------------------------------------------------------
 # m5. The command channel does not move.
 # ---------------------------------------------------------------------------
-def fig_command_channel(report):
-    tasks = ["sentence_length_t10", "sentiment_t5"]  # the Table 1 columns logging a per-turn command
-    fig, axes = plt.subplots(1, 2, figsize=(5.5, 2.1))
-    ids = {}
-    for ax, task in zip(axes, tasks):
+# (task, ledger id, readout dimension). The dimension is the half of m4 the data supports:
+# a one-dimensional readout leaves a lifting little structure to expose.
+LIFTING = [("sentence_length_t10", "n_main_015", 1), ("vector_count_stage2_t10", "n_main_047", 3),
+           ("vector_count_stage1_t10", "n_main_031", 2), ("sentiment_t5", "n_main_111", 1),
+           ("defense", "n_main_151", 1), ("constraint", "n_main_135", 1),
+           ("tsar_cefr", "n_main_183", 1)]
+DIM_MARKER = {1: "o", 2: "s", 3: "D"}
+
+
+def fig_mechanism(rows, report):
+    """m5 and m4 in one row: the command channel on two tasks, then the cost of a lifting."""
+    by = {r["id"]: r for r in rows}
+    fig, (ax1, ax2, ax3) = plt.subplots(
+        1, 3, figsize=(5.5, 1.95), gridspec_kw={"width_ratios": [1.25, 1.25, 1.55]})
+
+    # (a), (b): the applied command against the tracking error, one panel per task.
+    chan = {}
+    for ax, task, tag in ((ax1, "sentence_length_t10", "(a)"), (ax2, "sentiment_t5", "(b)")):
         grouped, sha, rel = trajectories(task)
         xs, ys, targets, same = [], [], [], 0
-        for rows in grouped.values():
-            for a, b in zip(rows, rows[1:]):
+        for trows in grouped.values():
+            for a, b in zip(trows, trows[1:]):
                 u, r_, y = b.get("requested_norm"), a.get("effective_norm"), a.get("normalized_output")
                 if None in (u, r_, y):
                     continue
                 xs.append(r_ - y); ys.append(u); targets.append(r_)
                 same += abs(u - r_) < 1e-9
-        sc = ax.scatter(xs, ys, s=3.5, c=targets, cmap="Blues", vmin=-0.45,
-                        alpha=0.55, linewidths=0, zorder=2)
+        ax.scatter(xs, ys, s=3.0, c=targets, cmap="Blues", vmin=-0.45,
+                   alpha=0.55, linewidths=0, zorder=2)
         ax.axvline(0, color=GRID, linewidth=0.6, zorder=1)
         style_axes(ax)
         ax.grid(True, axis="x", color=GRID, linewidth=0.5)
-        ax.set_title(NAMES[task], pad=3)
+        ax.set_title(tag + " " + NAMES[task], loc="left", fontsize=7.5)
         ax.set_xlabel("tracking error $r-y_t$")
-        ax.annotate(f"{same}/{len(xs)} transitions\nhave command $=r$",
-                    xy=(0.04, 0.04), xycoords="axes fraction", fontsize=6.5,
-                    color=MUTED, ha="left", va="bottom",
-                    bbox=dict(boxstyle="square,pad=0.25", facecolor="white",
+        ax.annotate(f"{same}/{len(xs)}\nat $u=r$", xy=(0.04, 0.04), xycoords="axes fraction",
+                    fontsize=6.0, color=MUTED, ha="left", va="bottom",
+                    bbox=dict(boxstyle="square,pad=0.2", facecolor="white",
                               edgecolor="none", alpha=0.85))
-        ids[task] = {"file": rel, "sha256": sha, "n_transitions": len(xs),
-                     "n_command_equals_target": same}
-    axes[0].set_ylabel("applied command $u_{t+1}$")
-    cb = fig.colorbar(sc, ax=axes, fraction=0.035, pad=0.02)
-    cb.set_label("target $r$", size=7); cb.ax.tick_params(labelsize=6.5, length=2)
-    cb.outline.set_linewidth(0.4)
-    out = os.path.join(FIGS, "fig_command_channel.pdf")
-    fig.savefig(out, bbox_inches="tight"); plt.close(fig)
-    report["fig_command_channel"] = {
-        "file": os.path.relpath(out, PAPER), "mechanism": "m5",
-        "caliber": "descriptive, raw collection log -- NOT Skill_H, never quote as a result number",
-        "transform": "per consecutive turn pair: x=effective_norm-normalized_output at t, "
-                     "y=requested_norm at t+1, colour=effective_norm",
-        "note": "Joint-2 / Joint-3 log no per-turn scalar command; their command channel was "
-                "checked by the rank test in docs/experiments/core_multiobjective_planning_headroom.md 2.1",
-        "sources": ids}
-    return out
+        chan[task] = {"file": rel, "sha256": sha, "n_transitions": len(xs),
+                      "n_command_equals_target": same}
+    ax1.set_ylabel("command $u_{t+1}$")
 
-
-# ---------------------------------------------------------------------------
-# m4. What the learned lifting costs, against how much structure the readout has.
-# ---------------------------------------------------------------------------
-# Ids are the paired Ours - AE-Koopman contrast for the seven columns
-# build_tables.py::PRED_COLUMNS prints. x is the readout dimension, the half of m4 the
-# data supports; the trajectory count rides along as an annotation because the other
-# half of m4 -- that the cost is estimation variance at small n -- is not what the
-# numbers show (CEFR carries the largest cost on the largest task).
-# (task, ledger id, readout dimension, x offset inside its category, label offset in pt)
-LIFTING = [("sentence_length_t10", "n_main_015", 1, -0.36, (-27, -17)),
-           ("vector_count_stage2_t10", "n_main_047", 3, 0.0, (-20, 9)),
-           ("vector_count_stage1_t10", "n_main_031", 2, 0.0, (-18, 9)),
-           ("sentiment_t5", "n_main_111", 1, 0.0, (-33, -3)),
-           ("defense", "n_main_151", 1, -0.18, (3, -18)),
-           ("constraint", "n_main_135", 1, 0.18, (4, -3)),
-           ("tsar_cefr", "n_main_183", 1, 0.36, (-13, 9))]
-
-
-def fig_lifting_contrast(rows, report):
-    by = {r["id"]: r for r in rows}
-    fig, ax = plt.subplots(figsize=(4.6, 2.0))
-    ax.axhline(0, color=MUTED, linewidth=0.7, zorder=1)
-    ids = {}
-    for task, rid, dim, dx, offset in LIFTING:
+    # (c): what a learned lifting costs, rows grouped by readout dimension then by value.
+    ordered = sorted(LIFTING, key=lambda e: (e[2], -by[e[1]]["value"]))
+    ids, ticks, labels = {}, [], []
+    for row, (task, rid, dim) in enumerate(ordered):
         r = by[rid]
+        y = len(ordered) - 1 - row
         n, v, ci = r["n"], r["value"], r["ci"]
         excl = ci[0] > 0 or ci[1] < 0
         caveated = r.get("status") == "caveated"
-        x = dim + dx
-        ax.plot([x, x], ci, color=MUTED, linewidth=0.7, zorder=2)
-        ax.scatter([x], [v], s=26, marker="o", zorder=3,
-                   facecolor=(PALETTE[0] if excl else "white"),
-                   edgecolor=(MUTED if caveated else PALETTE[0]),
-                   linewidths=(1.1 if caveated else 0.9))
-        dagger = "$^{\\dagger}$" if caveated else ""
-        ax.annotate(NAMES[task] + dagger + "\n$n{=}$" + str(n),
-                    xy=(x, v), xytext=offset, textcoords="offset points",
-                    fontsize=6.2, color=INK, linespacing=1.0)
+        ax3.plot(ci, [y, y], color=MUTED, linewidth=0.7, zorder=2)
+        ax3.scatter([v], [y], s=20, marker=DIM_MARKER[dim], zorder=3,
+                    facecolor=(PALETTE[0] if excl else "white"),
+                    edgecolor=(MUTED if caveated else PALETTE[0]),
+                    linewidths=(1.0 if caveated else 0.9))
+        ticks.append(y)
+        labels.append(NAMES[task] + ("$^{\\dagger}$" if caveated else "")
+                      + "  $n{=}$" + str(n))
         ids[task] = {"id": rid, "n_trajectories": n, "value": v, "ci": ci,
                      "readout_dim": dim, "interval_excludes_zero": bool(excl),
                      "status": r.get("status")}
-    style_axes(ax)
-    ax.set_xticks([1, 2, 3])
-    ax.set_xticklabels(["1-d", "2-d", "3-d"])
-    ax.set_xlim(0.40, 3.45)
-    ax.set_xlabel("dimension of the attribute readout")
-    ax.set_ylabel("$\\mathrm{Skill}_H$: linear $-$ learned lifting")
-    fig.tight_layout(pad=0.4)
-    out = os.path.join(FIGS, "fig_lifting_contrast.pdf")
+    ax3.axvline(0, color=MUTED, linewidth=0.7, zorder=1)
+    ax3.set_yticks(ticks); ax3.set_yticklabels(labels)
+    ax3.set_ylim(-0.7, len(ordered) - 0.3)
+    for side in ("top", "right"):
+        ax3.spines[side].set_visible(False)
+    ax3.grid(True, axis="x", color=GRID, linewidth=0.5)
+    ax3.set_axisbelow(True); ax3.tick_params(length=2.5, width=0.5)
+    ax3.set_title("(c) Cost of a learned lifting", loc="left", fontsize=7.5)
+    ax3.set_xlabel(r"$\Delta\,\mathrm{Skill}_H$")
+
+    fig.tight_layout(pad=0.4, w_pad=1.1)
+    out = os.path.join(FIGS, "fig_mechanism.pdf")
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
-    report["fig_lifting_contrast"] = {
-        "file": os.path.relpath(out, PAPER), "mechanism": "m4",
-        "caliber": "paired grouped bootstrap, evidence ledger",
-        "marker_rule": "filled = 95% interval excludes zero; grey edge + dagger = caveated id; "
-                       "x position inside a category is a fixed spacing offset, not data",
-        "not_shown": "the cost does not fall with the trajectory count: CEFR (n=100) carries "
-                     "the largest cost and Joint-3 (n=90) the smallest. m4's estimation-variance "
-                     "clause is unsupported and was removed from the mechanism lattice.",
-        "ids": ids}
+    report["fig_mechanism"] = {
+        "file": os.path.relpath(out, PAPER),
+        "panels": {"a": "command channel, sentence length (m5)",
+                   "b": "command channel, sentiment (m5)",
+                   "c": "cost of a learned lifting by readout dimension (m4)"},
+        "caliber": "(a),(b) descriptive raw collection log, NOT Skill_H; "
+                   "(c) paired grouped bootstrap from the evidence ledger",
+        "marker_rule": "(c) filled = 95% interval excludes zero; grey edge + dagger = caveated; "
+                       "shape = readout dimension (circle 1-d, square 2-d, diamond 3-d)",
+        "not_shown": "the lifting cost does not fall with the trajectory count: CEFR (n=100) "
+                     "carries the largest and Joint-3 (n=90) the smallest.",
+        "note": "Joint-2 / Joint-3 log no per-turn scalar command; their channel was checked by "
+                "the rank test in docs/experiments/core_multiobjective_planning_headroom.md 2.1",
+        "sources": chan, "ids": ids}
     return out
 
 
@@ -473,11 +438,9 @@ def main():
     rows = load()
     os.makedirs(FIGS, exist_ok=True)
     report = {}
-    fig_memory_depth(rows, report)
-    fig_item_effect(rows, report)
+    fig_memory(rows, report)
     fig_two_futures(report)
-    fig_command_channel(report)
-    fig_lifting_contrast(rows, report)
+    fig_mechanism(rows, report)
     with open(os.path.join(FIGS, "_fig_report.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
     print(json.dumps(report, indent=1))

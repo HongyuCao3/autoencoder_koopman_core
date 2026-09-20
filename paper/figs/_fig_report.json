@@ -1,8 +1,14 @@
 {
-  "fig_memory_depth": {
-    "file": "figs/fig_memory_depth.pdf",
+  "fig_memory": {
+    "file": "figs/fig_memory.pdf",
     "caliber": "matched window",
-    "ids": {
+    "panels": {
+      "a": "depth sweep",
+      "b": "two-depth designs",
+      "c": "intercept decomposition"
+    },
+    "marker_rule": "filled = 95% paired interval excludes zero, in all three panels",
+    "ids_depth": {
       "sentence_length_t10": [
         "n_abl_124",
         "n_abl_125",
@@ -32,21 +38,8 @@
       "tsar_cefr": [
         "n_abl_262"
       ]
-    }
-  },
-  "fig_item_effect": {
-    "file": "figs/fig_item_effect.pdf",
-    "caliber": "matched window",
-    "row_order": [
-      "Constraint",
-      "Joint-3",
-      "Sentiment",
-      "Joint-2",
-      "Sentence len.",
-      "CEFR",
-      "Defense"
-    ],
-    "ids": {
+    },
+    "ids_item": {
       "constraint": [
         "n_mech_060",
         "n_mech_061",
@@ -136,12 +129,17 @@
       }
     }
   },
-  "fig_command_channel": {
-    "file": "figs/fig_command_channel.pdf",
-    "mechanism": "m5",
-    "caliber": "descriptive, raw collection log -- NOT Skill_H, never quote as a result number",
-    "transform": "per consecutive turn pair: x=effective_norm-normalized_output at t, y=requested_norm at t+1, colour=effective_norm",
-    "note": "Joint-2 / Joint-3 log no per-turn scalar command; their command channel was checked by the rank test in docs/experiments/core_multiobjective_planning_headroom.md 2.1",
+  "fig_mechanism": {
+    "file": "figs/fig_mechanism.pdf",
+    "panels": {
+      "a": "command channel, sentence length (m5)",
+      "b": "command channel, sentiment (m5)",
+      "c": "cost of a learned lifting by readout dimension (m4)"
+    },
+    "caliber": "(a),(b) descriptive raw collection log, NOT Skill_H; (c) paired grouped bootstrap from the evidence ledger",
+    "marker_rule": "(c) filled = 95% interval excludes zero; grey edge + dagger = caveated; shape = readout dimension (circle 1-d, square 2-d, diamond 3-d)",
+    "not_shown": "the lifting cost does not fall with the trajectory count: CEFR (n=100) carries the largest and Joint-3 (n=90) the smallest.",
+    "note": "Joint-2 / Joint-3 log no per-turn scalar command; their channel was checked by the rank test in docs/experiments/core_multiobjective_planning_headroom.md 2.1",
     "sources": {
       "sentence_length_t10": {
         "file": "datasets/scalar/sentence_length_t10/trajectories.jsonl",
@@ -155,49 +153,18 @@
         "n_transitions": 240,
         "n_command_equals_target": 240
       }
-    }
-  },
-  "fig_lifting_contrast": {
-    "file": "figs/fig_lifting_contrast.pdf",
-    "mechanism": "m4",
-    "caliber": "paired grouped bootstrap, evidence ledger",
-    "marker_rule": "filled = 95% interval excludes zero; grey edge + dagger = caveated id; x position inside a category is a fixed spacing offset, not data",
-    "not_shown": "the cost does not fall with the trajectory count: CEFR (n=100) carries the largest cost and Joint-3 (n=90) the smallest. m4's estimation-variance clause is unsupported and was removed from the mechanism lattice.",
+    },
     "ids": {
-      "sentence_length_t10": {
-        "id": "n_main_015",
-        "n_trajectories": 42,
-        "value": 0.017001097144927264,
+      "tsar_cefr": {
+        "id": "n_main_183",
+        "n_trajectories": 100,
+        "value": 0.5991755523471519,
         "ci": [
-          -0.014249097042116889,
-          0.05754084559998288
+          0.4780414704282848,
+          0.7410904821846424
         ],
         "readout_dim": 1,
-        "interval_excludes_zero": false,
-        "status": "current"
-      },
-      "vector_count_stage2_t10": {
-        "id": "n_main_047",
-        "n_trajectories": 90,
-        "value": 0.0046938060859000215,
-        "ci": [
-          0.0004276811032766892,
-          0.009253675225601594
-        ],
-        "readout_dim": 3,
         "interval_excludes_zero": true,
-        "status": "current"
-      },
-      "vector_count_stage1_t10": {
-        "id": "n_main_031",
-        "n_trajectories": 48,
-        "value": 0.01381738601137163,
-        "ci": [
-          -0.005401845596284279,
-          0.03239494293486803
-        ],
-        "readout_dim": 2,
-        "interval_excludes_zero": false,
         "status": "current"
       },
       "sentiment_t5": {
@@ -207,6 +174,30 @@
         "ci": [
           -0.054370123957318536,
           0.31250494124197337
+        ],
+        "readout_dim": 1,
+        "interval_excludes_zero": false,
+        "status": "current"
+      },
+      "constraint": {
+        "id": "n_main_135",
+        "n_trajectories": 40,
+        "value": 0.048194723250580135,
+        "ci": [
+          0.01853818110223725,
+          0.0730720842723128
+        ],
+        "readout_dim": 1,
+        "interval_excludes_zero": true,
+        "status": "current"
+      },
+      "sentence_length_t10": {
+        "id": "n_main_015",
+        "n_trajectories": 42,
+        "value": 0.017001097144927264,
+        "ci": [
+          -0.014249097042116889,
+          0.05754084559998288
         ],
         "readout_dim": 1,
         "interval_excludes_zero": false,
@@ -224,27 +215,27 @@
         "interval_excludes_zero": false,
         "status": "caveated"
       },
-      "constraint": {
-        "id": "n_main_135",
-        "n_trajectories": 40,
-        "value": 0.048194723250580135,
+      "vector_count_stage1_t10": {
+        "id": "n_main_031",
+        "n_trajectories": 48,
+        "value": 0.01381738601137163,
         "ci": [
-          0.01853818110223725,
-          0.0730720842723128
+          -0.005401845596284279,
+          0.03239494293486803
         ],
-        "readout_dim": 1,
-        "interval_excludes_zero": true,
+        "readout_dim": 2,
+        "interval_excludes_zero": false,
         "status": "current"
       },
-      "tsar_cefr": {
-        "id": "n_main_183",
-        "n_trajectories": 100,
-        "value": 0.5991755523471519,
+      "vector_count_stage2_t10": {
+        "id": "n_main_047",
+        "n_trajectories": 90,
+        "value": 0.0046938060859000215,
         "ci": [
-          0.4780414704282848,
-          0.7410904821846424
+          0.0004276811032766892,
+          0.009253675225601594
         ],
-        "readout_dim": 1,
+        "readout_dim": 3,
         "interval_excludes_zero": true,
         "status": "current"
       }

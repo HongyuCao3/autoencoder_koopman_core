@@ -5,7 +5,9 @@
 \textbf{Question.} RQ2a and RQ2b: whether predictive control built on the learned operator raises constraint satisfaction over the same frozen model with no control, and over the two white-box latent controllers.
 \textbf{Setup.} Setup, benchmarks and baselines follow \S\ref{sec:exp_setup}; Table~\ref{tab:control} reports the constraint-satisfaction score defined there.
 
-\input{tables/tab_control.tex}
+% The float for Table 2 is declared at the end of sections/04b_prediction.tex so that both
+% main tables are placed before the four figures of 4.3 and 4.4 (user ruling 2026-09-20).
+% Only the float declaration moved. The table, this subsection and its text are unchanged.
 
 \textbf{Findings, gain over the uncontrolled baseline.} Predictive control raises constraint satisfaction over the uncontrolled baseline by +14.5 points on Qwen3-4B and +14.8 on Qwen3-8B, averaged over eleven subtasks as point estimates with no seeds or intervals.  % c5; control_deltas: Qwen3-4B/Koopman-Base=14.47, Qwen3-8B/Koopman-Base=14.76
 The driver is that scoring happens on a candidate's predicted trajectory, not its immediate effect.  % m3
