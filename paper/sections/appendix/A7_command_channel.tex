@@ -1,0 +1,9 @@
+%% Appendix A7. Moved from Sec. 4.6 on 2026-09-21 (page budget, item A2). Numbers unchanged.
+\section{Command-Channel Scope of the Prediction Design}
+\label{app:A7_command_channel}
+
+On four of the seven modeling columns of Table~\ref{tab:prediction} the applied command equals the tracking error, an exact affine function of the memory state.  % m5, updated 2026-09-19
+The prediction design therefore cannot estimate an independent action effect on those four columns.  % nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110
+On the remaining three columns, defense, constraint and CEFR, the paired difference between the reported model and the memory-only variant is +0.0121, +0.0015 and +0.0061, with intervals containing zero.  % contrasts.ours_minus_memory_no_action defense=0.0121 (n_main_149), constraint=0.0015 (n_main_133), tsar_cefr=0.0061 (n_main_181)
+This is a property of how those trajectories were collected, not a result about the controller.  % m5 notes
+The control experiments of \S\ref{sec:exp_control} are the test of the command channel.  % D11

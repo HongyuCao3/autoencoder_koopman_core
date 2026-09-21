@@ -1,4 +1,17 @@
-%% Appendix A3_window. Filled after the main text is approved.
-\section{Matched Training Window}
+%% Appendix A3_window. Setup details moved from Sec. 4.1 on 2026-09-21 (page budget, item A3).
+\section{Modeling-Line Setup Details and Matched Training Window}
 \label{app:A3_window}
-TODO
+
+Window length and horizon vary by task: window length ranges from 1 to 4 readings and horizon from 3 to 6 steps.  % RECOVERED 2026-09-19 (Opus, tabulated from evidence/numbers.yaml)
+Scored held-out rows per task range from 30 to 12,376, counted after windowing.  % RECOVERED 2026-09-19 (Opus, evidence/numbers.yaml)
+The trajectories those rows come from number 40 to 100 for the seven columns of Table~\ref{tab:prediction}, and 4 to 30 for the columns of Appendix~\ref{app:A2_small_columns}.  % RECOVERED 2026-09-19 (Opus, group counts in evidence/numbers.yaml `test` fields)
+Every interval reported in \S\ref{sec:exp_prediction} is a paired grouped bootstrap over trajectories, with 2000 resamples.  % evidence/numbers.yaml `test` field, all n_main_* contrast rows
+Character length and formality are not shown in either table this round.  % table1_swap_2026-09-19
+A second backbone for the modeling line remains a planned arm with no submitted job.  % docs/NAMING.md backbone2 row
+% TODO(data): per-task table of window length, horizon, scored rows and trajectory count.
+
+The two experiment lines report different metrics in different reference frames.  % numbers_benchmark.yaml unit field
+The modeling line's skill score is referenced against a best-trivial-null baseline and can go negative, while the control line's percentage carries no reference point.
+
+The matched-window analysis of \S\ref{sec:exp_memory} fits every state depth on the same set of transitions; the per-task numbers behind Figure~\ref{fig:memory} are listed here.
+% TODO(data): matched-window table (was the original purpose of this appendix).

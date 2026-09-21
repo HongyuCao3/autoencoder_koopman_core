@@ -1,3 +1,6 @@
+% Compressed 2026-09-21 (page budget, items A4/A5): closed-form rollout inlined; the two
+% execution/replanning paragraphs of 3.3 merged; the duplicate learned-lifting paragraph of 3.2 removed;
+% the ARX sentence of 3.1 split. Equations (4)(5)(6)(8)(9) unchanged.
 \section{Method}
 \label{sec:method}
 
@@ -100,10 +103,10 @@ $E_\phi(s_t)$ and decoded back to the measurement space. Our main model uses
 the identity lifting, $E_\phi(s_t)=s_t$, so the learned dynamics operate
 directly on the delay coordinates. We retain a learned lifting as an
 experimental comparison and give its training objective in
-Appendix~\ref{app:A1_estimator}. In this sense, the reported model is also a
-linear controlled regression on delay coordinates; the Koopman formulation
-places the identity and learned dictionaries within the same observable-space
-framework and enables closed-form multi-step prediction.
+Appendix~\ref{app:A1_estimator}. The reported model is thus also a linear
+controlled regression on delay coordinates. The Koopman formulation places the
+identity and learned dictionaries in one observable-space framework and gives
+closed-form multi-step prediction.
 
 
 \subsection{Offline System Identification}
@@ -115,8 +118,7 @@ $(s_t,c_t,s_{t+1})$, where $c_t$ is the command applied before observing the
 successor state.
 
 Because $K$, $B$, and $b$ enter the one-step prediction linearly, the
-identity-lifting model (i.e., the state is used directly without an additional
-feature transformation) is estimated by least squares,
+identity-lifting model is estimated by least squares,
 \begin{equation}
     (\widehat K,\widehat B,\widehat b)
     =
@@ -133,13 +135,6 @@ trusted is consequently determined by the state--command combinations
 represented in the recorded trajectories. In particular, prediction under a
 new command history relies on generalization beyond the combinations observed
 during training.
-
-For comparison, we also consider a learned-lifting variant (i.e., the state is
-first mapped by a trainable encoder into a feature space before applying the
-same affine dynamics). This variant jointly learns the representation and the
-state transition, with its training objective given in
-Appendix~\ref{app:A1_estimator}. The main method uses the identity-lifting
-model and the closed-form least-squares estimator above.
 
 
 \subsection{Receding-Horizon Prompt Control}
@@ -159,17 +154,9 @@ with
 $\widehat y_{t+h|t}(c)=C\widehat{s}_{t+h|t}(c)$.
 
 Because the transition is affine, the rollout has the closed form
-\begin{equation}
-    \widehat{s}_{t+h\mid t}(c)
-    =
-    K^h s_t
-    +
-    \sum_{j=0}^{h-1}
-    K^j(Bc+b).
-    \label{eq:closed_form_rollout}
-\end{equation}
-Candidate evaluation therefore requires only linear propagation through the
-identified model and adds no call to $p_\theta$.
+$\widehat{s}_{t+h\mid t}(c)=K^h s_t+\sum_{j=0}^{h-1}K^j(Bc+b)$, so candidate
+evaluation is linear propagation through the identified model and adds no
+call to $p_\theta$.
 
 Each candidate is scored by the deviation of its predicted trajectory from
 the desired attribute,
@@ -193,19 +180,12 @@ the desired attribute,
 Scoring the whole predicted trajectory allows the selected command to differ
 from the reference while the attribute is still moving toward it.
 
-The controller then executes only the selected command $c_t^\star$.
-Specifically, it constructs
-$u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^\star)$ and sends the instruction to
-the frozen LLM. After receiving the actual response $o_{t+1}$, the controller
-measures $y_{t+1}=V(o_{t+1})$, shifts this observation into the memory state
-to obtain $s_{t+1}$, and repeats the candidate evaluation from the updated
-state. This observe--predict--select--execute cycle continues until the
-interaction budget is exhausted.
-
-Importantly, the assumption that a candidate command $c$ is held fixed applies
-only to its hypothetical rollout used for comparison. The executed command
-sequence is receding-horizon: after every real interaction, the controller
-re-observes the system and may select a different command at the next step.
+The controller executes only $c_t^\star$: it sends
+$u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^\star)$, measures $y_{t+1}=V(o_{t+1})$
+from the actual response, shifts it into the memory state, and repeats the
+selection from $s_{t+1}$. The held-command assumption applies only inside a
+candidate's hypothetical rollout; the executed sequence is receding-horizon
+and may change command at every step.
 
 
 \subsection{Why Prediction Accuracy Matters}

@@ -92,3 +92,71 @@ KNOWN, NOT MINE: `latexmk` exits 12 because colleague commit a1eeb79 ("Update Me
 `\begin{algorithmic}` in 03_method.tex and this TeX installation has no algorithmic.sty (main.tex
 comment lines 22-24). The PDF still builds; Algorithm 1 renders broken until that is resolved.
 Not committed to git (user did not ask).
+
+## Introduction rewritten (2026-09-21, fable session)
+
+Plan: `claude/intro_and_related_work_plan_2026-09-21.md` (project doc). `sections/01_introduction.tex`
+rewritten in place (CP1 text backed up outside the repo); five paragraphs, 1077 words, spans p.1
+line 17 to p.2 line 90 (about 1.37 pages with the abstract still TODO). What changed against CP1:
+
+- P1: phenomenon recast from "drift" to carry-over / inertia, matching 04b + 04b_ablation (the
+  memory gain is mostly a per-item level). Overshoot example and the untested `prior_4` driver removed
+  (nc_9). One cited sentence on turn-level linear relaxation (Drift No More) motivates linear modeling.
+- P2: now a prior-work paragraph with three bold categories (latent-space controllers /
+  prompt-level remedies / control-theoretic views), each closed by a `\uline{}` gap; the three gaps are
+  access, statefulness, and model. "Every controller" and "overshoots or undershoots" removed (A4
+  ties the equal-cost schedule). `% CITE:` markers only (D7); two CITE-TODO(bib) notes for keys not in
+  main.bib (korda2018koopman, akrout2026distinguishability, dmd2026safety).
+- P3: interaction clock + verifier reading as the only observable, compressed; names the attribute
+  types used (word count, sentence count, readability level, pass flag).
+- P4: "three requirements -> unique structure" argument dropped (contradicted by LSTM win on
+  constraint and by the lifting result). Now mirrors 3.1's Why: three-part intuition, window as
+  dictionary, protocol gives the command a coordinate, precedent (Korda-Mezic) -> fit -> affine LS fit,
+  explicit ARX admission, three things the operator view adds, lifting gloss (D33), controller loop,
+  zero extra queries, replanning, key-insight sentence (c_t != r while the attribute is moving),
+  bound in one sentence, KOMPAS revealed once.
+- P5: contribution 1 = modeling from verifier readings alone with RQ1a + RQ1c evidence; 2 = RQ1b;
+  3 = controller + selection bound + RQ2 numbers (14.5/14.8, 5.2/5.7, all 22 cells), D12 caveat kept.
+
+Gates: `mech_audit.sh` PASS (sentence <=30 words / <=2 turns, equation, em-dash, adverb, cite,
+terminology). `latexmk` exit 0, 13 pages (was 12); PDF at `build/main_introRewrite_2026-09-21.pdf`.
+Not committed. Open for the user: whether to add a half-clause scope on the equal-cost boundary (A4)
+to contribution 3; Related Work (`06_related_work.tex`) still TODO and is the user's to write.
+Follow-up (same session): P1 re-grounded on the tables' attributes (word count, sentence count,
+readability level, sentiment polarity, formatting constraint); persona-drift / attractor-state /
+Drift-No-More-relaxation sentences removed from P1 (no persona line in the paper). P2 item 2 now says
+"multi-turn instability", cites li2024instability + dongre2025driftnomore only. P3 gained one sentence
+on verifier types (counting programs vs rater models). 1078 words, still ~1.35 pages; gates PASS.
+
+## Page budget, class A (lossless) executed (2026-09-21, fable session)
+
+Analysis: `claude/page_budget_analysis_2026-09-21.md` (project doc). ICLR 2027 main text <= 9 pages at
+submission (10 at rebuttal/camera-ready). Before: body ended p.11 line 566 (~10.5 pp with Abstract,
+Conclusion, Related Work still TODO). After A1-A5: body ends p.10 line 526 (~9.7 pp incl. the three
+TODO stubs), i.e. 40 lines / ~0.74 page saved. PDF: `build/main_pageBudgetA_2026-09-21.pdf`.
+
+- A1 `02_problem.tex` 564 -> 416 words: one lead sentence replaces the two per-subsection objective
+  sentences; observability paragraph (D32) cut to one sentence (Intro P3 carries it); r-vs-c_t paragraph
+  cut to two sentences; eq:modeling_objective inlined (A4). Eqs (1)(3) unchanged.
+- A2 `04d_analysis.tex` 355 -> 299 words: bound + cost merged into one Findings paragraph; the
+  command-channel scope moved to NEW `appendix/A7_command_channel.tex` (included in main.tex) with a
+  two-sentence pointer in 4.6. The 38-word Question sentence (pre-existing violation) fixed.
+- A3 `04a_setup.tex` 627 -> 498 words: per-task window/horizon ranges, row counts, trajectory counts,
+  bootstrap resamples, unused-column note, second-backbone note and the reference-frame remark moved to
+  `appendix/A3_window.tex` (was a TODO stub; now carries them plus two TODO(data) tables). eq:skill
+  inlined (A4). The 31-word Joint-2 sentence (pre-existing) split.
+- A4/A5 `03_method.tex` 1304 -> 1166 words: closed-form rollout inlined (eq:closed_form_rollout label
+  gone; nothing referenced it); the two execution/replanning paragraphs of 3.3 merged; the duplicate
+  learned-lifting paragraph of 3.2 removed; the 34-word ARX sentence of 3.1 split; one "directly" adverb
+  removed. Eqs (4)(5)(6)(8)(9) unchanged.
+
+Gates: 01/02/04a/04d/A3/A7 sentence gate PASS. `03_method.tex` still carries 4 pre-existing
+sentence-length violations (lines 8, 11, ~205, ~221: colleague's overview and 3.4 text) and 3
+pre-existing adverb hits ("directly" x2, "approximately"); none introduced here. equation_gate
+reports eq:control_objective / eq:koopman_fit / eq:predictive_control as not in contract.yaml
+equation_lattice: pre-existing label drift from the colleague's method commit, to be reconciled in
+contract.yaml. latexmk exit 0, 0 undefined references, 12 pages total.
+
+Remaining gap: with Abstract (~0.2), Conclusion (~0.25) and Related Work (~0.5) still to write, the
+projected body is ~10.5 pp, i.e. ~1.5 pp over. Next: class B (float heights) and the class-C decisions.
+Not committed.

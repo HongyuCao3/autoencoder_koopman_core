@@ -1,24 +1,21 @@
 % Phase 3 CP3d. Bridge from prediction quality to control quality, plus inference cost.
+% Compressed 2026-09-21 (page budget, item A2): "the bound" and "the cost argument" merged into one
+% Findings paragraph; the command-channel scope moved to Appendix A7 with a two-sentence pointer here.
 \subsection{From Prediction Quality to Control Quality}
 \label{sec:exp_analysis}
 
-\textbf{Question.} Not a further RQ but the link between RQ1 and RQ2: how prediction quality relates to control quality, at what inference cost a candidate command is evaluated, and where on the self-built tasks that link does not carry.
+\textbf{Question.} Not a further RQ but the link between RQ1 and RQ2: how prediction quality relates to control quality, and where on the self-built tasks that link does not carry.
 \textbf{Setup.} Setup follows \S\ref{sec:exp_setup}; the derivation is the selection bound of \S\ref{sec:prediction_control_bound}, not repeated here.
 
-\textbf{Findings, the bound.} The selection bound of \S\ref{sec:prediction_control_bound} explains why more accurate rollouts keep the selected command's cost within twice the best achievable estimation error.  % c9
-This bound is theoretical, not measured, and no new number is reported here.  % c9 strength_basis: theoretical
-It covers one held-command comparison at a single step, and says nothing about the cost of the replanned closed loop.  % c9 notes
-
-\textbf{Findings, the cost argument.} Evaluating a candidate costs one latent propagation and a decode through the closed-form rollout of \S\ref{sec:control_method}, adding no query to the target model.  % c8
+\textbf{Findings, bound and cost.} The selection bound of \S\ref{sec:prediction_control_bound} keeps the cost of the selected command within twice the estimation error of the best candidate.  % c9
+It is theoretical, not measured, and it covers one held-command comparison at a single step rather than the replanned closed loop.  % c9 strength_basis: theoretical; c9 notes
+Evaluating a candidate costs one linear propagation and a readout through the closed-form rollout of \S\ref{sec:control_method}, adding no query to the target model.  % c8
 The driver is that the affine transition and the scalar command column collapse an $h$-step lookahead into a matrix power.  % m2
-This is a structural property of the model and needs no measurement.  % c8 notes
 
 \textbf{Cross-check, the equal-cost boundary.} On the four self-built behavioral tasks, the closed loop ties the best equal-cost fixed schedule, with per-task numbers in Appendix~\ref{app:A4_equal_cost}.  % nc_2
 On those four tasks the instruction's effect depends little on when it is issued, which leaves planning almost nothing to exploit.  % nc_2
 
-\textbf{Cross-check, the command-channel scope.} This command-channel scope belongs only here: on four of the seven modeling columns the applied command equals the tracking error, an exact affine function of the memory state.  % m5, updated 2026-09-19
-The prediction design cannot estimate an independent action effect on those four columns.  % nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110
-On the remaining three columns, defense, constraint and CEFR, the paired difference is +0.0121, +0.0015 and +0.0061, with intervals containing zero.  % contrasts.ours_minus_memory_no_action defense=0.0121 (n_main_149), constraint=0.0015 (n_main_133), tsar_cefr=0.0061 (n_main_181)
-This is a property of how those trajectories were collected, not a result about the controller.  % m5 notes
+\textbf{Cross-check, the command-channel scope.} On four of the seven modeling columns the applied command is an exact affine function of the memory state, so the prediction design cannot estimate an independent action effect there.  % m5; nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110
+Appendix~\ref{app:A7_command_channel} reports the three columns where it can, all with intervals containing zero; this is a property of how the trajectories were collected, not a result about the controller.  % n_main_149 n_main_133 n_main_181; m5 notes
 
 Combined, \uline{the selection bound links prediction error to the quality of the command selected at a single step, while candidate evaluation adds no target-model queries. The equal-cost and command-channel cross-checks delimit the conditions under which the predictive gains studied in RQ1 can translate into the control gains studied in RQ2.}
