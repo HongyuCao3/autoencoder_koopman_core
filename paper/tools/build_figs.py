@@ -133,7 +133,7 @@ def fig_memory(rows, report):
     ]
     used_depth, used_item = {}, {}
     fig, (ax, ax2, ax3) = plt.subplots(
-        1, 3, figsize=(5.5, 2.15), gridspec_kw={"width_ratios": [1.55, 0.95, 2.05]})
+        1, 3, figsize=(5.4, 1.7), gridspec_kw={"width_ratios": [1.55, 0.95, 2.05]})
 
     # (a) depth sweep. Filled marker = the paired gain over one reading has a 95% interval
     # excluding zero; hollow = it contains zero. The same rule holds in (b) and (c).
@@ -281,7 +281,7 @@ def binned_mean(xs, ys, edges):
 def fig_two_futures(report):
     tasks = ["sentence_length_t10", "vector_count_stage2_t10",
              "vector_count_stage1_t10", "sentiment_t5"]
-    fig, axes = plt.subplots(1, 4, figsize=(5.5, 1.8), sharey=False)
+    fig, axes = plt.subplots(1, 4, figsize=(5.4, 1.45), sharey=False)
     ids = {}
     for ax, task in zip(axes, tasks):
         grouped, sha, rel = trajectories(task)
@@ -314,6 +314,8 @@ def fig_two_futures(report):
                     markersize=3.2, zorder=3,
                     label="previous step up" if colour == PALETTE[0] else "previous step down")
         style_axes(ax)
+        for lbl in ax.get_yticklabels():
+            lbl.set_rotation(45); lbl.set_ha("right"); lbl.set_rotation_mode("anchor")
         ax.set_title(NAMES[task], pad=3)
         ax.set_xlabel("reading $y_t$")
         gap = (sum(dn_y) / len(dn_y)) - (sum(up_y) / len(up_y))
@@ -325,8 +327,8 @@ def fig_two_futures(report):
     axes[0].set_ylabel("next change $y_{t+1}-y_t$")
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, frameon=False, ncol=2, loc="upper center",
-               bbox_to_anchor=(0.5, 1.09), handlelength=1.6, columnspacing=1.6)
-    fig.tight_layout(pad=0.4)
+               bbox_to_anchor=(0.5, 1.11), handlelength=1.6, columnspacing=1.6)
+    fig.tight_layout(pad=0.4, w_pad=0.7)
     out = os.path.join(FIGS, "fig_two_futures.pdf")
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
     report["fig_two_futures"] = {
@@ -354,8 +356,11 @@ DIM_MARKER = {1: "o", 2: "s", 3: "D"}
 def fig_mechanism(rows, report):
     """m5 and m4 in one row: the command channel on two tasks, then the cost of a lifting."""
     by = {r["id"]: r for r in rows}
-    fig, (ax1, ax2, ax3) = plt.subplots(
-        1, 3, figsize=(5.5, 1.95), gridspec_kw={"width_ratios": [1.25, 1.25, 1.55]})
+    # 4-column grid with a blank spacer (col 2) between (b) and (c): panel (c)'s rotated
+    # yticklabels need a wide gutter to its left, while (a)-(b) sit close together.
+    fig = plt.figure(figsize=(6.1, 1.05))
+    gs = fig.add_gridspec(1, 4, width_ratios=[1.55, 1.55, 0.85, 1.3], wspace=0.12)
+    ax1 = fig.add_subplot(gs[0, 0]); ax2 = fig.add_subplot(gs[0, 1]); ax3 = fig.add_subplot(gs[0, 3])
 
     # (a), (b): the applied command against the tracking error, one panel per task.
     chan = {}
@@ -405,7 +410,8 @@ def fig_mechanism(rows, report):
                      "readout_dim": dim, "interval_excludes_zero": bool(excl),
                      "status": r.get("status")}
     ax3.axvline(0, color=MUTED, linewidth=0.7, zorder=1)
-    ax3.set_yticks(ticks); ax3.set_yticklabels(labels)
+    ax3.set_yticks(ticks)
+    ax3.set_yticklabels(labels, rotation=45, ha="right", rotation_mode="anchor")
     ax3.set_ylim(-0.7, len(ordered) - 0.3)
     for side in ("top", "right"):
         ax3.spines[side].set_visible(False)
@@ -414,7 +420,7 @@ def fig_mechanism(rows, report):
     ax3.set_title("(c) Cost of a learned lifting", loc="left", fontsize=7.5)
     ax3.set_xlabel(r"$\Delta\,\mathrm{Skill}_H$")
 
-    fig.tight_layout(pad=0.4, w_pad=1.1)
+    fig.tight_layout(pad=0.4, w_pad=0.3)
     out = os.path.join(FIGS, "fig_mechanism.pdf")
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
     report["fig_mechanism"] = {
