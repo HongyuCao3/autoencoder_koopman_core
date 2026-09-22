@@ -7,48 +7,37 @@
 % belongs in a comparison with Table 1 (.claude/global.md -> report caliber).
 % SCOPE: this subsection adds figures and text. It changes no table, no claim count and no
 % other subsection (user ruling 2026-09-20).
+% 2026-09-21 (experiments_trim_analysis): reading rules returned to the two captions; per-mark values that the
+% figures carry removed from the prose; the command-channel collection counts moved to App. A7.
 \subsection{Mechanisms Read Off the Data}
 \label{sec:exp_mechanism}
 
-\textbf{Question.} Not a further research question but a display: \S\ref{sec:exp_prediction} and \S\ref{sec:exp_analysis} argue three mechanisms from fitted scores, and this subsection shows each one on the recorded readings.
-\textbf{Setup.} Figure~\ref{fig:two_futures} and panels (a) and (b) of Figure~\ref{fig:mechanism} read the released trajectory files, for four and for two Table~\ref{tab:prediction} tasks.
-Both describe collected data rather than model skill, so no value in them is comparable with a skill score.
-Figure~\ref{fig:mechanism}(c) reads the paired contrasts of Table~\ref{tab:prediction} row 5.
-In panels (a) and (b) colour marks the target and repeats the vertical position, which is the point.  % moved out of the former Figure 5 caption
-In panel (c) rows are grouped by readout dimension, and the marker shape repeats that grouping.  % moved out of the former Figure 6 caption
-A circle marks the five one-dimensional readouts, a square the two-dimensional one and a diamond the three-dimensional one.  % moved out of the former Figure 6 caption
-A filled marker there means the 95\% interval excludes zero, and the dagger marks a caveated entry.  % moved out of the former Figure 6 caption
+\textbf{Question.} Not a further RQ but a display: \S\ref{sec:exp_prediction} argues two mechanisms from fitted scores, and this subsection shows each on the recorded readings.
+\textbf{Setup.} Figure~\ref{fig:two_futures} and Figure~\ref{fig:mechanism}(a,b) read the released trajectory files and describe collected data, not model skill, so no value in them is comparable with a skill score. Figure~\ref{fig:mechanism}(c) reads the paired contrasts of Table~\ref{tab:prediction}.  % CALIBER; reading rules returned to the captions 2026-09-21
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_two_futures.pdf}
-\caption{One reading is consistent with two opposite next steps. For each task, the next change against the current reading, split by the direction of the step before it.}
+\caption{One reading is consistent with two opposite next steps. For each task, the next change against the current reading, split by the direction of the step before it; faint marks are transitions and each line is the mean of its group in eight equal-width bins. Transitions whose previous step was flat carry no direction and are dropped, which removes 7\% of transitions on sentiment and up to 66\% on Joint-2.}  % figs/_fig_report.json fig_two_futures n_flat_dropped over n_up+n_down
 \label{fig:two_futures}
 \end{figure}
 
-\textbf{Findings, why a window helps.} Figure~\ref{fig:two_futures} splits each reading by the direction of the step before it.
-Faint marks are transitions, and each line is the mean of its group in eight equal-width bins.  % moved out of the Figure 3 caption
-A transition whose previous step was flat carries no direction and is dropped.  % moved out of the Figure 3 caption
-At a fixed reading the next change differs with that direction on all four tasks, by +0.100 on Joint-3, +0.070 on Joint-2, +0.058 on sentiment and +0.025 on sentence length.  % m1; figs/_fig_report.json fig_two_futures separation_down_minus_up
-The share of transitions dropped for a flat previous step runs from 7\% on sentiment to 66\% on Joint-2, so the display covers a minority of Joint-2 and Joint-3 transitions.  % figs/_fig_report.json n_flat_dropped over n_up+n_down+n_flat_dropped
-The separation does not rank the tasks the way the memory gain does: sentence length carries the largest gain in Table~\ref{tab:prediction} and the smallest separation here.  % n_main_013 (+0.603) vs the +0.025 above
+\textbf{Findings, why a window helps.} At a fixed reading the next change differs with the direction of the previous step on all four tasks (Figure~\ref{fig:two_futures}).  % m1; figs/_fig_report.json fig_two_futures separations: Joint-3 +0.100, Joint-2 +0.070, sentiment +0.058, sentence length +0.025 (shown in the figure)
+The separation does not rank the tasks the way the memory gain does: sentence length carries the largest gain in Table~\ref{tab:prediction} and the smallest separation here.  % n_main_013 (+0.603) vs +0.025
 Read with \S\ref{sec:exp_memory}, that ordering points at the per-item level rather than the turn-to-turn trend as the larger part of what the window buys.  % m6
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_mechanism.pdf}
-\caption{What the command channel carries, and what a learned lifting costs. (a) and (b) Applied command against tracking error, on the two Table~\ref{tab:prediction} tasks that log a per-turn command. (c) Paired $\mathrm{Skill}_H$ contrast of the linear case over the learned lifting, on all seven.}
+\caption{What the command channel carries, and what a learned lifting costs. (a) and (b) Applied command against tracking error, on the two Table~\ref{tab:prediction} tasks that log a per-turn command; colour marks the target and repeats the vertical position, which is the point. (c) Paired $\mathrm{Skill}_H$ contrast of the linear case over the learned lifting, on all seven tasks, grouped by readout dimension: a circle marks the five one-dimensional readouts, a square the two-dimensional one and a diamond the three-dimensional one. A filled marker means the 95\% interval excludes zero; the dagger marks a caveated entry.}
 \label{fig:mechanism}
 \end{figure}
 
-\textbf{Findings, what the command channel carries.} On both tasks the applied command takes the value of the target on every recorded transition, 2268 of 2268 on sentence length and 240 of 240 on sentiment.  % m5; figs/_fig_report.json fig_mechanism sources n_command_equals_target
-The tracking error spans $[-0.40, +0.88]$ on sentence length across those same transitions, so the command holds its level over the full range of the error.  % figs/_fig_report.json fig_mechanism sources
-This is the scope statement of \S\ref{sec:exp_analysis} shown on the collection log rather than inferred from a rank test.  % nc_1; nc_8
-The two joint tasks record no per-turn scalar command, and their channel was checked by the rank test that subsection cites.  % m5 notes
+\textbf{Findings, what the command channel carries.} In Figure~\ref{fig:mechanism}(a,b) the applied command holds the value of the target across the full range of the tracking error, on every recorded transition of both tasks.  % m5; 2268/2268 sentence length, 240/240 sentiment; error span [-0.40, +0.88]; counts moved to App. A7 on 2026-09-21
+This is the collection property behind the command-channel scope of \S\ref{sec:exp_analysis} and Appendix~\ref{app:A7_command_channel}.  % nc_1; nc_8
 
-\textbf{Findings, what a lifting has to find.} The cost of a learned lifting concentrates on the one-dimensional readouts, at +0.599 on CEFR, +0.101 on sentiment and +0.048 on constraint.  % c2; n_main_183 n_main_111 n_main_135
-The two multi-dimensional readouts carry +0.014 on Joint-2 and +0.005 on Joint-3, the two smallest entries in the figure.  % n_main_031 n_main_047
+\textbf{Findings, what a lifting has to find.} The cost of a learned lifting concentrates on the one-dimensional readouts and is close to zero on the two multi-dimensional ones (Figure~\ref{fig:mechanism}c).  % c2; n_main_183 n_main_111 n_main_135 (one-dimensional: +0.599, +0.101, +0.048); n_main_031 n_main_047 (multi-dimensional: +0.014, +0.005)
 The cost does not fall with the number of trajectories: the largest sits on the task fit on 100 trajectories and the smallest on the task fit on 90.  % n_main_183 (n=100) vs n_main_047 (n=90)
-The driver is that a one-dimensional readout leaves a lifting little structure to expose, which is the part of the mechanism these seven columns support.  % m4
+The driver is that a one-dimensional readout leaves a lifting little structure to expose, which is the part of the mechanism these seven columns support.  % m4; this is the single statement of the lifting driver (removed from 4.2 on 2026-09-21)
 
-Together, \uline{the window separates two opposite next steps at one reading, and the cost of a lifting tracks the dimension of the readout rather than the amount of data. The command channel holds its level over the full range of the tracking error, which is why this design cannot measure an action effect.}
+Together, \uline{the window separates two opposite next steps at one reading, and the cost of a lifting tracks the dimension of the readout rather than the amount of data.}

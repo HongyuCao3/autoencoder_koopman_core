@@ -14,9 +14,9 @@ The driver is that scoring happens on a candidate's predicted trajectory, not it
 This lets the controller pick a command that differs from the target while the attribute is still moving.  % m3
 
 \textbf{Findings, gain over the white-box controllers.} The same controller exceeds the stronger white-box baseline, RE-Control, by +5.2 points on Qwen3-4B and +5.7 on Qwen3-8B, again as point estimates with no interval.  % c6; control_deltas: Qwen3-4B/Koopman-RE-Control=5.25, Qwen3-8B/Koopman-RE-Control=5.65
-Its smallest per-subtask margin is +2.4 on Qwen3-4B and +2.7 on Qwen3-8B, both on the IFBench under-word-count subtask.  % c6 notes; tab_control UWC cells (n_bench_013 n_bench_035; n_bench_057 n_bench_079)
+% smallest per-subtask margin (+2.4 / +2.7, IFBench UWC; n_bench_013 n_bench_035 n_bench_057 n_bench_079) removed from prose 2026-09-21: table-readable
 The access requirement is uneven, and it is uneven against us: RE-Control reads the model's activations, while the predictive controller sees only text.  % choice_3 notes
-Across the two models and eleven subtasks, the controller ranks best in all twenty-two cells, reported as a count rather than a significance claim.  % c7; tab_control all-cells (n_bench_012 n_bench_022 n_bench_056 n_bench_066)
-The margin is largest where the constraint is hardest to satisfy in one shot.  % c7 driver_keyword
+% c7 (best in all 22 cells; n_bench_012 n_bench_022 n_bench_056 n_bench_066) now stated only in the underlined conclusion; the
+% "hardest to satisfy in one shot" sentence removed 2026-09-21: no definition or number supported it.
 
-Taken together, \uline{predictive control raises constraint satisfaction over the uncontrolled baseline in all twenty-two model-by-subtask cells, answering RQ2a yes, and over both white-box controllers in the same twenty-two cells at a weaker access requirement, answering RQ2b yes.}
+Taken together, \uline{predictive control raises constraint satisfaction over the uncontrolled baseline in all twenty-two model-by-subtask cells, a count rather than a significance claim, which answers RQ2a yes. It exceeds both white-box controllers in the same twenty-two cells at a weaker access requirement, which answers RQ2b yes.}

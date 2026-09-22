@@ -160,3 +160,25 @@ contract.yaml. latexmk exit 0, 0 undefined references, 12 pages total.
 Remaining gap: with Abstract (~0.2), Conclusion (~0.25) and Related Work (~0.5) still to write, the
 projected body is ~10.5 pp, i.e. ~1.5 pp over. Next: class B (float heights) and the class-C decisions.
 Not committed.
+
+## Experiments trim executed (2026-09-21, fable session)
+
+Plan: `claude/experiments_trim_analysis_2026-09-21.md` (project doc). Rule applied: a number stays in
+prose only if it is a claim headline, is not readable from the table/figure, or is a caveat; reading
+rules go back to captions; collection properties go to the appendix. No table or figure touched.
+
+| file | words | what moved |
+|---|---|---|
+| 04_experiments (lead) | 176 -> 116 | sub-question glosses cut to noun phrases |
+| 04b_prediction | 338 -> 261 | column lists removed; CEFR +0.599 now via Fig. 4(c); LSTM two sentences merged; lifting driver moved to 4.4 |
+| 04b_ablation | 541 -> 431 | filled/hollow rule and panel-(c) definitions back in the Fig. 2 caption; per-task depth values, remainder values, the "Joint-2 hollow" sentence and the duplicate closing sentence removed; +0.603 -> +0.109 caliber contrast moved to App. A3 |
+| 04b_mechanism | 646 -> 471 | five reading-rule sentences back in the Fig. 3 / Fig. 4 captions (reverses eea9f36's move); Fig. 3 separations and Fig. 4(c) costs stated as trends; command-channel collection counts (2268/2268, 240/240, error span) moved to App. A7; uline shortened |
+| 04c_control | 266 -> 219 | smallest-margin sentence and the unsupported "hardest to satisfy in one shot" sentence removed; the 22-cell count now lives only in the uline |
+
+Evidence ids kept as line-end comments wherever a number left the prose. Gates: all touched files
+PASS (02_problem still reports the pre-existing eq:control_objective contract-label drift).
+Body now ends p.10 line ~503 (was 526 after class A, 566 before): -23 lines this pass, -63 in total.
+Body ~9.3 pp incl. the Abstract / Conclusion / Related Work stubs; projected ~10.2 pp once they are
+written, so ~1.2 pp still over the 9-page limit. Next levers: class B (float heights, ~0.25),
+Related Work at 0.5 pp, Intro back to ~1.0 pp (~0.3), and the 4 pre-existing long sentences in
+03_method. PDF: `build/main_expTrim_2026-09-21.pdf`. Not committed.

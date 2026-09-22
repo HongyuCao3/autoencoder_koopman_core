@@ -17,18 +17,18 @@ additional query to it. Figure~\ref{fig:method} summarizes this pipeline.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\textwidth]{figs/method.pdf}
+    \includegraphics[width=\textwidth]{figs/MethodCropped.pdf}
     \caption{
     Overview of KOMPAS.
-    Left: a scalar command $c_t$ is converted by a fixed prompting protocol
-    into an instruction $u_t$ for the frozen LLM. The completed response is
-    mapped by a task-specific measurement function $V$ to the controlled
-    attribute $y_{t+1}$, while recent measurements form the state of an
-    affine Koopman dynamics model.
-    Right: candidate commands are rolled forward through the learned dynamics,
-    their predicted attribute trajectories are scored against the reference
-    $r$, and the lowest-cost command is executed. The dynamics model is fit
-    offline from recorded interactions.
+    Top, offline identification: recorded prompt--response trajectories are
+    mapped by the task-specific measurement function $V$ to attribute readings,
+    a sliding window of readings forms the memory state $s_t$, and the affine
+    Koopman dynamics model is fit by least squares.
+    Bottom, online closed loop: a scalar command $c_t$ is converted by a fixed
+    prompting protocol into an instruction $u_t$ for the frozen LLM; candidate
+    commands are rolled forward through the learned dynamics, scored against the
+    reference $r$, and the lowest-cost command is executed. The next response
+    is measured and shifted into the state before the selection repeats.
     }
     \label{fig:method}
 \end{figure}
