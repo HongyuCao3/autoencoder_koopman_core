@@ -3,6 +3,7 @@
 % the two-level RQ tree of 04_experiments.tex. Five paragraphs: P1 phenomenon, P2 prior work
 % (three gaps: access / statefulness / model), P3 clock and state, P4 perspective, P5 contributions.
 % Mapping: contribution 1 <-> RQ1a+1c, contribution 2 <-> RQ1b, contribution 3 <-> RQ2.
+% Trimmed 2026-09-22 (user ruling): P3 removed, Method details dropped from P4, contributions compressed.
 % Constraints: <=30 words and <=2 logical turns per sentence (D8); no \cite (D7, % CITE markers);
 % zero forward references; KOMPAS revealed once; numbers carry evidence ids at line end.
 \section{Introduction}
@@ -13,8 +14,7 @@ The attribute may be a word count, a sentence count, a readability level, a sent
 What one reply does on such an attribute carries into the next reply, instead of being drawn fresh at every turn.
 Instruction following in particular is measured to decay over a dialogue, so a constraint met early is not met for free later.
 % CITE: li2024instability
-Deployments need to hold such an attribute at a target, such as a length budget or a reading level, across every turn.
-Holding a target requires steering, and inertia complicates steering.
+Deployments need to hold such an attribute at a target, such as a length budget or a reading level, across every turn, and inertia complicates that.
 The same current reading can sit on a rising path or on a falling path, and the next reply differs between the two.
 A controller that reads one reply at a time cannot tell those two futures apart.
 
@@ -23,53 +23,35 @@ Prior literature partially addresses this control problem along three lines.\\
 Activation steering and its feedback variants, control barrier functions, and latent-space predictive control all act inside the network.
 They adjust activations, logits, or hidden states at every generated token.
 % CITE: nguyen2026pidsteering, miyaoka2024cbfllm, tran2026barriersteer, cheng2024liseco, skifstad2026alqr, kong2024recontrol, wang2026tmpc, hu2025nbfllm
-However, \uline{each of them needs white-box access to the target model and takes one token as its clock.}
-The lever a deployment holds is one instruction per turn against a black-box API.\\
+However, \uline{each needs white-box access and a token clock, while a deployment holds one instruction per turn against a black-box API.}\\
 \textbf{2) Prompt-level remedies.}
 Work on multi-turn instability counters it at the prompt: a system prompt written once, a reminder on a fixed schedule, or a template fired by a per-turn detector.
 % CITE: li2024instability, dongre2025driftnomore
-However, \uline{these remedies are stateless: none of them predicts what the next instruction will do to the next reply.}
-The instruction is chosen from the current reply alone, and the two futures above receive the same instruction.\\
+However, \uline{these remedies are stateless: none predicts what the next instruction will do, so the two futures above receive the same instruction.}\\
 \textbf{3) Control-theoretic views of language models.}
-A third line writes prompting as a control problem and studies reachability, controllability, and steerability.
-Related work fits linear dynamics to token or embedding trajectories for analysis and for safety classification.
+A third line writes prompting as a control problem and studies reachability and steerability, or fits linear dynamics to token and embedding trajectories.
 % CITE: bhargava2023magicword, cheng2026genctrl, fan2026steerable
-% CITE-TODO(bib): akrout2026distinguishability (arXiv 2607.28667), dmd2026safety (arXiv 2608.19579) for the token/embedding-trajectory sentence
+% CITE-TODO(bib): akrout2026distinguishability (arXiv 2607.28667), dmd2026safety (arXiv 2608.19579) for the token/embedding-trajectory clause
 However, \uline{these results are reachability statements, theoretical bounds, or detectors at the token level; none identifies a model that maps one instruction to the next reply's attribute.}
 What is missing is a dynamics model at the interaction level that uses only what a black-box caller can observe and carries the instruction as an explicit input.
 
-The quantity a controller cares about is a property of a whole reply, not of any token inside it.
-A verifier scores the reply once it is complete, never partway through generation.
-The natural clock of the problem therefore ticks once per exchange.
-Some verifiers are programs that count words or check a format; others are rater models that score a level or a polarity.
-A black-box caller observes nothing else: the verifier's score is the only signal returned, so the state of any model must be built from these scores.
-Controlling a room's temperature needs no model of each air molecule.
-Controlling a reply's attribute needs no model of each token, and no access to the hidden state that produced it.
-
 \textbf{Our Perspective: An Interaction-Level Koopman Perspective.}
-We treat one prompt--response exchange as one step of a controlled dynamical system.
+We treat one prompt--response exchange as one step of a controlled dynamical system, whose only observable is the verifier's score of the completed reply.
 The intuition is that the next reading decomposes into three parts: what recent history carries forward, what the current instruction pushes, and a constant offset.
 The state is the window of the last few readings, so a reading on a rising path and the same reading on a falling path become two different states.
-A fixed prompting protocol turns a scalar command into the instruction text, which gives the instruction a coordinate the model can read.
 Linear predictors with inputs, fit on observables and paired with model predictive control, are an established route for nonlinear systems that must be planned over in real time.
 % CITE: korda2018koopman  % TODO(bib): Korda & Mezic, Automatica 2018, not yet in main.bib
-The same route fits this setting, since a window of verifier readings is a dictionary of observables and the command is the input.
-On this window we fit an affine one-step model by least squares on recorded exchanges.
-In its linear form this model is a delay regression with an exogenous input, and we do not claim otherwise.
-The operator view adds three things. The window is one choice of dictionary and a learned lifting is another; a horizon of steps has a closed form; predictive control applies unchanged.
-A lifting maps the window through a learned feature map and applies the same affine step there.
-We report the identity lifting throughout and keep a learned lifting as a comparison.
+The same route fits this setting, since a window of verifier readings is a dictionary of observables and the instruction, encoded as a scalar command, is the input.
+In its linear form the resulting model is a delay regression with an exogenous input, and we do not claim otherwise. The operator view adds a swappable dictionary, a closed-form horizon, and an unchanged control toolchain.
 The controller rolls every candidate command forward through this model, scores the predicted trajectory against the target, executes the best command, and replans after the next reply.
 Scoring a candidate costs a matrix product and a readout, with no extra query to the language model.
-Only the first command is executed, and the next selection starts from the observed reply rather than from a predicted one.
 \textbf{The key insight is that scoring on the predicted trajectory lets the controller send a command that differs from the target while the attribute is still moving.}
 A model that predicts well also selects well: the cost of the chosen command exceeds the best available cost by at most a term set by the prediction error.
 This yields \textbf{KO}opman dyna\textbf{M}ics modeling and \textbf{P}redictive control of \textbf{A}ttributes at the prompt \textbf{S}tep, or \textbf{KOMPAS}.
 
 Our contributions are as follows.
 \begin{enumerate}
-  \item We model the multi-turn dynamics of a reply attribute from verifier readings alone, with no access to the model's hidden state. History beyond the current turn improves prediction on four of seven tracked attributes, and most of that gain is a per-item level rather than turn-to-turn dynamics.  % n_main_013 n_main_045 n_main_029 n_main_109 n_main_148 n_main_132 n_main_180 (RQ1a, recount 2026-09-20); c11 n_mech_057 n_mech_058 n_mech_060 n_mech_061 (RQ1c, item-intercept decomposition in 04b_ablation.tex)
-  \item We identify a command-conditioned Koopman model on delay coordinates of that reading, fit by least squares on recorded exchanges. Its linear instance ranks first on four of seven tracked attributes, and a learned lifting beats it on none of them.  % c4 n_main_004 n_main_036 n_main_020 n_main_100 n_main_147 n_main_131 n_main_179  % c2 n_main_010 n_main_042 n_main_026 n_main_106 n_main_145 n_main_129 n_main_177
-  \item We build a predictive controller that scores candidates inside the black box with no extra call to the target model, and we bound its selection error by the prediction error. It raises constraint satisfaction by 14.5 and 14.8 points over the uncontrolled Qwen3-4B and Qwen3-8B. It exceeds the stronger of two white-box latent controllers by 5.2 and 5.7 points on the same two models, and it ranks best in every model-by-subtask cell.  % c9 (selection bound); n_bench_012-022 n_bench_034-044 (Qwen3-4B), Qwen3-8B rows per tab_control.tex; margins per 04c_control.tex
+  \item We model the multi-turn dynamics of a reply attribute from verifier readings alone. History beyond the current turn improves prediction on four of seven tracked attributes, and most of that gain is a per-item level rather than turn-to-turn dynamics.  % n_main_013 n_main_045 n_main_029 n_main_109 n_main_148 n_main_132 n_main_180 (RQ1a); c11 n_mech_057 n_mech_058 n_mech_060 n_mech_061 (RQ1c)
+  \item We identify a command-conditioned Koopman model on delay coordinates of that reading by least squares. Its linear instance ranks first on four of seven tracked attributes, and a learned lifting beats it on none.  % c4 n_main_004 n_main_036 n_main_020 n_main_100 n_main_147 n_main_131 n_main_179  % c2 n_main_010 n_main_042 n_main_026 n_main_106 n_main_145 n_main_129 n_main_177
+  \item We build a black-box predictive controller with no extra call to the target model and bound its selection error by the prediction error. On three public instruction-following benchmarks it raises constraint satisfaction by 14.5 and 14.8 points over uncontrolled Qwen3-4B and Qwen3-8B, and exceeds the stronger of two white-box latent controllers by 5.3 and 5.7 points, as point estimates with no interval.  % c9; n_bench_012-022 n_bench_034-044 (Qwen3-4B), Qwen3-8B rows per tab_control.tex; D12; nc_3; 5.3 = Table 2 Avg 41.4-36.1 (unrounded 5.25), matched to the table 2026-09-22
 \end{enumerate}
-These control numbers are point estimates on three public instruction-following benchmarks, IFBench, IFEval, and COLLIE, with no interval reported.  % D12; nc_3

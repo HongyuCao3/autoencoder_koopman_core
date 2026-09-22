@@ -12,12 +12,12 @@
 \subsection{Mechanisms Read Off the Data}
 \label{sec:exp_mechanism}
 
-\textbf{Question.} Not a further RQ but a display: \S\ref{sec:exp_prediction} argues two mechanisms from fitted scores, and this subsection shows each on the recorded readings.
-\textbf{Setup.} Figure~\ref{fig:two_futures} and Figure~\ref{fig:mechanism}(a,b) read the released trajectory files and describe collected data, not model skill, so no value in them is comparable with a skill score. Figure~\ref{fig:mechanism}(c) reads the paired contrasts of Table~\ref{tab:prediction}.  % CALIBER; reading rules returned to the captions 2026-09-21
+\textbf{Question.} Not a further RQ but a display: two mechanisms that \S\ref{sec:exp_prediction} argues from fitted scores, and one collection property behind \S\ref{sec:exp_analysis}, shown on the recorded readings.
+\textbf{Setup.} Figure~\ref{fig:two_futures} and Figure~\ref{fig:mechanism}(a,b) describe collected readings, not model skill, so no value in them is comparable with a skill score; Figure~\ref{fig:mechanism}(c) reads the paired contrasts of Table~\ref{tab:prediction}.  % CALIBER; reading rules returned to the captions 2026-09-21
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figs/fig_two_futures.pdf}
+\includegraphics[width=0.92\linewidth]{figs/fig_two_futures.pdf}
 \caption{One reading is consistent with two opposite next steps. For each task, the next change against the current reading, split by the direction of the step before it; faint marks are transitions and each line is the mean of its group in eight equal-width bins. Transitions whose previous step was flat carry no direction and are dropped, which removes 7\% of transitions on sentiment and up to 66\% on Joint-2.}  % figs/_fig_report.json fig_two_futures n_flat_dropped over n_up+n_down
 \label{fig:two_futures}
 \end{figure}
@@ -28,7 +28,7 @@ Read with \S\ref{sec:exp_memory}, that ordering points at the per-item level rat
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figs/fig_mechanism.pdf}
+\includegraphics[width=0.92\linewidth]{figs/fig_mechanism.pdf}
 \caption{What the command channel carries, and what a learned lifting costs. (a) and (b) Applied command against tracking error, on the two Table~\ref{tab:prediction} tasks that log a per-turn command; colour marks the target and repeats the vertical position, which is the point. (c) Paired $\mathrm{Skill}_H$ contrast of the linear case over the learned lifting, on all seven tasks, grouped by readout dimension: a circle marks the five one-dimensional readouts, a square the two-dimensional one and a diamond the three-dimensional one. A filled marker means the 95\% interval excludes zero; the dagger marks a caveated entry.}
 \label{fig:mechanism}
 \end{figure}

@@ -13,7 +13,7 @@
 The driver is that scoring happens on a candidate's predicted trajectory, not its immediate effect.  % m3
 This lets the controller pick a command that differs from the target while the attribute is still moving.  % m3
 
-\textbf{Findings, gain over the white-box controllers.} The same controller exceeds the stronger white-box baseline, RE-Control, by +5.2 points on Qwen3-4B and +5.7 on Qwen3-8B, again as point estimates with no interval.  % c6; control_deltas: Qwen3-4B/Koopman-RE-Control=5.25, Qwen3-8B/Koopman-RE-Control=5.65
+\textbf{Findings, gain over the white-box controllers.} The same controller exceeds the stronger white-box baseline, RE-Control, by +5.3 points on Qwen3-4B and +5.7 on Qwen3-8B, again as point estimates with no interval.  % c6; control_deltas: Qwen3-4B/Koopman-RE-Control=5.25 -> stated as 5.3 to match Table 2's rounded Avg column (41.4-36.1), Qwen3-8B/Koopman-RE-Control=5.65
 % smallest per-subtask margin (+2.4 / +2.7, IFBench UWC; n_bench_013 n_bench_035 n_bench_057 n_bench_079) removed from prose 2026-09-21: table-readable
 The access requirement is uneven, and it is uneven against us: RE-Control reads the model's activations, while the predictive controller sees only text.  % choice_3 notes
 % c7 (best in all 22 cells; n_bench_012 n_bench_022 n_bench_056 n_bench_066) now stated only in the underlined conclusion; the

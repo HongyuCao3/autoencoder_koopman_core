@@ -7,12 +7,12 @@
 \textbf{Question.} Not a further RQ but the link between RQ1 and RQ2: how prediction quality relates to control quality, and where on the self-built tasks that link does not carry.
 \textbf{Setup.} Setup follows \S\ref{sec:exp_setup}; the derivation is the selection bound of \S\ref{sec:prediction_control_bound}, not repeated here.
 
-\textbf{Findings, bound and cost.} The selection bound of \S\ref{sec:prediction_control_bound} keeps the cost of the selected command within twice the estimation error of the best candidate.  % c9
+\textbf{Findings, bound and cost.} The selection bound of \S\ref{sec:prediction_control_bound} keeps the realized cost of the selected command within $2\delta_J$ of the best realized cost, where $\delta_J$ bounds the gap between a candidate's predicted and realized cost.  % c9
 It is theoretical, not measured, and it covers one held-command comparison at a single step rather than the replanned closed loop.  % c9 strength_basis: theoretical; c9 notes
 Evaluating a candidate costs one linear propagation and a readout through the closed-form rollout of \S\ref{sec:control_method}, adding no query to the target model.  % c8
 The driver is that the affine transition and the scalar command column collapse an $h$-step lookahead into a matrix power.  % m2
 
-\textbf{Cross-check, the equal-cost boundary.} On the four self-built behavioral tasks, the closed loop ties the best equal-cost fixed schedule, with per-task numbers in Appendix~\ref{app:A4_equal_cost}.  % nc_2
+\textbf{Cross-check, the equal-cost boundary.} On four additional self-built tasks (Appendix~\ref{app:A4_equal_cost}), the closed loop ties the best equal-cost fixed schedule.  % nc_2; per-task numbers and task definitions in App. A4
 On those four tasks the instruction's effect depends little on when it is issued, which leaves planning almost nothing to exploit.  % nc_2
 
 \textbf{Cross-check, the command-channel scope.} On four of the seven modeling columns the applied command is an exact affine function of the memory state, so the prediction design cannot estimate an independent action effect there.  % m5; nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110

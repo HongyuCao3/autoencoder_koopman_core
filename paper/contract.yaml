@@ -538,6 +538,16 @@ equation_lattice:
                                       # a multi-step quantity rather than a one-step one.
     has_gloss: true
     role: quality_claim
+  - id: eq_control_objective
+    label: "eq:control_objective"
+    operation_name: "horizon sum of squared tracking error between the reference and the realized attribute"
+    rhs_symbols: [s_r, s_y, s_H]
+    in_section: problem
+    has_gloss: true
+    role: definition
+    notes: >-
+      Added 2026-09-22 to record the equation the colleague's 02_problem.tex has carried since D23;
+      the gate had reported its label as missing from this lattice.
   - id: eq_prompt_protocol
     label: "eq:prompt_protocol"
     operation_name: "construction of the prompt from a numerical command and the dialogue"
@@ -570,7 +580,7 @@ equation_lattice:
       D25: the main text states this in s-space only. The general form, with the memory state
       replaced by a learned lifting, is described in words in 3.1 P6 and written out in A1.
   - id: eq_identification
-    label: "eq:identification"
+    label: "eq:koopman_fit"  # label renamed to match 03_method.tex (colleague commit a1eeb79); recorded 2026-09-22
     operation_name: "least-squares fit of the transition, the command column and the bias to recorded one-step transitions"
     rhs_symbols: [s_s, s_c, s_K, s_B, s_b]
     in_section: method
@@ -614,7 +624,7 @@ equation_lattice:
     has_gloss: true
     role: mechanism_probe
   - id: eq_selection
-    label: "eq:selection"
+    label: "eq:predictive_control"  # label renamed to match 03_method.tex (a1eeb79); recorded 2026-09-22
     operation_name: "argmin over candidate commands of a horizon-weighted squared deviation from the target"
     rhs_symbols: [s_w, s_r, s_H, s_Cset, s_Jhat]
     in_section: method

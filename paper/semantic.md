@@ -1,3 +1,6 @@
+<!-- STALE (2026-09-22): this Tier-2 outline is no longer maintained. §Introduction was superseded by the
+2026-09-21 rewrite of 01_introduction.tex; §Method by the colleague's 03_method.tex (a1eeb79) and the
+class-A trims; §Experiments by the 2026-09-21 trim. Kept for provenance of claim ids only. -->
 # Tier 2 — semantic outline
 
 ## §Introduction

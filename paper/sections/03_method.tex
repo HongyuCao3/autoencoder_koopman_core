@@ -1,34 +1,28 @@
+% Trimmed 2026-09-22 (round 2): overview cut to what Intro P4 does not say; lifting paragraph, 3.2 tail and
+% 3.4 opening/closing compressed; the four >30-word sentences split.
 % Compressed 2026-09-21 (page budget, items A4/A5): closed-form rollout inlined; the two
 % execution/replanning paragraphs of 3.3 merged; the duplicate learned-lifting paragraph of 3.2 removed;
 % the ARX sentence of 3.1 split. Equations (4)(5)(6)(8)(9) unchanged.
 \section{Method}
 \label{sec:method}
 
-KOMPAS consists of an offline dynamics model and an online
-receding-horizon controller. Each completed response is mapped to the
-scalar attribute being controlled, recent attribute measurements form a
-finite-memory state, and a command-conditioned Koopman model predicts how
-that state evolves under a prompt instruction. At inference time, the
-controller rolls candidate commands forward through the learned dynamics,
-scores their predicted trajectories against the desired attribute, executes
-the best command, and replans after observing the next response. The frozen
-LLM $p_\theta$ is never updated, and candidate evaluation requires no
-additional query to it. Figure~\ref{fig:method} summarizes this pipeline.
+KOMPAS consists of an offline dynamics model, fit on recorded attribute
+readings, and an online receding-horizon controller that plans in that
+model. The frozen LLM $p_\theta$ is never updated, and candidate evaluation
+requires no additional query to it. Figure~\ref{fig:method} summarizes the
+pipeline; the first three subsections follow it and \S\ref{sec:prediction_control_bound} gives the guarantee.
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=\textwidth]{figs/MethodCropped.pdf}
     \caption{
-    Overview of KOMPAS.
-    Top, offline identification: recorded prompt--response trajectories are
-    mapped by the task-specific measurement function $V$ to attribute readings,
-    a sliding window of readings forms the memory state $s_t$, and the affine
-    Koopman dynamics model is fit by least squares.
-    Bottom, online closed loop: a scalar command $c_t$ is converted by a fixed
-    prompting protocol into an instruction $u_t$ for the frozen LLM; candidate
-    commands are rolled forward through the learned dynamics, scored against the
-    reference $r$, and the lowest-cost command is executed. The next response
-    is measured and shifted into the state before the selection repeats.
+    Overview of KOMPAS. Top, offline identification: recorded trajectories
+    are mapped by the verifier $V$ to readings, a sliding window
+    forms the state $s_t$, and the affine Koopman model is fit by least squares.
+    Bottom, online closed loop: candidate commands $c_t$ are rolled forward
+    through the model, scored against the reference $r$, and the best one is
+    sent through the prompting protocol as $u_t$; the next reading is shifted
+    into the state and the selection repeats.
     }
     \label{fig:method}
 \end{figure}
@@ -37,14 +31,14 @@ additional query to it. Figure~\ref{fig:method} summarizes this pipeline.
 \subsection{Observable-State Koopman Dynamics}
 \label{sec:model}
 
-The controller does not model text directly. Each completed response $o_t$
-is mapped by the task-specific measurement function $V$ from
+The controller does not model text. Each completed response $o_t$
+is mapped by the task-specific verifier $V$ from
 Section~\ref{sec:problem_modeling} to a scalar attribute $y_t=V(o_t)$.
 The particular definition of $V$ depends on the task and is given in the
 experimental setup; the dynamics model uses only the resulting scalar
-measurements.
+readings.
 
-A single measurement generally does not retain enough temporal context to
+A single reading generally does not retain enough temporal context to
 predict the next one. The same value $y_t$, for example, may occur along an
 increasing or decreasing trajectory and therefore lead to different future
 responses. We represent this short-term history with delay coordinates,
@@ -58,13 +52,12 @@ responses. We represent this short-term history with delay coordinates,
     y_t=C s_t,
     \label{eq:memory_state}
 \end{equation}
-where $L\geq 1$ is the number of previous measurements retained and
+where $L\geq 1$ is the number of previous readings retained and
 $C=[1,0,\ldots,0]$ reads the current attribute from the state. We use
-$s_t$ as a finite-memory approximation to the information in the dialogue
-history that is relevant for predicting the attribute; it is not intended
-to reconstruct the full textual state.
+$s_t$ as a finite-memory stand-in for the part of the dialogue history that
+predicts the attribute, not as a reconstruction of the textual state.
 
-The controller acts through a scalar command rather than directly over the
+The controller acts through a scalar command rather than over the
 space of text strings. A fixed prompting protocol maps a command
 $c_t\in\mathcal{C}\subseteq\mathbb{R}$ to the textual instruction
 $u_t=\mathcal{P}(x,\mathcal{H}_t,c_t)$. Thus, after fixing
@@ -92,28 +85,23 @@ affine model
 \end{equation}
 Here $K\in\mathbb{R}^{(L+1)\times(L+1)}$ propagates the memory state,
 $B\in\mathbb{R}^{(L+1)\times 1}$ captures the effect of the command, and
-$b\in\mathbb{R}^{L+1}$ is a bias term. This parameterization deliberately
-shares one transition matrix across commands and lets the command enter
-through a single linear channel. These are modeling choices rather than
-consequences of Koopman linearity, and we do not assume that the frozen LLM
-admits an exact finite-dimensional Koopman representation.
+$b\in\mathbb{R}^{L+1}$ is a bias term. Sharing one transition matrix across
+commands and letting the command enter through one linear channel are
+modeling choices, not consequences of Koopman linearity. We do not assume
+that the frozen LLM admits an exact finite-dimensional Koopman representation.
 
-More generally, Koopman dynamics may be defined on lifted coordinates
-$E_\phi(s_t)$ and decoded back to the measurement space. Our main model uses
-the identity lifting, $E_\phi(s_t)=s_t$, so the learned dynamics operate
-directly on the delay coordinates. We retain a learned lifting as an
-experimental comparison and give its training objective in
-Appendix~\ref{app:A1_estimator}. The reported model is thus also a linear
-controlled regression on delay coordinates. The Koopman formulation places the
-identity and learned dictionaries in one observable-space framework and gives
-closed-form multi-step prediction.
+Koopman dynamics may also be defined on lifted coordinates $E_\phi(s_t)$;
+our main model uses the identity lifting, and a learned lifting is kept as a
+comparison with its objective in Appendix~\ref{app:A1_estimator}. The
+reported model is thus also a delay regression with an exogenous input. The Koopman view places both dictionaries in one framework and
+gives closed-form multi-step prediction.
 
 
 \subsection{Offline System Identification}
 \label{sec:learning}
 
 We fit the dynamics model from recorded interaction trajectories. Sliding a
-window of $L+1$ measurements over a trajectory produces transition tuples
+window of $L+1$ readings over a trajectory produces transition tuples
 $(s_t,c_t,s_{t+1})$, where $c_t$ is the command applied before observing the
 successor state.
 
@@ -129,12 +117,9 @@ identity-lifting model is estimated by least squares,
     \right\|_2^2.
     \label{eq:koopman_fit}
 \end{equation}
-The fit is performed entirely offline and does not modify the parameters
-$\theta$ of the target LLM. The range in which the learned dynamics can be
-trusted is consequently determined by the state--command combinations
-represented in the recorded trajectories. In particular, prediction under a
-new command history relies on generalization beyond the combinations observed
-during training.
+The fit is performed offline and does not modify the parameters $\theta$
+of the target LLM. The learned dynamics can be trusted only on the
+state--command combinations represented in the recorded trajectories.
 
 
 \subsection{Receding-Horizon Prompt Control}
@@ -142,9 +127,8 @@ during training.
 
 At inference time, candidate commands are evaluated in the learned dynamics
 rather than by querying the LLM. Let $\mathcal{C}_t\subseteq\mathcal{C}$ be
-the finite nonempty set of candidate commands available at step $t$.
-For each candidate $c\in\mathcal{C}_t$, we hold that command fixed only
-inside a hypothetical $H$-step rollout initialized from the observed state
+the finite set of candidate commands at step $t$; each $c\in\mathcal{C}_t$
+is held fixed inside a hypothetical $H$-step rollout from the observed state
 $s_t$. The predicted state obeys
 $\widehat{s}_{t|t}(c)=s_t$ and
 $\widehat{s}_{t+h|t}(c)
@@ -161,7 +145,7 @@ call to $p_\theta$.
 Each candidate is scored by the deviation of its predicted trajectory from
 the desired attribute,
 \begin{equation}
-    \widehat J_t(c)
+    \widehat{J}_t(c)
     =
     \sum_{h=1}^{H}
     w_h
@@ -172,13 +156,15 @@ the desired attribute,
     c_t^\star
     \in
     \arg\min_{c\in\mathcal{C}_t}
-    \widehat J_t(c),
+    \widehat{J}_t(c),
     \quad
     w_h\geq 0.
     \label{eq:predictive_control}
 \end{equation}
-Scoring the whole predicted trajectory allows the selected command to differ
-from the reference while the attribute is still moving toward it.
+Here $\widehat{J}_t(c)$ is the predicted cost of holding candidate $c$, $w_h$
+weights the horizon steps, and $c_t^\star$ is the selected command. Scoring the
+whole predicted trajectory allows the selected command to differ from the
+reference while the attribute is still moving toward it.
 
 The controller executes only $c_t^\star$: it sends
 $u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^\star)$, measures $y_{t+1}=V(o_{t+1})$
@@ -192,9 +178,9 @@ and may change command at every step.
 \label{sec:prediction_control_bound}
 
 Predictive control is useful only when ranking candidates under the learned
-model approximately preserves their ranking under the true interaction.
-The following result makes this connection explicit for the held-command
-comparison performed at each control step.
+model preserves their ranking under the true interaction, up to a bounded
+error. The following result states this for the held-command comparison at
+each control step.
 
 For a candidate $c$, let $y_h^c$ denote the realized attribute after
 $h$ further interactions under the same held command, and let
@@ -202,9 +188,9 @@ $J_t(c)=\sum_{h=1}^{H}w_h|y_h^c-r|^2$ be its realized trajectory cost.
 Suppose the one-step state residual along candidate rollouts is bounded by
 $\varepsilon_{\mathrm{dyn}}$, the readout residual is bounded by
 $\varepsilon_{\mathrm{rec}}$, and the readout is Lipschitz on the region
-visited by the rollouts. Then the resulting $h$-step attribute prediction
-error is bounded by some $\Delta_h$, and the command selected by
-Eq.~\eqref{eq:predictive_control} satisfies
+visited by the rollouts. Then the $h$-step prediction error is bounded by
+some $\Delta_h$, and the command selected by Eq.~(\ref{eq:predictive_control})
+satisfies
 \begin{equation}
     J_t(c_t^\star)
     \leq
@@ -217,9 +203,7 @@ where $\delta_J$ is the corresponding bound on the difference between
 predicted and realized candidate costs. Appendix~\ref{app:A6_selection_bound}
 gives the explicit forms of $\Delta_h$ and $\delta_J$ and the proof.
 
-The result is deliberately local: it concerns candidate selection at one
-replanning step and does not assert convergence of the full closed loop.
-Its role is to connect the modeling and control objectives: more accurate
-multi-step rollouts make the command selected from the candidate set closer
-to the best command that could have been chosen under the realized
-trajectory costs.
+The result is local: it concerns candidate selection at one replanning step
+and does not assert convergence of the closed loop. Its role is to link the
+two objectives: more accurate rollouts bring the selected command closer to
+the best command under the realized costs.

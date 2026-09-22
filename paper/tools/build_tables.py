@@ -190,8 +190,10 @@ def build_prediction(grid, columns, label, caption, note_ids=True, header_note=N
     lines.append(r"\label{" + label + "}")
     lines.append(r"\footnotesize")
     # Only stretch a wide table to the text width. A four-column appendix table blown up
-    # to \textwidth reads as a poster, not a table.
-    wide = ncol >= 6
+    # to \textwidth reads as a poster, not a table. 2026-09-22: the eight-column Table 1 at
+    # \footnotesize is narrower than \textwidth, so stretching it only made it taller; the
+    # threshold now leaves it at natural width (page budget, class B).
+    wide = ncol >= 10
     if wide:
         lines.append(r"\resizebox{\textwidth}{!}{")
     lines.append(r"\begin{tabular}{l" + "c" * ncol + "}")
@@ -363,7 +365,7 @@ def main():
 
     pred_tex, pred_report, ranks = build_prediction(
         grid_main, PRED_COLUMNS, "tab:prediction",
-        r"Free-running prediction skill on seven multi-turn tasks. "
+        r"Multi-step prediction skill on seven multi-turn tasks (forecasts from step $t$ only, no reading fed back within the horizon). "  # 2026-09-22: was "Free-running", a term the text never defines
         r"Higher is better. Best per column in bold, second underlined.",
         header_note="MAIN-TEXT TABLE 1 of 2 (modeling line). D18: the main text carries exactly two tables.",
     )

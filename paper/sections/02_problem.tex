@@ -1,3 +1,4 @@
+% Round 2 (2026-09-22): subsection headers replaced by inline bold labels (labels kept for \ref); feasible-set paragraph 3 -> 2 sentences.
 % Compressed 2026-09-21 (page budget, item A1 of claude/page_budget_analysis_2026-09-21.md):
 % the two per-subsection objective sentences merged into one lead; the observability paragraph
 % (D32) reduced to one sentence because Intro P3 now carries the argument; the r-vs-c_t paragraph
@@ -7,9 +8,7 @@
 
 Two objectives share one interaction model: predicting the trajectory of a measured attribute over several exchanges, and driving that attribute to a target through prompt-level commands.
 
-\subsection{Modeling}
-\label{sec:problem_modeling}
-
+\textbf{Modeling.}\label{sec:problem_modeling}
 At interaction step \(t\), a frozen large language model receives a task input, the accumulated dialogue history, and a textual control instruction, and produces the next response. The resulting input--output interaction is
 \begin{equation}
 o_{t+1}\sim
@@ -22,9 +21,7 @@ Here \(x\) denotes the task input, \(p_{\theta}\) the frozen LLM, \(\mathcal{H}_
 
 Control decisions depend on the consequences of an instruction over several future turns. The model is therefore evaluated by its multi-step prediction error \(\ell_h=\bigl(y_{t+h}-\widehat y_{t+h\mid t}\bigr)^2\) for \(h=1,\ldots,H\). Here \(\widehat y_{t+h\mid t}\) is the prediction of the attribute at step \(t+h\) from information available at step \(t\), and \(y_{t+h}\) is the realized measurement. The error should remain small throughout the horizon \(H\), rather than only at the one-step prediction \(h=1\).
 
-\subsection{Control}
-\label{sec:problem_control}
-
+\textbf{Control.}\label{sec:problem_control}
 At each interaction step, the controller selects a scalar command \(c_t\), which determines the textual instruction \(u_t\) applied to the LLM. Over a finite horizon of \(H\) steps, the control objective is
 \begin{equation}
 J_t
@@ -35,6 +32,6 @@ J_t
 \end{equation}
 Here \(r\in\mathbb{R}\) denotes the desired value of the tracked attribute, and \(e_t=r-y_t\) is the corresponding tracking error. Predictive control replaces the future measurements \(y_{t+h}\), which are unavailable at decision time, by their predictions \(\widehat y_{t+h\mid t}\) when selecting the commands.
 
-The controlled quantity is continuous, whereas the experiments report constraint satisfaction. The two views meet in the task-specific feasible set \(\mathcal{Y}\): a response satisfies the constraint when \(y_t\in\mathcal{Y}\), and the reference is chosen such that \(r\in\mathcal{Y}\). Driving \(y_t\) toward \(r\) is therefore the mechanism through which the controller raises the rate of feasible responses.
+The controlled quantity is continuous, whereas the experiments report constraint satisfaction. They meet in the task-specific feasible set \(\mathcal{Y}\): a response is feasible for \(y_t\in\mathcal{Y}\) and the reference satisfies \(r\in\mathcal{Y}\), so driving \(y_t\) toward \(r\) raises the feasible rate.
 
-The reference \(r\) specifies the desired output, whereas the command \(c_t\) is the action the controller encodes as the instruction \(u_t\). A direct target-following controller sets \(c_t=r\); predictive control allows \(c_t\neq r\), which requires a state that retains enough interaction history for multi-step prediction.
+The reference \(r\) is the desired output, whereas the command \(c_t\) is the action encoded as the instruction \(u_t\). A direct target-following controller sets \(c_t=r\); predictive control allows \(c_t\neq r\).

@@ -1,30 +1,43 @@
 # WRITING_STATE
 
-updated: 2026-09-19   by: opus session 01TAse1G
-plan: WRITING_PLAN_2026-09-19.md (v2.1)
-phase: R2 done   checkpoint: CP2-redo   status: awaiting_user_review
-last_commit: (this commit)
-artifacts_ready: contract.yaml (D20 signed; v2.1 revision applied this session, D25-D35),
-  semantic.md §Introduction (approved CP1), §Method (rebuilt for CP2-redo), §Experiments (draft,
-  relabel partly done), sections/01_introduction.tex (contribution 2 split), sections/02_problem.tex
-  (D30 bridge with TODO(data), D32 observability, forward ref to sec:model),
-  sections/02_method.tex (rewritten), sections/appendix/A6_selection_bound.tex (new),
-  sections/appendix/A1_estimator.tex (opening rewritten)
-gates: sentence=pass equation=pass (10 displayed equations in Method) term=pass mech=pass
-  compile=pass (build/main_CP2redo_2026-09-19.pdf, 10 pages; Method spans pages 3-5)
-cold_review: audit/method_T3_redo_2026-09-19.yaml (0 blocker / 2 major / 5 minor; 5 fixed,
-  1 deferred to the user, 1 rejected with a reason)
-user_verdict_on_previous: CP1 approved; CP2 superseded by this rewrite
-next_action: user reviews §3 (and the four subsection titles); then Phase 3 relabel pass and 03a-03d
+updated: 2026-09-22   by: fable session 01Fij5rw
+last_commit: 940c077 (Experiments trim + MethodCropped figure); this commit archives stale plans
+plan: paper/PLAN_finish_2026-09-22.md (steps 1-7 to finish the main text). Background project docs:
+  `claude/page_budget_analysis_2026-09-21.md` (what to cut, classes A/B/C),
+  `claude/experiments_trim_analysis_2026-09-21.md` (done), `claude/intro_and_related_work_plan_2026-09-21.md`
+  (Intro done; Related Work plan for the user). Old plans: `_archive_2026-09-22_plans/`.
+state of sections:
+  abstract.tex            TODO (CP4)
+  01_introduction.tex     rewritten 2026-09-21; trimmed 2026-09-22 to 1.0 pp (P3 removed, Method details out of P4,
+                          contributions compressed; 786 words), gates PASS
+  02_problem.tex          compressed 2026-09-21 (A1) and 2026-09-22 (inline labels, feasible-set paragraph); gates PASS
+  03_method.tex           colleague's version (a1eeb79) + A4/A5 + round-2 trims + MethodCropped figure; 1063 words; gates PASS
+  04_experiments + 04a-04d trimmed 2026-09-21 to trends + insight; gates PASS
+  05_conclusion.tex       TODO (CP4, <=150 words, takeaway-first 6-move)
+  06_related_work.tex     TODO (Phase 5, user writes; four categories, ~0.5 pp)
+  appendix A1, A6, A7     written; A3 carries moved setup details + two TODO(data) tables; A2, A4, A5 TODO
+page budget (ICLR 2027: 9 pp main text at submission):
+  body ends p.9 line ~450 (Conclusion header at 447; ~8.3 pp incl. the three TODO stubs). Round 2 done
+  2026-09-22: Intro to 1.0 pp; Method overview / lifting / 3.2 tail / 3.4 / Fig. 1 caption compressed and
+  the four colleague >30-word sentences split; Problem subsections -> inline bold labels; 04a metric
+  paragraph and 04b setup sentences compressed; Table 1 no longer stretched to \textwidth
+  (build_tables.py threshold ncol>=10); Figs. 2-4 at 0.92\linewidth. Contract: eq labels reconciled
+  (eq:koopman_fit, eq:predictive_control; eq_control_objective added). All section gates PASS.
+  Budget: 9 pp = 486 lines; Abstract (~9) + Conclusion (~7 net) + Related Work at 0.4 pp (~21 net)
+  land at ~487. ZERO margin: write Conclusion <=120 words, RW four categories x two sentences, and
+  tune float/heading spacing with \vspace only if 1-3 lines remain.
+gates: mech_audit.sh per file (see per-section notes above); latexmk exit 0, 12 pages, 0 undefined refs
 open_questions_for_user:
-  (1) the colleague's constraint-satisfaction metric definition is still missing; §2.2's bridge and
-      4.1 P5 carry TODO(data) until it arrives
-  (2) D31, Figure 1 module C, deferred by the user this session. The figure is still the colleague's
-      four-module control pipeline and the image itself contains the words "Test Time", which the
-      term gate cannot see because it is a PNG. Phase R3 has to redraw or relabel it
-  (3) cold review F3: the letter C carries three objects (readout row, command range, candidate set).
-      Renaming touches the colleague's notation, the appendices and the figure, so it was not done
-      unilaterally
+  (1) colleague's constraint-satisfaction metric definition still missing; 04a and A3 carry TODO(data)
+  (2) contract.yaml equation_lattice does not list eq:control_objective / eq:koopman_fit /
+      eq:predictive_control (labels introduced by the colleague's method commit); reconcile
+  (3) the letter C carries three objects (readout row, command range, candidate set); not renamed
+  (4) whether to add a half-clause on the equal-cost boundary (A4) to Intro contribution 3
+  (5) Related Work position: main.tex has Conclusion -> Related Work; the skill recommends the reverse
+
+---
+
+# Session log (newest last)
 
 ## What CP2-redo changed
 
@@ -182,3 +195,27 @@ Body ~9.3 pp incl. the Abstract / Conclusion / Related Work stubs; projected ~10
 written, so ~1.2 pp still over the 9-page limit. Next levers: class B (float heights, ~0.25),
 Related Work at 0.5 pp, Intro back to ~1.0 pp (~0.3), and the 4 pre-existing long sentences in
 03_method. PDF: `build/main_expTrim_2026-09-21.pdf`. Not committed.
+
+## Consistency audit, zero-cost fixes applied (2026-09-22)
+
+Audit: `claude/fulltext_consistency_audit_2026-09-22.md`. Applied (no page cost): 5.2 -> 5.3 vs RE-Control on
+Qwen3-4B (matches Table 2's rounded Avg column; unrounded 5.25 kept in comments) in Intro and 4.5; 4.3
+Setup "which" misattribution fixed; 4.4 Question now "two mechanisms + one collection property"; Method
+overview "first three subsections ... 3.4 gives the guarantee"; 4.6 bound sentence restated with delta_J's
+actual meaning; "four self-built behavioral tasks" -> "four additional self-built tasks (App. A4)";
+co-author / colleague / the authors wording in 4.1 neutralized (metric definition left as TODO(data)
+comment only); Eq.~\eqref -> Eq.~(\ref) in 3.4 and App. A6 ("Eq. equation 7" gone); V called "verifier"
+throughout 03_method and the Fig. 1 caption; "measurement(s)" -> "reading(s)" in 03_method; "linear
+controlled regression" -> "delay regression with an exogenous input"; "encoder and decoder ... identity
+map" -> "identity lifting"; intervals scope "4.2-4.4"; RQ lead now names 4.4; 2.2 r-vs-c_t paragraph
+shortened (the c_t != r insight now appears in Intro, 3.3, 4.5 only); 4.1's App. B sentence corrected
+(A2 = the four small-sample columns incl. sentiment and defense again; build_tables APPENDIX_COLUMNS
+was right, the prose was wrong).
+NOT done (need facts or the figure author): #1 vector attributes in Sec. 2 (check Joint task implementation),
+#8 how each attribute is scored (program vs rater), #12 Fig. 1 selection-criteria box and typos
+("Sliding Widow", "CLOSE LOOP"), App. B/D/E content, App. E unreferenced.
+All section gates PASS. latexmk exit 0, 11 pages, 0 undefined refs; body ends p.9 line ~449.
+PDF: `build/main_consistency_2026-09-22.pdf`. Not committed.
+P1 items closed the same day: Table 1 caption "Free-running" -> "Multi-step prediction skill (forecasts from
+step t only, no reading fed back within the horizon)" via build_tables.py (numbers identical); 4.2 driver
+softened to "a level and, to a lesser degree, a trend" to agree with 4.3/4.4. Body still ends p.9 line ~449.

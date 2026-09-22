@@ -10,13 +10,13 @@
 
 \textbf{Question.} RQ1c, in two parts: how many past readings the state needs, and whether the gain from memory is inter-turn dynamics or a fixed level per prompt item.
 \textbf{Setup.} Tasks, baselines and the skill score follow \S\ref{sec:exp_setup}; both experiments vary one thing in the KOMPAS (linear) row of Table~\ref{tab:prediction}.
-Table~\ref{tab:prediction} fits each row on every transition its state can be formed from. Both experiments here fit every depth on the same transitions, which separates the depth of the state from the size of its training set.  % default vs matched caliber; paper_side_experiments_results.md 1.2; figs/_fig_report.json
+Both experiments fit every depth on the same transitions, which separates the depth of the state from the size of its training set; Table~\ref{tab:prediction} does not.  % default vs matched caliber; paper_side_experiments_results.md 1.2; figs/_fig_report.json
 Under this matched window the Table~\ref{tab:prediction} memory gains shrink, with the two calibers compared in Appendix~\ref{app:A3_window}.  % n_main_013 (+0.603 default) vs n_abl_127 (+0.109 matched); numbers moved to App. A3 on 2026-09-21
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figs/fig_memory.pdf}
-\caption{How deep the memory state has to be, and what its gain decomposes into, both under a matched training window. (a) Gain of a state holding $d$ past readings over a state holding one, on the four tasks whose design allows a sweep. (b) The same gain for one extra reading on the three designs that carry two depths. (c) Per task of Table~\ref{tab:prediction}: the memory gain over Last-turn, the part a per-item intercept recovers, and the remainder beyond that intercept; intercepts are estimated on turns outside the scored window. In every panel a filled marker means the 95\% paired bootstrap interval excludes zero and a hollow marker means it contains zero.}
+\includegraphics[width=0.92\linewidth]{figs/fig_memory.pdf}
+\caption{How deep the memory state has to be, and what its gain decomposes into, both under a matched training window. (a) Gain of a state holding $d$ past readings over a state holding one, on the four tasks whose design allows a sweep. (b) The same gain for one extra reading on the three designs that carry two depths. (c) Per task: the memory gain over Last-turn, the part a per-item intercept recovers, and the remainder; intercepts are estimated on turns outside the scored window. Filled markers: 95\% paired bootstrap interval excludes zero.}
 \label{fig:memory}
 \end{figure}
 

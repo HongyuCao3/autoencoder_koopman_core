@@ -11,7 +11,7 @@
 \textbf{Findings, ranking and history.} The linear special case, KOMPAS (linear), ranks first on four of seven columns and second on the other three.  % c4; ours_best_of_7=4 (n_main_004 n_main_036 n_main_020 n_main_179); ours_second_of_7=3 (n_main_100 n_main_147 n_main_131)
 The driver is that all three second places are close: the linear case trails the top method by no more than 0.034 in point-estimate skill score.  % c4 driver_keyword
 History beyond the current turn beats the current reading on four of seven columns, with paired bootstrap intervals excluding zero; the other three do not separate from zero.  % c1; contrasts.ours_minus_last_turn (n_main_013 n_main_045 n_main_029 n_main_109 n_main_148 n_main_132 n_main_180); exceptions Joint-2, sentiment, defense
-The driver is that the window exposes both level and trend, which a single reading cannot carry.  % m1
+The driver is that the window exposes a level and, to a lesser degree, a trend, which a single reading cannot carry.  % m1; softened 2026-09-22 to match 4.3/4.4 (the larger part of the gain is a per-item level)
 
 \textbf{Findings, lifting and LSTM.} A learned nonlinear lifting never beats the identity lifting with an interval excluding zero, on any of the seven columns; Figure~\ref{fig:mechanism}(c) shows the per-column contrast and \S\ref{sec:exp_mechanism} the reason.  % c2; contrasts.ours_minus_nonlinear (largest gap CEFR +0.599, n_main_183, shown in the figure)
 Against an LSTM sequence baseline, comparisons with intervals excluding zero split three ways: Joint-3 and CEFR favor the linear case, constraint favors the LSTM.  % c3; contrasts.ours_minus_lstm (n_main_048 n_main_182 favor linear; n_main_134 favor LSTM)

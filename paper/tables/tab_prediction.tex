@@ -2,10 +2,9 @@
 % MAIN-TEXT TABLE 1 of 2 (modeling line). D18: the main text carries exactly two tables.
 \begin{table}[t]
 \centering
-\caption{Free-running prediction skill on seven multi-turn tasks. Higher is better. Best per column in bold, second underlined.}
+\caption{Multi-step prediction skill on seven multi-turn tasks (forecasts from step $t$ only, no reading fed back within the horizon). Higher is better. Best per column in bold, second underlined.}
 \label{tab:prediction}
 \footnotesize
-\resizebox{\textwidth}{!}{
 \begin{tabular}{lccccccc}
 \toprule
 Predictor & Sentence len. & Joint-3 & Joint-2 & Sentiment & Defense & Constraint & CEFR \\
@@ -18,5 +17,4 @@ KOMPAS (learned lifting) & 0.752 & 0.821 & 0.627 & 0.396 & 0.021 & 0.471 & -0.03
 KOMPAS (linear) & \textbf{0.769} & \textbf{0.826} & \textbf{0.640} & \underline{0.496} & \underline{0.035} & \underline{0.519} & \textbf{0.567} \\  % n_main_004 n_main_036 n_main_020 n_main_100 n_main_147 n_main_131 n_main_179
 \bottomrule
 \end{tabular}
-}
 \end{table}
