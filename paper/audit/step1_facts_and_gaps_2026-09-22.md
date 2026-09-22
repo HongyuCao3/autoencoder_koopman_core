@@ -100,9 +100,9 @@ $s_t\in\mathbb{R}^{L+1}$、$C=[1,0,\ldots,0]$、$K\in\mathbb{R}^{(L+1)\times(L+1
 
 ### G2（P0）Step 6a 与"main.bib 由用户手工维护"冲突
 
-Step 6a 要求新增 5 个键、修 6 个 `unknown*` 键、合并两条 GenCtrl。核对结果：**缺的是 6 个键，不是 5 个**——
+Step 6a 要求新增 5 个键、修 `unknown*` 键（实为 8 条）、合并两条 GenCtrl。核对结果：**缺的是 6 个键，不是 5 个**——
 `main.bib` 现有 20 个键，确无 `korda2018koopman` / `kong2024recontrol` / `wang2026tmpc` /
-`akrout2026distinguishability` / `dmd2026safety`，**`li2024instability` 也不在**（Step 6a 漏列，它是 Intro P2 的引用之一）；`unknown2024activationtraits` 等 6 个 `unknown*`
+`akrout2026distinguishability` / `dmd2026safety`，**`li2024instability` 也不在**（Step 6a 漏列，它是 Intro P2 的引用之一）；`unknown2024activationtraits` 等 7 个 `unknown*`
 与 `cheng2026genctrl` / `unknown2026genctrl_dup` 都在。
 但 2026-09-17 用户裁决 bib 由本人手工填。**Step 6a 整条应交回用户**；Step 5a（Related Work）按
 `../../.claude/paper.md` 的分层本就是用户的活，会一起停。
@@ -138,3 +138,49 @@ Step 7 的一致性复查应覆盖。
 **未核对**：页预算（body 至 p.9 line ~449 / 上限 486）——需编译才能验，本轮按"不改动"未跑。
 **未取得**：`PLAN_finish` 引用的 `claude/fulltext_consistency_audit_2026-09-22.md` 不在仓库
 （只有编译产物 `build/main_consistency_2026-09-22.pdf`），故"审计标 done 的都已在树上"这句未独立复核。
+
+---
+
+## 七、用户裁决与执行记录（2026-09-22）
+
+三条裁决登记为 `../DECISIONS.md` **D37 / D38 / D39**。本节只记执行状态。
+
+### D37（对应 G1）— defense 列的 caveat 落在附录，**已执行**
+
+正文表 caption 与 §4.2 **不加**，加粗/下划线**保留**；四项（自判 / `n_seed=2` / 重采样单位 = 按攻击 /
+"本设计分辨不出来"）写进 `../sections/appendix/A2_small_columns.tex`。§4.1 已有指向 A2 的句子，
+正文零行数成本。`mech_audit.sh` PASS。
+**这偏离 `../../.claude/global.md` 具名例外的同址条款**，偏离本身记在 D37，不再重新辩论。
+
+### D38（对应 §四）— §4.6 只写三列，**已执行**
+
+`../sections/04d_analysis.tex:15-16` 改为：defense / constraint / CEFR 三列，
+"三列中两列打平、defense 按主口径不如最优等代价固定日程" + 效应量阶梯一句
+（动作本身 0.12–0.14 对重排预算 ≤0.03，`docs/article/CLOSED_LOOP_SYNTHESIS.md` §四）。
+不提 `gsm8k_sharded`。`mech_audit.sh` PASS；`latexmk` exit 0、11 页、0 undefined refs。
+**附录 A4 仍按 `MAIN_TABLE_DESIGN.md` 登记四列**，且 defense 须同时给按攻击与按轨迹两个重采样单位。
+
+### D39（对应 G2）— bib 交回用户，清单如下
+
+agent **不写入任何 bib 条目、不改 `unknown*` 键名、不合并重复条目**。
+`% CITE:` → `\cite` 的转换等 bib 齐了一次性做。
+
+| bib key | 正文引用位置 | 论文 | arXiv |
+|---|---|---|---|
+| `korda2018koopman` | `01_introduction.tex:43` | Korda & Mezić, *Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control*, Automatica 93, 2018 | https://arxiv.org/abs/1611.03537 |
+| `kong2024recontrol` | `04a_setup.tex:27` | Kong et al., *Aligning Large Language Models with Representation Editing: A Control Perspective*, NeurIPS 2024 | https://arxiv.org/abs/2406.05954 |
+| `wang2026tmpc` | `04a_setup.tex:26` | Wang et al., *Test-Time Alignment for Large Language Models via Textual Model Predictive Control*, ICLR 2026 | https://arxiv.org/abs/2502.20795 |
+| `li2024instability` | `01_introduction.tex:16, :29` | Kenneth Li et al., *Measuring and Controlling Instruction (In)Stability in Language Model Dialogs*, COLM 2024 | https://arxiv.org/abs/2402.10962 |
+| `akrout2026distinguishability` | `01_introduction.tex:34` | Akrout & Wilson, *Guarantees on Dynamical System Distinguishability for LLM Token Generation*, 2026 | https://arxiv.org/abs/2607.28667 |
+| `dmd2026safety` | `01_introduction.tex:34` | Akrout, Kotevska & Wilson, *Enforcing LLM Safety through DMD-based Classification of Prompt-Response Embedding Dynamics*, 2026 | https://arxiv.org/abs/2608.19579 |
+
+**两处要你自己判**：
+
+1. `li2024instability` 仓库里只留了键名，没留题名或编号。上表那条是按"Li + 2024 + instability +
+   多轮系统提示漂移"匹配出来的最可能对象，**与正文两处用法吻合但未经你确认**。
+2. `akrout2026distinguishability` / `dmd2026safety` 的编号来自 `01_introduction.tex:34` 的注释，
+   逐条取回核对过，题名与作者如上表。两篇同一作者组。
+
+另外未动：7 个 `unknown*` 占位键（`unknown2024activationtraits` / `unknown2024splitsoftmax` /
+`unknown2025lfsteering` / `unknown2026attractorstates` / `unknown2026nautiluscompass` /
+`unknown2026spasm` / `unknown2026unisteer`）与重复的 `cheng2026genctrl` / `unknown2026genctrl_dup`。

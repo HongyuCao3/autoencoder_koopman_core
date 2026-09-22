@@ -45,6 +45,9 @@
 | D35 | 2026-09-19 | 编号勘误：`WRITING_PLAN_2026-09-19.md` §2.3 说 D22 重号，核对后**不成立**——Problem Formulation 拆分那条现登记为 D23，表里 D22 只出现一次。不做任何改号；本条留作记录，避免下一个会话重新去"修"它。 | 覆盖 v2.1 计划 §2.3 |
 
 | D36 | 2026-09-19 | **待签字。** Fig. 1 放弃 2×2 四模块，改为一张整体图：左半是 Koopman 交换图（下行文本空间的非线性黑箱一步，上行延迟坐标上的线性一步，验证器读数为竖直观测映射，命令 $c_t$ 一格两箭头同时进入 $\mathcal{P}$ 与 $B$），右半是控制（$K^h$ 闭式滚动、候选评分、argmin），$c_t^\star$ 沿底部回路成为下一步命令。学习不占版面（图注一句）；左栏、A 的两趋势小图、lifting 通道不画（D33 由正文白话段满足）。同事 `figs/method.png` 退役进 `_colleague_backup_2026-09-18/`。 | 覆盖 FIG_PLAN v2 的 1/4+3/4 版式与 Q1 的 2×2 裁决；细化 D31 |
+| D37 | 2026-09-22 | Table 1 `defense` 列的同址义务**改落在附录 A2**。用户裁决：正文表的 caption 与 §4.2 正文**都不加** caveat，该列的加粗/下划线**保留**；自判（judge = agent）、`n_seed=2`、重采样单位 = 按攻击、"本设计分辨不出来"四项写进 `sections/appendix/A2_small_columns.tex`（§4.1 已有指向 A2 的句子，正文零行数成本）。**本条偏离 `.claude/global.md` 具名例外的"每一处引用同址带局限句 + 标注 judge_kind=self"与 `docs/article/MAIN_TABLE_DESIGN.md` 裁决 6 的 caption 义务**；按本文件最高优先级以本条为准，偏离本身登记在此，投稿前复核时不必重新辩论。证据与出处见 `audit/step1_facts_and_gaps_2026-09-22.md` §G1。 | 覆盖 `.claude/global.md` 具名例外的同址条款、MAIN_TABLE_DESIGN.md 裁决 6 的 caption 义务 |
+| D38 | 2026-09-22 | §4.6 等代价交叉检查**只写 Table 1 里有的三列**（defense / constraint / CEFR），**不提 `gsm8k_sharded`**（它只在附录 A2）。措辞由 "four additional self-built tasks ... ties" 改为"三列中两列打平、defense 按主口径不如最优等代价固定日程"，并补一句效应量阶梯（动作本身 0.12–0.14 对重排预算 ≤0.03）。附录 A4 仍按 `MAIN_TABLE_DESIGN.md` 登记四列，且 defense 必须同时给按攻击与按轨迹两个重采样单位。依据见 `audit/step1_facts_and_gaps_2026-09-22.md` §四。 | 修正 `04d_analysis.tex` 原措辞（"additional"/"ties" 两处与证据不符） |
+| D39 | 2026-09-22 | `main.bib` 仍由用户手工维护（2026-09-17 裁决不变）。`PLAN_finish_2026-09-22.md` **Step 6a 整条交回用户**：agent 只提供缺失键 → 正文引用位置 → arXiv 链接的清单，不写入任何 bib 条目、不改 `unknown*` 键名、不合并重复条目。`% CITE:` → `\cite` 的转换等 bib 齐了一次性做。清单见 `audit/step1_facts_and_gaps_2026-09-22.md` §G2。 | 确认 2026-09-17 裁决，覆盖 PLAN_finish Step 6a |
 
 ## 已执行的操作性裁决（不进表，但有约束力）
 
