@@ -100,9 +100,9 @@ $s_t\in\mathbb{R}^{L+1}$、$C=[1,0,\ldots,0]$、$K\in\mathbb{R}^{(L+1)\times(L+1
 
 ### G2（P0）Step 6a 与"main.bib 由用户手工维护"冲突
 
-Step 6a 要求新增 5 个键、修 6 个 `unknown*` 键、合并两条 GenCtrl。核对属实：
+Step 6a 要求新增 5 个键、修 6 个 `unknown*` 键、合并两条 GenCtrl。核对结果：**缺的是 6 个键，不是 5 个**——
 `main.bib` 现有 20 个键，确无 `korda2018koopman` / `kong2024recontrol` / `wang2026tmpc` /
-`akrout2026distinguishability` / `dmd2026safety`；`unknown2024activationtraits` 等 6 个 `unknown*`
+`akrout2026distinguishability` / `dmd2026safety`，**`li2024instability` 也不在**（Step 6a 漏列，它是 Intro P2 的引用之一）；`unknown2024activationtraits` 等 6 个 `unknown*`
 与 `cheng2026genctrl` / `unknown2026genctrl_dup` 都在。
 但 2026-09-17 用户裁决 bib 由本人手工填。**Step 6a 整条应交回用户**；Step 5a（Related Work）按
 `../../.claude/paper.md` 的分层本就是用户的活，会一起停。
