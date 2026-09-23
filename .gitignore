@@ -26,5 +26,10 @@ paper/**/*.blg
 paper/main.pdf
 paper/iclr2027_koopman_alignment/*.pdf
 
+# paper/build/ holds only local build byproducts and dated PDF snapshots.
+# Only main.pdf is the paper; never commit snapshots (2026-09-22).
+paper/build/*
+!paper/build/.gitkeep
+
 # Scratch files from the git-hygiene workaround in paper/ (see claude/repo_git_hygiene_notes)
 paper/tmp*.tmp

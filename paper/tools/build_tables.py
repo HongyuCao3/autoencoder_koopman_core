@@ -196,6 +196,11 @@ def build_prediction(grid, columns, label, caption, note_ids=True, header_note=N
     wide = ncol >= 10
     if wide:
         lines.append(r"\resizebox{\textwidth}{!}{")
+    else:
+        # 2026-09-22: at natural width the eight-column Table 1 overflowed \textwidth by
+        # ~19pt (Overfull \hbox). Tightening the column padding from 6pt to 4pt saves
+        # 2pt x 16 gaps = 32pt and keeps the font size. Scoped to this table environment.
+        lines.append(r"\setlength{\tabcolsep}{4pt}")
     lines.append(r"\begin{tabular}{l" + "c" * ncol + "}")
     lines.append(r"\toprule")
     lines.append("Predictor & " + " & ".join(disp for _, disp in columns) + r" \\")
