@@ -5,11 +5,11 @@ Same rule as build_tables.py: nothing in figs/fig_*.pdf is typed by hand. Every 
 point is read out of evidence/numbers.yaml and the ids that fed each panel are written to
 figs/_fig_report.json so a mark can always be traced back to one evidence id.
 
-Figures (2026-09-19, side experiments P1 and P2 of claude/side_experiments_plan_2026-09-19.md):
-  fig_memory_depth.pdf   P1  paired Skill_H gain of a deeper memory state over a single reading,
-                             matched-window caliber (paper_side_experiments_results.md section 1.2)
-  fig_item_effect.pdf    P2  what the memory gain decomposes into: an item intercept versus the
-                             remainder beyond it (section 3)
+Figures (merged 2026-09-20; former fig_memory_depth.pdf and fig_item_effect.pdf are gone):
+  fig_memory.pdf       P1+P2  (a,b) paired Skill_H gain of a deeper memory state over a single
+                              reading under the matched window; (c) item intercept vs remainder
+  fig_two_futures.pdf  m1     next change vs current reading, split by previous step direction
+  fig_mechanism.pdf    m5,m4  (a,b) applied command vs tracking error; (c) skill lost to a lifting
 
 Usage:
     /scratch/hcao2/envs/research-template/bin/python tools/build_figs.py
