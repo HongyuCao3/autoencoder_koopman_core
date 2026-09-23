@@ -6,6 +6,7 @@ plan: paper/PLAN_finish_2026-09-22.md (steps 1-7 to finish the main text). Backg
   `claude/page_budget_analysis_2026-09-21.md` (what to cut, classes A/B/C),
   `claude/experiments_trim_analysis_2026-09-21.md` (done), `claude/intro_and_related_work_plan_2026-09-21.md`
   (Intro done; Related Work plan for the user). Old plans: `_archive_2026-09-22_plans/`.
+title: D41 2026-09-23 -> "KOMPAS: Koopman Dynamics Modeling and Black-Box Predictive Control of Multi-Turn LLM Reply Attributes"
 state of sections:
   abstract.tex            WRITTEN 2026-09-23 (186 words, 8 sentences, user-reviewed; plan claude/abstract_conclusion_plan_2026-09-23.md); gates PASS
   01_introduction.tex     +1 phrase 2026-09-23 (P1: 'a safety score under jailbreak attempts', matches Abstract s1); gates PASS
