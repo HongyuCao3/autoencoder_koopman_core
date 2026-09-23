@@ -417,7 +417,7 @@ def fig_mechanism(rows, report):
         ax3.spines[side].set_visible(False)
     ax3.grid(True, axis="x", color=GRID, linewidth=0.5)
     ax3.set_axisbelow(True); ax3.tick_params(length=2.5, width=0.5)
-    ax3.set_title("(c) Cost of a learned lifting", loc="left", fontsize=7.5)
+    ax3.set_title("(c) Skill lost to a learned lifting", loc="left", fontsize=7.5)
     ax3.set_xlabel(r"$\Delta\,\mathrm{Skill}_H$")
 
     fig.tight_layout(pad=0.4, w_pad=0.3)

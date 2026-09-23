@@ -7,8 +7,8 @@
 \label{sec:method}
 
 KOMPAS consists of an offline dynamics model, fit on recorded attribute
-readings, and an online receding-horizon controller that plans in that
-model. The frozen LLM $p_\theta$ is never updated, and candidate evaluation
+readings, and an online controller that plans in that model and
+replans after every reply (receding horizon). The frozen LLM $p_\theta$ is never updated, and candidate evaluation
 requires no additional query to it. Figure~\ref{fig:method} summarizes the
 pipeline; the first three subsections follow it and \S\ref{sec:prediction_control_bound} gives the guarantee.
 
@@ -16,11 +16,11 @@ pipeline; the first three subsections follow it and \S\ref{sec:prediction_contro
     \centering
     \includegraphics[width=\textwidth]{figs/MethodCropped.pdf}
     \caption{
-    Overview of KOMPAS. Top, offline identification: recorded trajectories
+    Overview of KOMPAS. Top, offline fitting: recorded trajectories
     are mapped by the verifier $V$ to readings, a sliding window
     forms the state $s_t$, and the affine Koopman model is fit by least squares.
     Bottom, online closed loop: candidate commands $c_t$ are rolled forward
-    through the model, scored against the reference $r$, and the best one is
+    through the dynamics model, scored against the reference $r$, and the best one is
     sent through the prompting protocol as $u_t$; the next reading is shifted
     into the state and the selection repeats.
     }
@@ -55,7 +55,7 @@ responses. We represent this short-term history with delay coordinates,
 where $L\geq 1$ is the number of previous readings retained and
 $C=[1,0,\ldots,0]$ reads the current attribute from the state. We use
 $s_t$ as a finite-memory stand-in for the part of the dialogue history that
-predicts the attribute, not as a reconstruction of the textual state.
+predicts the attribute, not as a summary of the dialogue text itself.
 
 The controller acts through a scalar command rather than over the
 space of text strings. A fixed prompting protocol maps a command
@@ -71,7 +71,8 @@ $(\mathcal{K}_c f)(s)
 \mathbb{E}[f(s_{t+1})\mid s_t=s,c_t=c]$.
 The operator is linear in $f$ even when the underlying prompt--response
 interaction is nonlinear. We use the delay coordinates in $s_t$ as a finite
-dictionary of observables and approximate the induced dynamics with the
+dictionary of observables, that is, the feature set the linear model acts on.
+The induced dynamics are approximated with the
 affine model
 \begin{equation}
     \widehat{s}_{t+1}
@@ -90,14 +91,16 @@ commands and letting the command enter through one linear channel are
 modeling choices, not consequences of Koopman linearity. We do not assume
 that the frozen LLM admits an exact finite-dimensional Koopman representation.
 
-Koopman dynamics may also be defined on lifted coordinates $E_\phi(s_t)$;
-our main model uses the identity lifting, and a learned lifting is kept as a
-comparison with its objective in Appendix~\ref{app:A1_estimator}. The
-reported model is thus also a delay regression with an exogenous input. The Koopman view places both dictionaries in one framework and
+Koopman dynamics may also be defined on lifted coordinates $E_\phi(s_t)$:
+a feature map applied to the window before the linear model, called a
+lifting. Our reported predictor uses the identity lifting, that is, no
+feature map; a learned lifting is kept as a comparison with its objective in
+Appendix~\ref{app:A1_estimator}. The reported predictor is thus also a delay
+regression with an exogenous input. The Koopman view places both dictionaries in one framework and
 gives closed-form multi-step prediction.
 
 
-\subsection{Offline System Identification}
+\subsection{Offline Fitting (System Identification)}
 \label{sec:learning}
 
 We fit the dynamics model from recorded interaction trajectories. Sliding a
@@ -139,7 +142,7 @@ $\widehat y_{t+h|t}(c)=C\widehat{s}_{t+h|t}(c)$.
 
 Because the transition is affine, the rollout has the closed form
 $\widehat{s}_{t+h\mid t}(c)=K^h s_t+\sum_{j=0}^{h-1}K^j(Bc+b)$, so candidate
-evaluation is linear propagation through the identified model and adds no
+evaluation is linear propagation through the fitted model and adds no
 call to $p_\theta$.
 
 Each candidate is scored by the deviation of its predicted trajectory from
@@ -170,17 +173,17 @@ The controller executes only $c_t^\star$: it sends
 $u_t=\mathcal{P}(x,\mathcal{H}_t,c_t^\star)$, measures $y_{t+1}=V(o_{t+1})$
 from the actual response, shifts it into the memory state, and repeats the
 selection from $s_{t+1}$. The held-command assumption applies only inside a
-candidate's hypothetical rollout; the executed sequence is receding-horizon
-and may change command at every step.
+candidate's hypothetical rollout; the executed sequence is replanned after
+every reply and may change command at every step.
 
 
 \subsection{Why Prediction Accuracy Matters}
 \label{sec:prediction_control_bound}
 
 Predictive control is useful only when ranking candidates under the learned
-model preserves their ranking under the true interaction, up to a bounded
-error. The following result states this for the held-command comparison at
-each control step.
+dynamics model preserves their ranking under the true interaction, up to a bounded
+error. The following result states this for the comparison among candidates,
+each held for $H$ steps, at one control step.
 
 For a candidate $c$, let $y_h^c$ denote the realized attribute after
 $h$ further interactions under the same held command, and let

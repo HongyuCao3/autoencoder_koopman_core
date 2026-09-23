@@ -1,11 +1,11 @@
 %% Appendix A7. Moved from Sec. 4.6 on 2026-09-21 (page budget, item A2). Numbers unchanged.
-\section{Command-Channel Scope of the Prediction Design}
+\section{When the Command Effect Cannot Be Estimated from the Logged Trajectories}
 \label{app:A7_command_channel}
 
 On four of the seven modeling columns of Table~\ref{tab:prediction} the applied command equals the tracking error, an exact affine function of the memory state.  % m5, updated 2026-09-19
 The collection logs show it. On the two tasks that record a per-turn command, the applied command equals the target on every transition: 2268 of 2268 on sentence length, 240 of 240 on sentiment. The tracking error spans $[-0.40, +0.88]$ on sentence length across those same transitions.  % figs/_fig_report.json fig_mechanism sources; moved from Sec. 4.4 on 2026-09-21
 The two joint tasks record no per-turn scalar command, and their channel was checked by the rank test below.  % m5 notes
-The prediction design therefore cannot estimate an independent action effect on those four columns.  % nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110
+The prediction design therefore cannot estimate an independent command effect on those four columns.  % nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110
 On the remaining three columns, defense, constraint and CEFR, the paired difference between the reported model and the memory-only variant is +0.0121, +0.0015 and +0.0061, with intervals containing zero.  % contrasts.ours_minus_memory_no_action defense=0.0121 (n_main_149), constraint=0.0015 (n_main_133), tsar_cefr=0.0061 (n_main_181)
 This is a property of how those trajectories were collected, not a result about the controller.  % m5 notes
 The control experiments of \S\ref{sec:exp_control} are the test of the command channel.  % D11

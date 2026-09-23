@@ -30,7 +30,7 @@ PAPER = os.path.dirname(HERE)
 ROW_ORDER = [
     ("best trivial null", "Stateless"),
     ("Markov state + control", "Last-turn"),
-    ("delay-embedded state, control withheld", "Memory w/o action"),
+    ("delay-embedded state, control withheld", "Memory w/o command"),
     ("LSTM sequence baseline", "LSTM"),
     ("AE-Koopman lifted operator", "KOMPAS (learned lifting)"),
     ("delay-embedded linear operator with control", "KOMPAS (linear)"),

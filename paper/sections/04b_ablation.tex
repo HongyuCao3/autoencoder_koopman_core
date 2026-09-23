@@ -11,23 +11,23 @@
 \textbf{Question.} RQ1c, in two parts: how many past readings the state needs, and whether the gain from memory is inter-turn dynamics or a fixed level per prompt item.
 \textbf{Setup.} Tasks, baselines and the skill score follow \S\ref{sec:exp_setup}; both experiments vary one thing in the KOMPAS (linear) row of Table~\ref{tab:prediction}.
 Both experiments fit every depth on the same transitions, which separates the depth of the state from the size of its training set; Table~\ref{tab:prediction} does not.  % default vs matched caliber; paper_side_experiments_results.md 1.2; figs/_fig_report.json
-Under this matched window the Table~\ref{tab:prediction} memory gains shrink, with the two calibers compared in Appendix~\ref{app:A3_window}.  % n_main_013 (+0.603 default) vs n_abl_127 (+0.109 matched); numbers moved to App. A3 on 2026-09-21
+Under this matched window the Table~\ref{tab:prediction} memory gains shrink, and Appendix~\ref{app:A3_window} compares the two window conventions.  % n_main_013 (+0.603 default) vs n_abl_127 (+0.109 matched); numbers moved to App. A3 on 2026-09-21
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figs/fig_memory.pdf}
-\caption{How deep the memory state has to be, and what its gain decomposes into, both under a matched training window. (a) Gain of a state holding $d$ past readings over a state holding one, on the four tasks whose design allows a sweep. (b) The same gain for one extra reading on the three designs that carry two depths. (c) Per task: the memory gain over Last-turn, the part a per-item intercept recovers, and the remainder; intercepts are estimated on turns outside the scored window. Filled markers: 95\% paired bootstrap interval excludes zero.}
+\caption{How deep the memory state has to be, and what its gain decomposes into, both under a matched training window. (a) Gain of a state holding $d$ past readings over a state holding one, on the four tasks whose data allow varying the window length. (b) The same gain for one extra reading on the three designs that carry two depths. (c) Per task: the memory gain over Last-turn, the part a per-item intercept recovers, and the remainder; intercepts are estimated on turns outside the scored window. Filled markers: 95\% paired bootstrap interval excludes zero.}
 \label{fig:memory}
 \end{figure}
 
-\textbf{Findings, depth.} On three of the four sweepable tasks the second reading buys the whole gain, and the third and fourth readings add nothing that separates from zero (Figure~\ref{fig:memory}a).  % c10; n_abl_124 n_abl_184 n_abl_157 (second reading), n_abl_126 n_abl_128 n_abl_186 n_abl_188 n_abl_159 n_abl_161 (<= 0.010 further); Joint-2 hollow at every depth (n_abl_157 n_abl_158 n_abl_160)
+\textbf{Findings, depth.} Figure~\ref{fig:memory}(a) covers the four tasks whose data allow varying the window length. On three of them the second reading buys the whole gain, and the third and fourth readings add nothing that separates from zero.  % c10; n_abl_124 n_abl_184 n_abl_157 (second reading), n_abl_126 n_abl_128 n_abl_186 n_abl_188 n_abl_159 n_abl_161 (<= 0.010 further); Joint-2 hollow at every depth (n_abl_157 n_abl_158 n_abl_160)
 Constraint is the exception: each added reading keeps paying, with every step separated from zero.  % n_abl_235 n_abl_237 n_abl_239
-Of the three two-depth designs, only sentiment gains from one extra reading (Figure~\ref{fig:memory}b).  % n_abl_151 (caveated: two cells) n_abl_245 n_abl_262
-The driver is that a level and a trend take two readings to express, and the attribute tasks carry little structure beyond that pair.  % m1; c10 driver
+Of the three tasks recorded at only two window lengths, only sentiment gains from one extra reading (Figure~\ref{fig:memory}b).  % n_abl_151 (caveated: two cells) n_abl_245 n_abl_262
+A level and a trend take two readings to express, and the attribute tasks carry little structure beyond that pair.  % m1; c10 driver
 No mechanism is established for why constraint keeps gaining, and none is proposed here.  % c10 notes
 
 \textbf{Findings, item intercept.} A per-item intercept added to the one-reading state recovers most of the memory gain: 81\% on constraint and 67\% on Joint-3.  % c11; n_mech_061/n_mech_060=0.807, n_mech_058/n_mech_057=0.673
 Only on those two tasks does the remainder beyond the intercept separate from zero; on sentiment and Joint-2 the intercept accounts for the whole gain (Figure~\ref{fig:memory}c).  % n_mech_061 n_mech_058 (remainders +0.045, +0.075); other five contain zero
-The driver is that each prompt item holds its own level across turns, and several past readings estimate that level where one reading cannot.  % m6
+This happens because each prompt item holds its own level across turns, and several past readings estimate that level where one reading cannot.  % m6
 
 Together, \uline{one extra reading carries most of what memory buys, and most of that is a per-item level rather than inter-turn dynamics; this answers RQ1c. A remainder attributable to dynamics is measured on two of seven tasks.}

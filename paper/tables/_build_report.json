@@ -424,7 +424,7 @@
       "constraint": 0.2845627682203038,
       "tsar_cefr": 0.5183237201655577
     },
-    "Memory w/o action": {
+    "Memory w/o command": {
       "sentence_length_t10": 0.7636381877654917,
       "vector_count_stage2_t10": 0.8244206172658395,
       "vector_count_stage1_t10": 0.6149798916616964,
@@ -474,7 +474,7 @@
       "defense": 0.06747681589417043,
       "gsm8k_sharded": 0.636806858632645
     },
-    "Memory w/o action": {
+    "Memory w/o command": {
       "sentiment_t5": 0.5301679755771931,
       "average_word_length_t5": -0.677305424106958,
       "defense": 0.022776188112541118,

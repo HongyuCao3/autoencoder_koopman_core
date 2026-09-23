@@ -10,7 +10,7 @@
 % Only the float declaration moved. The table, this subsection and its text are unchanged.
 
 \textbf{Findings, gain over the uncontrolled baseline.} Predictive control raises constraint satisfaction over the uncontrolled baseline by +14.5 points on Qwen3-4B and +14.8 on Qwen3-8B, averaged over eleven subtasks as point estimates with no seeds or intervals.  % c5; control_deltas: Qwen3-4B/Koopman-Base=14.47, Qwen3-8B/Koopman-Base=14.76
-The driver is that scoring happens on a candidate's predicted trajectory, not its immediate effect.  % m3
+This is because scoring happens on a candidate's predicted trajectory, not its immediate effect.  % m3
 This lets the controller pick a command that differs from the target while the attribute is still moving.  % m3
 
 \textbf{Findings, gain over the white-box controllers.} The same controller exceeds the stronger white-box baseline, RE-Control, by +5.3 points on Qwen3-4B and +5.7 on Qwen3-8B, again as point estimates with no interval.  % c6; control_deltas: Qwen3-4B/Koopman-RE-Control=5.25 -> stated as 5.3 to match Table 2's rounded Avg column (41.4-36.1), Qwen3-8B/Koopman-RE-Control=5.65

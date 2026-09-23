@@ -14,5 +14,5 @@ The two experiment lines report different metrics in different reference frames.
 The modeling line's skill score is referenced against a best-trivial-null baseline and can go negative, while the control line's percentage carries no reference point.
 
 The matched-window analysis of \S\ref{sec:exp_memory} fits every state depth on the same set of transitions; the per-task numbers behind Figure~\ref{fig:memory} are listed here.
-The caliber matters. On sentence length the memory gain over Last-turn is +0.603 under the default caliber of Table~\ref{tab:prediction} and +0.109 under the matched window, so the two calibers answer different questions.  % n_main_013 (default) vs n_abl_127 (matched); moved from Sec. 4.3 on 2026-09-21
+The window convention matters. On sentence length the memory gain over Last-turn is +0.603 under the default window of Table~\ref{tab:prediction} and +0.109 under the matched window, so the two conventions answer different questions.  % n_main_013 (default) vs n_abl_127 (matched); moved from Sec. 4.3 on 2026-09-21
 % TODO(data): matched-window table (was the original purpose of this appendix).

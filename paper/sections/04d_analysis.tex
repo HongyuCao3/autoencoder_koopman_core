@@ -8,14 +8,14 @@
 \textbf{Setup.} Setup follows \S\ref{sec:exp_setup}; the derivation is the selection bound of \S\ref{sec:prediction_control_bound}, not repeated here.
 
 \textbf{Findings, bound and cost.} The selection bound of \S\ref{sec:prediction_control_bound} keeps the realized cost of the selected command within $2\delta_J$ of the best realized cost, where $\delta_J$ bounds the gap between a candidate's predicted and realized cost.  % c9
-It is theoretical, not measured, and it covers one held-command comparison at a single step rather than the replanned closed loop.  % c9 strength_basis: theoretical; c9 notes
-Evaluating a candidate costs one linear propagation and a readout through the closed-form rollout of \S\ref{sec:control_method}, adding no query to the target model.  % c8
-The driver is that the affine transition and the scalar command column collapse an $h$-step lookahead into a matrix power.  % m2
+It is theoretical, not measured, and it covers one such comparison at a single step, each candidate held for $H$ steps, rather than the replanned closed loop.  % c9 strength_basis: theoretical; c9 notes
+Evaluating a candidate requires one linear propagation and a readout through the closed-form rollout of \S\ref{sec:control_method}, adding no query to the target model.  % c8
+The affine transition and the scalar command column collapse an $h$-step lookahead into a matrix power.  % m2
 
-\textbf{Cross-check, the equal-cost boundary.} Defense, constraint and CEFR also run closed loop against the best equal-cost fixed schedule (Appendix~\ref{app:A4_equal_cost}), where the loop ties on two and falls below on defense.  % nc_2; constraint +0.0014 (n_loop_048), CEFR -0.0073/+0.0096, defense -0.0250 under the primary per-attack unit (n_loop_040; terminal -0.0688 n_loop_039); per-task numbers in App. A4
+\textbf{Cross-check, the equal-budget schedule.} Defense, constraint and CEFR also run closed loop against the best fixed schedule with the same number of instructions (Appendix~\ref{app:A4_equal_cost}). The loop ties on two and falls below on defense.  % nc_2; constraint +0.0014 (n_loop_048), CEFR -0.0073/+0.0096, defense -0.0250 under the primary per-attack unit (n_loop_040; terminal -0.0688 n_loop_039); per-task numbers in App. A4
 The driver is that the instruction itself moves the reading by 0.12 to 0.14, while rescheduling the same budget stays within 0.03 of zero.  % nc_2; CLOSED_LOOP_SYNTHESIS.md 4 (defense +0.119, constraint +0.1163 n_loop_050, CEFR -0.1356)
 
-\textbf{Cross-check, the command-channel scope.} On four of the seven modeling columns the applied command is an exact affine function of the memory state, so the prediction design cannot estimate an independent action effect there.  % m5; nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110
+\textbf{Cross-check, when the command effect cannot be estimated.} On four of the seven modeling columns the applied command is an exact affine function of the memory state, so the prediction design cannot estimate an independent command effect there.  % m5; nc_1; nc_8; n_main_014 n_main_046 n_main_030 n_main_110
 Appendix~\ref{app:A7_command_channel} reports the three columns where it can, all with intervals containing zero; this is a property of how the trajectories were collected, not a result about the controller.  % n_main_149 n_main_133 n_main_181; m5 notes
 
-Combined, \uline{the selection bound links prediction error to the quality of the command selected at a single step, while candidate evaluation adds no target-model queries. The equal-cost and command-channel cross-checks delimit the conditions under which the predictive gains studied in RQ1 can translate into the control gains studied in RQ2.}
+Combined, \uline{the selection bound links prediction error to the quality of the command selected at a single step, while candidate evaluation adds no target-model queries. The equal-budget and command-channel cross-checks delimit the conditions under which the predictive gains studied in RQ1 can translate into the control gains studied in RQ2.}

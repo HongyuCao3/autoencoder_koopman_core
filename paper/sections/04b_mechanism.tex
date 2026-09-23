@@ -12,8 +12,8 @@
 \subsection{Mechanisms Read Off the Data}
 \label{sec:exp_mechanism}
 
-\textbf{Question.} Not a further RQ but a display: two mechanisms that \S\ref{sec:exp_prediction} argues from fitted scores, and one collection property behind \S\ref{sec:exp_analysis}, shown on the recorded readings.
-\textbf{Setup.} Figure~\ref{fig:two_futures} and Figure~\ref{fig:mechanism}(a,b) describe collected readings, not model skill, so no value in them is comparable with a skill score; Figure~\ref{fig:mechanism}(c) reads the paired contrasts of Table~\ref{tab:prediction}.  % CALIBER; reading rules returned to the captions 2026-09-21
+\textbf{Question.} This subsection adds no research question; it shows on the recorded readings two mechanisms that \S\ref{sec:exp_prediction} infers from fitted scores, and one artifact of data collection behind \S\ref{sec:exp_analysis}.
+\textbf{Setup.} Figure~\ref{fig:two_futures} and Figure~\ref{fig:mechanism}(a,b) describe collected readings, not predictor skill, so no value in them is comparable with a skill score; Figure~\ref{fig:mechanism}(c) reads the paired contrasts of Table~\ref{tab:prediction}.  % CALIBER; reading rules returned to the captions 2026-09-21
 
 \begin{figure}[t]
 \centering
@@ -29,15 +29,15 @@ Read with \S\ref{sec:exp_memory}, that ordering points at the per-item level rat
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figs/fig_mechanism.pdf}
-\caption{What the command channel carries, and what a learned lifting costs. (a) and (b) Applied command against tracking error, on the two Table~\ref{tab:prediction} tasks that log a per-turn command; colour marks the target and repeats the vertical position, which is the point. (c) Paired $\mathrm{Skill}_H$ contrast of the linear case over the learned lifting, on all seven tasks, grouped by readout dimension: a circle marks the five one-dimensional readouts, a square the two-dimensional one and a diamond the three-dimensional one. A filled marker means the 95\% interval excludes zero; the dagger marks a caveated entry.}
+\caption{What the command channel carries, and what a learned lifting loses. (a) and (b) Applied command against tracking error, on the two Table~\ref{tab:prediction} tasks that log a per-turn command; colour marks the target and repeats the vertical position, which is the point. (c) Paired $\mathrm{Skill}_H$ contrast of the linear case over the learned lifting, on all seven tasks, grouped by the number of attributes a task tracks: a circle marks the five single-attribute tasks, a square Joint-2 and a diamond Joint-3. A filled marker means the 95\% interval excludes zero; the dagger marks a caveated entry.}
 \label{fig:mechanism}
 \end{figure}
 
 \textbf{Findings, what the command channel carries.} In Figure~\ref{fig:mechanism}(a,b) the applied command holds the value of the target across the full range of the tracking error, on every recorded transition of both tasks.  % m5; 2268/2268 sentence length, 240/240 sentiment; error span [-0.40, +0.88]; counts moved to App. A7 on 2026-09-21
-This is the collection property behind the command-channel scope of \S\ref{sec:exp_analysis} and Appendix~\ref{app:A7_command_channel}.  % nc_1; nc_8
+This is the data-collection artifact behind the command-channel caveat of \S\ref{sec:exp_analysis} and Appendix~\ref{app:A7_command_channel}.  % nc_1; nc_8
 
-\textbf{Findings, what a lifting has to find.} The cost of a learned lifting concentrates on the one-dimensional readouts and is close to zero on the two multi-dimensional ones (Figure~\ref{fig:mechanism}c).  % c2; n_main_183 n_main_111 n_main_135 (one-dimensional: +0.599, +0.101, +0.048); n_main_031 n_main_047 (multi-dimensional: +0.014, +0.005)
-The cost does not fall with the number of trajectories: the largest sits on the task fit on 100 trajectories and the smallest on the task fit on 90.  % n_main_183 (n=100) vs n_main_047 (n=90)
-The driver is that a one-dimensional readout leaves a lifting little structure to expose, which is the part of the mechanism these seven columns support.  % m4; this is the single statement of the lifting driver (removed from 4.2 on 2026-09-21)
+\textbf{Findings, what a lifting has to find.} The skill lost to a learned lifting concentrates on the five single-attribute tasks and is close to zero on Joint-2 and Joint-3 (Figure~\ref{fig:mechanism}c).  % c2; n_main_183 n_main_111 n_main_135 (one-dimensional: +0.599, +0.101, +0.048); n_main_031 n_main_047 (multi-dimensional: +0.014, +0.005)
+That loss does not fall with the number of trajectories: the largest sits on the task fit on 100 trajectories and the smallest on the task fit on 90.  % n_main_183 (n=100) vs n_main_047 (n=90)
+The reason is that a single tracked attribute leaves a lifting little structure to expose, which is the part of the mechanism these seven columns support.  % m4; this is the single statement of the lifting driver (removed from 4.2 on 2026-09-21)
 
-Together, \uline{the window separates two opposite next steps at one reading, and the cost of a lifting tracks the dimension of the readout rather than the amount of data.}
+Together, \uline{the window separates two opposite next steps at one reading, and the skill lost to a lifting tracks the number of attributes tracked rather than the amount of data.}
