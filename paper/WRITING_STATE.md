@@ -7,13 +7,14 @@ plan: paper/PLAN_finish_2026-09-22.md (steps 1-7 to finish the main text). Backg
   `claude/experiments_trim_analysis_2026-09-21.md` (done), `claude/intro_and_related_work_plan_2026-09-21.md`
   (Intro done; Related Work plan for the user). Old plans: `_archive_2026-09-22_plans/`.
 state of sections:
-  abstract.tex            TODO (CP4)
+  abstract.tex            WRITTEN 2026-09-23 (186 words, 8 sentences, user-reviewed; plan claude/abstract_conclusion_plan_2026-09-23.md); gates PASS
+  01_introduction.tex     +1 phrase 2026-09-23 (P1: 'a safety score under jailbreak attempts', matches Abstract s1); gates PASS
   01_introduction.tex     rewritten 2026-09-21; trimmed 2026-09-22 to 1.0 pp (P3 removed, Method details out of P4,
                           contributions compressed; 786 words), gates PASS
   02_problem.tex          compressed 2026-09-21 (A1) and 2026-09-22 (inline labels, feasible-set paragraph); gates PASS
   03_method.tex           colleague's version (a1eeb79) + A4/A5 + round-2 trims + MethodCropped figure; 1063 words; gates PASS
   04_experiments + 04a-04d trimmed 2026-09-21 to trends + insight; gates PASS
-  05_conclusion.tex       TODO (CP4, <=150 words, takeaway-first 6-move)
+  05_conclusion.tex       WRITTEN 2026-09-23 (167 words, 7 sentences, user-reviewed; two scope limitations, no point-estimate caveat per D40); gates PASS
   06_related_work.tex     TODO (Phase 5, user writes; four categories, ~0.5 pp)
   appendix A1, A6, A7     written; A3 carries moved setup details + two TODO(data) tables; A2, A4, A5 TODO
 page budget (ICLR 2027: 9 pp main text at submission):

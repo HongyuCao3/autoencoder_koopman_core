@@ -10,7 +10,7 @@
 \label{sec:intro}
 
 Multi-turn interaction turns a reply attribute of a frozen language model into a sequence with inertia.
-The attribute may be a word count, a sentence count, a CEFR readability grade, a sentiment polarity, or whether a formatting constraint is met.
+The attribute may be a word count, a sentence count, a CEFR readability grade, a sentiment polarity, a safety score under jailbreak attempts, or whether a formatting constraint is met.  % safety phrase added 2026-09-23 to match Abstract sentence 1 (jailbreak defense)
 What one reply does on such an attribute carries into the next reply, instead of being drawn fresh at every turn.
 Instruction following in particular is measured to decay over a dialogue, so a constraint met early is not met for free later.
 % CITE: li2024instability

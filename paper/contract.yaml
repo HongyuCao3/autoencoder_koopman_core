@@ -242,7 +242,8 @@ claim_ledger:
       pending. D3: the experiments subsection states this in the same subsection as the number.
       D12: the introduction carries one clause naming these as point estimates on three public
       benchmarks; the abstract gives the gain with no interval and without the word measured. The
-      Conclusion limitation list repeats it. This caveat is NOT delegated to nc_3, which is
+      Conclusion does NOT repeat it (D40, 2026-09-23: Conclusion limitations are scope
+      conditions only; the caveat's homes are Intro contribution 3 and the two 4.4 Findings). This caveat is NOT delegated to nc_3, which is
       audit-only under D16; it travels attached to the number.
 
   - id: c6
@@ -867,7 +868,7 @@ non_claim_ledger:
       without an interval and without the word measured; the introduction carries one clause
       naming the numbers as point estimates on three public benchmarks.
     mode: audit_only
-    candidate_explicit: [abstract, intro, experiments, conclusion]
+    candidate_explicit: [abstract, intro, experiments]   # conclusion removed by D40 (2026-09-23)
   - id: nc_4
     statement: "That the language model admits an exact finite-dimensional Koopman representation."
     reason: "The model is a finite-dimensional approximation on a finite-memory state; the Method says so directly."

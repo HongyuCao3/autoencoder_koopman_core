@@ -1,4 +1,16 @@
-% Phase 4 (CP4). Rule 16 takeaway-first 6-move form, <=150 words.
+% Phase 4 (CP4). Conclusion written 2026-09-23 (fable session), user-reviewed; Rule 16 takeaway-first form.
+% Moves: problem -> TAKEAWAY (bold, pairs with Intro P4 key insight) -> KOMPAS as realization ->
+% one empirical sentence (c6, access stated as "reading only text") -> two scope limitations
+% (applicability conditions; equal-budget result as a condition, nc_2) -> one future-work item.
+% D40 (2026-09-23, user ruling): the point-estimate caveat is NOT repeated here; its homes are
+% Intro contribution 3 and the two Findings paragraphs of 4.4. contract.yaml c5.notes / nc_3 updated.
+% 167 words, every sentence <=30 words. KOMPAS plain (reveal only in Abstract and Intro P4).
 \section{Conclusion}
 \label{sec:conclusion}
-TODO(CP4)
+We studied holding a reply attribute of a frozen language model at a target across a dialogue in which the attribute carries inertia.
+The takeaway is that \textbf{a controller should choose its instruction from where the attribute is heading, not from where it is}, which lets it act while the attribute is moving.  % m3; pairs with Intro P4 key insight
+KOMPAS realizes this view: a linear dynamics model fit to past readings and instructions, and predictive selection that adds no query to the model.  % choice_2, choice_3, c8
+On three public instruction-following benchmarks, KOMPAS exceeds the stronger of two white-box latent controllers by 5.3 and 5.7 points while reading only text.  % c6; 5.3 = Table 2 Avg 41.4-36.1
+KOMPAS applies where a verifier scores the attribute after every reply and the instruction varies along one command axis.  % scope: eq:interaction (verifier V), scalar command c_t
+Its edge over a fixed schedule needs the instruction's effect to depend on the state; on the self-built tasks that effect varies little, and the loop ties an equal-budget schedule.  % nc_2; 4.5 equal-budget cross-check, App. A4
+We plan to extend the command to several axes so that jointly measured attributes can be tracked together.  % Joint-2 / Joint-3 tasks

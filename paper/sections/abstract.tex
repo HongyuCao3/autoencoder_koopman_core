@@ -1,4 +1,16 @@
-% Phase 4 (CP4). Abstract: <=180 words, extraction method per neurips-write/references/abstract.md.
+% Phase 4 (CP4). Abstract written 2026-09-23 (fable session), user-reviewed sentence by sentence.
+% Plan: claude/abstract_conclusion_plan_2026-09-23.md. Six moves: task (two main-table tasks) ->
+% inertia -> why prior remedies fail on it -> KOMPAS reveal (only bold reveal besides Intro P4) ->
+% method intuition (two sentences, no implementation nouns) -> control-line headline.
+% Numbers match Intro contribution 3 (14.5/14.8; 5.3/5.7). No interval, no "measured", no
+% backbone or benchmark names (D12, nc_3). 186 words, every sentence <=30 words.
 \begin{abstract}
-TODO(CP4)
+In tasks such as multi-turn jailbreak defense or format-constrained generation, a language model must hold a reply attribute at a target on every turn.
+However, the attribute does not reset between turns: what one reply does on it carries into the next, so its readings form a trajectory with inertia.
+Existing remedies react to the current reading alone and ignore this inertia, so their corrections arrive a turn late or push past the target.
+We fill this gap with \textbf{KOMPAS}, \textbf{KO}opman dyna\textbf{M}ics modeling and \textbf{P}redictive control of \textbf{A}ttributes at the prompt \textbf{S}tep, which treats a prompt--response exchange as one step of a controlled system.
+It fits a linear dynamics model to past trajectories of the attribute, with the instruction as the input.
+Before sending an instruction, KOMPAS predicts how each candidate would move the attribute and sends the one predicted to reach the target, without querying the language model.
+On three public instruction-following benchmarks, KOMPAS raises constraint satisfaction by 14.5 and 14.8 points over two uncontrolled models.  % c5
+It also beats the stronger of two baselines that steer the model's internal activations, by 5.3 and 5.7 points.  % c6; 5.3 = Table 2 Avg 41.4-36.1
 \end{abstract}
