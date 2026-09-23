@@ -1,0 +1,32 @@
+% Phase 5. DRAFT 2026-09-23 (fable session) per claude/intro_and_related_work_plan_2026-09-21.md sec. 4.
+% Four categories by literature thread (Intro P2 splits by gap: access / statefulness / model).
+% Rules: third person, no we/our; \textbf only on category labels; per category 1-2 sentences of
+% description + 1 gap sentence; <=30 words per sentence; D29 term gate applies.
+% Keys renamed 2026-09-23; new/renamed entries live in bib_additions_2026-09-23.bib until the user merges them into main.bib.
+% Gate 5 (D7 no-\cite) fires here by design: this is the section where citations open.
+\section{Related Work}
+\label{sec:related}
+
+\textbf{Multi-turn drift and instability.}
+Instruction following is measured to decay over a dialogue, and later work characterizes the turn-level signal: context equilibria, attractor states, and persona drift detectable from text alone \citep{li2024instability, dongre2025driftnomore, ko2026attractor, wang2026nautilus, luo2026spasm}.
+One reading of these results is that an instruction given once competes with every later turn.
+The proposed remedies stop at a decoder-side correction or a reminder; the instruction is not an input to a model that predicts the next reading.
+
+\textbf{Steering and control in the latent space.}
+Activation steering edits hidden states or logits during generation \citep{allbert2024personality, yang2025lfsteering, shi2026unisteer}; feedback variants close the loop with PID control \citep{nguyen2026pidsteering, bharadwaj2025pidreasoning}, barrier functions \citep{miyaoka2024cbfllm, miyaoka2025cbfllm2, tran2026barriersteer, hu2025nbfllm}, or linear optimal and predictive control \citep{cheng2024liseco, skifstad2026alqr, kong2024recontrol}.
+% TODO(user) 2026-09-23: wang2026tmpc (Textual MPC paper, ICLR 2026) is NOT cited here on purpose.
+% Its abstract describes response-level planning over text outputs with no activation or gradient access,
+% which contradicts the "white-box latent controller" label Table 2 / 04a give it. Decide the label first,
+% then cite it either here (if the reproduction did use activations) or in a text-level sentence.
+These controllers take the token as clock and a hidden state as state, so they need white-box access; a caller who can change only the next prompt cannot run them.
+
+\textbf{Control-theoretic views of language models.}
+A third line writes prompting as a control problem: reachability of target outputs \citep{bhargava2023magicword}, a controllability toolkit \citep{cheng2026genctrl}, conditions for steerability \citep{fan2026steerable}, and linear dynamics fit to token or embedding trajectories \citep{akrout2026distinguishability, akrout2026dmdsafety, nosrati2026controlmeetsllm}.
+The object is a token or embedding sequence and the output is a reachability statement, a bound, or a classifier.
+No model with the instruction as input is identified at the level of one exchange.
+
+\textbf{Koopman predictors with inputs.}
+The Koopman operator represents nonlinear dynamics as a linear operator on observables.
+Linear predictors with inputs, fit by least squares, plug into model predictive control \citep{proctor2016dmdc, korda2018koopman}; delay coordinates supply observables under partial observation \citep{arbabi2017hankel, brunton2017havok}; autoencoders learn the dictionary \citep{lusch2018deepkoopman, enyeart2024koopmanae}.
+There the inputs are actuator signals and the observables are sensor readings.
+An instruction as input, a verifier score as observable, and a black-box text generator as plant have not been reported.

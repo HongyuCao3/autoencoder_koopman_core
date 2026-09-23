@@ -10,26 +10,14 @@ Two objectives share one interaction model: predicting the trajectory of a measu
 
 \textbf{Modeling.}\label{sec:problem_modeling}
 At interaction step \(t\), a frozen large language model receives a task input, the accumulated dialogue history, and a textual control instruction, and produces the next response. The resulting input--output interaction is
-\begin{equation}
-o_{t+1}\sim
-p_{\theta}(\cdot\mid x,\mathcal{H}_t,u_t),
-\qquad
-y_{t+1}=V(o_{t+1}),
-\label{eq:interaction}
-\end{equation}
+\(o_{t+1}\sim p_{\theta}(\cdot\mid x,\mathcal{H}_t,u_t)\) with reading \(y_{t+1}=V(o_{t+1})\).\label{eq:interaction}  % inlined 2026-09-23 (page budget)
 Here \(x\) denotes the task input, \(p_{\theta}\) the frozen LLM, \(\mathcal{H}_t\) the dialogue history available at step \(t\), and \(u_t\) the textual instruction supplied by the controller. The response \(o_{t+1}\) is text, while \(V\) is a task-specific verifier that maps the completed response to a scalar attribute \(y_{t+1}\), such as sentence length or sentiment polarity. We track one such attribute at a time, and a step corresponds to one complete prompt--response exchange. The verifier output is the only signal the controller observes, so the measured attribute \(y_t\) is used both to fit the model and to state the objective.
 
 Control decisions depend on the consequences of an instruction over several future turns. The dynamics model is therefore evaluated by its multi-step prediction error \(\ell_h=\bigl(y_{t+h}-\widehat y_{t+h\mid t}\bigr)^2\) for \(h=1,\ldots,H\). Here \(\widehat y_{t+h\mid t}\) is the prediction of the attribute at step \(t+h\) from information available at step \(t\), and \(y_{t+h}\) is the realized reading. The error should remain small throughout the horizon \(H\), rather than only at the one-step prediction \(h=1\).
 
 \textbf{Control.}\label{sec:problem_control}
 At each interaction step, the controller selects a scalar command \(c_t\), which determines the textual instruction \(u_t\) applied to the LLM. Over a finite horizon of \(H\) steps, the control objective is
-\begin{equation}
-J_t
-=
-\sum_{h=1}^{H}
-\bigl(r-y_{t+h}\bigr)^2.
-\label{eq:control_objective}
-\end{equation}
+\(J_t=\sum_{h=1}^{H}\bigl(r-y_{t+h}\bigr)^2\).\label{eq:control_objective}  % inlined 2026-09-23 (page budget)
 Here \(r\in\mathbb{R}\) denotes the desired value of the tracked attribute, and \(e_t=r-y_t\) is the corresponding tracking error. Predictive control replaces the future readings \(y_{t+h}\), which are unavailable at decision time, by their predictions \(\widehat y_{t+h\mid t}\) when selecting the commands.
 
 The controlled quantity is continuous, whereas the experiments report constraint satisfaction. They meet in the task-specific feasible set \(\mathcal{Y}\): a response is feasible for \(y_t\in\mathcal{Y}\) and the reference satisfies \(r\in\mathcal{Y}\), so driving \(y_t\) toward \(r\) raises the feasible rate.

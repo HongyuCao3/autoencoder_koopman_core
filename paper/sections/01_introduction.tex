@@ -18,22 +18,15 @@ Deployments need to hold such an attribute at a target, such as a length budget 
 The same current reading can sit on a rising path or on a falling path, and the next reply differs between the two.
 A controller that reads one reply at a time cannot tell those two futures apart.
 
-Prior literature partially addresses this control problem along three lines.\\
-\textbf{1) Latent-space controllers.}
-Activation steering and its feedback variants, control barrier functions, and latent-space predictive control all act inside the network.
-They adjust activations or logits at every generated token.
+% P2 compressed 2026-09-23 (page budget): three lines in one paragraph, one \uline gap sentence, pointer to the Related Work section.
+Prior work approaches this problem along three lines, reviewed in Section~\ref{sec:related}.
+Latent-space controllers steer activations or logits at every generated token, so they need white-box access, while a deployment acts only between turns through a black-box API.
 % CITE: nguyen2026pidsteering, miyaoka2024cbfllm, tran2026barriersteer, cheng2024liseco, skifstad2026alqr, kong2024recontrol, wang2026tmpc, hu2025nbfllm
-However, \uline{each needs white-box access and acts between tokens, while a deployment can act only between turns, through a black-box API.}\\
-\textbf{2) Prompt-level remedies.}
-Work on multi-turn instability counters it at the prompt: a system prompt written once, a reminder on a fixed schedule, or a template a per-turn check triggers.
+Prompt-level remedies reinstate an instruction on a fixed schedule or after a per-turn check, but they are stateless: none predicts what the next instruction will do.
 % CITE: li2024instability, dongre2025driftnomore
-However, \uline{these remedies are stateless: none predicts what the next instruction will do, so the two futures above receive the same instruction.}\\
-\textbf{3) Control-theoretic views of language models.}
-A third line writes prompting as a control problem and studies reachability and steerability, or fits linear dynamics to token and embedding trajectories.
+Control-theoretic views write prompting as a control problem, yet their results are reachability statements, bounds, or token-level detectors.
 % CITE: bhargava2023magicword, cheng2026genctrl, fan2026steerable
-% CITE-TODO(bib): akrout2026distinguishability (arXiv 2607.28667), dmd2026safety (arXiv 2608.19579) for the token/embedding-trajectory clause
-However, \uline{these results are reachability statements, theoretical bounds, or detectors at the token level; none fits a model that maps one instruction to the next reply's attribute.}
-What is missing is a dynamics model at the interaction level that uses only what a black-box caller can observe and carries the instruction as an explicit input.
+\uline{What is missing is a dynamics model at the interaction level that uses only what a black-box caller can observe and carries the instruction as an explicit input.}
 
 \textbf{Our Perspective: An Interaction-Level Koopman Perspective.}
 We treat one prompt--response exchange as one step of a controlled dynamical system, whose only observable is the verifier's score of the completed reply.

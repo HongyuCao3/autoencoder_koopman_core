@@ -41,17 +41,8 @@ readings.
 A single reading generally does not retain enough temporal context to
 predict the next one. The same value $y_t$, for example, may occur along an
 increasing or decreasing trajectory and therefore lead to different future
-responses. We represent this short-term history with delay coordinates,
-\begin{equation}
-    s_t=
-    \begin{bmatrix}
-        y_t & y_{t-1} & \cdots & y_{t-L}
-    \end{bmatrix}^{\top}
-    \in\mathbb{R}^{L+1},
-    \qquad
-    y_t=C s_t,
-    \label{eq:memory_state}
-\end{equation}
+responses. We represent this short-term history with delay coordinates
+$s_t=[\,y_t,\,y_{t-1},\,\ldots,\,y_{t-L}\,]^{\top}\in\mathbb{R}^{L+1}$ with readout $y_t=Cs_t$,\label{eq:memory_state}  % inlined 2026-09-23 (page budget); label kept for the contract lattice
 where $L\geq 1$ is the number of previous readings retained and
 $C=[1,0,\ldots,0]$ reads the current attribute from the state. We use
 $s_t$ as a finite-memory stand-in for the part of the dialogue history that
@@ -110,16 +101,7 @@ successor state.
 
 Because $K$, $B$, and $b$ enter the one-step prediction linearly, the
 identity-lifting model is estimated by least squares,
-\begin{equation}
-    (\widehat K,\widehat B,\widehat b)
-    =
-    \arg\min_{K,B,b}
-    \sum_t
-    \left\|
-        s_{t+1}-(Ks_t+Bc_t+b)
-    \right\|_2^2.
-    \label{eq:koopman_fit}
-\end{equation}
+$(\widehat K,\widehat B,\widehat b)=\arg\min_{K,B,b}\sum_t\|s_{t+1}-(Ks_t+Bc_t+b)\|_2^2$.\label{eq:koopman_fit}  % inlined 2026-09-23 (page budget)
 The fit is performed offline and does not modify the parameters $\theta$
 of the target LLM. The learned dynamics can be trusted only on the
 state--command combinations represented in the recorded trajectories.
@@ -194,14 +176,7 @@ $\varepsilon_{\mathrm{rec}}$, and the readout is Lipschitz on the region
 visited by the rollouts. Then the $h$-step prediction error is bounded by
 some $\Delta_h$, and the command selected by Eq.~(\ref{eq:predictive_control})
 satisfies
-\begin{equation}
-    J_t(c_t^\star)
-    \leq
-    \min_{c\in\mathcal{C}_t} J_t(c)
-    +
-    2\delta_J,
-    \label{eq:selection_bound}
-\end{equation}
+$J_t(c_t^\star)\leq\min_{c\in\mathcal{C}_t} J_t(c)+2\delta_J$,\label{eq:selection_bound}  % inlined 2026-09-23 (page budget); A6 now refers to "the selection bound of Section 3.4"
 where $\delta_J$ is the corresponding bound on the difference between
 predicted and realized candidate costs. Appendix~\ref{app:A6_selection_bound}
 gives the explicit forms of $\Delta_h$ and $\delta_J$ and the proof.

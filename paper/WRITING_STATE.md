@@ -14,8 +14,21 @@ state of sections:
   02_problem.tex          compressed 2026-09-21 (A1) and 2026-09-22 (inline labels, feasible-set paragraph); gates PASS
   03_method.tex           colleague's version (a1eeb79) + A4/A5 + round-2 trims + MethodCropped figure; 1063 words; gates PASS
   04_experiments + 04a-04d trimmed 2026-09-21 to trends + insight; gates PASS
-  05_conclusion.tex       WRITTEN 2026-09-23 (167 words, 7 sentences, user-reviewed; two scope limitations, no point-estimate caveat per D40); gates PASS
-  06_related_work.tex     TODO (Phase 5, user writes; four categories, ~0.5 pp)
+  06_conclusion.tex       (was 05_) WRITTEN 2026-09-23 (167 words, 7 sentences, user-reviewed; two scope limitations, no point-estimate caveat per D40); gates PASS
+  main.bib                CLEANED 2026-09-23: 30 entries, every author list complete (looked up on arxiv/HF/alphaxiv/mlanthology),
+                          7 unknown* keys renamed (li2024instability, allbert2024personality, yang2025lfsteering, shi2026unisteer,
+                          wang2026nautilus, ko2026attractor, luo2026spasm), genctrl duplicate dropped, 12 entries added (RE-Control,
+                          TMPC, Akrout x2, Nosrati survey, Korda-Mezic, DMDc, Hankel-DMD, HAVOK, Lusch, Enyeart-Lin), printing
+                          note fields removed. Journal volume/pages of the 2016-2018 Koopman papers from memory: verify.
+                          Open: wang2026tmpc is text-level MPC per its abstract, conflicting with Table 2's white-box label (TODO in 05).
+  05_related_work.tex     (was 06_) DRAFT 2026-09-23 (273 words, four categories A-D; all gates PASS except gate 5 = D7 no-\cite,
+                          which fires by design here; missing bib keys listed as % CITE-TODO(bib) with arXiv links, user adds)
+  2026-09-23 page-budget pass (claude/related_work_draft_and_page_levers_2026-09-23.md): Intro P2 compressed
+                          18 -> 10 lines (one paragraph, one \uline gap sentence, pointer to Sec. 6); five displayed
+                          equations inlined (eq:interaction, eq:control_objective, eq:memory_state, eq:koopman_fit,
+                          eq:selection_bound; labels kept for the contract lattice); A6 now says "the selection bound of
+                          Section 3.4". Body ends p.10 line 489 (budget 486): 3-4 lines over before the missing
+                          citations are added (~+2). Remaining levers: RW drop 2 sentences (-2.5), \vspace on headings.
   appendix A1, A6, A7     written; A3 carries moved setup details + two TODO(data) tables; A2, A4, A5 TODO
 page budget (ICLR 2027: 9 pp main text at submission):
   body ends p.9 line ~450 (Conclusion header at 447; ~8.3 pp incl. the three TODO stubs). Round 2 done
@@ -34,7 +47,7 @@ open_questions_for_user:
       eq:predictive_control (labels introduced by the colleague's method commit); reconcile
   (3) the letter C carries three objects (readout row, command range, candidate set); not renamed
   (4) whether to add a half-clause on the equal-cost boundary (A4) to Intro contribution 3
-  (5) Related Work position: main.tex has Conclusion -> Related Work; the skill recommends the reverse
+  (5) RESOLVED 2026-09-23: main.tex order is now Related Work -> Conclusion -> bibliography -> appendix; files renamed 05_related_work / 06_conclusion
 
 ---
 
