@@ -1,283 +1,368 @@
-% main.bib -- cleaned 2026-09-23: every author list complete (looked up on arxiv.org / huggingface.co/papers /
-% alphaxiv.org / mlanthology.org); unknown* placeholder keys renamed; printing note fields removed.
-% Verify before camera-ready: journal volume/page numbers of the 2016-2018 Koopman papers (from memory).
-% Grouping follows BASELINES.md's three layers plus the related-work survey table.
-
-% ---- Related-work survey: layer-axis control-theoretic LLM steering ----
-
+% verified
 @misc{skifstad2026alqr,
-  title        = {Local Linearity of {LLMs} Enables Activation Steering via Model-Based Linear Optimal Control},
-  author       = {Skifstad, Julian and Yang, Xinyue Annie and Chou, Glen},
-  year         = {2026},
-  eprint       = {2604.19018},
-  archivePrefix = {arXiv}
+      title={Local Linearity of LLMs Enables Activation Steering via Model-Based Linear Optimal Control}, 
+      author={Julian Skifstad and Xinyue Annie Yang and Glen Chou},
+      year={2026},
+      eprint={2604.19018},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2604.19018}, 
 }
 
-@inproceedings{nguyen2026pidsteering,
-  title        = {Activation Steering with a Feedback Controller},
-  author       = {Nguyen, Dung V. and Vu, Hieu M. and Pham, Nhi Y. and Zhang, Lei and Nguyen, Tan M.},
-  booktitle    = {ICLR},
-  year         = {2026},
-  eprint       = {2510.04309},
-  archivePrefix = {arXiv}
+% verified
+@misc{nguyen2026pidsteering,
+      title={Activation Steering with a Feedback Controller}, 
+      author={Dung V. Nguyen and Hieu M. Vu and Nhi Y. Pham and Lei Zhang and Tan M. Nguyen},
+      year={2026},
+      eprint={2510.04309},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2510.04309}, 
 }
 
 % ---- Related-work survey: token-axis ----
 
+% verified
 @misc{cheng2024liseco,
-  title        = {Linearly Controlled Language Generation with Performative Guarantees},
-  author       = {Cheng, Emily and Baroni, Marco and Amo Alonso, Carmen},
-  year         = {2024},
-  eprint       = {2405.15454},
-  archivePrefix = {arXiv}
+      title={LiSeCo: Linear Semantic Control for Language Generation}, 
+      author={Emily Cheng and Carmen Amo Alonso},
+      year={2026},
+      eprint={2405.15454},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2405.15454}, 
 }
 
-@misc{miyaoka2024cbfllm,
-  title        = {{CBF-LLM}: Safe Control for {LLM} Alignment},
-  author       = {Miyaoka, Yuya and Inoue, Masaki},
-  year         = {2024},
-  eprint       = {2408.15625},
-  archivePrefix = {arXiv}
+% verified
+@article{miyaoka2024cbfllm,
+   title={Control Barrier Function for Aligning Large Language Models},
+   volume={34},
+   ISSN={2374-0159},
+   url={http://dx.doi.org/10.1109/TCST.2026.3675329},
+   DOI={10.1109/tcst.2026.3675329},
+   number={4},
+   journal={IEEE Transactions on Control Systems Technology},
+   publisher={Institute of Electrical and Electronics Engineers (IEEE)},
+   author={Miyaoka, Yuya and Inoue, Masaki},
+   year={2026},
+   month={July}, 
+   pages={1821–1830} 
 }
 
-@misc{miyaoka2025cbfllm2,
-  title        = {Control Barrier Function for Aligning Large Language Models},
-  author       = {Miyaoka, Yuya and Inoue, Masaki},
-  year         = {2025},
-  eprint       = {2511.03121},
-  archivePrefix = {arXiv}
+
+% verified
+@article{miyaoka2025cbfllm2,
+   title={Control Barrier Function for Aligning Large Language Models},
+   volume={34},
+   ISSN={2374-0159},
+   url={http://dx.doi.org/10.1109/TCST.2026.3675329},
+   DOI={10.1109/tcst.2026.3675329},
+   number={4},
+   journal={IEEE Transactions on Control Systems Technology},
+   publisher={Institute of Electrical and Electronics Engineers (IEEE)},
+   author={Miyaoka, Yuya and Inoue, Masaki},
+   year={2026},
+   month={July}, 
+   pages={1821–1830} 
 }
 
+
+% verified
 @misc{tran2026barriersteer,
-  title        = {{BarrierSteer}: {LLM} Safety via Learning Barrier Steering},
-  author       = {Tran, Thanh Q. and Verma, Arun and Wong, Kiwan and Low, Bryan Kian Hsiang and Rus, Daniela and Xiao, Wei},
-  year         = {2026},
-  eprint       = {2602.20102},
-  archivePrefix = {arXiv}
+      title={BarrierSteer: LLM Safety via Learning Barrier Steering}, 
+      author={Thanh Q. Tran and Arun Verma and Kiwan Wong and Bryan Kian Hsiang Low and Daniela Rus and Wei Xiao},
+      year={2026},
+      eprint={2602.20102},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2602.20102}, 
 }
 
+% verified
 @misc{fan2026steerable,
-  title        = {When is Your {LLM} Steerable?},
-  author       = {Fan, Chenrui and Cheng, Yize and Li, Ming and Feizi, Soheil and Zhou, Tianyi},
-  year         = {2026},
-  eprint       = {2606.11599},
-  archivePrefix = {arXiv}
+      title={When is Your LLM Steerable?}, 
+      author={Chenrui Fan and Yize Cheng and Ming Li and Soheil Feizi and Tianyi Zhou},
+      year={2026},
+      eprint={2606.11599},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2606.11599}, 
 }
 
+% verified
 @misc{bhargava2023magicword,
-  title        = {What's the Magic Word? A Control Theory of {LLM} Prompting},
-  author       = {Bhargava, Aman and Witkowski, Cameron and Looi, Shi-Zhuo and Thomson, Matt},
-  year         = {2023},
-  eprint       = {2310.04444},
-  archivePrefix = {arXiv}
+      title={What's the Magic Word? A Control Theory of LLM Prompting}, 
+      author={Aman Bhargava and Cameron Witkowski and Shi-Zhuo Looi and Matt Thomson},
+      year={2024},
+      eprint={2310.04444},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2310.04444}, 
 }
 
 % ---- Related-work survey: turn-axis (direct competitors/comparators) ----
 
-@inproceedings{hu2025nbfllm,
-  title        = {Steering Dialogue Dynamics for Robustness against Multi-turn Jailbreaking Attacks},
-  author       = {Hu, Hanjiang and Robey, Alexander and Liu, Changliu},
-  booktitle    = {ICML},
-  year         = {2025},
-  eprint       = {2503.00187},
-  archivePrefix = {arXiv}
+% verified
+@misc{hu2025nbfllm,
+      title={Steering Dialogue Dynamics for Robustness against Multi-turn Jailbreaking Attacks}, 
+      author={Hanjiang Hu and Alexander Robey and Changliu Liu},
+      year={2026},
+      eprint={2503.00187},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2503.00187}, 
 }
 
+% verified
 @misc{dongre2025driftnomore,
-  title        = {Drift No More? Context Equilibria in Multi-Turn {LLM} Interactions},
-  author       = {Dongre, Vardhan and Rossi, Ryan A. and Lai, Viet Dac and Yoon, David Seunghyun and Hakkani-T{\"u}r, Dilek and Bui, Trung},
-  year         = {2025},
-  eprint       = {2510.07777},
-  archivePrefix = {arXiv}
+      title={Drift No More? Context Equilibria in Multi-Turn LLM Interactions}, 
+      author={Vardhan Dongre and Ryan A. Rossi and Viet Dac Lai and David Seunghyun Yoon and Dilek Hakkani-Tür and Trung Bui},
+      year={2025},
+      eprint={2510.07777},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2510.07777}, 
 }
 
 % ==== Entries added/renamed 2026-09-23 (authors looked up; unknown* placeholders replaced) ====
 
 % ---- A. multi-turn drift / instability ----
 
-@inproceedings{li2024instability,
-  title         = {Measuring and Controlling Instruction (In)Stability in Language Model Dialogs},
-  author        = {Li, Kenneth and Liu, Tianle and Bashkansky, Naomi and Bau, David and Vi{\'e}gas, Fernanda and Pfister, Hanspeter and Wattenberg, Martin},
-  booktitle     = {Conference on Language Modeling (COLM)},
-  year          = {2024},
-  eprint        = {2402.10962},
-  archivePrefix = {arXiv}
+% verified
+@misc{li2024instability,
+      title={Measuring and Controlling Instruction (In)Stability in Language Model Dialogs}, 
+      author={Kenneth Li and Tianle Liu and Naomi Bashkansky and David Bau and Fernanda Viégas and Hanspeter Pfister and Martin Wattenberg},
+      year={2024},
+      eprint={2402.10962},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2402.10962}, 
 }
 
+% verified
 @misc{ko2026attractor,
-  title         = {Attractor States Emerge in Multi-Turn {LLM} Conversations},
-  author        = {Ko, Ting-Wen and Geiping, Jonas},
-  year          = {2026},
-  eprint        = {2606.30571},
-  archivePrefix = {arXiv}
+      title={Attractor States Emerge in Multi-Turn LLM Conversations}, 
+      author={Ting-Wen Ko and Jonas Geiping},
+      year={2026},
+      eprint={2606.30571},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2606.30571}, 
 }
 
+% verified
 @misc{wang2026nautilus,
-  title         = {Nautilus Compass: Black-box Persona Drift Detection for Production {LLM} Agents},
-  author        = {Wang, Chunxiao},
-  year          = {2026},
-  eprint        = {2605.09863},
-  archivePrefix = {arXiv}
+      title={Nautilus Compass: Black-box Persona Drift Detection for Production LLM Agents}, 
+      author={Chunxiao Wang},
+      year={2026},
+      eprint={2605.09863},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2605.09863}, 
 }
 
+% verified
 @misc{luo2026spasm,
-  title         = {{SPASM}: Stable Persona-driven Agent Simulation for Multi-turn Dialogue Generation},
-  author        = {Luo, Han and Laban, Guy},
-  year          = {2026},
-  eprint        = {2604.09212},
-  archivePrefix = {arXiv}
+      title={SPASM: Stable Persona-driven Agent Simulation for Multi-turn Dialogue Generation}, 
+      author={Han Luo and Guy Laban},
+      year={2026},
+      eprint={2604.09212},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2604.09212}, 
 }
 
 % ---- B. latent-space steering and control ----
 
+% verified
 @misc{allbert2024personality,
-  title         = {Identifying and Manipulating Personality Traits in {LLMs} Through Activation Engineering},
-  author        = {Allbert, Rumi A. and Wiles, James K. and Grankovsky, Vlad},
-  year          = {2024},
-  eprint        = {2412.10427},
-  archivePrefix = {arXiv}
+      title={Identifying and Manipulating Personality Traits in LLMs Through Activation Engineering}, 
+      author={Rumi Allbert and James K. Wiles and Vlad Grankovsky},
+      year={2025},
+      eprint={2412.10427},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2412.10427}, 
 }
 
+% verified
 @misc{yang2025lfsteering,
-  title         = {{LF-Steering}: Latent Feature Activation Steering for Enhancing Semantic Consistency in Large Language Models},
-  author        = {Yang, Jingyuan and Li, Rongjun and Wang, Weixuan and Zhou, Ziyu and Feng, Zhiyong and Peng, Wei},
-  year          = {2025},
-  eprint        = {2501.11036},
-  archivePrefix = {arXiv}
+      title={LF-Steering: Latent Feature Activation Steering for Enhancing Semantic Consistency in Large Language Models}, 
+      author={Jingyuan Yang and Rongjun Li and Weixuan Wang and Ziyu Zhou and Zhiyong Feng and Wei Peng},
+      year={2025},
+      eprint={2501.11036},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2501.11036}, 
 }
 
+% verified
 @misc{shi2026unisteer,
-  title         = {{UniSteer}: Text-Guided Flow Matching in Activation Space for Versatile {LLM} Steering},
-  author        = {Shi, Yingdong and Zhang, Ruiming and Li, Changming and Yang, Zhiyu and Zhang, Kaixing and Yu, Jingyi and Ren, Kan},
-  year          = {2026},
-  eprint        = {2605.30076},
-  archivePrefix = {arXiv}
+      title={UniSteer: Text-Guided Flow Matching in Activation Space for Versatile LLM Steering}, 
+      author={Yingdong Shi and Ruiming Zhang and Changming Li and Zhiyu Yang and Kaixing Zhang and Jingyi Yu and Kan Ren},
+      year={2026},
+      eprint={2605.30076},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2605.30076}, 
 }
 
+% verified
 @misc{bharadwaj2025pidreasoning,
-  title         = {Adaptive Activation Steering for Efficient {LLM} Reasoning via Closed-Loop {PID} Control},
-  author        = {Bharadwaj, Aryasomayajula Ram},
-  year          = {2025},
-  eprint        = {2506.18831},
-  archivePrefix = {arXiv}
+      title={Adaptive Activation Steering for Efficient LLM Reasoning via Closed-Loop PID Control}, 
+      author={Aryasomayajula Ram Bharadwaj},
+      year={2026},
+      eprint={2506.18831},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2506.18831}, 
 }
 
-@inproceedings{kong2024recontrol,
-  title         = {Aligning Large Language Models with Representation Editing: A Control Perspective},
-  author        = {Kong, Lingkai and Wang, Haorui and Mu, Wenhao and Du, Yuanqi and Zhuang, Yuchen and Zhou, Yifei and Song, Yue and Zhang, Rongzhi and Wang, Kai and Zhang, Chao},
-  booktitle     = {Advances in Neural Information Processing Systems (NeurIPS)},
-  year          = {2024},
-  eprint        = {2406.05954},
-  archivePrefix = {arXiv}
+% verified
+@misc{kong2024recontrol,
+      title={Aligning Large Language Models with Representation Editing: A Control Perspective}, 
+      author={Lingkai Kong and Haorui Wang and Wenhao Mu and Yuanqi Du and Yuchen Zhuang and Yifei Zhou and Yue Song and Rongzhi Zhang and Kai Wang and Chao Zhang},
+      year={2024},
+      eprint={2406.05954},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2406.05954}, 
 }
 
-@inproceedings{wang2026tmpc,
-  title         = {Test-Time Alignment for Large Language Models via Textual Model Predictive Control},
-  author        = {Wang, Kuang-Da and Chen, Teng-Ruei and Hung, Yu Heng and Ko, Guo-Xun and Ding, Shuoyang and Wu, Yueh-Hua and Wang, Yu-Chiang Frank and Yang, Chao-Han Huck and Peng, Wen-Chih and Hsieh, Ping-Chun},
-  booktitle     = {International Conference on Learning Representations (ICLR)},
-  year          = {2026},
-  eprint        = {2502.20795},
-  archivePrefix = {arXiv}
+% verified
+@misc{wang2026tmpc,
+      title={Test-Time Alignment for Large Language Models via Textual Model Predictive Control}, 
+      author={Kuang-Da Wang and Teng-Ruei Chen and Yu Heng Hung and Guo-Xun Ko and Shuoyang Ding and Yueh-Hua Wu and Yu-Chiang Frank Wang and Chao-Han Huck Yang and Wen-Chih Peng and Ping-Chun Hsieh},
+      year={2026},
+      eprint={2502.20795},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2502.20795}, 
 }
 
 % ---- C. control-theoretic views ----
 
-@inproceedings{cheng2026genctrl,
-  title         = {{GenCtrl}: A Formal Controllability Toolkit for Generative Models},
-  author        = {Cheng, Emily and Amo Alonso, Carmen and Danieli, Federico and Blaas, Arno and Zappella, Luca and Rodriguez, Pau and Suau, Xavier},
-  booktitle     = {International Conference on Learning Representations (ICLR)},
-  year          = {2026},
-  eprint        = {2601.05637},
-  archivePrefix = {arXiv}
+% verified
+@misc{cheng2026genctrl,
+      title={GenCtrl -- A Formal Controllability Toolkit for Generative Models}, 
+      author={Emily Cheng and Carmen Amo Alonso and Federico Danieli and Arno Blaas and Luca Zappella and Pau Rodriguez and Xavier Suau},
+      year={2026},
+      eprint={2601.05637},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2601.05637}, 
 }
 
+% verified
 @misc{akrout2026distinguishability,
-  title         = {Guarantees on Dynamical System Distinguishability for {LLM} Token Generation},
-  author        = {Akrout, Mohamed and Wilson, Dan},
-  year          = {2026},
-  eprint        = {2607.28667},
-  archivePrefix = {arXiv}
+      title={Guarantees on Dynamical System Distinguishability for LLM Token Generation}, 
+      author={Mohamed Akrout and Dan Wilson},
+      year={2026},
+      eprint={2607.28667},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2607.28667}, 
 }
 
+% verified
 @misc{akrout2026dmdsafety,
-  title         = {Enforcing {LLM} Safety through {DMD}-based Classification of Prompt-Response Embedding Dynamics},
-  author        = {Akrout, Mohamed and Kotevska, Olivera and Wilson, Dan},
-  year          = {2026},
-  eprint        = {2608.19579},
-  archivePrefix = {arXiv}
+      title={Enforcing LLM Safety through DMD-based Classification of Prompt-Response Embedding Dynamics}, 
+      author={Mohamed Akrout and Olivera Kotevska and Dan Wilson},
+      year={2026},
+      eprint={2608.19579},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2608.19579}, 
 }
 
-@misc{nosrati2026controlmeetsllm,
-  title         = {When Control Meets Large Language Models: From Words to Dynamics},
-  author        = {Nosrati, Komeil and Tepljakov, Aleksei and Belikov, Juri and Petlenkov, Eduard},
-  year          = {2026},
-  eprint        = {2602.03433},
-  archivePrefix = {arXiv}
-}
+% verified
+@article{nosrati2026controlmeetsllm,
+   title={When control meets large language models: From words to dynamics},
+   volume={178},
+   ISSN={0952-1976},
+   url={http://dx.doi.org/10.1016/j.engappai.2026.115119},
+   DOI={10.1016/j.engappai.2026.115119},
+   journal={Engineering Applications of Artificial Intelligence},
+   publisher={Elsevier BV},
+   author={Nosrati, Komeil and Tepljakov, Aleksei and Belikov, Juri and Petlenkov, Eduard},
+   year={2026},
+   month=Aug, pages={115119} }
 
 % ---- D. Koopman predictors with inputs ----
 
+% verified
 @article{korda2018koopman,
-  title         = {Linear Predictors for Nonlinear Dynamical Systems: {Koopman} Operator Meets Model Predictive Control},
-  author        = {Korda, Milan and Mezi{\'c}, Igor},
-  journal       = {Automatica},
-  volume        = {93},
-  pages         = {149--160},
-  year          = {2018},
-  eprint        = {1611.03537},
-  archivePrefix = {arXiv}
+   title={Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control},
+   volume={93},
+   ISSN={0005-1098},
+   url={http://dx.doi.org/10.1016/j.automatica.2018.03.046},
+   DOI={10.1016/j.automatica.2018.03.046},
+   journal={Automatica},
+   publisher={Elsevier BV},
+   author={Korda, Milan and Mezić, Igor},
+   year={2018},
+   month={July}, pages={149–160} }
+
+% verified
+@misc{proctor2016dmdc,
+      title={Dynamic mode decomposition with control}, 
+      author={Joshua L. Proctor and Steven L. Brunton and J. Nathan Kutz},
+      year={2014},
+      eprint={1409.6358},
+      archivePrefix={arXiv},
+      primaryClass={math.OC},
+      url={https://arxiv.org/abs/1409.6358}, 
 }
 
-@article{proctor2016dmdc,
-  title         = {Dynamic Mode Decomposition with Control},
-  author        = {Proctor, Joshua L. and Brunton, Steven L. and Kutz, J. Nathan},
-  journal       = {SIAM Journal on Applied Dynamical Systems},
-  volume        = {15},
-  number        = {1},
-  pages         = {142--161},
-  year          = {2016},
-  eprint        = {1409.6358},
-  archivePrefix = {arXiv}
-}
-
+% verified
 @article{arbabi2017hankel,
-  title         = {Ergodic Theory, Dynamic Mode Decomposition, and Computation of Spectral Properties of the {Koopman} Operator},
-  author        = {Arbabi, Hassan and Mezi{\'c}, Igor},
-  journal       = {SIAM Journal on Applied Dynamical Systems},
-  volume        = {16},
-  number        = {4},
-  pages         = {2096--2126},
-  year          = {2017},
-  eprint        = {1611.06664},
-  archivePrefix = {arXiv}
-}
+   title={Ergodic Theory, Dynamic Mode Decomposition, and Computation of Spectral Properties of the Koopman Operator},
+   volume={16},
+   ISSN={1536-0040},
+   url={http://dx.doi.org/10.1137/17M1125236},
+   DOI={10.1137/17m1125236},
+   number={4},
+   journal={SIAM Journal on Applied Dynamical Systems},
+   publisher={Society for Industrial & Applied Mathematics (SIAM)},
+   author={Arbabi, Hassan and Mezić, Igor},
+   year={2017},
+   month=Jan, pages={2096–2126} }
 
+% verified
 @article{brunton2017havok,
-  title         = {Chaos as an Intermittently Forced Linear System},
-  author        = {Brunton, Steven L. and Brunton, Bingni W. and Proctor, Joshua L. and Kaiser, Eurika and Kutz, J. Nathan},
-  journal       = {Nature Communications},
-  volume        = {8},
-  pages         = {19},
-  year          = {2017},
-  eprint        = {1608.05306},
-  archivePrefix = {arXiv}
-}
+   title={Chaos as an intermittently forced linear system},
+   volume={8},
+   ISSN={2041-1723},
+   url={http://dx.doi.org/10.1038/s41467-017-00030-8},
+   DOI={10.1038/s41467-017-00030-8},
+   number={1},
+   journal={Nature Communications},
+   publisher={Springer Science and Business Media LLC},
+   author={Brunton, Steven L. and Brunton, Bingni W. and Proctor, Joshua L. and Kaiser, Eurika and Kutz, J. Nathan},
+   year={2017},
+   month=May }
 
+% verified
 @article{lusch2018deepkoopman,
-  title         = {Deep Learning for Universal Linear Embeddings of Nonlinear Dynamics},
-  author        = {Lusch, Bethany and Kutz, J. Nathan and Brunton, Steven L.},
-  journal       = {Nature Communications},
-  volume        = {9},
-  pages         = {4950},
-  year          = {2018},
-  eprint        = {1712.09707},
-  archivePrefix = {arXiv}
-}
+   title={Deep learning for universal linear embeddings of nonlinear dynamics},
+   volume={9},
+   ISSN={2041-1723},
+   url={http://dx.doi.org/10.1038/s41467-018-07210-0},
+   DOI={10.1038/s41467-018-07210-0},
+   number={1},
+   journal={Nature Communications},
+   publisher={Springer Science and Business Media LLC},
+   author={Lusch, Bethany and Kutz, J. Nathan and Brunton, Steven L.},
+   year={2018},
+   month=Nov }
 
+% verified
 @misc{enyeart2024koopmanae,
-  title         = {Loss Terms and Operator Forms of {Koopman} Autoencoders},
-  author        = {Enyeart, Dustin and Lin, Guang},
-  year          = {2024},
-  eprint        = {2412.04578},
-  archivePrefix = {arXiv}
+      title={Loss Terms and Operator Forms of Koopman Autoencoders}, 
+      author={Dustin Enyeart and Guang Lin},
+      year={2024},
+      eprint={2412.04578},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2412.04578}, 
 }
