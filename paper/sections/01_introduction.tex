@@ -4,7 +4,7 @@
 % (three gaps: access / statefulness / model), P3 clock and state, P4 perspective, P5 contributions.
 % Mapping: contribution 1 <-> RQ1a+1c, contribution 2 <-> RQ1b, contribution 3 <-> RQ2.
 % Trimmed 2026-09-22 (user ruling): P3 removed, Method details dropped from P4, contributions compressed.
-% Constraints: <=30 words and <=2 logical turns per sentence (D8); no \cite (D7, % CITE markers);
+% Constraints: <=30 words and <=2 logical turns per sentence (D8); citations opened 2026-09-23 (\citep, keys all in main.bib);
 % zero forward references; KOMPAS revealed once; numbers carry evidence ids at line end.
 \section{Introduction}
 \label{sec:intro}
@@ -12,28 +12,24 @@
 Multi-turn interaction turns a reply attribute of a frozen language model into a sequence with inertia.
 The attribute may be a word count, a sentence count, a CEFR readability grade, a sentiment polarity, a safety score under jailbreak attempts, or whether a formatting constraint is met.  % safety phrase added 2026-09-23 to match Abstract sentence 1 (jailbreak defense)
 What one reply does on such an attribute carries into the next reply, instead of being drawn fresh at every turn.
-Instruction following in particular is measured to decay over a dialogue, so a constraint met early is not met for free later.
-% CITE: li2024instability
+Instruction following in particular is measured to decay over a dialogue, so a constraint met early is not met for free later \citep{li2024instability}.
 Deployments need to hold such an attribute at a target, such as a length budget or a readability grade, across every turn, and inertia complicates that.
 The same current reading can sit on a rising path or on a falling path, and the next reply differs between the two.
 A controller that reads one reply at a time cannot tell those two futures apart.
 
 % P2 compressed 2026-09-23 (page budget): three lines in one paragraph, one \uline gap sentence, pointer to the Related Work section.
 Prior work approaches this problem along three lines, reviewed in Section~\ref{sec:related}.
-Latent-space controllers steer activations or logits at every generated token, so they need white-box access, while a deployment acts only between turns through a black-box API.
-% CITE: nguyen2026pidsteering, miyaoka2024cbfllm, tran2026barriersteer, cheng2024liseco, skifstad2026alqr, kong2024recontrol, wang2026tmpc, hu2025nbfllm
-Prompt-level remedies reinstate an instruction on a fixed schedule or after a per-turn check, but they are stateless: none predicts what the next instruction will do.
-% CITE: li2024instability, dongre2025driftnomore
-Control-theoretic views write prompting as a control problem, yet their results are reachability statements, bounds, or token-level detectors.
-% CITE: bhargava2023magicword, cheng2026genctrl, fan2026steerable
+Latent-space controllers steer activations or logits at every generated token, so they need white-box access, while a deployment acts only between turns through a black-box API \citep{nguyen2026pidsteering, miyaoka2024cbfllm, tran2026barriersteer, hu2025nbfllm, cheng2024liseco, skifstad2026alqr, kong2024recontrol}.
+% wang2026tmpc withheld here as in Sec. 5: its abstract describes text-level MPC, which conflicts with the white-box label of Table 2 (see TODO(user) in 05_related_work.tex)
+Prompt-level remedies reinstate an instruction on a fixed schedule or after a per-turn check, but they are stateless: none predicts what the next instruction will do \citep{li2024instability, dongre2025driftnomore, wang2026nautilus}.
+Control-theoretic views write prompting as a control problem, yet their results are reachability statements, bounds, or token-level detectors \citep{bhargava2023magicword, cheng2026genctrl, fan2026steerable, akrout2026distinguishability}.
 \uline{What is missing is a dynamics model at the interaction level that uses only what a black-box caller can observe and carries the instruction as an explicit input.}
 
 \textbf{Our Perspective: An Interaction-Level Koopman Perspective.}
 We treat one prompt--response exchange as one step of a controlled dynamical system, whose only observable is the verifier's score of the completed reply.
 The intuition is that the next reading decomposes into three parts: what recent history carries forward, what the current instruction pushes, and a constant offset.
 The state is the window of the last few readings, so a reading on a rising path and the same reading on a falling path become two different states.
-Linear predictors with inputs, fit on observables and paired with model predictive control, are an established route for nonlinear systems that must be planned over in real time.
-% CITE: korda2018koopman  % TODO(bib): Korda & Mezic, Automatica 2018, not yet in main.bib
+Linear predictors with inputs, fit on observables and paired with model predictive control, are an established route for nonlinear systems that must be planned over in real time \citep{korda2018koopman}.
 The same route fits here: a window of verifier readings is the feature set the linear predictor acts on, and the instruction, encoded as a scalar command, is the input.
 In its linear form the resulting model is a delay regression with an exogenous input. The operator view adds the freedom to swap that feature set, a closed-form multi-step prediction, and an unchanged control toolchain.
 The controller rolls every candidate command forward through this model, scores the predicted trajectory against the target, executes the best command, and replans after the next reply.

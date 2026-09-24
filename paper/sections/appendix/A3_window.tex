@@ -1,18 +1,67 @@
 %% Appendix A3_window. Setup details moved from Sec. 4.1 on 2026-09-21 (page budget, item A3).
+%% Two tables filled 2026-09-23 from evidence/numbers.yaml (n_main_* `what`/`test` fields; n_abl_* matched-caliber levels).
 \section{Modeling-Line Setup Details and Matched Training Window}
 \label{app:A3_window}
 
-Window length and horizon vary by task: window length ranges from 1 to 4 readings and horizon from 3 to 6 steps.  % RECOVERED 2026-09-19 (Opus, tabulated from evidence/numbers.yaml)
+\begin{table}[t]
+\centering
+\caption{Modeling-line setup per task. State depth is the number of readings in the memory state ($L+1$); rows are held-out transitions scored after windowing; trajectories are the bootstrap groups. The last two rows are the extra columns of Appendix~\ref{app:A2_small_columns}.}
+\label{tab:setup_per_task}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lccccl}
+\toprule
+Task & State depth & Horizon $H$ & Scored rows & Trajectories & Best trivial null \\
+\midrule
+Sentence len. & 4 & 6 & 252 & 42 & stateless \\  % n_main_001 (lag=3), test field 42 groups / 252 rows
+Joint-3 & 4 & 6 & 1,620 & 90 & stateless \\  % n_main_033 (lag=3), 90 groups / 1620 rows
+Joint-2 & 4 & 6 & 576 & 48 & stateless \\  % n_main_017 (lag=3), 48 groups / 576 rows
+Sentiment & 2 & 3 & 30 & 10 & stateless \\  % n_main_097 (lag=1), 10 groups / 30 rows
+Defense & 2 & 3 & 180 & 30 & constant \\  % n_main_136 (nu=2), 30 groups / 180 rows
+Constraint & 4 & 4 & 12,376 & 40 & stateless \\  % n_main_120 (nu=4), 40 groups / 12376 rows
+CEFR & 2 & 4 & 4,776 & 100 & stateless \\  % n_main_168 (lag=1), 100 groups / 4776 rows
+\midrule
+Word len. & 2 & 3 & 42 & 14 & stateless \\  % n_main_049 (lag=1), 14 groups / 42 rows
+GSM8K-sharded & 4 & 4 & 64 & 4 & constant \\  % n_main_152 (nu=4), 4 groups / 64 rows
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:setup_per_task} lists the per-task settings behind Table~\ref{tab:prediction}.
+State depth ranges from 2 to 4 readings and horizon from 3 to 6 steps.
+The depth is the deepest state that still leaves a rollout of at least three steps on that task's trajectory length.  % lag/nu rule: docs/experiments/behavioral_surrogate_rows_results.md, core_surrogate_rows_results.md; CORRECTED 2026-09-23 from "1 to 4" (lag counts previous readings, depth = lag+1)
 Scored held-out rows per task range from 30 to 12,376, counted after windowing.  % RECOVERED 2026-09-19 (Opus, evidence/numbers.yaml)
-The trajectories those rows come from number 40 to 100 for the seven columns of Table~\ref{tab:prediction}, and 4 to 30 for the columns of Appendix~\ref{app:A2_small_columns}.  % RECOVERED 2026-09-19 (Opus, group counts in evidence/numbers.yaml `test` fields)
+The trajectories those rows come from number 10 to 100 for the seven columns of Table~\ref{tab:prediction}, and 4 to 30 for the columns of Appendix~\ref{app:A2_small_columns}.  % group counts in evidence/numbers.yaml `test` fields; CORRECTED 2026-09-23 from "40 to 100" (sentiment has 10, defense 30)
 Every interval reported in \S\ref{sec:exp_prediction} is a paired grouped bootstrap over trajectories, with 2000 resamples.  % evidence/numbers.yaml `test` field, all n_main_* contrast rows
 Character length and formality are not shown in either table this round.  % table1_swap_2026-09-19
 A second backbone for the modeling line remains a planned arm with no submitted job.  % docs/NAMING.md backbone2 row
-% TODO(data): per-task table of window length, horizon, scored rows and trajectory count.
 
 The two experiment lines report different metrics in different reference frames.  % numbers_benchmark.yaml unit field
 The modeling line's skill score is referenced against a best-trivial-null baseline and can go negative, while the control line's percentage carries no reference point.
 
-The matched-window analysis of \S\ref{sec:exp_memory} fits every state depth on the same set of transitions; the per-task numbers behind Figure~\ref{fig:memory} are listed here.
-The window convention matters. On sentence length the memory gain over Last-turn is +0.603 under the default window of Table~\ref{tab:prediction} and +0.109 under the matched window, so the two conventions answer different questions.  % n_main_013 (default) vs n_abl_127 (matched); moved from Sec. 4.3 on 2026-09-21
-% TODO(data): matched-window table (was the original purpose of this appendix).
+\begin{table}[t]
+\centering
+\caption{Matched training window. Every depth is fit on the same transitions. Columns 2--5 give $\mathrm{Skill}_H$ of KOMPAS (linear) at a state depth of 1 to 4 readings; the two gain columns are paired bootstrap differences with 95\% intervals. The default-window gain is the Table~\ref{tab:prediction} contrast of KOMPAS (linear) against Last-turn, whose training set grows as the depth shrinks. Joint-3 uses the deep-anchor fit, the only one with a recorded interval.}
+\label{tab:matched_window}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccccc}
+\toprule
+Task & Depth 1 & Depth 2 & Depth 3 & Depth 4 & Matched gain (deepest $-$ depth 1) & Default gain (Table~\ref{tab:prediction}) \\
+\midrule
+Sentence len. & 0.660 & 0.772 & 0.770 & 0.769 & $+0.109$ $[+0.035, +0.175]$ & $+0.603$ $[+0.438, +0.765]$ \\  % n_abl_129-132; n_abl_127; n_main_013
+Joint-3 & 0.714 & 0.920 & 0.918 & 0.925 & $+0.211$ $[+0.115, +0.339]$ & $+0.312$ $[+0.245, +0.385]$ \\  % n_abl_204-207 (deep anchor); n_abl_196; n_main_045
+Joint-2 & 0.507 & 0.634 & 0.644 & 0.640 & $+0.229$ $[+0.166, +0.302]$ & $+0.245$ $[-0.023, +0.415]$ \\  % n_abl_162-165; n_abl_187; n_main_029
+Sentiment & 0.341 & 0.496 & -- & -- & $+0.127$ $[-0.069, +0.251]$ & $+0.221$ $[-0.051, +0.329]$ \\  % n_abl_152-153; n_abl_157; n_main_109
+Defense & 0.068 & 0.035 & -- & -- & $-0.033$ $[-0.103, +0.013]$ & $-0.033$ $[-0.103, +0.013]$ \\  % n_abl_246-247; n_abl_245; n_main_148
+Constraint & 0.288 & 0.438 & 0.492 & 0.519 & $+0.231$ $[+0.174, +0.274]$ & $+0.234$ $[+0.176, +0.279]$ \\  % n_abl_240-243; n_abl_238; n_main_132
+CEFR & 0.562 & 0.567 & -- & -- & $+0.005$ $[-0.004, +0.017]$ & $+0.049$ $[+0.007, +0.097]$ \\  % n_abl_263-264; n_abl_262; n_main_180
+\bottomrule
+\end{tabular}
+\end{table}
+
+The matched-window analysis of \S\ref{sec:exp_memory} fits every state depth on the same set of transitions; Table~\ref{tab:matched_window} lists the per-task numbers behind Figure~\ref{fig:memory}.
+The window convention matters. On sentence length the memory gain over Last-turn is $+0.603$ under the default window of Table~\ref{tab:prediction} and $+0.109$ under the matched window, so the two conventions answer different questions.  % n_main_013 (default) vs n_abl_127 (matched); moved from Sec. 4.3 on 2026-09-21
+The shrinkage appears where the default window lets a shallower state train on more transitions, which is the case on the four core-line tasks and on CEFR.  % core line: lag=3 default drops the first three turns of every trajectory from training; tsar_cefr lag=1
+On defense and constraint the default fit is the matched fit, and the two gains coincide.  % behavioral line: window defined by the deepest state, all rows on the same absolute turns (behavioral_surrogate_rows_results.md)
+Under either convention the second reading carries most of the gain; the third and fourth readings add $+0.054$ and $+0.027$ on constraint and stay within $\pm 0.004$ elsewhere.  % n_abl_237 (nu3-nu2), n_abl_239 (nu4-nu3); n_abl_126/128/186/188/197/199

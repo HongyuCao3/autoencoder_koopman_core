@@ -379,8 +379,8 @@ def main():
 
     app_tex, app_report, _ = build_prediction(
         grid_main, APPENDIX_COLUMNS, "tab:prediction_small_app",
-        r"Appendix A2. The four small-sample columns, reported for completeness. "
-        r"No conclusion is drawn from them (user decision D4).",
+        r"The four small-sample columns, reported for completeness. "
+        r"No conclusion in the main text is drawn from them.",
         header_note="APPENDIX A2 table. Not one of the two main-text tables.",
     )
     with open(os.path.join(outdir, "tab_prediction_small.tex"), "w", encoding="utf-8") as fh:

@@ -1,4 +1,49 @@
-%% Appendix A4_equal_cost. Filled after the main text is approved.
-\section{Equal-Budget Closed-Loop Comparison}
+%% Appendix A4_equal_cost. Filled 2026-09-23. Two roles: (i) the control-line provenance that Sec. 4.1 points here for;
+%% (ii) the equal-budget closed-loop comparison on the three self-built tasks (nc_2; D4 puts this negative result in the appendix).
+%% Numbers: evidence/numbers.yaml n_loop_*; docs/article/CLOSED_LOOP_SYNTHESIS.md; docs/experiments/{defense_table2,constraint,tsar_cefr}_results.md.
+\section{Control-Line Provenance and the Equal-Budget Closed-Loop Comparison}
 \label{app:A4_equal_cost}
-TODO
+
+\textbf{Control-line provenance.} The benchmark numbers of Table~\ref{tab:control} come from a pipeline separate from the modeling line.  % 04a; numbers_benchmark.yaml header
+It runs two frozen target models, Qwen3-4B and Qwen3-8B, on the eleven subtasks of IFBench, IFEval and COLLIE, and reports each benchmark's constraint-satisfaction score as a per-subtask percentage.  % contract.yaml meta.benchmarks; numbers_benchmark.yaml unit
+Base applies no control, and KOMPAS reads only the text it sends.
+TMPC and RE-Control are reproductions run under the same protocol, not the original authors' releases.  % c6 notes; tab_control.tex Access column
+Every cell is a single point estimate: no seeds, intervals or raw logs accompany the table, and the paper treats the numbers as reported.  % D3; nc_3; numbers_benchmark.yaml status note
+The candidate set, horizon and prompting protocol of that pipeline are not part of this repository, so this appendix records what the table states and nothing more.  % numbers_benchmark.yaml: "no raw logs, seeds, CI or configs exist in this repo"
+
+\textbf{Equal-budget comparison, protocol.} On three self-built tasks the closed loop also runs against open-loop fixed schedules under the same instruction budget cap.
+The comparison arm is the best of those schedules, chosen after the fact on the same data.  % CLOSED_LOOP_SYNTHESIS.md sec. 1-2; adaptive_vs_fixed_claim_plan.md
+Defense sends one safety reminder per trajectory and reads the judge's safety level on turns 3 to 5; its best schedule places the reminder at turn 5.  % n_loop_015 (fixed_t5), n_loop_019; defense_table2_results.md
+Constraint sends whole-paragraph or targeted reminders over twenty turns and reads constraint retention on turns 15 to 20; its best schedule sends whole-paragraph reminders on fixed turns.  % constraint_results.md S3
+CEFR sends step-down instructions toward a target readability level and reads the terminal level error.
+Its fixed ladder measures the level once and steps down the rounded distance to the target.  % tsar_cefr_results.md; n_loop_054, n_loop_057
+Defense uses 5 seeds and 8 attack families, constraint 3 seeds and 48 items, CEFR 3 seeds and 100 items; intervals are paired bootstraps over attacks, items and items respectively.  % n_loop_019 (n=5 seeds), n_loop_040 (n=8), n_loop_048 (n=3), n_loop_058 (n=100)
+
+\begin{table}[t]
+\centering
+\caption{Closed loop against the best equal-budget fixed schedule. Positive differences favor KOMPAS on defense and constraint; on CEFR the quantity is an error, so negative favors KOMPAS. Spend is instructions per trajectory (defense), total actions (constraint) and step-down instructions per item (CEFR). The last column is what the instruction itself buys against no control, for scale.}
+\label{tab:equal_budget}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llccc}
+\toprule
+Task & Quantity & KOMPAS $-$ schedule [95\% CI] & Spend (KOMPAS / schedule) & Instruction effect \\
+\midrule
+Defense & safety level, turns 3--5 & $-0.025$ $[-0.050, -0.004]$ & 0.75 / 1.00 & $+0.119$ \\  % n_loop_040 (per-attack unit); spend defense_table2_results.md rows 4,6; effect: constant_remind 0.7875 - zero_control 0.6687 (n_loop_003, n_loop_001)
+Constraint & retention, turns 15--20 & $+0.001$ $[-0.017, +0.019]$ & 517 / 300 & $+0.116$ \\  % n_loop_048; spend constraint_results.md S3; n_loop_050
+CEFR & terminal level error & $-0.007$ $[-0.068, +0.050]$ & 3.37 / 1.03 & $-0.136$ \\  % n_loop_060; spend tsar_cefr_results.md (3.37 steps / 322 tokens vs 1.03 steps / 100 tokens); effect: D-2 actuator authority -0.1356 (CLOSED_LOOP_SYNTHESIS.md sec. 4)
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Findings.} Table~\ref{tab:equal_budget} gives the per-task numbers behind the cross-check of \S\ref{sec:exp_analysis}.
+The loop ties the best schedule on constraint and CEFR, with intervals containing zero.
+On defense it falls below by 0.025 under the per-attack resampling unit; under the per-trajectory unit that interval also contains zero.  % n_loop_048, n_loop_060, n_loop_040; per-trajectory CI [-0.0688, +0.0251] from defense_table2_results.md row 80
+The tie is not bought with a smaller budget: KOMPAS spends less only on defense and spends more on the other two tasks.  % CLOSED_LOOP_SYNTHESIS.md sec. 1
+The last column sets the scale: the instruction itself moves the reading by 0.12 to 0.14, while rescheduling the same budget moves it by at most 0.03.  % nc_2; CLOSED_LOOP_SYNTHESIS.md sec. 4
+Two further checks say the gap is a property of the tasks rather than of the controller.
+On defense a causal oracle fitted on the logged trajectories, with the same observables as KOMPAS, gains $+0.006$ $[-0.017, +0.029]$ over the best schedule.
+A perfect controller on those readings would also tie.  % n_loop_046
+On CEFR the three feedback policies within one instruction family span 0.013 in terminal error, while switching family moves it by 0.040.
+The room that feedback can buy on that task is smaller than a wording choice.  % tsar_cefr_results.md D-2.5; CLOSED_LOOP_SYNTHESIS.md sec. 4 (range 0.0129, family gap 0.0395)
+The defense column carries the self-judge caveat of Appendix~\ref{app:A2_small_columns}; the other two tasks use an independent judge.  % judge_kind=self on defense only (n_loop_* supersede_reason)

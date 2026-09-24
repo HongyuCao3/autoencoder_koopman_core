@@ -50,6 +50,7 @@
 | D39 | 2026-09-22 | `main.bib` 仍由用户手工维护（2026-09-17 裁决不变）。`PLAN_finish_2026-09-22.md` **Step 6a 整条交回用户**：agent 只提供缺失键 → 正文引用位置 → arXiv 链接的清单，不写入任何 bib 条目、不改 `unknown*` 键名、不合并重复条目。`% CITE:` → `\cite` 的转换等 bib 齐了一次性做。清单见 `audit/step1_facts_and_gaps_2026-09-22.md` §G2。 | 确认 2026-09-17 裁决，覆盖 PLAN_finish Step 6a |
 | D40 | 2026-09-23 | Conclusion 的限制**只写应用范畴**（两条：每轮有 verifier 打分且指令沿单一 command 轴变化；相对固定日程的优势要求指令效果依赖状态，自建任务不满足故与等预算日程打平），**不重复点估计告诫**，也不写基线为复现。点估计告诫的家改为 Intro 贡献 3 从句与 §4.4 两段 Findings。同步：`contract.yaml` c5.notes 改写、nc_3.candidate_explicit 去掉 conclusion。用户当轮指令视为 D20 签字。 | 修改 D12 的第三处（Conclusion 重复）；c5.notes、nc_3 |
 | D41 | 2026-09-23 | 标题改为 *KOMPAS: Koopman Dynamics Modeling and **Black-Box** Predictive Control of Multi-Turn LLM **Reply Attributes***。理由：(i) "behavior" 在正文出现 0 次，全文用 reply attribute（Abstract 4 次、Intro 7 次、Conclusion 4 次），旧标题许诺大于正文兑现；(ii) KOMPAS 展开式说 "Attributes at the prompt Step"，与旧标题的 behavior 自相矛盾；(iii) 黑箱访问是与隐空间控制器的核心差异（Intro 缺口句、贡献 3、Related Work B 类），应进标题。D14 的两条硬要求（dynamics modeling 明写、control 明写）保留。 | 细化 D14 |
+| D42 | 2026-09-23 | 删除附录 A5（一步误差）。D4 把它列为负结果附录，但证据账本里达到 Table 1 口径的一步误差只有旧 core 线单任务、E2 caveated 的条目，无法成表；正文也从未引用 `app:A5_onestep`。文件归档到 `_archive_2026-09-22_plans/A5_onestep_removed_2026-09-23.tex`，`main.tex` 留注释。同日：A2 填表 + 样本量告诫；A3 补两张表（逐任务设置、匹配窗口）并更正两处口径（state depth 2–4 而非 1–4；主表七列轨迹数 10–100 而非 40–100）；A4 写控制线来源段 + 等预算闭环表；04d 的 "same number of instructions" 改为 "same instruction budget"，因为三任务的实际花费不同（A4 表列出）。 | 覆盖 D4 的 A5 项 |
 
 ## 已执行的操作性裁决（不进表，但有约束力）
 

@@ -30,7 +30,12 @@ state of sections:
                           eq:selection_bound; labels kept for the contract lattice); A6 now says "the selection bound of
                           Section 3.4". Body ends p.10 line 489 (budget 486): 3-4 lines over before the missing
                           citations are added (~+2). Remaining levers: RW drop 2 sentences (-2.5), \vspace on headings.
-  appendix A1, A6, A7     written; A3 carries moved setup details + two TODO(data) tables; A2, A4, A5 TODO
+  appendix                A1, A6, A7 written earlier. 2026-09-23 (D42): A2 filled (table + sample-size caveat); A3 filled
+                          (Table: per-task setup; Table: matched window, 7 tasks x depth 1-4 + both gain conventions; two
+                          caliber corrections); A4 filled (control-line provenance paragraph + equal-budget table on
+                          defense/constraint/CEFR + oracle and family-gap checks); A5 removed (no Table-1-caliber one-step
+                          evidence; archived). All appendix files pass mech_audit. Remaining TODO markers in the tree:
+                          04a metric definition (colleague), main.tex author list, 05 TMPC placement (user).
 page budget (ICLR 2027: 9 pp main text at submission):
   body ends p.9 line ~450 (Conclusion header at 447; ~8.3 pp incl. the three TODO stubs). Round 2 done
   2026-09-22: Intro to 1.0 pp; Method overview / lifting / 3.2 tail / 3.4 / Fig. 1 caption compressed and
