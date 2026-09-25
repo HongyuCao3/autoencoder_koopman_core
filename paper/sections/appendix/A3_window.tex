@@ -5,7 +5,7 @@
 
 \begin{table}[t]
 \centering
-\caption{Modeling-line setup per task. State depth is the number of readings in the memory state ($L+1$); rows are held-out transitions scored after windowing; trajectories are the bootstrap groups. The last two rows are the extra columns of Appendix~\ref{app:A2_small_columns}.}
+\caption{Modeling-line setup per task. State depth is the number of readings in the memory state ($L+1$); rows are held-out transitions scored after windowing; trajectories are the bootstrap groups. The last two rows are the extra columns of Appendix~\ref{app:A2_small_columns}.Best trivial null names which of three memoryless predictors has the lowest rollout error on the scored rows: a constant (the training mean), a per-turn mean, or a linear regression on the turn index (stateless). That predictor is the Stateless row of Table 1 and sets the zero of $\mathrm{Skill}_H$.}
 \label{tab:setup_per_task}
 \footnotesize
 \setlength{\tabcolsep}{5pt}
@@ -49,8 +49,8 @@ Task & Depth 1 & Depth 2 & Depth 3 & Depth 4 & Matched gain (deepest $-$ depth 1
 \midrule
 Sentence len. & 0.660 & 0.772 & 0.770 & 0.769 & $+0.109$ $[+0.035, +0.175]$ & $+0.603$ $[+0.438, +0.765]$ \\  % n_abl_129-132; n_abl_127; n_main_013
 Joint-3 & 0.714 & 0.920 & 0.918 & 0.925 & $+0.211$ $[+0.115, +0.339]$ & $+0.312$ $[+0.245, +0.385]$ \\  % n_abl_204-207 (deep anchor); n_abl_196; n_main_045
-Joint-2 & 0.507 & 0.634 & 0.644 & 0.640 & $+0.229$ $[+0.166, +0.302]$ & $+0.245$ $[-0.023, +0.415]$ \\  % n_abl_162-165; n_abl_187; n_main_029
-Sentiment & 0.341 & 0.496 & -- & -- & $+0.127$ $[-0.069, +0.251]$ & $+0.221$ $[-0.051, +0.329]$ \\  % n_abl_152-153; n_abl_157; n_main_109
+Joint-2 & 0.507 & 0.634 & 0.644 & 0.640 & $+0.133$ $[-0.063, +0.261]$ & $+0.245$ $[-0.023, +0.415]$ \\  % n_abl_162-165; n_abl_160; n_main_029
+Sentiment & 0.341 & 0.496 & -- & -- & $+0.155$ $[+0.017, +0.223]$ & $+0.221$ $[-0.051, +0.329]$ \\  % n_abl_152-153; n_abl_154 (caveated: two cells); n_main_109
 Defense & 0.068 & 0.035 & -- & -- & $-0.033$ $[-0.103, +0.013]$ & $-0.033$ $[-0.103, +0.013]$ \\  % n_abl_246-247; n_abl_245; n_main_148
 Constraint & 0.288 & 0.438 & 0.492 & 0.519 & $+0.231$ $[+0.174, +0.274]$ & $+0.234$ $[+0.176, +0.279]$ \\  % n_abl_240-243; n_abl_238; n_main_132
 CEFR & 0.562 & 0.567 & -- & -- & $+0.005$ $[-0.004, +0.017]$ & $+0.049$ $[+0.007, +0.097]$ \\  % n_abl_263-264; n_abl_262; n_main_180

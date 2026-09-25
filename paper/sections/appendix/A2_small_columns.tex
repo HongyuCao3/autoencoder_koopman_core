@@ -7,7 +7,6 @@
 Table~\ref{tab:prediction_small_app} reports the four columns that \S\ref{sec:exp_setup} sets aside: sentiment and defense, which also appear in Table~\ref{tab:prediction}, plus average word length and GSM8K-sharded.  % _build_report.json:prediction_appendix
 The four rest on 10, 14, 30 and 4 trajectories, against 40 to 100 for the other five columns of Table~\ref{tab:prediction}.
 A paired bootstrap over so few trajectories cannot separate the six rows, so the ranking marks are point estimates.  % A3 setup table: sentiment 10, word length 14, defense 30, gsm8k 4 groups (evidence/numbers.yaml `test` fields)
-No conclusion in the main text rests on them.  % D4
 
 \textbf{The Defense column.} Three properties of that column are not visible in Table~\ref{tab:prediction} and apply to every reading of it.  % user ruling 2026-09-22: caveat lives here, not in the caption or the main text
 The readings are scored by the model that produced the responses, and a self-judge misses in one direction, so it understates the effect.  % evidence/numbers.yaml n_main_136-151, judge_kind=self
