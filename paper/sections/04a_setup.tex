@@ -11,8 +11,11 @@ Each task is a set of prompts, called items; every item is run for several turns
 Appendix~\ref{app:A2_small_columns} carries the four small-sample columns, sentiment and defense again plus average word length and GSM8K-sharded, with their sample-size caveat.  % _build_report.json:prediction_appendix
 The second group is three public instruction-following benchmarks that form the control line: IFBench, IFEval and COLLIE.  % contract.yaml meta.benchmarks
 Together they carry eleven subtasks: WC, UWC, NS and NP for IFBench; KF, WC, NS and NP for IFEval; Word, Sent. and Para. for COLLIE.  % contract.yaml meta.benchmarks
-The modeling line runs on a single LLM, Qwen3-4B-Instruct-2507, which both produces and scores the self-built trajectories, so every number in Table~\ref{tab:prediction} comes from that one LLM.  % RECOVERED 2026-09-19 (Opus, docs/LEDGER.md lines 201-202, 549); second-backbone note moved to App. A3 on 2026-09-21
-The control line is separate: it reports two frozen target models, Qwen3-4B and Qwen3-8B, produced in a separate pipeline whose protocol Appendix~\ref{app:A4_equal_cost} records.  % tab_control.tex row groups; c5 notes; wording neutralized 2026-09-22 (was 'supplied by a co-author')
+The modeling line runs on a single LLM, Qwen3-4B-Instruct-2507, which both produces and scores the self-built trajectories, so every number in Table~\ref{tab:prediction} comes from that one LLM. 
+The control line is separate: it reports two frozen target models, Qwen3-4B and Qwen3-8B, produced in a separate pipeline whose protocol Appendix~\ref{app:A4_equal_cost} records.  
+
+\input{tables/tab_prediction}
+\input{tables/tab_control}
 
 The modeling line compares six predictors, the six rows of Table~\ref{tab:prediction}.  % tab_prediction.tex row count
 Stateless is a memoryless null, Last-turn is a single-reading state, and Memory w/o command is a multi-turn state without the command term.

@@ -2,21 +2,10 @@
 \subsection{Constraint Satisfaction under Predictive Control}
 \label{sec:exp_control}
 
-\textbf{Question.} RQ2a and RQ2b: whether predictive control built on the learned operator raises constraint satisfaction over the same frozen model with no control, and over the two white-box latent controllers.
-\textbf{Setup.} Setup, benchmarks and baselines follow \S\ref{sec:exp_setup}; Table~\ref{tab:control} reports the constraint-satisfaction score defined there.
+For RQ2a and RQ2b, we ask whether predictive control using the learned operator improves constraint satisfaction over the same frozen model without control, and how it compares with two white-box latent controllers. The setup, benchmarks, and baselines are described in \S\ref{sec:exp_setup}; Table~\ref{tab:control} reports the constraint-satisfaction score defined there.
 
-% The float for Table 2 is declared at the end of sections/04b_prediction.tex so that both
-% main tables are placed before the four figures of 4.3 and 4.4 (user ruling 2026-09-20).
-% Only the float declaration moved. The table, this subsection and its text are unchanged.
+Averaged across the eleven subtasks, predictive control improves constraint satisfaction over the uncontrolled baseline by 14.5 points on Qwen3-4B and 14.8 points on Qwen3-8B. These are point estimates, with no seeds or intervals. The controller scores each candidate by its predicted trajectory rather than its immediate effect, allowing it to choose a command different from the target while the attribute is still changing.
+Predictive control also outperforms the stronger white-box baseline, RE-Control, by 5.3 points on Qwen3-4B and 5.7 points on Qwen3-8B. These are also point estimates without intervals. RE-Control uses model activations, whereas predictive control operates from text alone.
 
-\textbf{Findings, gain over the uncontrolled baseline.} Predictive control raises constraint satisfaction over the uncontrolled baseline by +14.5 points on Qwen3-4B and +14.8 on Qwen3-8B, averaged over eleven subtasks as point estimates with no seeds or intervals.  % c5; control_deltas: Qwen3-4B/Koopman-Base=14.47, Qwen3-8B/Koopman-Base=14.76
-This is because scoring happens on a candidate's predicted trajectory, not its immediate effect.  % m3
-This lets the controller pick a command that differs from the target while the attribute is still moving.  % m3
+Across the 22 model-by-subtask comparisons, predictive control scores higher than the uncontrolled baseline in every case and higher than both white-box controllers in every case. This count answers RQ2a and RQ2b affirmatively; it is not a claim of statistical significance.
 
-\textbf{Findings, gain over the white-box controllers.} The same controller exceeds the stronger white-box baseline, RE-Control, by +5.3 points on Qwen3-4B and +5.7 on Qwen3-8B, again as point estimates with no interval.  % c6; control_deltas: Qwen3-4B/Koopman-RE-Control=5.25 -> stated as 5.3 to match Table 2's rounded Avg column (41.4-36.1), Qwen3-8B/Koopman-RE-Control=5.65
-% smallest per-subtask margin (+2.4 / +2.7, IFBench UWC; n_bench_013 n_bench_035 n_bench_057 n_bench_079) removed from prose 2026-09-21: table-readable
-The access requirement is uneven, and it is uneven against us: RE-Control reads the model's activations, while the predictive controller sees only text.  % choice_3 notes
-% c7 (best in all 22 cells; n_bench_012 n_bench_022 n_bench_056 n_bench_066) now stated only in the underlined conclusion; the
-% "hardest to satisfy in one shot" sentence removed 2026-09-21: no definition or number supported it.
-
-Taken together, \uline{predictive control raises constraint satisfaction over the uncontrolled baseline in all twenty-two model-by-subtask cells, a count rather than a significance claim, which answers RQ2a yes. It exceeds both white-box controllers in the same twenty-two cells at a weaker access requirement, which answers RQ2b yes.}

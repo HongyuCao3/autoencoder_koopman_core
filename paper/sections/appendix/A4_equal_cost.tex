@@ -8,8 +8,7 @@
 It runs two frozen target models, Qwen3-4B and Qwen3-8B, on the eleven subtasks of IFBench, IFEval and COLLIE, and reports each benchmark's constraint-satisfaction score as a per-subtask percentage.  % contract.yaml meta.benchmarks; numbers_benchmark.yaml unit
 Base applies no control, and KOMPAS reads only the text it sends.
 TMPC and RE-Control are reproductions run under the same protocol, not the original authors' releases.  % c6 notes; tab_control.tex Access column
-Every cell is a single point estimate: no seeds, intervals or raw logs accompany the table, and the paper treats the numbers as reported.  % D3; nc_3; numbers_benchmark.yaml status note
-The candidate set, horizon and prompting protocol of that pipeline are not part of this repository, so this appendix records what the table states and nothing more.  % numbers_benchmark.yaml: "no raw logs, seeds, CI or configs exist in this repo"
+Every cell is a single point estimate: no seeds, intervals or raw logs accompany the table, and the paper treats the numbers as reported.
 
 \textbf{Equal-budget comparison, protocol.} On three self-built tasks the closed loop also runs against open-loop fixed schedules under the same instruction budget cap.
 The comparison arm is the best of those schedules, chosen after the fact on the same data.  % CLOSED_LOOP_SYNTHESIS.md sec. 1-2; adaptive_vs_fixed_claim_plan.md

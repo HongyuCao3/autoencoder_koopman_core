@@ -12,8 +12,8 @@
 \subsection{Mechanisms Read Off the Data}
 \label{sec:exp_mechanism}
 
-\textbf{Question.} This subsection adds no research question; it shows on the recorded readings two mechanisms that \S\ref{sec:exp_prediction} infers from fitted scores, and one artifact of data collection behind \S\ref{sec:exp_analysis}.
-\textbf{Setup.} Figure~\ref{fig:two_futures} and Figure~\ref{fig:mechanism}(a,b) describe collected readings, not predictor skill, so no value in them is comparable with a skill score; Figure~\ref{fig:mechanism}(c) reads the paired contrasts of Table~\ref{tab:prediction}.  % CALIBER; reading rules returned to the captions 2026-09-21
+This subsection adds no new research question. It examines two mechanisms suggested by the fitted scores in \S\ref{sec:exp_prediction}, as well as a data-collection artifact relevant to \S\ref{sec:exp_analysis}.
+Figure~\ref{fig:two_futures} and Figure~\ref{fig:mechanism}(a,b) show patterns in the recorded readings, not predictor skill. Their values therefore should not be compared with skill scores. Figure~\ref{fig:mechanism}(c), by contrast, shows the paired skill contrasts reported in Table~\ref{tab:prediction}.
 
 \begin{figure}[t]
 \centering
@@ -22,22 +22,18 @@
 \label{fig:two_futures}
 \end{figure}
 
-\textbf{Findings, why a window helps.} At a fixed reading the next change differs with the direction of the previous step on all four tasks (Figure~\ref{fig:two_futures}).  % m1; figs/_fig_report.json fig_two_futures separations: Joint-3 +0.100, Joint-2 +0.070, sentiment +0.058, sentence length +0.025 (shown in the figure)
-The separation does not rank the tasks the way the memory gain does: sentence length carries the largest gain in Table~\ref{tab:prediction} and the smallest separation here.  % n_main_013 (+0.603) vs +0.025
-Read with \S\ref{sec:exp_memory}, that ordering points at the per-item level rather than the turn-to-turn trend as the larger part of what the window buys.  % m6
+At the same reading, the next change differs depending on whether the preceding step moved up or down, across all four tasks (Figure~\ref{fig:two_futures}). The size of this separation does not follow the pattern of memory gains: sentence length has the largest gain in Table~\ref{tab:prediction}, but the smallest separation here. Alongside the results in \S\ref{sec:exp_memory}, this suggests that the window’s benefit comes more from information at the item level than from turn-to-turn trends.
+The command plots reveal a data-collection artifact relevant to the caveat in \S\ref{sec:exp_analysis} and Appendix~\ref{app:A7_command_channel}. In both tasks, the applied command remains at the target across the full range of tracking errors in the recorded transitions. These data therefore cannot identify an independent command effect.
+
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figs/fig_mechanism.pdf}
-\caption{What the command channel carries, and what a learned lifting loses. (a) and (b) Applied command against tracking error, on the two Table~\ref{tab:prediction} tasks that log a per-turn command; colour marks the target and repeats the vertical position, which is the point. (c) Paired $\mathrm{Skill}_H$ contrast of the linear case over the learned lifting, on all seven tasks, grouped by the number of attributes a task tracks: a circle marks the five single-attribute tasks, a square Joint-2 and a diamond Joint-3. A filled marker means the 95\% interval excludes zero; the dagger marks a caveated entry.}
+\caption{What the command channel carries, and what a learned lifting loses. (a) and (b) Applied command against tracking error, on the two Table~\ref{tab:prediction} tasks that log a per-turn command; color marks the target and repeats the vertical position, which is the point. (c) Paired $\mathrm{Skill}_H$ contrast of the linear case over the learned lifting, on all seven tasks, grouped by the number of attributes a task tracks: a circle marks the five single-attribute tasks, a square Joint-2 and a diamond Joint-3. A filled marker means the 95\% interval excludes zero; the dagger marks a caveated entry.}
 \label{fig:mechanism}
 \end{figure}
+The comparison between the linear case and the learned lifting shows a different pattern. The learned lifting’s skill disadvantage is concentrated in the five single-attribute tasks and is close to zero on Joint-2 and Joint-3 (Figure~\ref{fig:mechanism}c). This pattern does not track the amount of training data: the largest gap occurs in a task fit on 100 trajectories, while the smallest occurs in one fit on 90. Across these seven tasks, the results suggest that a single tracked attribute gives the lifting less structure to capture.
 
-\textbf{Findings, what the command channel carries.} In Figure~\ref{fig:mechanism}(a,b) the applied command holds the value of the target across the full range of the tracking error, on every recorded transition of both tasks.  % m5; 2268/2268 sentence length, 240/240 sentiment; error span [-0.40, +0.88]; counts moved to App. A7 on 2026-09-21
-This is the data-collection artifact behind the command-channel caveat of \S\ref{sec:exp_analysis} and Appendix~\ref{app:A7_command_channel}.  % nc_1; nc_8
+Taken together, the window distinguishes opposite next steps at the same reading, while the skill gap associated with a learned lifting is larger on single-attribute tasks than on multi-attribute tasks.
 
-\textbf{Findings, what a lifting has to find.} The skill lost to a learned lifting concentrates on the five single-attribute tasks and is close to zero on Joint-2 and Joint-3 (Figure~\ref{fig:mechanism}c).  % c2; n_main_183 n_main_111 n_main_135 (one-dimensional: +0.599, +0.101, +0.048); n_main_031 n_main_047 (multi-dimensional: +0.014, +0.005)
-That loss does not fall with the number of trajectories: the largest sits on the task fit on 100 trajectories and the smallest on the task fit on 90.  % n_main_183 (n=100) vs n_main_047 (n=90)
-The reason is that a single tracked attribute leaves a lifting little structure to expose, which is the part of the mechanism these seven columns support.  % m4; this is the single statement of the lifting driver (removed from 4.2 on 2026-09-21)
 
-Together, \uline{the window separates two opposite next steps at one reading, and the skill lost to a lifting tracks the number of attributes tracked rather than the amount of data.}

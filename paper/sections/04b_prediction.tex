@@ -3,22 +3,11 @@
 \subsection{Predictive Accuracy of the Learned Operator}
 \label{sec:exp_prediction}
 
-\textbf{Question.} RQ1a and RQ1b: whether multi-turn history improves prediction over the current reading alone, and whether a learned lifting or an LSTM beats the linear case we report as KOMPAS.
-\textbf{Setup.} Setup, tasks and baselines follow \S\ref{sec:exp_setup}; Table~\ref{tab:prediction} reports the skill score defined there.
+For RQ1a, we ask whether using multi-turn history improves prediction over using only the current reading. For RQ1b, we compare the learned lifting and LSTM with KOMPAS, our linear case. The setup, tasks, and baselines are described in \S\ref{sec:exp_setup}; Table~\ref{tab:prediction} reports the skill score defined there.
 
-\input{tables/tab_prediction.tex}
+KOMPAS ranks first on four of the seven task columns and second on the remaining three. Its point estimate is close to the top method in each of those three cases, trailing by no more than 0.034. Multi-turn history improves on the current reading in four columns, with paired bootstrap intervals that exclude zero. In the other three, the difference is not distinguishable from zero. The history window captures the attribute’s current level and, to a lesser extent, its trend—information unavailable from a single reading.
 
-\textbf{Findings, ranking and history.} The linear special case, KOMPAS (linear), ranks first on four of seven columns and second on the other three.  % c4; ours_best_of_7=4 (n_main_004 n_main_036 n_main_020 n_main_179); ours_second_of_7=3 (n_main_100 n_main_147 n_main_131)
-All three second places are close: the linear case trails the top method by no more than 0.034 in point-estimate skill score.  % c4 driver_keyword
-History beyond the current turn beats the current reading on four of seven columns, with paired bootstrap intervals excluding zero; the other three do not separate from zero.  % c1; contrasts.ours_minus_last_turn (n_main_013 n_main_045 n_main_029 n_main_109 n_main_148 n_main_132 n_main_180); exceptions Joint-2, sentiment, defense
-The window exposes a level (where the attribute currently sits) and, to a lesser degree, a trend, which a single reading cannot carry.  % m1; softened 2026-09-22 to match 4.3/4.4 (the larger part of the gain is a per-item level)
+The learned nonlinear lifting does not outperform the identity lifting with an interval excluding zero on any of the seven columns. Figure~\ref{fig:mechanism}(c) shows the per-column contrasts; \S\ref{sec:exp_mechanism} discusses a possible explanation. Compared with the LSTM, the results are mixed: the linear case performs better on Joint-3 and CEFR, while the LSTM performs better on Constraint. We do not establish a mechanism for the LSTM’s advantage on Constraint.
 
-\textbf{Findings, lifting and LSTM.} A learned nonlinear lifting never beats the identity lifting with an interval excluding zero, on any of the seven columns; Figure~\ref{fig:mechanism}(c) shows the per-column contrast and \S\ref{sec:exp_mechanism} the reason.  % c2; contrasts.ours_minus_nonlinear (largest gap CEFR +0.599, n_main_183, shown in the figure)
-Against an LSTM sequence baseline, comparisons with intervals excluding zero split three ways: Joint-3 and CEFR favor the linear case, constraint favors the LSTM.  % c3; contrasts.ours_minus_lstm (n_main_048 n_main_182 favor linear; n_main_134 favor LSTM)
-No mechanism is established for the LSTM win, and none is proposed here.  % c3 driver_keyword: no mechanism established
+Overall, history improves prediction over the current reading on four of seven task columns, supporting RQ1a for those tasks. Neither the learned lifting nor the LSTM outperforms KOMPAS consistently, so the results do not support RQ1b.
 
-Together, \uline{history beyond the current turn beats the current reading on four of seven tracked attributes, which answers RQ1a yes on those four. Neither a learned lifting nor an LSTM baseline beats the reported linear special case on balance, which answers RQ1b no.}
-
-% Float declaration only, moved here from sections/04c_control.tex so that Table 2 is
-% placed before the figures of 4.3 and 4.4. Table 2 is discussed in 4.5 (user ruling 2026-09-20).
-\input{tables/tab_control.tex}
