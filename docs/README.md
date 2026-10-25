@@ -30,6 +30,11 @@
 > M1 谱/脉冲响应判**不过**（机制图不画）、M2 题目截距替代判**过**（两列，但题目身份吃掉 2/3–4/5）。
 > **仓库当前没有活跃计划；剩余动作是写作。**
 
+> **2026-10-25 更新**：组会后开新的唯一活跃计划
+> [`experiments/post_meeting_2026-10-25_master_plan.md`](experiments/post_meeting_2026-10-25_master_plan.md)
+> （▶ 活跃）：谱饱和探针 / $B$ 可辨识性 / 证据③ controllability 改写 / proposal 修改 / 复现仓库。
+> 上一行「没有活跃计划」是 09-16 的正确记述，保留。
+
 > **四条闭环列（`defense` / `constraint` / `gsm8k_sharded` / `tsar_cefr`）并排怎么读**——
 > 见 [`article/CLOSED_LOOP_SYNTHESIS.md`](article/CLOSED_LOOP_SYNTHESIS.md)。单列读会得出
 > 「baseline 太强」这个错误诊断。
