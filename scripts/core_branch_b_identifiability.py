@@ -49,6 +49,10 @@ SEEDS = (0, 1, 2)
 N_RESAMPLES = 2000
 BOOTSTRAP_SEED = 0
 R2_MAX = 0.99
+# Section 3.5 ruling 4 (signed before analysis): v1's three per-seed 95% intervals
+# (results/core_excite_b_identifiability) span this envelope; a v2 seed whose
+# interval does not intersect it means the two estimates disagree.
+V1_ENVELOPE = (0.691, 0.776)
 IN_TEMPLATE = "persona_drift_control/outputs/core_branch_sentence_length_{seed}/{name}.jsonl"
 OUT_DIR = REPO_ROOT / "results" / "core_branch_b_identifiability"
 
@@ -147,11 +151,13 @@ def main() -> None:
     same_sign = len({np.sign(m["point"]) for m in me}) == 1
     verdict = {"rank_full_and_r2_lt_0.99_all_seeds": ident_ok,
                "interval_excludes_zero_all_seeds": excludes0, "sign_agrees_across_seeds": same_sign,
-               "gate_pass": bool(ident_ok and excludes0 and same_sign)}
+               "gate_pass": bool(ident_ok and excludes0 and same_sign),
+               "agrees_with_v1_envelope_all_seeds": all(
+                   m["ci95"][1] >= V1_ENVELOPE[0] and m["ci95"][0] <= V1_ENVELOPE[1] for m in me)}
     args.out_dir.mkdir(parents=True)
     (args.out_dir / "summary.json").write_text(json.dumps(
         {"spec": "docs/experiments/command_channel_identifiability_plan.md#3.5",
-         "n_resamples": N_RESAMPLES, "bootstrap_seed": BOOTSTRAP_SEED, "r2_max": R2_MAX,
+         "n_resamples": N_RESAMPLES, "bootstrap_seed": BOOTSTRAP_SEED, "r2_max": R2_MAX, "v1_envelope": V1_ENVELOPE,
          "per_seed": per_seed, "verdict": verdict}, indent=2))
     print(json.dumps(verdict))
 
