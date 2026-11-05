@@ -1003,11 +1003,11 @@ Qwen 臂 `outputs/tsar_cefr_gpu1/` 一个字节不动；④ 见上表本行；�
 | 2026-10-25 | **#1** 谱饱和探针（方法/机制） | **不过** | `results/spectral_saturation/` | **谱图进不进 proposal Task 1 prelim。已答：不进。** 饱和任务 0/3 满足 (a)/(b)，`constraint` 也不满足 ⇒ 谱与饱和无关；唯一共同结构是 $\|\lambda\|\approx0.97$ 的题目水平模式。按第二行关闭，不设第二个谱闸门。⚠️ (a) 在本样本量上功效低（合成真死模式上界 0.19），但 (b) 也全不满足，结论不依赖 (a)。第三行「论文不填」用户 2026-10-25 批准。运行 8m52（估 <15 min） |
 | 2026-10-25 | **#3** 闭式解 vs 枚举（方法；写 `outputs/`，事前签，第三行「论文不填」用户 2026-10-25 批准） | **future work**（一致率 0.876 < 0.95） | `persona_drift_control/outputs/closed_form_check_tsar_cefr/` | **半页放 Thrust 3 prelim 还是 future work。已答：future work。** 回放复现 100% 日志动作（2297 决策点）；284 个不一致全是枚举选 `copy`、闭式解选 `half_step_down`——保持单一命令的模型表达不了「停」。可控性秩 4/4、Gramian 条件数 1286。`constraint` 控制器非线性 MPC，不适用。运行 33 s |
 
-### 计划中的作业（未提交，等裁决）
+### 作业
 
 | 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
 |---|---|---|---|---|---|
-| 2026-10-25 | — | `slurm/run_core_excite_sentence_length.sbatch` / `pdc-core-excite-sentlen` | **方法**（辨识数据） | ⏸ **未提交，等裁决**。`--command-policy random` 三 seed，`--disable-thinking`；argparse 干跑三 seed 全过（2,268 次抽样/seed ∈ [5,100]、252 条 turn-1 prompt 逐字重放、0 条未见证分支）。估 0.25–0.75 h。规模用户 2026-10-25 裁为实际协议 252×10×3 seed。~~阻塞：`sequor_vllm` env 损坏~~ → 2026-11-05 已重建（vllm 0.28.0 / torch 2.13.0+cu130 / transformers 5.16.1），新 env 内干跑三 seed 复过、数字同上；sbatch 加 `PYTHONNOUSERSITE=1`（`~/.local` 的旧 cu12 nccl 会遮蔽 torch 的）。最近 10 个本项目作业：仪器 1 ⇒ 配额通过 | **`core` 任务的命令通道能不能变成可辨识的**：过 ⇒ $K,B$ 交 Umesh 算 Gramian、#3 prelim 用这组；不过 ⇒ 关闭「`core` 命令通道」线 |
+| 2026-11-05 提交（10-25 写） | 19440842 | `slurm/run_core_excite_sentence_length.sbatch` / `pdc-core-excite-sentlen` | **方法**（辨识数据） | ▶ **已提交 2026-11-05（用户裁决），待回填终态**。`--command-policy random` 三 seed，`--disable-thinking`；argparse 干跑三 seed 全过（2,268 次抽样/seed ∈ [5,100]、252 条 turn-1 prompt 逐字重放、0 条未见证分支）。估 0.25–0.75 h。规模用户 2026-10-25 裁为实际协议 252×10×3 seed。~~阻塞：`sequor_vllm` env 损坏~~ → 2026-11-05 已重建（vllm 0.28.0 / torch 2.13.0+cu130 / transformers 5.16.1），新 env 内干跑三 seed 复过、数字同上；sbatch 加 `PYTHONNOUSERSITE=1`（`~/.local` 的旧 cu12 nccl 会遮蔽 torch 的）。最近 10 个本项目作业：仪器 1 ⇒ 配额通过 | **`core` 任务的命令通道能不能变成可辨识的**：过 ⇒ $K,B$ 交 Umesh 算 Gramian、#3 prelim 用这组；不过 ⇒ 关闭「`core` 命令通道」线 |
 
 **顺带发现（不改任何已发表数字，待用户裁）**：09-17 的 `core` 第二 backbone Qwen 臂（16035914）runner 没关 thinking，
 `sentence_length_t10` 90.6% 行触顶 256 token、`character_length_t5` 100%，字数数进了 `<think>`（落盘语料 0/2520 行含 `<think>`）。
