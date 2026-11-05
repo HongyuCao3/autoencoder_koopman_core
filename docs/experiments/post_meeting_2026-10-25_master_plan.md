@@ -68,3 +68,25 @@ agent 在本地会话里做完左列后**停**，把中列的命令清单写进�
 ## 六、完成判据
 
 六项各自的子规格末尾有「完成 = 什么」。本主计划完成 = #1 / #4a / #3 / #2 有结果文档或交付物，#4b 的 sbatch 等待裁决，#5 仓库建好并发出邀请。届时本横幅改 ✅，`docs/README.md` 顶部状态行同步。
+
+## 七、进展（截至 2026-11-05）
+
+| # | 状态 | 一句结论 | 出处 |
+|---|---|---|---|
+| 1 谱探针 | ✅ 判「不过」（10-25） | 三个饱和任务 0/3 满足判据；proposal 不放谱图 | [`spectral_saturation_probe.md`](spectral_saturation_probe.md) |
+| 4a $B$ 可信度 | ✅ | `core` 不可辨识（命令 $=r-y_t$）；行为线三列补了 bootstrap 区间 | [`command_channel_identifiability_results.md`](command_channel_identifiability_results.md) |
+| 4b 持续激励采集 | ✅ 闸门**过**（11-05） | 作业 19443006，`sentence_length_t10` 3 seed 随机命令；$CB$ = **0.734 ± 0.009 (n=3)**，区间都不含 0，$c$ 对状态 $R^2\le0.003$。Gramian 由移位结构决定、信息量低；探索性可达集（无闸门）：100 词请求下稳态上界 **73.0 ± 0.5 词 (n=3)**，留出四档预测与实测在 ≤79 词时差 ≤2 词、最高档低估约 7 词 | [`core_excite_b_identifiability_results.md`](core_excite_b_identifiability_results.md)；`scripts/core_excite_{b_identifiability,reachability}.py` |
+| 3 controllability 改写 | ✅ 判 future work（10-25） | `tsar_cefr` 一致率 0.876 < 0.95。4b 数据**不能**重开 #3：随机命令没有控制器日志，离线比对是同义反复 | [`controllability_closed_form_evidence3.md`](controllability_closed_form_evidence3.md) |
+| 2 proposal | ▶ 规划 + 出图完成，**等合作者商议** | 整合规划 E1–E8 + F1（页/段/句级修改与英文原句）；Fig. 1–4 白底印刷尺寸 PDF 已出、figcheck 无问题。未编进 tex（无源文件），页数未实测 | [`../article/proposal_integration_plan_2026-11-05.md`](../article/proposal_integration_plan_2026-11-05.md)；`docs/article/proposal_figs/make_proposal_figs.py` → `proposal/figs/` |
+| 5 复现仓库 | ⏸ 未开始 | 等 Sriram 账号 | [`../repro_repo_plan_2026-10-25.md`](../repro_repo_plan_2026-10-25.md) |
+| 6 后续论文 | — | 12/16 后再议 | — |
+
+**待裁决 / 待商议（agent 不自行决定）**
+
+1. proposal 整合规划 §六 的 10 条商议项（页数预算、F1 替换 p.2 箭头式、E4/E5 删改合作者数字与段落、E2/E3/E6 位置、记号、#4b 结果是否进 E7、p.11 Joint 任务定义与论文 §4.1 不符）。
+2. 是否把 $K,B$ 与可达集结果交给 Umesh（建议附读法 4：Gramian 无信息，有信息的是 $CB$、$K$ 第一行与可达范围）。
+3. proposal .tex 源文件（编图、实测页数需要）。
+
+**画图时发现、已记入商议清单的两处事实问题**：① p.11 的 Joint 任务属性（sentence length / character length / avg word length）与论文 §4.1 Joint-3（字数 / 平均词长 / 逗号数）不符；② 论文「四个任务里三个在第二个读数拿满增益」偏松——Joint-2 每个深度区间都含 0，proposal 稿改为「两个任务」。论文正文未动。
+
+**环境**：`sequor_vllm` 于 11-05 重建，必须 `PYTHONNOUSERSITE=1`（`~/.local` 有 cu12 栈）；计算节点 glibc 2.28，pip 轮子需逐个查 GLIBC 版本。
