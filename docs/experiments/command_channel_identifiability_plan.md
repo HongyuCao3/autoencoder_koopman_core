@@ -2,7 +2,7 @@
 
 > **状态**：4a ✅ 完成（结果 [`command_channel_identifiability_results.md`](command_channel_identifiability_results.md)）；
 > 4b ✅ 闸门**过**（2026-11-05，作业 19443006；三 seed $CB$ = 0.734 ± 0.009，区间均不含 0）→ 结果 [`core_excite_b_identifiability_results.md`](core_excite_b_identifiability_results.md)。
-> 4b v2（分叉设计，§3.5）⏸ **等裁决**：开关 + 单测 + 干跑 + LEDGER 预登记已完成，**未提交**。
+> 4b v2（分叉设计，§3.5）▶ 已提交（2026-11-05，用户裁决），作业号见 LEDGER；闸门第二行的 ③ 待签，签前不跑分析。
 >
 > 原状态：▶ 待执行（2026-10-25 立项，主计划 [`post_meeting_2026-10-25_master_plan.md`](post_meeting_2026-10-25_master_plan.md)）。
 > 目的：在 Umesh 用 $K,B$ 算 Gramian / 可达集之前，确定哪些任务的 $B$ 是数据辨识出来的。
@@ -100,12 +100,12 @@
 
 | 字段 | 内容 |
 |---|---|
-| 过了 → | 秩满且 $R^2<0.99$（三 seed）**且**配对差分 $\widehat{CB}$ 区间不含 0 **且**三 seed 符号一致 ⇒ 把 $K,B$ 交 Umesh 算 Gramian / 可达集；#3 的 prelim 用这组 |
+| 过了 → | 秩满且 $R^2<0.99$（三 seed）**且**配对差分 $\widehat{CB}$ 区间不含 0 **且**三 seed 符号一致 ⇒ 把 $K,B$ 交 Umesh 算 Gramian / 可达集（~~#3 的 prelim 用这组~~：用户 2026-11-05 裁决删去，#3 已判 future work 且本组无控制器日志） |
 | 不过 → | **关闭**「`core` 任务命令通道」这条线；记为「命令通道权限弱」，对应 proposal 式 (3.33)；不二次修采集 |
 | 填哪张图/表 | proposal Thrust 3 prelim 一句 + 可达集小图；论文不填 |
 
-**照抄后与现状不符、须用户裁决的三处**（agent 没有改）：① v1 已经「过」，交 Umesh 这一步在 v1 之后已经解锁、在等裁决。v2「过了」时的实际增量是：交出去的 $CB$ 用 v1 还是 v2 的。② #3 已判 future work，v1 结果文档也说明随机命令数据做不了 #3（v2 同理，没有控制器日志）。③ 若 v2「不过」而 v1「过」，第二行（关闭）就和已经落盘的 v1 结论冲突。
-**执行位置与停机点**：开关、单测、干跑、本节、sbatch `slurm/run_core_branch_sentence_length.sbatch`、LEDGER 预登记——本地，已完成。**到此停止，不提交。**
+**照抄后与现状不符的三处（用户 2026-11-05 裁决）**：① 维持现写法：v2 的决策价值是「交给 Umesh 的 $CB$ 用哪一个」。② 删去「#3 prelim 用这组」（见上表）。③ v2「不过」而 v1「过」时怎么处置：**待签**，agent 的影响分析与建议已交用户；**签字前不跑分析脚本**（采集与第二行措辞无关，故先提交）。
+**执行位置与停机点**：开关、单测、干跑、本节、sbatch `slurm/run_core_branch_sentence_length.sbatch`、LEDGER 预登记——本地，已完成。用户 2026-11-05 裁决「提交」。
 
 ## 四、死亡条件
 
