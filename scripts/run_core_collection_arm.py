@@ -24,6 +24,22 @@ WHAT IT WRITES is the schema configs/dataset/*.yaml declares -- the
 plus the raw measurements and the full prompt, so the arm can be re-scored
 without being re-generated.
 
+PERSISTENT EXCITATION (#4b, docs/experiments/command_channel_identifiability_plan.md
+section 3). Under `--command-policy error` (the default, the landed protocol) every
+turn re-asks for the trajectory's fixed target, so the command is the tracking
+error r - y_t -- an exact affine function of the state, and B is undefined.
+`--command-policy random` changes exactly one thing: from turn 2 on, the count
+the feedback asks for is drawn uniformly from the task's range, independently of
+what the model wrote. The feedback still reports the PREVIOUS ask truthfully
+("I asked for exactly c_(t-1) words, and it had m"), then asks for c_t. Turn 1
+is the landed prompt verbatim, so c_1 = r.
+
+`--disable-thinking` passes `enable_thinking=False` to the chat template. The
+landed corpus has no reasoning blocks (0/2520 rows on sentence_length_t10), but
+Qwen3-4B thinks by default, and the 09-17 arm collected without this switch hit
+the 256-token cap on 90.6% of sentence_length_t10 rows with the measured count
+taken over the <think> text. Default off, so the old invocation is unchanged.
+
 EVERY ARM NEEDS ITS PAIRED CONTROL. A landed Qwen column is NOT a valid control
 for an arm collected by this runner unless that task's scorer reproduces at
 1.0000; and even then the decoding here is the landed `decoding_config`, not
@@ -38,6 +54,8 @@ import json
 import pathlib
 import subprocess
 import sys
+
+import numpy as np
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
@@ -101,6 +119,40 @@ TASK_SPEC = {
     },
 }
 
+# Command range per task under `--command-policy random`: the raw count the
+# feedback may ask for, and the normaliser that maps it onto the output scale.
+# Only the default 4b task is admitted; another task needs its own truthful
+# feedback template before it can be excited.
+COMMAND_RANGE = {
+    "sentence_length_t10": {"lo": 5, "hi": 100, "norm": _affine(5.0, 100.0)},
+}
+
+
+def draw_commands(n_trajectories: int, turns: int, task: str, seed: int) -> list[list[int]]:
+    """Per trajectory, the raw count asked for at turns 2..T; drawn up front so
+    the schedule depends on (seed, trajectory index) only, never on outputs."""
+    lo, hi = COMMAND_RANGE[task]["lo"], COMMAND_RANGE[task]["hi"]
+    return [np.random.default_rng([seed, i]).integers(lo, hi + 1, size=turns - 1).tolist()
+            for i in range(n_trajectories)]
+
+
+def random_feedback_sentence_length(r: dict, asked: int, command: int) -> str:
+    """The landed sentence_length_t10 template (reconstruct_core_feedback), with
+    the previous ask reported as `asked` and the new ask set to `command`."""
+    m, topic = r["measured_raw_count"], r["topic"]
+    if abs(m - asked) <= 1:
+        return (f"Your previous answer was within 1 word of the {asked} words I asked for. "
+                f"Now write one fresh sentence about {topic} with exactly {command} words. "
+                f"Output only the sentence.")
+    side = "too short" if m < asked else "too long"
+    return (f"Your previous answer was {side}: I asked for exactly {asked} words, and it had "
+            f"{m} words. Please try again about {topic}. Output one sentence only with "
+            f"exactly {command} words and no explanation.")
+
+
+RANDOM_BUILDERS = {"sentence_length_t10": random_feedback_sentence_length}
+
+
 # Fields the feedback builder for a task reads off the PREVIOUS row, beyond what
 # `measure` produces. They are carried forward from the landed turn-1 row.
 CARRIED = ("topic", "topic_split", "trajectory_id", "target_raw_count", "target_raw_value",
@@ -159,12 +211,26 @@ def main() -> None:
     ap.add_argument("--gpu-memory-utilization", type=float, default=0.85)
     ap.add_argument("--max-model-len", type=int, default=4096)
     ap.add_argument("--limit-trajectories", type=int, default=None)
+    ap.add_argument("--command-policy", choices=("error", "random"), default="error",
+                    help="error: re-ask the fixed target every turn (landed protocol); "
+                         "random: ask for a uniform draw from the task's range from turn 2 on")
+    ap.add_argument("--command-seed", type=int, default=None,
+                    help="seed of the random command schedule; required with --command-policy random")
+    ap.add_argument("--disable-thinking", action="store_true",
+                    help="pass enable_thinking=False to the chat template")
     ap.add_argument("--dry-run", action="store_true",
                     help="build every prompt and exercise scorer+feedback on the "
                          "landed turn-1 text; load no model and write no file")
     args = ap.parse_args()
 
     spec = TASK_SPEC[args.task]
+    if args.command_policy == "random":
+        if args.task not in COMMAND_RANGE:
+            ap.error(f"--command-policy random has no command range for {args.task}")
+        if args.command_seed is None:
+            ap.error("--command-policy random requires --command-seed")
+    elif args.command_seed is not None:
+        ap.error("--command-seed only applies to --command-policy random")
     seeds = load_seed_rows(args.task)
     if args.limit_trajectories:
         seeds = seeds[: args.limit_trajectories]
@@ -175,6 +241,13 @@ def main() -> None:
 
     print(f"[{args.task}] {len(seeds)} trajectories x {spec['turns']} turns = {n_gen} generations")
     print(f"[{args.task}] decoding from landed rows: {decoding} -> max_new_tokens={max_new}")
+    print(f"[{args.task}] command_policy={args.command_policy} command_seed={args.command_seed} "
+          f"disable_thinking={args.disable_thinking}")
+    excited = args.command_policy == "random"
+    if excited:
+        commands = draw_commands(len(seeds), spec["turns"], args.task, args.command_seed)
+        asks = {r["trajectory_id"]: [int(r["target_raw_count"]), *c] for r, c in zip(seeds, commands)}
+        norm = COMMAND_RANGE[args.task]["norm"]
 
     if args.dry_run:
         bad = 0
@@ -183,11 +256,23 @@ def main() -> None:
             assert msgs == list(seed_row["prompt_messages"]), "turn-1 replay must be verbatim"
             row = score_row(args.task, seed_row, seed_row["raw_generation"])
             try:
-                builder({**seed_row, **row})
+                if excited:
+                    ask = asks[seed_row["trajectory_id"]]
+                    RANDOM_BUILDERS[args.task]({**seed_row, **row}, ask[0], ask[1])
+                else:
+                    builder({**seed_row, **row})
             except NotImplementedError as exc:
                 bad += 1
                 if bad <= 3:
                     print(f"  unwitnessed feedback branch on {seed_row['trajectory_id']}: {exc}")
+        if excited:
+            flat = [c for r in seeds for c in asks[r["trajectory_id"]][1:]]
+            print(f"[dry-run] command schedule: {len(flat)} draws in [{min(flat)}, {max(flat)}], "
+                  f"mean {sum(flat) / len(flat):.1f}; first trajectory asks {asks[seeds[0]['trajectory_id']]}")
+            first = seeds[0]
+            print("[dry-run] turn-2 feedback for the first trajectory: "
+                  + RANDOM_BUILDERS[args.task]({**first, **score_row(args.task, first, first['raw_generation'])},
+                                               *asks[first["trajectory_id"]][:2]))
         print(f"[dry-run] {len(seeds)} turn-1 prompts replay verbatim; scorer+feedback ran on "
               f"every one; {bad} hit an unwitnessed branch; no model loaded, no file written")
         return
@@ -210,7 +295,10 @@ def main() -> None:
     written = []
     for turn in range(1, spec["turns"] + 1):
         prompts = [build_messages(r, histories[r["trajectory_id"]]) for r in seeds]
-        outputs = llm.chat(prompts, sampling)
+        if args.disable_thinking:
+            outputs = llm.chat(prompts, sampling, chat_template_kwargs={"enable_thinking": False})
+        else:
+            outputs = llm.chat(prompts, sampling)
         for seed_row, out in zip(seeds, outputs):
             text = out.outputs[0].text.strip()
             row = score_row(args.task, seed_row, text)
@@ -218,7 +306,14 @@ def main() -> None:
                         "raw_generation": text, "decoding_config": dict(decoding),
                         "prompt_messages": build_messages(seed_row, histories[seed_row["trajectory_id"]]),
                         "cap_hit": len(out.outputs[0].token_ids) >= max_new})
-            row["feedback_text"] = builder({**seed_row, **row}) if turn < spec["turns"] else None
+            if excited:
+                ask = asks[seed_row["trajectory_id"]]
+                row.update({"command_policy": "random", "command_seed": args.command_seed,
+                            "command_raw_count": ask[turn - 1], "command_norm": norm(ask[turn - 1])})
+                row["feedback_text"] = (RANDOM_BUILDERS[args.task]({**seed_row, **row}, ask[turn - 1], ask[turn])
+                                        if turn < spec["turns"] else None)
+            else:
+                row["feedback_text"] = builder({**seed_row, **row}) if turn < spec["turns"] else None
             histories[seed_row["trajectory_id"]].append((text, row["feedback_text"] or ""))
             written.append(row)
         hits = sum(1 for r in written if r["turn"] == turn and r["cap_hit"])
@@ -231,7 +326,9 @@ def main() -> None:
     (args.out_dir / "run_config.json").write_text(json.dumps({
         "task": args.task, "agent_model": args.agent_model, "n_trajectories": len(seeds),
         "turns": spec["turns"], "max_new_tokens": max_new, "decoding": decoding,
-        "cap_hit_share": cap_share, "provenance": provenance()}, indent=2) + "\n")
+        "cap_hit_share": cap_share, "command_policy": args.command_policy,
+        "command_seed": args.command_seed, "disable_thinking": args.disable_thinking,
+        "provenance": provenance()}, indent=2) + "\n")
     print(f"[done] {len(written)} rows -> {out_path}; cap hit share {cap_share:.4f}")
 
 

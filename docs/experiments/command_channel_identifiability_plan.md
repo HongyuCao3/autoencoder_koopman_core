@@ -1,6 +1,9 @@
 # 命令通道 $B$ 的可辨识性与持续激励采集（#4）
 
-> **状态**：▶ 待执行（2026-10-25 立项，主计划 [`post_meeting_2026-10-25_master_plan.md`](post_meeting_2026-10-25_master_plan.md)）。
+> **状态**：4a ✅ 完成（结果 [`command_channel_identifiability_results.md`](command_channel_identifiability_results.md)）；
+> 4b ⏸ **等裁决**（开关 + 单测 + sbatch 干跑已完成，未提交；阻塞项见 §3.3）。2026-10-25。
+>
+> 原状态：▶ 待执行（2026-10-25 立项，主计划 [`post_meeting_2026-10-25_master_plan.md`](post_meeting_2026-10-25_master_plan.md)）。
 > 目的：在 Umesh 用 $K,B$ 算 Gramian / 可达集之前，确定哪些任务的 $B$ 是数据辨识出来的。
 > 4a 零 GPU；4b 是 GPU 采集，**agent 只写到 sbatch 干跑，不提交**（`.claude/experiments.md`）。
 
@@ -61,6 +64,13 @@
 
 756 次生成 / seed-任务，`max_new_tokens=256`，Qwen3-4B，batch 16，单卡 A100：原采集 42 题 × 10 轮的实测时长
 按 `docs/LEDGER.md` §一同类作业折算，**预计 20–40 分钟/seed**，三 seed 串行 < 2 小时。缺的信息：原采集单作业时长（agent 在 LEDGER 里查后更新此行）。
+
+**更新（2026-10-25，agent 查后）**：本仓库没有原采集的作业记录（`core` 语料是同事交付的成品）；最近的同类作业是
+16035914（同一 runner、同一任务、Qwen3-4B、A100），`sentence_length_t10` 含一次引擎启动约 8 min。
+落盘协议是 **252 条轨迹 × 10 轮**（168/42/42 划分），不是上文的「42 题 × 6 轮」，按 runner 的单位三 seed 共 7,560 次生成，
+估 **0.25–0.75 h**（依据写在 `slurm/run_core_excite_sentence_length.sbatch` 头注）。**用户 2026-10-25 裁决：按实际协议 252×10×3 seed。**
+**两个提交前阻塞**：① `/scratch/hcao2/envs/sequor_vllm` 的 Python 标准库被 scratch 清理删掉，env 须重建并在其中重做干跑；
+② runner 原先不关 Qwen3 的 thinking——16035914 在本任务上 90.6% 行触顶 256 token、字数数进了 `<think>`；已加 `--disable-thinking`（默认关、旧调用不变），sbatch 打开它。
 
 ### 3.4 执行位置与停机点
 

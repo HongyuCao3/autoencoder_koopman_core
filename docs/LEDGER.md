@@ -985,3 +985,30 @@ Qwen 臂 `outputs/tsar_cefr_gpu1/` 一个字节不动；④ 见上表本行；�
 源 token p50 103→104、max 175→176，派生 cap p50 155→156、max 263→264，总量 16,191→16,210（+0.12%）。
 **cap 不会在 262144 词表下悄悄缩水或爆掉**，所以截顶压力只是 gemma 自身啰嗦程度的问题，不是 tokenizer 错配。
 `token_cap()` 本就用 agent 自己的 tokenizer 算（`1.5×` 源长度），且 runner 按题自查 5% 预注册阈值。
+
+---
+
+## 十、campaign：组会后计划（2026-10-25 开）
+
+计划 [`experiments/post_meeting_2026-10-25_master_plan.md`](experiments/post_meeting_2026-10-25_master_plan.md)。
+主计划 §三.4 写「LEDGER §三 补一行」；§三 是逐作业表，零 GPU 探针沿用 §九 以后的 campaign 段写法记在这里。
+**环境事故（2026-10-25 发现）**：`/scratch/hcao2/envs/persona_drift_pilot` 与 `sequor_vllm` 的 Python 标准库被 scratch 清理删掉（只剩 `__pycache__`），两个 env 都起不来。
+本段三件零 GPU 探针用 `/scratch/hcao2/envs/dkvar`（numpy 1.26.4 / pandas 2.3.3）+ `PYTHONPATH=src` 跑；换 env 前复现 A1 matched 两列 22 格，`Skill_H` 最大差 1.9e-13。**任何 GPU 作业提交前须先重建 `sequor_vllm`。**
+
+### 零 GPU 记录（三行均事前写在子规格里；LEDGER 为当天补记）
+
+| 日期 | 件 | 判 | 产物 | 它改变了哪个决定 |
+|---|---|---|---|---|
+| 2026-10-25 | **#4a** $B$ 可辨识性 bootstrap（方法） | `tsar_cefr`、`constraint` **可用**；`defense` ⚠self **不可用**（轨迹级区间 [−0.018,+0.147]，符号稳定率 0.930；item 级判可用，按签的轨迹级记）；`core` 八列不可辨识（引用，不重算）；控制线不可得 | `results/b_identifiability/` | **Umesh 能拿哪几组 $K,B$ 算 Gramian。已答：`tsar_cefr`、`constraint` 两组。** 并触发 4b（`core` 不可用 ∧ 控制线日志不在 zip 里） |
+| 2026-10-25 | **#1** 谱饱和探针（方法/机制） | **不过** | `results/spectral_saturation/` | **谱图进不进 proposal Task 1 prelim。已答：不进。** 饱和任务 0/3 满足 (a)/(b)，`constraint` 也不满足 ⇒ 谱与饱和无关；唯一共同结构是 $\|\lambda\|\approx0.97$ 的题目水平模式。按第二行关闭，不设第二个谱闸门。⚠️ (a) 在本样本量上功效低（合成真死模式上界 0.19），但 (b) 也全不满足，结论不依赖 (a)。第三行「论文不填」用户 2026-10-25 批准。运行 8m52（估 <15 min） |
+| 2026-10-25 | **#3** 闭式解 vs 枚举（方法；写 `outputs/`，事前签，第三行「论文不填」用户 2026-10-25 批准） | **future work**（一致率 0.876 < 0.95） | `persona_drift_control/outputs/closed_form_check_tsar_cefr/` | **半页放 Thrust 3 prelim 还是 future work。已答：future work。** 回放复现 100% 日志动作（2297 决策点）；284 个不一致全是枚举选 `copy`、闭式解选 `half_step_down`——保持单一命令的模型表达不了「停」。可控性秩 4/4、Gramian 条件数 1286。`constraint` 控制器非线性 MPC，不适用。运行 33 s |
+
+### 计划中的作业（未提交，等裁决）
+
+| 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
+|---|---|---|---|---|---|
+| 2026-10-25 | — | `slurm/run_core_excite_sentence_length.sbatch` / `pdc-core-excite-sentlen` | **方法**（辨识数据） | ⏸ **未提交，等裁决**。`--command-policy random` 三 seed，`--disable-thinking`；argparse 干跑三 seed 全过（2,268 次抽样/seed ∈ [5,100]、252 条 turn-1 prompt 逐字重放、0 条未见证分支）。估 0.25–0.75 h。规模用户 2026-10-25 裁为实际协议 252×10×3 seed。阻塞：`sequor_vllm` env 损坏，须重建后在其中重做干跑。最近 10 个本项目作业：仪器 1 ⇒ 配额通过 | **`core` 任务的命令通道能不能变成可辨识的**：过 ⇒ $K,B$ 交 Umesh 算 Gramian、#3 prelim 用这组；不过 ⇒ 关闭「`core` 命令通道」线 |
+
+**顺带发现（不改任何已发表数字，待用户裁）**：09-17 的 `core` 第二 backbone Qwen 臂（16035914）runner 没关 thinking，
+`sentence_length_t10` 90.6% 行触顶 256 token、`character_length_t5` 100%，字数数进了 `<think>`（落盘语料 0/2520 行含 `<think>`）。
+该臂产物 `outputs/core_qwen3_4b_*/` **不是有效采集**；gemma 臂忽略该 kwarg、触顶 0%，不受影响。这两臂此前未分析，未进任何表。

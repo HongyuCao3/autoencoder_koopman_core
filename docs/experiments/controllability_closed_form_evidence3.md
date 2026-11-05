@@ -1,6 +1,12 @@
 # 证据③的 controllability 改写：从枚举筛选到用线性结构直接设计（#3）
 
-> **状态**：▶ 待执行（2026-10-25 立项，主计划 [`post_meeting_2026-10-25_master_plan.md`](post_meeting_2026-10-25_master_plan.md)）。
+> **状态**：✅ 已执行（2026-10-25，用户批准第三行「论文不填」后运行）。判「**future work**」：`tsar_cefr` 一致率 0.876 < 0.95。
+> 回放先过：重写的枚举复现 **100%** 日志动作（2297 个决策点，含 284 个推断出的 `copy` 停止）。不一致**全部**是同一种——枚举选 `copy`（停），
+> 闭式解给 `half_step_down`：单一命令保持整个时域的模型表达不了「现在停」。半页稿 [`../article/controllability_half_page.md`](../article/controllability_half_page.md)。
+> `constraint` 不可做：S3 的 `koopman_mpc` 是 token 预算下的分格动作模型，不是线性 $K,B$ + 二次代价的 MPC，§二的闭式解在它上面无定义。
+> 控制线日志不可得（`KOMPAS-code-release.zip` 不含 Table 2 harness）。
+>
+> 原状态：▶ 待执行（2026-10-25 立项，主计划 [`post_meeting_2026-10-25_master_plan.md`](post_meeting_2026-10-25_master_plan.md)）。
 > Umesh 的批评：KOMPAS 是「枚举候选 → 模型里滚 → 挑最好」，线性只让滚得快，没用线性结构**设计**干预。
 > 交付：半页文字（proposal Thrust 3），加一个零 GPU 的离线一致性检查决定它放 prelim 还是 future work。
 
@@ -61,9 +67,14 @@ Joint-2/3 的 $B$ 不可辨识 ⇒ 用「单标量输入 ⇒ 秩 ≤ 1」的结�
 
 | 线 | 决策点数 | 一致率 | 不一致时 $\Delta\hat J$ 中位数 | `controllability_rank` / $H$ | 判定 |
 |---|---|---|---|---|---|
-| `tsar_cefr` | | | | | |
-| `constraint` | | | | | |
-| 控制线 | 待路径 | | | | |
+| `tsar_cefr` | 2297 | 0.876 | 0.151（284 个，全为 `copy`→`half_step_down`） | 4 / 4（状态维 4；奇异值 0.194 / 0.074 / 0.019 / 0.0054，Gramian 条件数 1286） | **future work** |
+| `constraint` | — | — | — | — | 不适用（控制器非线性 MPC） |
+| 控制线 | 不可得 | | | | 不可得 |
+
+产物 `persona_drift_control/outputs/closed_form_check_tsar_cefr/summary.json`；脚本 `persona_drift_control/scripts/closed_form_vs_enumeration.py`；
+单测 `persona_drift_control/tests/test_closed_form_vs_enumeration.py` 3 条全过。$\beta$=1.8333、$\lambda$=0.1156、$H$=4 取自该臂 `run_config.json`，算子取自 `outputs/tsar_cefr_phase3/operator_fit.json`（臂实际加载的那份）。
+闭式解按 §一.1 的式子：一个命令保持整个时域，$\hat J(c)$ 是松弛 one-hot $c\in\mathbb R^3$ 的二次函数（`copy`=0；切换代价 $\lambda\mathbb 1[c\ne0]$ 在候选点上等于 $\lambda\sum c$），$c^\star=-Q^{-1}q/2$ 投影到最近候选。
+注意该臂 MPC 落盘的动作只有 `half_step_down`（2013/2013）与推断的 `copy`，所以「一致」的那 87.6% 本身信息量有限。运行 33 s。
 
 ## 五、完成 = 什么
 
