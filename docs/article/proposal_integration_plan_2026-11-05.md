@@ -16,7 +16,7 @@
 | E4 | p.9 Thrust A Prelim ¶1（"Our preliminary controlled sentence-generation…"，y=332–425） | **整段替换**，删 MAE 3.778→2.007 | **Fig. 2**（两面板） | +0.18 |
 | E5 | p.11 Thrust B Prelim ¶1（"Our preliminary results provide evidence…"，y=177–296） | **整段替换**，删 MAE≈0.0273 / R²≈0.942 | **Fig. 3** | +0.12 |
 | E6 | p.11 Thrust B Prelim ¶1 与 ¶2 之间（y≈297） | 新增 4 行 "Evaluation protocol" | — | +0.08 |
-| E7 | p.13 Thrust C Prelim ¶1（"Our sentence-length experiments already expose…"，y=96–161） | **整段替换** | **Fig. 4**（两面板） | +0.15 |
+| E7 | p.13 Thrust C Prelim ¶1（"Our sentence-length experiments already expose…"，y=96–161） | **合作者原段保留**，段末追加 3 句（2026-11-05 改为只追加不替换） | **Fig. 4**（两面板） | +0.15 |
 | E8 | p.13 Thrust C Prelim ¶2（"Thrust 3 will deliver…"，y=163–256）末 | 加一句 future work | — | +0.04 |
 | | | | **合计** | **≈ +0.75 页** |
 
@@ -46,8 +46,8 @@
 **Fig. 3（p.11，Thrust B，单面板，可 `wrapfigure`）学到的 lifting 不加分。** 数据：`fig_mechanism` 面板 (c) 同源（证据 id 见 `_fig_report.json`）。点 + 95% 区间，形状区分 1/2/3 维读数。
 - Caption: *Figure 3: Paired difference in prediction skill, linear model minus the same model with a learned nonlinear lifting, on seven tasks (circle: one attribute; square/diamond: two/three attributes tracked jointly). Look at the zero line: the learned lifting is never better with an interval excluding zero, so added representation complexity bought no fidelity.*
 
-**Fig. 4（p.13，Thrust C，两面板）B 要先辨识出来。** 数据：(a) `fig_mechanism` 面板 (a)（sentence length 的落盘指令 vs 追踪误差，描述性，非 Skill）；(b) `results/b_identifiability/{tsar_cefr,constraint}.json`：四个主元素 $CB$ 点估计 + 轨迹级 95% 区间。
-- Caption: *Figure 4: Control analysis requires an identified input matrix. (a) In the attribute-tracking data, the issued instruction is a fixed function of the tracking error, so its effect cannot be separated from the state. (b) Where actions were randomized (text simplification, three rewrite actions; constraint following, a reminder), each one-step effect is identified with a 95% interval excluding zero. Look at (a) versus (b): the same model class is or is not usable for controllability analysis depending on how the data were collected.*
+**Fig. 4（p.13，Thrust C，两面板）命令效应：要先辨识，辨识了就能算可达范围。** 数据：(a) `results/core_excite_reachability/summary.json`（三 seed，按请求分四档：实测交付均值 ± std、train 拟合模型对 test 题目的一步预测、稳态可达上界 73.0 词水平虚线；对角线 = 完全照做）；(b) `results/core_excite_b_identifiability/summary.json` + `results/b_identifiability/{tsar_cefr,constraint}.json`：三个任务的一步命令效应 $CB$ 点估计 + 轨迹级 95% 区间（`core` 三 seed 各一点）。原 (a)「指令 vs 追踪误差」散点改为正文一句。
+- Caption: *Figure 4: Prompt authority, measured. (a) Sentence length: requested versus delivered words when requests are randomized (three seeds); the line is a linear model fitted on training prompts and evaluated on held-out prompts, and the dashed level is its predicted reachable average under requests of at most 100 words. (b) One-step effect of the instruction on the tracked attribute, with 95% intervals, on three tasks where instructions were randomized. Look at (a): the model predicts what the prompt can and cannot reach, and errs on the conservative side at the top.*
 
 ## 三、逐句修改（英文为拟写入 proposal 的文本）
 
@@ -72,10 +72,10 @@
 
 **E6（p.11，¶1 后新增小段）** *Evaluation protocol. We score an $H$-step forecast made without feeding back observed outputs by $\mathrm{Skill}_H = 1-\mathrm{MSE}_H(\text{model})/\mathrm{MSE}_H(\text{best trivial predictor})$, so 0 means no better than a constant or last-value guess. Comparisons are paired over the same held-out conversations with a 2000-resample conversation-level bootstrap (95% intervals), and models with different memory depths are fit on the same transitions so that depth is not confounded with training-set size.*
 
-**E7（p.13 Thrust C Prelim ¶1，整段替换）** 新：
-*Our preliminary data expose a prerequisite for controllability analysis: the input matrix must be identified, not merely fitted. In the attribute-tracking tasks the instruction was always computed from the tracking error, so the command is an exact function of the state and $B_p$ is undefined (Figure 4a). On two tasks with randomized actions, the one-step command effects are identified with intervals excluding zero (Figure 4b); for text simplification, the controllability matrix over a four-step horizon has full rank but a Gramian condition number of about $1.3\times10^{3}$—every direction is reachable, one only at high cost. Thrust 3 therefore begins with persistently exciting data collection before Gramian-based actuator selection (5.13).*
-出处：`command_channel_identifiability_results.md`；`controllability_closed_form_evidence3.md` §四（秩 4/4、条件数 1286）。
-原段首句 "requested lengths of 5–30 words are tracked relatively well… surrogate continues to predict the actual FM output accurately"（合作者结果）**保留为新段第一句**，它是「预测准 ≠ 能控」的直接例子，接在 "…not merely fitted." 之后。
+**E7（p.13 Thrust C Prelim ¶1，合作者原段保留，段末追加）**（2026-11-05 改：不替换；先写好，带成稿去商议）
+*In the original collection, however, the instruction was computed from the tracking error, so its effect cannot be separated from the state. When requests are instead randomized, the effect is identified: each additional requested word yields about 0.73 delivered words (three seeds, every 95% interval within 0.69–0.78), and a linear model fitted on training prompts places the reachable average length near 73 words for requests of at most 100 words, within two words of held-out prompts below 80 words and conservative by about seven words above (Figure 4a). The same identification holds on two other tasks with randomized actions (Figure 4b); Thrust 3 therefore begins with persistently exciting data collection before Gramian-based actuator selection (5.13).*
+出处：`../experiments/core_excite_b_identifiability_results.md`（门控过：$CB$ = 0.734 ± 0.009 (n=3)；可达性为探索性、无闸门，脚本 `scripts/core_excite_reachability.py`）；`command_channel_identifiability_results.md`。原 E7 稿里的 CEFR Gramian 条件数 1286 一句删去：「秩满但条件数大」需要读者懂 Gramian，且 CEFR 的 $B$ 由 MPC 自身选择的动作辨识，不如 `core` 这例直观。
+口径注意：0.73 与 73 词是拟合诊断/模型推算，不是跨臂比较的头条数；只有一个任务、一个模型（Qwen3-4B）、线性拟合——段内不外推。
 
 **E8（p.13 ¶2 末，追加，future work 口径）** *Because predicted outputs are affine in a held command, output-box constraints reduce to linear inequalities with a closed-form feasible set; extending this to commands that switch within the horizon, which a single held command cannot express, is part of C.3.*
 （#3 判 future work：只写方向，**不写** 87.6% 这个数，除非你另裁。）
@@ -103,11 +103,11 @@
 | 1 | **页数**：本计划 +≈0.75 页，余量 ≈0.55 页，§2.2、§8 也要篇幅。候选抵扣：Fig. 2–4 用 `wrapfigure`、压 §3.1 ¶4（p.6，≈0.12 页）、或砍图 | §3.1 是时序编码器线；排版是全文 | 每项的页数估计（§一表）；可先只做 wrapfigure 版看实际页数 |
 | 2 | **F1**：用 Fig. 1 替换 p.2 ¶6 的箭头式，并把 p.6 §3.2 ¶5 压到 2 行 | p.2 是 proposal 总述（PI 文字） | Fig. 1 草图 + caption（§二） |
 | 3 | **E4/E5 删数字**：p.9 "MAE 3.778→2.007 / 46.9%"、p.11 "MAE≈0.0273, R²≈0.942" | 合作者结果 | 依据是 Umesh「趋势不带数字」；备选：数字保留、只加图 |
-| 4 | **E4/E5/E7 整段替换** Thrust A/B/C 的 Prelim ¶1 | 三段原稿均非本仓库所写 | 替换稿（§三）；备选：原段保留，只在段末追加我们的 1–2 句 + 图引用 |
+| 4 | **E4/E5 整段替换** Thrust A/B 的 Prelim ¶1（E7 已改为只追加，见第 9 条） | 三段原稿均非本仓库所写 | 替换稿（§三）；备选：原段保留，只在段末追加我们的 1–2 句 + 图引用 |
 | 5 | **E2** 改写 p.7 §3.2 局限段（加 81%/67% 与 B 不可辨识） | §3.2 是 KOMPAS 段，原稿作者需确认 | 出处已列于 E2 |
 | 6 | **E3** 在 §4 Intellectual Merit 加一句；原 #2 稿要求的 Overview 一句不加（p.1 已满） | PI 文字 | 措辞已从 "validated" 降为 "tested … located where it falls short" |
 | 7 | **E6** Evaluation protocol 放 Thrust B 末还是 §2.2（现为空节） | §2.2 的归属 | 4 行稿（§三） |
 | 8 | 记号：§3.2 用 $(K,B,c_k,b)$、Thrust A 原段用 $\xi,K,B,r,c$，与 (2.5) 的 $(A,B_p,c^p_k,d_k)$ 并存——全文统一用哪套 | 全文 | E1 的对照句 |
-| 9 | **#4b 新结果**：E7 / Fig. 4b 是否加入「`core` 在随机命令下 $B$ 可辨识（$CB\approx0.73$，请求字数只兑现约 73%）」；它同时是 p.13 合作者「长请求跟不上」那句的定量版 | Thrust C 段 | [`../experiments/core_excite_b_identifiability_results.md`](../experiments/core_excite_b_identifiability_results.md) |
+| 9 | **#4b 新结果**（E7 追加稿 + Fig. 4 已按成稿设计好）：只在合作者原句后追加、不删字；它是 p.13 合作者「长请求跟不上」的定量版 | Thrust C ¶1 位置、Fig. 4 占位 | E7 成稿 + Fig. 4 设计（§二、§三）；[`../experiments/core_excite_b_identifiability_results.md`](../experiments/core_excite_b_identifiability_results.md) |
 
 商议前可独立做、不碰合作者文字的：出 Fig. 1–4（`proposal/figs/`）与出图脚本；E6、E8 的独立句子稿。
