@@ -36,3 +36,4 @@ paper/tmp*.tmp
 
 # Proposal PDFs are uploaded for reference only (user 2026-11-05)
 proposal/*.pdf
+proposal/figs/*.png

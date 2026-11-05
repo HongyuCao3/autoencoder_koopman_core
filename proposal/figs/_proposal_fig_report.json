@@ -1,0 +1,195 @@
+{
+  "fig1": {
+    "kind": "schematic",
+    "data": null
+  },
+  "fig2": {
+    "a": [
+      {
+        "task": "sentence_length_t10",
+        "last_turn": "n_main_006",
+        "memory": "n_main_004",
+        "contrast": "n_main_013",
+        "excludes_zero": true
+      },
+      {
+        "task": "vector_count_stage2_t10",
+        "last_turn": "n_main_038",
+        "memory": "n_main_036",
+        "contrast": "n_main_045",
+        "excludes_zero": true
+      },
+      {
+        "task": "vector_count_stage1_t10",
+        "last_turn": "n_main_022",
+        "memory": "n_main_020",
+        "contrast": "n_main_029",
+        "excludes_zero": false
+      },
+      {
+        "task": "sentiment_t5",
+        "last_turn": "n_main_102",
+        "memory": "n_main_100",
+        "contrast": "n_main_109",
+        "excludes_zero": false
+      },
+      {
+        "task": "defense",
+        "last_turn": "n_main_139",
+        "memory": "n_main_147",
+        "contrast": "n_main_148",
+        "excludes_zero": false
+      },
+      {
+        "task": "constraint",
+        "last_turn": "n_main_123",
+        "memory": "n_main_131",
+        "contrast": "n_main_132",
+        "excludes_zero": true
+      },
+      {
+        "task": "tsar_cefr",
+        "last_turn": "n_main_171",
+        "memory": "n_main_179",
+        "contrast": "n_main_180",
+        "excludes_zero": true
+      }
+    ],
+    "b_depth_ids": {
+      "sentence_length_t10": {
+        "ids": [
+          "n_abl_124",
+          "n_abl_125",
+          "n_abl_127"
+        ],
+        "excludes_zero": [
+          true,
+          true,
+          true
+        ]
+      },
+      "vector_count_stage2_t10": {
+        "ids": [
+          "n_abl_184",
+          "n_abl_185",
+          "n_abl_187"
+        ],
+        "excludes_zero": [
+          true,
+          true,
+          true
+        ]
+      },
+      "vector_count_stage1_t10": {
+        "ids": [
+          "n_abl_157",
+          "n_abl_158",
+          "n_abl_160"
+        ],
+        "excludes_zero": [
+          false,
+          false,
+          false
+        ]
+      },
+      "constraint": {
+        "ids": [
+          "n_abl_235",
+          "n_abl_236",
+          "n_abl_238"
+        ],
+        "excludes_zero": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    "ledger": "paper/evidence/numbers.yaml"
+  },
+  "fig3": {
+    "ids": [
+      {
+        "task": "sentence_length_t10",
+        "id": "n_main_015",
+        "value": 0.017001097144927264,
+        "ci": [
+          -0.014249097042116889,
+          0.05754084559998288
+        ],
+        "excludes_zero": false
+      },
+      {
+        "task": "vector_count_stage2_t10",
+        "id": "n_main_047",
+        "value": 0.0046938060859000215,
+        "ci": [
+          0.0004276811032766892,
+          0.009253675225601594
+        ],
+        "excludes_zero": true
+      },
+      {
+        "task": "vector_count_stage1_t10",
+        "id": "n_main_031",
+        "value": 0.01381738601137163,
+        "ci": [
+          -0.005401845596284279,
+          0.03239494293486803
+        ],
+        "excludes_zero": false
+      },
+      {
+        "task": "sentiment_t5",
+        "id": "n_main_111",
+        "value": 0.10058320824882183,
+        "ci": [
+          -0.054370123957318536,
+          0.31250494124197337
+        ],
+        "excludes_zero": false
+      },
+      {
+        "task": "defense",
+        "id": "n_main_151",
+        "value": 0.01394349695689625,
+        "ci": [
+          -0.0011192071104520272,
+          0.03241962670207235
+        ],
+        "excludes_zero": false
+      },
+      {
+        "task": "constraint",
+        "id": "n_main_135",
+        "value": 0.048194723250580135,
+        "ci": [
+          0.01853818110223725,
+          0.0730720842723128
+        ],
+        "excludes_zero": true
+      },
+      {
+        "task": "tsar_cefr",
+        "id": "n_main_183",
+        "value": 0.5991755523471519,
+        "ci": [
+          0.4780414704282848,
+          0.7410904821846424
+        ],
+        "excludes_zero": true
+      }
+    ]
+  },
+  "fig4": {
+    "a": [
+      "results/core_excite_reachability/summary.json",
+      "persona_drift_control/outputs/core_excite_sentence_length_{seed}/trajectories.jsonl"
+    ],
+    "b": [
+      "results/core_excite_b_identifiability/summary.json",
+      "results/b_identifiability/tsar_cefr.json",
+      "results/b_identifiability/constraint.json"
+    ]
+  }
+}
