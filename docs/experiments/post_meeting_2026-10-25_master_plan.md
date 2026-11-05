@@ -76,7 +76,7 @@ agent 在本地会话里做完左列后**停**，把中列的命令清单写进�
 | 1 谱探针 | ✅ 判「不过」（10-25） | 三个饱和任务 0/3 满足判据；proposal 不放谱图 | [`spectral_saturation_probe.md`](spectral_saturation_probe.md) |
 | 4a $B$ 可信度 | ✅ | `core` 不可辨识（命令 $=r-y_t$）；行为线三列补了 bootstrap 区间 | [`command_channel_identifiability_results.md`](command_channel_identifiability_results.md) |
 | 4b 持续激励采集 | ✅ 闸门**过**（11-05） | 作业 19443006，`sentence_length_t10` 3 seed 随机命令；$CB$ = **0.734 ± 0.009 (n=3)**，区间都不含 0，$c$ 对状态 $R^2\le0.003$。Gramian 由移位结构决定、信息量低；探索性可达集（无闸门）：100 词请求下稳态上界 **73.0 ± 0.5 词 (n=3)**，留出四档预测与实测在 ≤79 词时差 ≤2 词、最高档低估约 7 词 | [`core_excite_b_identifiability_results.md`](core_excite_b_identifiability_results.md)；`scripts/core_excite_{b_identifiability,reachability}.py` |
-| 3 controllability 改写 | ✅ 判 future work（10-25） | `tsar_cefr` 一致率 0.876 < 0.95。4b 数据**不能**重开 #3：随机命令没有控制器日志，离线比对是同义反复 | [`controllability_closed_form_evidence3.md`](controllability_closed_form_evidence3.md) |
+| 3 controllability 改写 | ✅ 判 future work（v1 10-25；v2 11-05） | `tsar_cefr` v1 一致率 0.876 < 0.95；v2（逐轮离散、不投影，闸门 = 保持首步命令）**0.922** < 0.95，仍判 future work（探索性「一步后停」1.000，事后选定，不参与判词）。4b 数据**不能**重开 #3：随机命令没有控制器日志，离线比对是同义反复 | [`controllability_closed_form_evidence3.md`](controllability_closed_form_evidence3.md) |
 | 2 proposal | ▶ 规划 + 出图完成，**等合作者商议** | 整合规划 E1–E8 + F1（页/段/句级修改与英文原句）；Fig. 1–4 白底印刷尺寸 PDF 已出、figcheck 无问题。未编进 tex（无源文件），页数未实测 | [`../article/proposal_integration_plan_2026-11-05.md`](../article/proposal_integration_plan_2026-11-05.md)；`docs/article/proposal_figs/make_proposal_figs.py` → `proposal/figs/` |
 | 5 复现仓库 | ⏸ 未开始 | 等 Sriram 账号 | [`../repro_repo_plan_2026-10-25.md`](../repro_repo_plan_2026-10-25.md) |
 | 6 后续论文 | — | 12/16 后再议 | — |

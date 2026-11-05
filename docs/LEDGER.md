@@ -1004,6 +1004,7 @@ Qwen 臂 `outputs/tsar_cefr_gpu1/` 一个字节不动；④ 见上表本行；�
 | 2026-10-25 | **#3** 闭式解 vs 枚举（方法；写 `outputs/`，事前签，第三行「论文不填」用户 2026-10-25 批准） | **future work**（一致率 0.876 < 0.95） | `persona_drift_control/outputs/closed_form_check_tsar_cefr/` | **半页放 Thrust 3 prelim 还是 future work。已答：future work。** 回放复现 100% 日志动作（2297 决策点）；284 个不一致全是枚举选 `copy`、闭式解选 `half_step_down`——保持单一命令的模型表达不了「停」。可控性秩 4/4、Gramian 条件数 1286。`constraint` 控制器非线性 MPC，不适用。运行 33 s |
 | 2026-11-05 | **#4b 分析** $CB$ 可辨识性（方法；三行事前签于规格 §3.2） | **过**：三 seed $CB$ = **0.734 ± 0.009 (n=3)**，轨迹级区间均不含 0、符号一致、稳定率 1.000；$c$ 对状态 $R^2\le0.003$ | `results/core_excite_b_identifiability/` | **`core` 命令通道能否辨识。已答：能（在激励数据上）。** $K,B$ 可交 Umesh；能控性秩/条件数由移位寄存器结构决定，须同址注明。#3 是否用本组重开、proposal 是否引用 → 等裁决。运行 14 s |
 | 2026-11-05 | **#3 v2 口径探针**（仪器/口径；零 GPU、只读、**不写 `outputs/`**，scratch 一次性计算；三行为 v2 正式运行而写，见子规格 §5.2，本探针**无闸门**） | **未判**：口径歧义 | 无（scratch；数字记在子规格 §5.3） | **v2 用哪种「后续步」口径作闸门。未答，等用户裁决。** 部署 MPC 无保持假设；同 2297 点上：A 保持首步命令 0.922（v1 的 284 个全转一致，新增 180 个 `half_step_down`→`copy`）、B 首步后 `copy` 1.000、C 最优续行 = 枚举本身。判词随口径翻转；数字已看过，选定须标「事后」 |
+| 2026-11-05 | **#3 v2** 逐轮重解、离散首步（方法；写 `outputs/`；三行事前签于子规格 §5.2，口径 A 由用户 2026-11-05 裁决，裁决在看过探针数字之后） | **future work**：读法 A 一致率 **0.922** < 0.95（180 个 `half_step_down`→`copy`，$\Delta\hat J$ 中位数 0.046）；读法 B（探索性、事后）1.000 | `persona_drift_control/outputs/closed_form_check_tsar_cefr_v2/` | **去掉 v1 的连续放松与投影后，半页能否升为 Thrust 3 prelim。已答：不能，保持 future work。** 回放 100%（2297），v1 的 284 个不一致全部消失、反向新增 180 个。运行 44 s |
 
 ### 作业
 

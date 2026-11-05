@@ -80,10 +80,10 @@ Joint-2/3 的 $B$ 不可辨识 ⇒ 用「单标量输入 ⇒ 秩 ≤ 1」的结�
 
 半页初稿 + 至少一条线的一致性检查 + §四填好 + LEDGER 一行（零 GPU）。
 
-## 五、v2：逐轮重解 + 不放松离散动作（2026-11-05 立项，**进行中：等用户裁决口径**）
+## 五、v2：逐轮重解 + 不放松离散动作（2026-11-05 立项并执行，判 **future work**）
 
-> 不改 §四 的 v1 结果与判词。v2 脚本 `persona_drift_control/scripts/closed_form_vs_enumeration_v2.py`（**未写**），
-> 产物 `persona_drift_control/outputs/closed_form_check_tsar_cefr_v2/summary.json`（**未写**）。
+> 不改 §四 的 v1 结果与判词。v2 脚本 `persona_drift_control/scripts/closed_form_vs_enumeration_v2.py`，
+> 产物 `persona_drift_control/outputs/closed_form_check_tsar_cefr_v2/summary.json`。
 
 ### 5.1 动机（用户 2026-11-05）
 
@@ -120,7 +120,20 @@ $K,B,b$、$\beta$、$\lambda$、$H$、2297 个决策点、先回放 100% 复现�
 - v1 的局限不变：该臂 MPC 只用过 `half_step_down`（2013）与推断的 `copy`（284），一致只检验「降不降」二选一。
 - **四个数字都已看过**，此后选哪种读法作闸门都要在本节标明是看过数字之后选的。
 
-**待裁决**：v2 用哪种读法作闸门。建议：A、B 都报告，**闸门用 A**（对 v1 改动最小、对准缺口②）；B 作探索性结果，标「事后」。
+**已裁决（用户 2026-11-05，看过上表数字之后）**：**闸门用 A**（§5.2 三行的阈值对象 = 读法 A 的一致率）；B 只作探索性结果报告，标「事后」，不参与判词。
 探针脚本未落盘（会话内一次性计算）；正式结果以 v2 脚本 + 单测 + `summary.json` 为准，填在 5.4。
 
-### 5.4 v2 结果（执行后填）
+### 5.4 v2 结果（2026-11-05）
+
+| 读法 | 角色 | 决策点数 | 一致率 | 不一致时 $\Delta\hat J$ 中位数 | 不一致类型 | 判定 |
+|---|---|---|---|---|---|---|
+| A 保持首步命令 | **闸门** | 2297 | **0.922** | 0.046 | 180 个，全为 `half_step_down`→`copy` | **future work**（< 0.95） |
+| B 首步后 `copy` | 探索性，事后选定 | 2297 | 1.000 | — | 0 | 不参与判词 |
+
+回放先过：复现日志动作 100%（2297/2297），决策点数与 v1 `summary.json` 相同（脚本在不满足时 raise）。$\beta$、$\lambda$、$H$、算子与 v1 同源。
+单测 `persona_drift_control/tests/test_closed_form_vs_enumeration_v2.py` 3 条 + v1 3 条全过；运行 44 s（估 < 1 min），环境 `dkvar`（`persona_drift_pilot` 已失效）。
+
+读法：
+- 去掉投影后，v1 的 284 个 `copy`→`half_step_down` 不一致全部消失，所以 v1 判词的直接成因是缺口②。但「一条命令保持 4 步」高估了继续降级的代价，在相反方向造出 180 个 `half_step_down`→`copy`，代价差中位数 0.046，比 v1 的 0.151 小。
+- 按 §5.2：半页保持 **future work**，不改控制器重跑。v1 的局限仍在：该臂的选择只有「降半级 / 停」两种，一致只检验二选一。
+- B 的 1.000 只说明这批决策上 MPC 的首步等于「走一步后停」的贪心。它是看过数字之后选的，不能写成「线性结构可直接设计干预」。
