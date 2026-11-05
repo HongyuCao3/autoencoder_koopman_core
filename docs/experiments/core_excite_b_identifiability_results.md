@@ -2,6 +2,8 @@
 
 > **状态**：✅ 闸门**过**（2026-11-05）。规格 [`command_channel_identifiability_plan.md`](command_channel_identifiability_plan.md) §3.2（三行事前签）。
 > 口径见 `../../.claude/global.md`：$CB$ 是**拟合诊断量**，回答「$B$ 能否交出去算 Gramian」，不是跨臂头条数字。
+>
+> **后续（2026-11-05）**：同前缀分叉 v2（作业 19460705）在「同一 prompt、同一段历史、只改所问字数」下测得 $CB$ = 0.731 ± 0.014 (n=3)，与本页一致 ⇒ 本页 $CB$ 不是跨 prompt 截距的产物。见 [`core_branch_b_identifiability_results.md`](core_branch_b_identifiability_results.md)。本页原文未改。
 
 ## 产物与谱系
 

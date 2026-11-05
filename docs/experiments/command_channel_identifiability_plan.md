@@ -88,7 +88,7 @@
 - **记录**（`branch_points.jsonl`，每分叉点一行）：`trajectory_id`、`k`、`prefix_state`（$y_{k-1},y_{k-2}$ 的原始值与归一化值；$k=2$ 时 $y_0$ 为 null）、三分支的命令 / 反馈 / 完整 prompt / 回复 $k$ 读数 / 是否触顶、主轨迹自身的回复 $k$、`git_sha`、`command_policy=branch`、`disable_thinking=true`。runner 拒绝不带 `--disable-thinking` 的 branch 调用。
 - **规模**：3 seed × 252 条 ×（10 轮主轨迹 + 1 分叉 × 3 分支）= 3 × (2520 + 756) = 9,828 次生成。产物 `persona_drift_control/outputs/core_branch_sentence_length_<seed>/`（全新，runner 遇到已有文件就报错）。
 - **运行时**：估 **8–20 min**（`--time 1:00:00`）。依据：v1 作业 19443006 跑 3 × 2520 次用了 6m11，其中引擎启动约 1.5 min × 3；v2 每 seed 生成多 1.3 倍；题目数 252、轮数 10、`max_new_tokens=256`（落盘解码）、thinking 关、Qwen3-4B、单卡 A100。
-- ⚠ 主轨迹用贪心 + `error` 策略，**三 seed 的主轨迹相同**（只有 $k$ 与分支命令随 seed 变；vLLM 批次不确定性除外）。生成量的 2/3 是重复的，约 4 min，按指令保留。
+- ⚠ 主轨迹用贪心 + `error` 策略，**三 seed 的主轨迹相同**（只有 $k$ 与分支命令随 seed 变；vLLM 批次不确定性除外）。生成量的 2/3 是重复的，约 4 min，按指令保留。**实测（采集后补记）**：逐字相同只有 62–63%（分支与主 prompt 同批，批构成随 seed 变），见结果文档；不影响配对差分。
 
 **拟合（采集前固定，`scripts/core_branch_b_identifiability.py`）**：
 

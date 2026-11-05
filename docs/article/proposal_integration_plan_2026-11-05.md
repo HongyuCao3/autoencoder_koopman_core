@@ -75,7 +75,7 @@
 
 **E7（p.13 Thrust C Prelim ¶1，合作者原段保留，段末追加）**（2026-11-05 改：不替换；先写好，带成稿去商议）
 *In the original collection, however, the instruction was computed from the tracking error, so its effect cannot be separated from the state. When requests are instead randomized, the effect is identified: each additional requested word yields about 0.73 delivered words (three seeds, every 95% interval within 0.69–0.78), and a linear model fitted on training prompts places the reachable average length near 73 words for requests of at most 100 words, within two words of held-out prompts below 80 words and conservative by about seven words above (Figure 4a). The same identification holds on two other tasks with randomized actions (Figure 4b); Thrust 3 therefore begins with persistently exciting data collection before Gramian-based actuator selection (5.13).*
-出处：`../experiments/core_excite_b_identifiability_results.md`（门控过：$CB$ = 0.734 ± 0.009 (n=3)；可达性为探索性、无闸门，脚本 `scripts/core_excite_reachability.py`）；`command_channel_identifiability_results.md`。原 E7 稿里的 CEFR Gramian 条件数 1286 一句删去：「秩满但条件数大」需要读者懂 Gramian，且 CEFR 的 $B$ 由 MPC 自身选择的动作辨识，不如 `core` 这例直观。
+出处：`../experiments/core_excite_b_identifiability_results.md`（门控过：$CB$ = 0.734 ± 0.009 (n=3)；可达性为探索性、无闸门，脚本 `scripts/core_excite_reachability.py`）；`command_channel_identifiability_results.md`。**补充（2026-11-05）**：同前缀分叉 v2 [`../experiments/core_branch_b_identifiability_results.md`](../experiments/core_branch_b_identifiability_results.md) 测得 0.731 ± 0.014 (n=3)，与上句一致——英文稿不改字，「every 95% interval within 0.69–0.78」仍只指 v1。原 E7 稿里的 CEFR Gramian 条件数 1286 一句删去：「秩满但条件数大」需要读者懂 Gramian，且 CEFR 的 $B$ 由 MPC 自身选择的动作辨识，不如 `core` 这例直观。
 口径注意：0.73 与 73 词是拟合诊断/模型推算，不是跨臂比较的头条数；只有一个任务、一个模型（Qwen3-4B）、线性拟合——段内不外推。
 
 **E8（p.13 ¶2 末，追加，future work 口径；2026-11-05 用户裁决：带上 #3 v2 的数字）**
@@ -113,7 +113,7 @@
 | 6 | **E3** 在 §4 Intellectual Merit 加一句；原 #2 稿要求的 Overview 一句不加（p.1 已满） | PI 文字 | 措辞已从 "validated" 降为 "tested … located where it falls short" |
 | 7 | **E6** Evaluation protocol 放 Thrust B 末还是 §2.2（现为空节） | §2.2 的归属 | 4 行稿（§三） |
 | 8 | 记号：§3.2 用 $(K,B,c_k,b)$、Thrust A 原段用 $\xi,K,B,r,c$，与 (2.5) 的 $(A,B_p,c^p_k,d_k)$ 并存——全文统一用哪套 | 全文 | E1 的对照句 |
-| 9 | **#4b 新结果**（E7 追加稿 + Fig. 4 已按成稿设计好）：只在合作者原句后追加、不删字；它是 p.13 合作者「长请求跟不上」的定量版 | Thrust C ¶1 位置、Fig. 4 占位 | E7 成稿 + Fig. 4 设计（§二、§三）；[`../experiments/core_excite_b_identifiability_results.md`](../experiments/core_excite_b_identifiability_results.md) |
+| 9 | **#4b 新结果**（E7 追加稿 + Fig. 4 已按成稿设计好）：只在合作者原句后追加、不删字；它是 p.13 合作者「长请求跟不上」的定量版 | Thrust C ¶1 位置、Fig. 4 占位 | E7 成稿 + Fig. 4 设计（§二、§三）；[`../experiments/core_excite_b_identifiability_results.md`](../experiments/core_excite_b_identifiability_results.md)；同前缀确认 [`../experiments/core_branch_b_identifiability_results.md`](../experiments/core_branch_b_identifiability_results.md)（0.731 ± 0.014，排除跨 prompt 截距解释） |
 | 10 | **事实出入**：p.11 原文写 Joint 任务追踪 "sentence-length, character-length, and average-word-length"；论文 `paper/sections/04a_setup.tex` 定义 Joint-3 = 字数 + 平均词长 + 逗号数（Joint-2 无逗号数）。E5 已按论文改写；需合作者确认 p.11 所指是否另一组实验 | p.11 合作者原文 | 论文 §4.1 原句 |
 | 11 | **E8 带数字版**：在 p.13 Thrust C ¶2（"Thrust 3 will deliver…"）末追加 3 句，含 #3 v2 的 92%；只追加、不删字 | Thrust C ¶2 是合作者文字 | E8 成稿 + 口径四条 + 无数字备选（§三）；[`../experiments/controllability_closed_form_evidence3.md`](../experiments/controllability_closed_form_evidence3.md) §5.4 |
 

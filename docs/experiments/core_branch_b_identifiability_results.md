@@ -10,6 +10,8 @@
 | 数据 | 作业 19460705（`slurm/run_core_branch_sentence_length.sbatch`，5m31）：`sentence_length_t10`，Qwen3-4B，贪心，`--disable-thinking`，`--command-policy branch`；每 seed 2520 主行（落盘 `error` 协议）+ 252 分叉点 × 3 支；触顶 0，`<think>` 0；`git_sha` 6391bae（代码 = 6ecf46d），dirty 仅 3 个未跟踪路径 |
 | 脚本 | `scripts/core_branch_b_identifiability.py`（采集前固定；v1 包络判据在分析前加入，d1678ee）；单测 `tests/test_core_branch_b_identifiability.py` 3 条 |
 | 产物 | `results/core_branch_b_identifiability/summary.json`；`dkvar`，2 min 20 s |
+| 运行时 | 估 8–20 min，实际 5m31（低于下界，与 v1 同：生成很短，引擎启动占大头） |
+| 主轨迹跨 seed | 规格预期「三 seed 主轨迹相同（贪心）」；实测逐字相同只占 **1557/2520（s0=s1）、1581/2520（s0=s2）**。原因：分支 prompt 与主 prompt 同批生成，批构成随 seed 变，vLLM 贪心解码在批次间不逐位确定。**不影响配对差分**：兄弟分支共享的前缀来自同一次运行的主轨迹 |
 
 ## 结果
 
@@ -22,6 +24,12 @@
 跨 seed：$\widehat{CB}$ = **0.731 ± 0.014 (n=3 seed)**，每 seed 252 个分叉点、756 支。v1（跨 prompt、随机命令历史）：0.734 ± 0.009 (n=3)。
 
 **判词**：秩满且 $R^2<0.99$ ✅；三 seed 区间不含 0 ✅；符号一致 ✅ ⇒ **过**。④：三个 seed 的区间都与 v1 包络 [0.691, 0.776] 相交 ⇒ **一致** ⇒ 按签字交 v1 的 $K,B$，v2 作确认。
+
+## 事前签的处置规则（规格 §3.5，2026-11-05 签于分析前）
+
+- 「过了」：秩满且 $R^2<0.99$ **且** 区间不含 0 **且** 三 seed 同号 ⇒ $K,B$ 可交 Umesh（「#3 prelim 用这组」用户裁决删去）。
+- ③ v2 不过而 v1 过 ⇒ 收窄关闭：不把 LTI $K,B$ 交出，v1 限定「随机命令历史下」。**未触发。**
+- ④ 两者都过：不一致 ⇒ 两个都交、各标历史；一致 ⇒ 交 v1 的 $K,B$，v2 作确认。**触发「一致」分支。**
 
 ## 读法
 
@@ -40,3 +48,9 @@
 | 2 | 0.630 | 0.736 | 0.785 |
 
 三个 seed 都是 k=2 最低、k=6 最高（约 0.66 → 0.79）：越往后，模型越跟所问的数，也就是命令增益可能随轮次上升。这是事后切分，每格约 80 个分叉点，没有区间，**只作为假设**，不改变上面的判词，也不触发新采集。若要检验，可以用已落盘的数据补区间（零 GPU），但需要先签。
+注意它与读法 2 不冲突：读法 2 比的是两种历史下的**平均**增益；这里是同一种历史下增益随轮次的**变化**。若成立，它意味着线性定常 $B$ 是轮次平均值，交出去时应同址注明。
+
+## 对计划的后果（未执行，等用户 presentation 后决定沟通方式）
+
+- 交给 Umesh 的是 v1 的 $K,B$（`results/core_excite_b_identifiability/summary.json`），附 v1 读法 4（Gramian 由移位结构决定）与本页「同前缀确认」一句；交不交 → 主计划 §七 待裁决 2。
+- proposal E7 的英文稿（「requests randomized ⇒ effect identified, ≈0.73」）不需要改字；v2 是它的更强支撑（排除了跨 prompt 截距的解释），已记入 proposal 整合规划 §六.9 的出处。

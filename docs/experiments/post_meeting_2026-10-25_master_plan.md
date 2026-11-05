@@ -76,6 +76,7 @@ agent 在本地会话里做完左列后**停**，把中列的命令清单写进�
 | 1 谱探针 | ✅ 判「不过」（10-25） | 三个饱和任务 0/3 满足判据；proposal 不放谱图 | [`spectral_saturation_probe.md`](spectral_saturation_probe.md) |
 | 4a $B$ 可信度 | ✅ | `core` 不可辨识（命令 $=r-y_t$）；行为线三列补了 bootstrap 区间 | [`command_channel_identifiability_results.md`](command_channel_identifiability_results.md) |
 | 4b 持续激励采集 | ✅ 闸门**过**（11-05） | 作业 19443006，`sentence_length_t10` 3 seed 随机命令；$CB$ = **0.734 ± 0.009 (n=3)**，区间都不含 0，$c$ 对状态 $R^2\le0.003$。Gramian 由移位结构决定、信息量低；探索性可达集（无闸门）：100 词请求下稳态上界 **73.0 ± 0.5 词 (n=3)**，留出四档预测与实测在 ≤79 词时差 ≤2 词、最高档低估约 7 词 | [`core_excite_b_identifiability_results.md`](core_excite_b_identifiability_results.md)；`scripts/core_excite_{b_identifiability,reachability}.py` |
+| 4b v2 同前缀分叉 | ✅ 闸门**过**，与 v1 **一致**（11-05） | 作业 19460705：主轨迹按落盘 `error` 协议，每条轨迹在 $k\in\{2,4,6\}$ 分 3 支只改所问字数。配对差分 $CB$ = **0.731 ± 0.014 (n=3)**，三 seed 区间均与 v1 包络 [0.691, 0.776] 相交 ⇒ v1 的 0.734 不是跨 prompt 截距的产物，交 v1 的 $K,B$（③④ 事前签）。探索性（事后、无区间）：$CB$ 随 $k$ 升 0.66→0.79，仅假设 | [`core_branch_b_identifiability_results.md`](core_branch_b_identifiability_results.md)；规格 [`command_channel_identifiability_plan.md`](command_channel_identifiability_plan.md) §3.5；`scripts/core_branch_b_identifiability.py` |
 | 3 controllability 改写 | ✅ 判 future work（v1 10-25；v2 11-05） | `tsar_cefr` v1 一致率 0.876 < 0.95；v2（逐轮离散、不投影，闸门 = 保持首步命令）**0.922** < 0.95，仍判 future work（探索性「一步后停」1.000，事后选定，不参与判词）。4b 数据**不能**重开 #3：随机命令没有控制器日志，离线比对是同义反复 | [`controllability_closed_form_evidence3.md`](controllability_closed_form_evidence3.md) |
 | 2 proposal | ▶ 规划 + 出图完成，**等合作者商议** | 整合规划 E1–E8 + F1（页/段/句级修改与英文原句）；Fig. 1–4 白底印刷尺寸 PDF 已出、figcheck 无问题。未编进 tex（无源文件），页数未实测 | [`../article/proposal_integration_plan_2026-11-05.md`](../article/proposal_integration_plan_2026-11-05.md)；`docs/article/proposal_figs/make_proposal_figs.py` → `proposal/figs/` |
 | 5 复现仓库 | ⏸ 未开始 | 等 Sriram 账号 | [`../repro_repo_plan_2026-10-25.md`](../repro_repo_plan_2026-10-25.md) |
@@ -84,7 +85,7 @@ agent 在本地会话里做完左列后**停**，把中列的命令清单写进�
 **待裁决 / 待商议（agent 不自行决定）**
 
 1. proposal 整合规划 §六 的 11 条商议项（页数预算、F1 替换 p.2 箭头式、E4/E5 删改合作者数字与段落、E2/E3/E6 位置、记号、#4b 结果是否进 E7、p.11 Joint 任务定义与论文 §4.1 不符、E8 带 #3 v2 的 92%）。
-2. 是否把 $K,B$ 与可达集结果交给 Umesh（建议附读法 4：Gramian 无信息，有信息的是 $CB$、$K$ 第一行与可达范围）。
+2. 是否把 $K,B$ 与可达集结果交给 Umesh（建议附读法 4：Gramian 无信息，有信息的是 $CB$、$K$ 第一行与可达范围）。**交哪一组已由 4b v2 回答**：v1 的 $K,B$，v2 作为确认（同前缀 0.731 vs 跨 prompt 0.734）；交不交、怎么沟通 → 用户准备 presentation 后定。
 3. proposal .tex 源文件（编图、实测页数需要）。
 
 **画图时发现、已记入商议清单的两处事实问题**：① p.11 的 Joint 任务属性（sentence length / character length / avg word length）与论文 §4.1 Joint-3（字数 / 平均词长 / 逗号数）不符；② 论文「四个任务里三个在第二个读数拿满增益」偏松——Joint-2 每个深度区间都含 0，proposal 稿改为「两个任务」。论文正文未动。
