@@ -1,0 +1,39 @@
+# `core` 命令通道在持续激励数据上的可辨识性：结果（#4b）
+
+> **状态**：✅ 闸门**过**（2026-11-05）。规格 [`command_channel_identifiability_plan.md`](command_channel_identifiability_plan.md) §3.2（三行事前签）。
+> 口径见 `../../.claude/global.md`：$CB$ 是**拟合诊断量**，回答「$B$ 能否交出去算 Gramian」，不是跨臂头条数字。
+
+## 产物与谱系
+
+| | |
+|---|---|
+| 数据 | 作业 19443006（`slurm/run_core_excite_sentence_length.sbatch`）：`sentence_length_t10`，Qwen3-4B，贪心，`--disable-thinking`，三 seed 只差命令序列（turn ≥2 的请求字数 ~U[5,100]）；每 seed 252 条 × 10 轮，触顶 0。采集时 `git_dirty=true`（3 个未提交路径：本次的 LEDGER/sbatch/计划文档，不涉及 runner） |
+| 脚本 | `scripts/core_excite_b_identifiability.py`（新增）；单测 `tests/test_core_excite_b_identifiability.py` 2 条全过（对齐检查 + 已知效应可复原 / 零效应区间含 0） |
+| 产物 | `results/core_excite_b_identifiability/summary.json`（存在即报错） |
+| 拟合（首跑前固定） | Table 1 的 `sentence_length_t10` 状态：lag=3 ⇒ $z_t=[y_t,\dots,y_{t-3}]$；$z_{t+1}=Kz_t+Bc_{t+1}+b$，$c_{t+1}$ = 第 $t{+}1$ 轮提示里请求的归一化字数；ridge $\alpha=10^{-6}$；轨迹级 bootstrap 2000 次（`default_rng(0)`）；主元素 $CB=B_0$ |
+| 环境 / 运行时 | `dkvar` + `PYTHONPATH=src`；14 s |
+
+## 结果
+
+| seed | 秩 $[Z\|c\|1]$ | $c$ 对 $[Z\|1]$ 的 $R^2$ | $CB$ 点估计 [轨迹级 95%] | 符号稳定率 | lag=0 稳健列 | 能控性秩 / H=6 | Gramian 条件数 |
+|---|---|---|---|---|---|---|---|
+| 0 | 6/6 | 0.0019 | **+0.733** [+0.702, +0.764] | 1.000 | +0.719 [+0.691, +0.748] | 4/4 | 1.08 |
+| 1 | 6/6 | 0.0031 | **+0.725** [+0.691, +0.756] | 1.000 | +0.719 [+0.686, +0.749] | 4/4 | 1.17 |
+| 2 | 6/6 | 0.0023 | **+0.743** [+0.711, +0.776] | 1.000 | +0.735 [+0.702, +0.766] | 4/4 | 1.15 |
+
+跨 seed：$CB$ = **0.734 ± 0.009 (n=3 seed)**，每 seed 1512 个转移、252 条轨迹。
+
+**判词（§3.2 第一行）**：三 seed 区间都不含 0 ✅，符号一致 ✅（另：符号稳定率全 1.000 ≥ 0.95）⇒ **过**。
+
+## 读法
+
+1. **持续激励打破了恒等**：原采集里命令 $=r-y_t$ 是状态的精确函数（$R^2=1$，$B$ 无定义）；这里 $R^2\le0.003$，秩满。
+2. **$CB\approx0.73$**：请求字数（归一化）每多 1 个单位，回复只兑现约 0.73——模型系统性地少给，与合作者「长请求跟不上」的观察同向（本文件未检验非线性，只给线性斜率）。
+3. **记忆几乎不起作用**：随机命令下 $K$ 的第一行各项 $|\cdot|\le0.064$，下一读数主要由命令决定。这与 Table 1 的记忆增益不矛盾——那里命令是误差的函数、增益多来自题目截距（M2）——但说明在本任务上「状态动态」本身很弱。
+4. ⚠️ **能控性诊断是结构性的，信息量低**：lag=3 的 $K$ 是移位寄存器（命令只进 $y_t$，再逐格下移），所以秩 4/4、条件数 ≈1.1 几乎由嵌入结构决定，不是 LLM 的性质。交给 Umesh 时须同址写明；有信息的是 $CB$ 与 $K$ 第一行。
+
+## 对计划的后果（§3.2 第一行，未执行，等裁决）
+
+- $K,B$（`summary.json` → `per_seed[*].K/B/b`）可交 Umesh 算 Gramian / 可达集，附上第 4 条读法。
+- 规格写「#3 的 prelim 用这组」：#3 已判 future work（`tsar_cefr` 一致率 0.876）；是否用本组重开 #3 的闭式解检查需用户裁决（`global.md` 同一仪器只修一次）。
+- proposal：可作为 Thrust C Prelim（E7）「辨识需要激励」的正面例子，进 [`../article/proposal_integration_plan_2026-11-05.md`](../article/proposal_integration_plan_2026-11-05.md) §六 与合作者商议。

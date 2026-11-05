@@ -1,7 +1,7 @@
 # 命令通道 $B$ 的可辨识性与持续激励采集（#4）
 
 > **状态**：4a ✅ 完成（结果 [`command_channel_identifiability_results.md`](command_channel_identifiability_results.md)）；
-> 4b ⏸ **等裁决**（开关 + 单测 + sbatch 干跑已完成，未提交；阻塞项见 §3.3）。2026-10-25。
+> 4b ✅ 闸门**过**（2026-11-05，作业 19443006；三 seed $CB$ = 0.734 ± 0.009，区间均不含 0）→ 结果 [`core_excite_b_identifiability_results.md`](core_excite_b_identifiability_results.md)。
 >
 > 原状态：▶ 待执行（2026-10-25 立项，主计划 [`post_meeting_2026-10-25_master_plan.md`](post_meeting_2026-10-25_master_plan.md)）。
 > 目的：在 Umesh 用 $K,B$ 算 Gramian / 可达集之前，确定哪些任务的 $B$ 是数据辨识出来的。

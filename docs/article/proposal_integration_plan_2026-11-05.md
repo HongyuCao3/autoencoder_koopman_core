@@ -86,7 +86,7 @@
 |---|---|
 | 谱图 / 特征值叙述（#1） | 闸门判「不过」，事前签「不写进 proposal」；p.3 ¶3 "Spectral analysis can identify dominant behavioral modes" 不动 |
 | IFBench/IFEval/COLLIE 柱状图（#2 原稿 `c3`） | `numbers_benchmark.yaml`：同事提供，**无原始日志、无 seed、无区间**；做成图会放大一组无法核对的点估计。p.6–7 现有文字（已注明 point estimates）保留 |
-| #4b 激励采集 | 2026-11-05 已提交（job 19440842）；跑完且闸门过，再在 E7 末加一句 |
+| #4b 激励采集 | 2026-11-05 闸门**过**（$CB$≈0.73，三 seed 区间均不含 0）；是否在 E7 加一句、Fig. 4b 是否加入 `core` 这一列 → §六.9 |
 | 负面结果（论文 Fig 2(b)(c)、App. F） | #2 原稿已定本轮不写 |
 
 ## 五、用户裁决记录
@@ -108,5 +108,6 @@
 | 6 | **E3** 在 §4 Intellectual Merit 加一句；原 #2 稿要求的 Overview 一句不加（p.1 已满） | PI 文字 | 措辞已从 "validated" 降为 "tested … located where it falls short" |
 | 7 | **E6** Evaluation protocol 放 Thrust B 末还是 §2.2（现为空节） | §2.2 的归属 | 4 行稿（§三） |
 | 8 | 记号：§3.2 用 $(K,B,c_k,b)$、Thrust A 原段用 $\xi,K,B,r,c$，与 (2.5) 的 $(A,B_p,c^p_k,d_k)$ 并存——全文统一用哪套 | 全文 | E1 的对照句 |
+| 9 | **#4b 新结果**：E7 / Fig. 4b 是否加入「`core` 在随机命令下 $B$ 可辨识（$CB\approx0.73$，请求字数只兑现约 73%）」；它同时是 p.13 合作者「长请求跟不上」那句的定量版 | Thrust C 段 | [`../experiments/core_excite_b_identifiability_results.md`](../experiments/core_excite_b_identifiability_results.md) |
 
 商议前可独立做、不碰合作者文字的：出 Fig. 1–4（`proposal/figs/`）与出图脚本；E6、E8 的独立句子稿。
