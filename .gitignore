@@ -33,3 +33,6 @@ paper/build/*
 
 # Scratch files from the git-hygiene workaround in paper/ (see claude/repo_git_hygiene_notes)
 paper/tmp*.tmp
+
+# Proposal PDFs are uploaded for reference only (user 2026-11-05)
+proposal/*.pdf

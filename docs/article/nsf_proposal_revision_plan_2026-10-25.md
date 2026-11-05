@@ -1,5 +1,6 @@
 # NSF MFAI proposal 修改计划（#2）
 
+> **2026-11-05**：改动清单已按新版 PDF 重新对位，见 [`proposal_integration_plan_2026-11-05.md`](proposal_integration_plan_2026-11-05.md)（替代本文件「二」）。
 > **状态**：▶ 待执行（2026-10-25，主计划 [`../experiments/post_meeting_2026-10-25_master_plan.md`](../experiments/post_meeting_2026-10-25_master_plan.md)）。
 > 文件在仓库外：`E:\Kunpeng Liu\ICLR2027\`。本仓库 `paper/` **不碰**。
 > Umesh 要求：preliminary 现在只是占位，**多放图、少放字**，让不懂 Koopman 也不懂 LLM 的 reviewer 能看懂。
