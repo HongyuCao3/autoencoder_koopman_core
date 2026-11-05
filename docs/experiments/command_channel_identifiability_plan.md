@@ -2,6 +2,7 @@
 
 > **状态**：4a ✅ 完成（结果 [`command_channel_identifiability_results.md`](command_channel_identifiability_results.md)）；
 > 4b ✅ 闸门**过**（2026-11-05，作业 19443006；三 seed $CB$ = 0.734 ± 0.009，区间均不含 0）→ 结果 [`core_excite_b_identifiability_results.md`](core_excite_b_identifiability_results.md)。
+> 4b v2（分叉设计，§3.5）⏸ **等裁决**：开关 + 单测 + 干跑 + LEDGER 预登记已完成，**未提交**。
 >
 > 原状态：▶ 待执行（2026-10-25 立项，主计划 [`post_meeting_2026-10-25_master_plan.md`](post_meeting_2026-10-25_master_plan.md)）。
 > 目的：在 Umesh 用 $K,B$ 算 Gramian / 可达集之前，确定哪些任务的 $B$ 是数据辨识出来的。
@@ -77,6 +78,34 @@
 - 开关实现 + 单测 + `argparse` 干跑：**本地**。
 - sbatch 写到 `slurm/run_core_excite_sentence_length.sbatch`；LEDGER §三追加一行（「改变哪个决定」= Umesh 能否算 Gramian）。
 - **到此停止，等用户裁决。** 提交、`sacct` 回填、结果拟合：服务器，用户或下一会话执行。
+
+### 3.5 4b v2：同前缀分叉（2026-11-05 用户提出；参照 `tsar_cefr` GPU-2a 反事实树）
+
+**为什么**：3.1 的随机命令拆掉了「命令 = 目标 − 读数」，但 $CB$ 仍是**跨 prompt** 比出来的。v2 在**同一 prompt、同一段历史**下只改命令。
+
+- **主轨迹**：`--command-policy branch` 按落盘协议推进（每轮重问目标 $r$，即 `error`），`trajectories.jsonl` 与 `error` 臂逐字段相同，只多 `command_*` 四列（runner 级回归单测已证）。
+- **分叉**：每条轨迹一个分叉点 $k\sim U\{2,4,6\}$。固定回复 $1..k{-}1$ 与之前的反馈，把第 $k{-}1$ 轮之后的反馈换成 4b 模板（如实报告上一问 $r$，再问 $c_j$），$c_j\sim U\{5..100\}$，$j=1..3$，与目标、读数无关（`default_rng([seed, i])`）。各分支生成回复 $k$ 后即停，不回灌主轨迹。脱靶路径下 $c_j=r$ 的分支文本与落盘反馈逐字相同（干跑 212–214/252；其余是「差 1 词以内」的回复，4b 模板措辞不同，但三个兄弟分支用同一模板）⇒ 兄弟分支之间**只差所问的数**。
+- **记录**（`branch_points.jsonl`，每分叉点一行）：`trajectory_id`、`k`、`prefix_state`（$y_{k-1},y_{k-2}$ 的原始值与归一化值；$k=2$ 时 $y_0$ 为 null）、三分支的命令 / 反馈 / 完整 prompt / 回复 $k$ 读数 / 是否触顶、主轨迹自身的回复 $k$、`git_sha`、`command_policy=branch`、`disable_thinking=true`。runner 拒绝不带 `--disable-thinking` 的 branch 调用。
+- **规模**：3 seed × 252 条 ×（10 轮主轨迹 + 1 分叉 × 3 分支）= 3 × (2520 + 756) = 9,828 次生成。产物 `persona_drift_control/outputs/core_branch_sentence_length_<seed>/`（全新，runner 遇到已有文件就报错）。
+- **运行时**：估 **8–20 min**（`--time 1:00:00`）。依据：v1 作业 19443006 跑 3 × 2520 次用了 6m11，其中引擎启动约 1.5 min × 3；v2 每 seed 生成多 1.3 倍；题目数 252、轮数 10、`max_new_tokens=256`（落盘解码）、thinking 关、Qwen3-4B、单卡 A100。
+- ⚠ 主轨迹用贪心 + `error` 策略，**三 seed 的主轨迹相同**（只有 $k$ 与分支命令随 seed 变；vLLM 批次不确定性除外）。生成量的 2/3 是重复的，约 4 min，按指令保留。
+
+**拟合（采集前固定，`scripts/core_branch_b_identifiability.py`）**：
+
+1. **配对差分**：每个分叉点内对 $(c_j, y_k^{(j)})$ 去均值，$\widehat{CB}=\sum\Delta c\,\Delta y/\sum\Delta c^2$。$K z_{k-1}$ 与 prompt 截距在点内是常数，被消掉。单位与 v1 相同（归一化请求字数 → 归一化回复字数），可直接和 0.734 比。轨迹级 bootstrap 2000 次（`default_rng(0)`，每条轨迹一个点）。
+2. **秩检查**：在全部转移上（主轨迹 + $k\ge3$ 的分支）跑 `scripts/paper_side_experiments.py::_identifiability`，取 $z_t=[y_t,y_{t-1},r]$，$V$ = 下一轮所问的归一化字数；要求秩满且 $R^2(V\,|\,[Z|1])<0.99$。$z$ 与 headroom 的状态 $[y_t,y_{t-1},r-y_t,r-y_{t-1}]$ 列空间相同，但去掉了内部恒等式 $r-y_{t-1}=(r-y_t)+y_t-y_{t-1}$——留着它，$[Z|V|1]$ 无论命令如何都秩亏，秩检查就测不到命令。同时把**只用主轨迹**的那一列写成 `main_only`（预期秩亏，即在新语料上复现 headroom §二）。
+3. 单测：合成线性系统（prompt 截距与目标相关 0.4）上，配对差分复原 $CB=0.6$ 到 ±0.02、区间不含 0；主轨迹单独秩亏、$R^2=1$；加上分支后秩满、$R^2=0.61$；$CB=0$ 时区间含 0。
+
+**闸门三行（事前签；1、3 行照 3.2 抄，只改「过了」的判据）**：
+
+| 字段 | 内容 |
+|---|---|
+| 过了 → | 秩满且 $R^2<0.99$（三 seed）**且**配对差分 $\widehat{CB}$ 区间不含 0 **且**三 seed 符号一致 ⇒ 把 $K,B$ 交 Umesh 算 Gramian / 可达集；#3 的 prelim 用这组 |
+| 不过 → | **关闭**「`core` 任务命令通道」这条线；记为「命令通道权限弱」，对应 proposal 式 (3.33)；不二次修采集 |
+| 填哪张图/表 | proposal Thrust 3 prelim 一句 + 可达集小图；论文不填 |
+
+**照抄后与现状不符、须用户裁决的三处**（agent 没有改）：① v1 已经「过」，交 Umesh 这一步在 v1 之后已经解锁、在等裁决。v2「过了」时的实际增量是：交出去的 $CB$ 用 v1 还是 v2 的。② #3 已判 future work，v1 结果文档也说明随机命令数据做不了 #3（v2 同理，没有控制器日志）。③ 若 v2「不过」而 v1「过」，第二行（关闭）就和已经落盘的 v1 结论冲突。
+**执行位置与停机点**：开关、单测、干跑、本节、sbatch `slurm/run_core_branch_sentence_length.sbatch`、LEDGER 预登记——本地，已完成。**到此停止，不提交。**
 
 ## 四、死亡条件
 

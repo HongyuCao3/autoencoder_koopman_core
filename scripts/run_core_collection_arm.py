@@ -34,6 +34,16 @@ what the model wrote. The feedback still reports the PREVIOUS ask truthfully
 ("I asked for exactly c_(t-1) words, and it had m"), then asks for c_t. Turn 1
 is the landed prompt verbatim, so c_1 = r.
 
+BRANCHING (#4b v2, same spec section 3.5). `--command-policy branch` runs every
+trajectory under the landed `error` protocol -- trajectories.jsonl is the same
+kind of corpus as the landed one -- and additionally forks it ONCE: at a turn k
+drawn from BRANCH_TURNS, the prefix through reply k-1 is held fixed and
+N_BRANCHES siblings each get the 4b random feedback (truthful about the previous
+ask r, then asking for a uniform draw c_j), generate reply k, and stop. Siblings
+share the prefix and the feedback template, so they differ ONLY in the number
+asked for; the per-prompt level and K*state cancel in a within-fork difference.
+Siblings go to branch_points.jsonl and never feed back into the trajectory.
+
 `--disable-thinking` passes `enable_thinking=False` to the chat template. The
 landed corpus has no reasoning blocks (0/2520 rows on sentence_length_t10), but
 Qwen3-4B thinks by default, and the 09-17 arm collected without this switch hit
@@ -152,6 +162,30 @@ def random_feedback_sentence_length(r: dict, asked: int, command: int) -> str:
 
 RANDOM_BUILDERS = {"sentence_length_t10": random_feedback_sentence_length}
 
+BRANCH_TURNS = (2, 4, 6)
+N_BRANCHES = 3
+
+
+def draw_branch_points(n_trajectories: int, task: str, seed: int) -> list[tuple[int, list[int]]]:
+    """Per trajectory: the fork turn k and the N_BRANCHES raw asks. Depends on
+    (seed, trajectory index) only -- never on the target or on any reply."""
+    lo, hi = COMMAND_RANGE[task]["lo"], COMMAND_RANGE[task]["hi"]
+    out = []
+    for i in range(n_trajectories):
+        rng = np.random.default_rng([seed, i])
+        k = int(rng.choice(BRANCH_TURNS))
+        out.append((k, rng.integers(lo, hi + 1, size=N_BRANCHES).tolist()))
+    return out
+
+
+def branch_messages(task: str, seed_row: dict, history: list[tuple[str, str]],
+                    prev_row: dict, command: int) -> tuple[list[dict], str]:
+    """The main trajectory's prompt for reply k with only the last feedback
+    swapped: same replies 1..k-1, same earlier feedback, and the last feedback
+    still reports the ask that reply k-1 answered (the target r)."""
+    feedback = RANDOM_BUILDERS[task]({**seed_row, **prev_row}, int(seed_row["target_raw_count"]), command)
+    return build_messages(seed_row, [*history[:-1], (history[-1][0], feedback)]), feedback
+
 
 # Fields the feedback builder for a task reads off the PREVIOUS row, beyond what
 # `measure` produces. They are carried forward from the landed turn-1 row.
@@ -211,11 +245,14 @@ def main() -> None:
     ap.add_argument("--gpu-memory-utilization", type=float, default=0.85)
     ap.add_argument("--max-model-len", type=int, default=4096)
     ap.add_argument("--limit-trajectories", type=int, default=None)
-    ap.add_argument("--command-policy", choices=("error", "random"), default="error",
+    ap.add_argument("--command-policy", choices=("error", "random", "branch"), default="error",
                     help="error: re-ask the fixed target every turn (landed protocol); "
-                         "random: ask for a uniform draw from the task's range from turn 2 on")
+                         "random: ask for a uniform draw from the task's range from turn 2 on; "
+                         "branch: error protocol, plus one fork per trajectory at a turn in "
+                         f"{BRANCH_TURNS} into {N_BRANCHES} random-ask siblings")
     ap.add_argument("--command-seed", type=int, default=None,
-                    help="seed of the random command schedule; required with --command-policy random")
+                    help="seed of the random command / branch schedule; required with "
+                         "--command-policy random|branch")
     ap.add_argument("--disable-thinking", action="store_true",
                     help="pass enable_thinking=False to the chat template")
     ap.add_argument("--dry-run", action="store_true",
@@ -224,13 +261,16 @@ def main() -> None:
     args = ap.parse_args()
 
     spec = TASK_SPEC[args.task]
-    if args.command_policy == "random":
+    if args.command_policy in ("random", "branch"):
         if args.task not in COMMAND_RANGE:
-            ap.error(f"--command-policy random has no command range for {args.task}")
+            ap.error(f"--command-policy {args.command_policy} has no command range for {args.task}")
         if args.command_seed is None:
-            ap.error("--command-policy random requires --command-seed")
+            ap.error(f"--command-policy {args.command_policy} requires --command-seed")
     elif args.command_seed is not None:
-        ap.error("--command-seed only applies to --command-policy random")
+        ap.error("--command-seed only applies to --command-policy random|branch")
+    if args.command_policy == "branch" and not args.disable_thinking:
+        # 16035914: thinking on -> 90.6% of rows at the token cap, words counted in <think>.
+        ap.error("--command-policy branch requires --disable-thinking")
     seeds = load_seed_rows(args.task)
     if args.limit_trajectories:
         seeds = seeds[: args.limit_trajectories]
@@ -248,6 +288,13 @@ def main() -> None:
         commands = draw_commands(len(seeds), spec["turns"], args.task, args.command_seed)
         asks = {r["trajectory_id"]: [int(r["target_raw_count"]), *c] for r, c in zip(seeds, commands)}
         norm = COMMAND_RANGE[args.task]["norm"]
+    branching = args.command_policy == "branch"
+    if branching:
+        forks = dict(zip((r["trajectory_id"] for r in seeds),
+                         draw_branch_points(len(seeds), args.task, args.command_seed)))
+        norm = COMMAND_RANGE[args.task]["norm"]
+        print(f"[{args.task}] branch: one fork per trajectory at k in {BRANCH_TURNS}, {N_BRANCHES} "
+              f"siblings -> +{len(seeds) * N_BRANCHES} generations")
 
     if args.dry_run:
         bad = 0
@@ -273,13 +320,44 @@ def main() -> None:
             print("[dry-run] turn-2 feedback for the first trajectory: "
                   + RANDOM_BUILDERS[args.task]({**first, **score_row(args.task, first, first['raw_generation'])},
                                                *asks[first["trajectory_id"]][:2]))
+        if branching:
+            # Fork on the LANDED history: the sibling prompt must equal the landed
+            # turn-k prompt in every message but the last, and the last must name
+            # the target as the previous ask and the drawn count as the new one.
+            landed: dict[str, dict[int, dict]] = {}
+            for line in (REPO / "datasets" / spec["dir"] / "trajectories.jsonl").open():
+                r = json.loads(line)
+                landed.setdefault(r["trajectory_id"], {})[int(r["turn"])] = r
+            same_text = 0
+            for seed_row in seeds:
+                k, cmds = forks[seed_row["trajectory_id"]]
+                rows = landed[seed_row["trajectory_id"]]
+                history = [(rows[t]["raw_generation"], rows[t]["feedback_text"]) for t in range(1, k)]
+                prev = score_row(args.task, seed_row, rows[k - 1]["raw_generation"])
+                for c in cmds:
+                    msgs, fb = branch_messages(args.task, seed_row, history, prev, c)
+                    assert msgs[:-1] == list(rows[k]["prompt_messages"])[:-1], "fork prefix must be the landed one"
+                    assert f"exactly {c} words" in fb
+                same_text += branch_messages(args.task, seed_row, history, prev,
+                                             int(seed_row["target_raw_count"]))[1] == rows[k - 1]["feedback_text"]
+            ks = [forks[r["trajectory_id"]][0] for r in seeds]
+            flat = [c for r in seeds for c in forks[r["trajectory_id"]][1]]
+            print(f"[dry-run] branch schedule: k counts "
+                  f"{ {k: ks.count(k) for k in BRANCH_TURNS} }; {len(flat)} sibling asks in "
+                  f"[{min(flat)}, {max(flat)}], mean {sum(flat) / len(flat):.1f}")
+            print(f"[dry-run] {len(seeds)} fork prefixes equal the landed turn-k prompt; "
+                  f"with c = r the sibling feedback is the landed text on {same_text}/{len(seeds)} "
+                  f"(the rest are within-1-word replies, where the 4b template words it differently)")
         print(f"[dry-run] {len(seeds)} turn-1 prompts replay verbatim; scorer+feedback ran on "
               f"every one; {bad} hit an unwitnessed branch; no model loaded, no file written")
         return
 
     out_path = args.out_dir / "trajectories.jsonl"
-    if out_path.exists():
-        raise FileExistsError(f"{out_path} exists; outputs are never overwritten")
+    branch_path = args.out_dir / "branch_points.jsonl"
+    for p in (out_path, branch_path):
+        if p.exists():
+            raise FileExistsError(f"{p} exists; outputs are never overwritten")
+    prov = provenance()
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     from vllm import LLM, SamplingParams  # imported late so --dry-run needs no GPU stack
@@ -293,12 +371,26 @@ def main() -> None:
 
     histories: dict[str, list[tuple[str, str]]] = {r["trajectory_id"]: [] for r in seeds}
     written = []
+    branch_records = []
+    last_row: dict[str, dict] = {}
     for turn in range(1, spec["turns"] + 1):
         prompts = [build_messages(r, histories[r["trajectory_id"]]) for r in seeds]
+        siblings = []  # (seed_row, command, feedback, messages)
+        if branching:
+            for r in seeds:
+                k, cmds = forks[r["trajectory_id"]]
+                if k == turn:
+                    for c in cmds:
+                        msgs, fb = branch_messages(args.task, r, histories[r["trajectory_id"]],
+                                                   last_row[r["trajectory_id"]], c)
+                        siblings.append((r, c, fb, msgs))
+            prompts = prompts + [s[3] for s in siblings]
         if args.disable_thinking:
             outputs = llm.chat(prompts, sampling, chat_template_kwargs={"enable_thinking": False})
         else:
             outputs = llm.chat(prompts, sampling)
+        sib_out = outputs[len(seeds):]
+        outputs = outputs[: len(seeds)]
         for seed_row, out in zip(seeds, outputs):
             text = out.outputs[0].text.strip()
             row = score_row(args.task, seed_row, text)
@@ -314,22 +406,71 @@ def main() -> None:
                                         if turn < spec["turns"] else None)
             else:
                 row["feedback_text"] = builder({**seed_row, **row}) if turn < spec["turns"] else None
+                if branching:
+                    target = int(seed_row["target_raw_count"])
+                    row.update({"command_policy": "branch", "command_seed": args.command_seed,
+                                "command_raw_count": target, "command_norm": norm(target)})
             histories[seed_row["trajectory_id"]].append((text, row["feedback_text"] or ""))
+            last_row[seed_row["trajectory_id"]] = row
             written.append(row)
         hits = sum(1 for r in written if r["turn"] == turn and r["cap_hit"])
-        print(f"  turn {turn}/{spec['turns']}: {len(seeds)} rows, cap hit {hits}")
+        if branching and siblings:
+            by_traj: dict[str, list[dict]] = {}
+            for (seed_row, c, fb, msgs), out in zip(siblings, sib_out):
+                text = out.outputs[0].text.strip()
+                scored = score_row(args.task, seed_row, text)
+                by_traj.setdefault(seed_row["trajectory_id"], []).append({
+                    "command_raw_count": c, "command_norm": norm(c), "feedback_text": fb,
+                    "prompt_messages": msgs, "raw_generation": text,
+                    "measured_raw_count": scored["measured_raw_count"],
+                    "normalized_output": scored["normalized_output"],
+                    "cap_hit": len(out.outputs[0].token_ids) >= max_new})
+            traj_rows = {r["trajectory_id"]: {int(w["turn"]): w for w in written
+                                              if w["trajectory_id"] == r["trajectory_id"]} for r in seeds}
+            for seed_row in seeds:
+                tid = seed_row["trajectory_id"]
+                if tid not in by_traj:
+                    continue
+                rows = traj_rows[tid]
+                prefix = {f"y_k_minus_{j}": (None if turn - j not in rows else
+                                             {"raw_count": rows[turn - j]["measured_raw_count"],
+                                              "norm": rows[turn - j]["normalized_output"]})
+                          for j in (1, 2)}
+                branch_records.append({
+                    "trajectory_id": tid, "topic": seed_row["topic"],
+                    "topic_split": seed_row.get("topic_split"), "k": turn,
+                    "target_raw_count": int(seed_row["target_raw_count"]),
+                    "target_norm": norm(int(seed_row["target_raw_count"])),
+                    "prefix_state": prefix,
+                    "main_reply_k": {"raw_count": rows[turn]["measured_raw_count"],
+                                     "norm": rows[turn]["normalized_output"]},
+                    "branches": by_traj[tid],
+                    "command_policy": "branch", "command_seed": args.command_seed,
+                    "disable_thinking": args.disable_thinking, "git_sha": prov["git_sha"],
+                    "git_dirty": prov["git_dirty"], "model": args.agent_model})
+            hits += sum(1 for o in sib_out if len(o.outputs[0].token_ids) >= max_new)
+        print(f"  turn {turn}/{spec['turns']}: {len(seeds)} rows + {len(siblings)} siblings, cap hit {hits}")
 
     with out_path.open("w") as fh:
         for row in written:
             fh.write(json.dumps(row, default=float) + "\n")
+    if branching:
+        with branch_path.open("w") as fh:
+            for rec in branch_records:
+                fh.write(json.dumps(rec, default=float) + "\n")
     cap_share = sum(1 for r in written if r["cap_hit"]) / len(written)
     (args.out_dir / "run_config.json").write_text(json.dumps({
         "task": args.task, "agent_model": args.agent_model, "n_trajectories": len(seeds),
         "turns": spec["turns"], "max_new_tokens": max_new, "decoding": decoding,
         "cap_hit_share": cap_share, "command_policy": args.command_policy,
         "command_seed": args.command_seed, "disable_thinking": args.disable_thinking,
-        "provenance": provenance()}, indent=2) + "\n")
-    print(f"[done] {len(written)} rows -> {out_path}; cap hit share {cap_share:.4f}")
+        **({"branch_turns": list(BRANCH_TURNS), "n_branches": N_BRANCHES,
+            "n_branch_points": len(branch_records),
+            "branch_cap_hit_share": sum(b["cap_hit"] for rec in branch_records for b in rec["branches"])
+            / max(1, N_BRANCHES * len(branch_records))} if branching else {}),
+        "provenance": prov}, indent=2) + "\n")
+    print(f"[done] {len(written)} rows -> {out_path}; cap hit share {cap_share:.4f}"
+          + (f"; {len(branch_records)} fork points -> {branch_path}" if branching else ""))
 
 
 if __name__ == "__main__":
