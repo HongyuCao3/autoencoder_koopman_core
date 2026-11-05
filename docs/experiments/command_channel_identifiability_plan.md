@@ -2,7 +2,7 @@
 
 > **状态**：4a ✅ 完成（结果 [`command_channel_identifiability_results.md`](command_channel_identifiability_results.md)）；
 > 4b ✅ 闸门**过**（2026-11-05，作业 19443006；三 seed $CB$ = 0.734 ± 0.009，区间均不含 0）→ 结果 [`core_excite_b_identifiability_results.md`](core_excite_b_identifiability_results.md)。
-> 4b v2（分叉设计，§3.5）▶ 采集完成（作业 19460705）；③④ 已签（2026-11-05），分析见 LEDGER。
+> 4b v2（分叉设计，§3.5）✅ 闸门**过**且与 v1 一致（2026-11-05，作业 19460705；三 seed 配对 $CB$ = 0.731 ± 0.014）→ 结果 [`core_branch_b_identifiability_results.md`](core_branch_b_identifiability_results.md)。
 >
 > 原状态：▶ 待执行（2026-10-25 立项，主计划 [`post_meeting_2026-10-25_master_plan.md`](post_meeting_2026-10-25_master_plan.md)）。
 > 目的：在 Umesh 用 $K,B$ 算 Gramian / 可达集之前，确定哪些任务的 $B$ 是数据辨识出来的。
