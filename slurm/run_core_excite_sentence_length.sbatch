@@ -33,9 +33,11 @@
 # ~10-120 tokens, so generation is at most that 6 min per seed. 3 seeds x
 # (2 min engine + <= 6 min generation) = <= 24 min; band +/- 2x. --time 2:00:00.
 #
-# BLOCKER BEFORE SUBMISSION: /scratch/hcao2/envs/sequor_vllm lost its Python
-# stdlib to the scratch purge (found 2026-10-25; persona_drift_pilot too). The
-# env must be rebuilt, and this file's argparse dry-run repeated inside it.
+# ENV: /scratch/hcao2/envs/sequor_vllm was rebuilt 2026-11-05 after the scratch
+# purge (vllm 0.28.0, torch 2.13.0+cu130, transformers 5.16.1); the broken copy
+# is kept at sequor_vllm.broken-20261105. Dry-run passed again in the new env.
+# PYTHONNOUSERSITE=1 IS REQUIRED: ~/.local/lib/python3.11 holds an old cu12
+# stack whose nccl shadows torch's (ImportError: undefined symbol ncclCommResume).
 #
 # QUOTA: method (identification data). Last 10 project jobs: instrument 1.
 # ARTIFACTS: persona_drift_control/outputs/core_excite_sentence_length_<seed>/,
@@ -48,6 +50,7 @@ module load anaconda3
 source activate /scratch/hcao2/envs/sequor_vllm
 
 export HF_HOME=/scratch/hcao2/hf_cache
+export PYTHONNOUSERSITE=1
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export VLLM_USE_FLASHINFER_SAMPLER=0
 

@@ -1007,7 +1007,7 @@ Qwen 臂 `outputs/tsar_cefr_gpu1/` 一个字节不动；④ 见上表本行；�
 
 | 日期 | job id | sbatch / 作业名 | 仪器/方法 | 状态 | 它改变了哪个决定 |
 |---|---|---|---|---|---|
-| 2026-10-25 | — | `slurm/run_core_excite_sentence_length.sbatch` / `pdc-core-excite-sentlen` | **方法**（辨识数据） | ⏸ **未提交，等裁决**。`--command-policy random` 三 seed，`--disable-thinking`；argparse 干跑三 seed 全过（2,268 次抽样/seed ∈ [5,100]、252 条 turn-1 prompt 逐字重放、0 条未见证分支）。估 0.25–0.75 h。规模用户 2026-10-25 裁为实际协议 252×10×3 seed。阻塞：`sequor_vllm` env 损坏，须重建后在其中重做干跑。最近 10 个本项目作业：仪器 1 ⇒ 配额通过 | **`core` 任务的命令通道能不能变成可辨识的**：过 ⇒ $K,B$ 交 Umesh 算 Gramian、#3 prelim 用这组；不过 ⇒ 关闭「`core` 命令通道」线 |
+| 2026-10-25 | — | `slurm/run_core_excite_sentence_length.sbatch` / `pdc-core-excite-sentlen` | **方法**（辨识数据） | ⏸ **未提交，等裁决**。`--command-policy random` 三 seed，`--disable-thinking`；argparse 干跑三 seed 全过（2,268 次抽样/seed ∈ [5,100]、252 条 turn-1 prompt 逐字重放、0 条未见证分支）。估 0.25–0.75 h。规模用户 2026-10-25 裁为实际协议 252×10×3 seed。~~阻塞：`sequor_vllm` env 损坏~~ → 2026-11-05 已重建（vllm 0.28.0 / torch 2.13.0+cu130 / transformers 5.16.1），新 env 内干跑三 seed 复过、数字同上；sbatch 加 `PYTHONNOUSERSITE=1`（`~/.local` 的旧 cu12 nccl 会遮蔽 torch 的）。最近 10 个本项目作业：仪器 1 ⇒ 配额通过 | **`core` 任务的命令通道能不能变成可辨识的**：过 ⇒ $K,B$ 交 Umesh 算 Gramian、#3 prelim 用这组；不过 ⇒ 关闭「`core` 命令通道」线 |
 
 **顺带发现（不改任何已发表数字，待用户裁）**：09-17 的 `core` 第二 backbone Qwen 臂（16035914）runner 没关 thinking，
 `sentence_length_t10` 90.6% 行触顶 256 token、`character_length_t5` 100%，字数数进了 `<think>`（落盘语料 0/2520 行含 `<think>`）。
