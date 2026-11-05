@@ -17,8 +17,8 @@
 | E5 | p.11 Thrust B Prelim ¶1（"Our preliminary results provide evidence…"，y=177–296） | **整段替换**，删 MAE≈0.0273 / R²≈0.942 | **Fig. 3** | +0.12 |
 | E6 | p.11 Thrust B Prelim ¶1 与 ¶2 之间（y≈297） | 新增 4 行 "Evaluation protocol" | — | +0.08 |
 | E7 | p.13 Thrust C Prelim ¶1（"Our sentence-length experiments already expose…"，y=96–161） | **合作者原段保留**，段末追加 3 句（2026-11-05 改为只追加不替换） | **Fig. 4**（两面板） | +0.15 |
-| E8 | p.13 Thrust C Prelim ¶2（"Thrust 3 will deliver…"，y=163–256）末 | 加一句 future work | — | +0.04 |
-| | | | **合计** | **≈ +0.75 页** |
+| E8 | p.13 Thrust C Prelim ¶2（"Thrust 3 will deliver…"，y=163–256）末 | 加三句 future work，带 #3 v2 的 92%（2026-11-05 用户裁决；无数字版留作备选） | — | +0.06 |
+| | | | **合计** | **≈ +0.77 页** |
 
 **页数风险（列入 §六.1，与合作者商议）**：正文 p.2–16，p.16 只用到 y=353/792，现约 **14.45 页**，距 15 页上限余 ≈0.55 页，且 §2.2、§8 仍空。
 本表 +0.8 页**超支 ≈0.25 页 + 两个空节的篇幅**。可选抵扣：(a) Fig. 1 不加（−0.08）；(b) Fig. 2–4 全用 `wrapfigure` 半栏（每张省 ≈0.05）；(c) 压 p.6 §3.1 ¶4（"We validate these findings…"，y=237–302，≈0.12 页）——不是本项目内容，需你或合作者同意。
@@ -78,8 +78,11 @@
 出处：`../experiments/core_excite_b_identifiability_results.md`（门控过：$CB$ = 0.734 ± 0.009 (n=3)；可达性为探索性、无闸门，脚本 `scripts/core_excite_reachability.py`）；`command_channel_identifiability_results.md`。原 E7 稿里的 CEFR Gramian 条件数 1286 一句删去：「秩满但条件数大」需要读者懂 Gramian，且 CEFR 的 $B$ 由 MPC 自身选择的动作辨识，不如 `core` 这例直观。
 口径注意：0.73 与 73 词是拟合诊断/模型推算，不是跨臂比较的头条数；只有一个任务、一个模型（Qwen3-4B）、线性拟合——段内不外推。
 
-**E8（p.13 ¶2 末，追加，future work 口径）** *Because predicted outputs are affine in a held command, output-box constraints reduce to linear inequalities with a closed-form feasible set; extending this to commands that switch within the horizon, which a single held command cannot express, is part of C.3.*
-（#3 判 future work：只写方向，**不写** 87.6% 这个数，除非你另裁。）
+**E8（p.13 ¶2 末，追加，future work 口径；2026-11-05 用户裁决：带上 #3 v2 的数字）**
+*Because predicted outputs are affine in a held command, output-box constraints reduce to linear inequalities with a closed-form feasible set. On the CEFR rewriting task, solving for the next action directly on the fitted linear model, instead of enumerating action sequences, already reproduces 92% of the deployed controller's 2,297 decisions; every disagreement is the direct solve stopping where the controller continues, because holding one command over the horizon overstates the cost of further steps. Extending the closed form to commands that switch within the horizon is part of C.3.*
+出处：[`../experiments/controllability_closed_form_evidence3.md`](../experiments/controllability_closed_form_evidence3.md) §5.4；`persona_drift_control/outputs/closed_form_check_tsar_cefr_v2/summary.json`（读法 A，`agreement_rate` = 0.9216，180 个 `half_step_down`→`copy`）。
+口径（必须守）：① 只说 future work 的**动机**，不写 "equivalent" / "prelim"：闸门是 ≥ 0.95，判 future work；② 不写 100%（读法 B 是看过数字后选的，探索性）；③ 该臂只用过「降半级 / 停」两个动作，「永远降半级」就有 87.6% 一致，κ ≈ 0.72——合作者若要更短的句子，宁可删数字也不要删「stopping where the controller continues」这层限定；④ 是离线回放，一个任务一个算子，不是跨臂比较的头条数。
+备选（无数字，原稿）：*Because predicted outputs are affine in a held command, output-box constraints reduce to linear inequalities with a closed-form feasible set; extending this to commands that switch within the horizon, which a single held command cannot express, is part of C.3.*
 
 ## 四、明确不加的内容
 
@@ -96,6 +99,7 @@
 2. 页数超支 → 不自行取舍，转 §六.1 与合作者商议（用户 2026-11-05）。
 3. Fig. 1 → **采纳方案 B**（用户 2026-11-05）；但它替换的是合作者写的 p.2 文字，替换本身仍列入 §六.2。
 4. ~~产物放哪~~ → `proposal/*.pdf` 进 `.gitignore`（用户 2026-11-05）。
+5. #3 v2 的 92% → **写进 E8**，作为 future work 的动机、不作 prelim（用户 2026-11-05；闸门 0.95 不改）。放进合作者段落本身仍列入 §六.11。
 
 ## 六、须与合作者商议（agent 不自作主张；本项目只准备材料和备选稿）
 
@@ -111,5 +115,6 @@
 | 8 | 记号：§3.2 用 $(K,B,c_k,b)$、Thrust A 原段用 $\xi,K,B,r,c$，与 (2.5) 的 $(A,B_p,c^p_k,d_k)$ 并存——全文统一用哪套 | 全文 | E1 的对照句 |
 | 9 | **#4b 新结果**（E7 追加稿 + Fig. 4 已按成稿设计好）：只在合作者原句后追加、不删字；它是 p.13 合作者「长请求跟不上」的定量版 | Thrust C ¶1 位置、Fig. 4 占位 | E7 成稿 + Fig. 4 设计（§二、§三）；[`../experiments/core_excite_b_identifiability_results.md`](../experiments/core_excite_b_identifiability_results.md) |
 | 10 | **事实出入**：p.11 原文写 Joint 任务追踪 "sentence-length, character-length, and average-word-length"；论文 `paper/sections/04a_setup.tex` 定义 Joint-3 = 字数 + 平均词长 + 逗号数（Joint-2 无逗号数）。E5 已按论文改写；需合作者确认 p.11 所指是否另一组实验 | p.11 合作者原文 | 论文 §4.1 原句 |
+| 11 | **E8 带数字版**：在 p.13 Thrust C ¶2（"Thrust 3 will deliver…"）末追加 3 句，含 #3 v2 的 92%；只追加、不删字 | Thrust C ¶2 是合作者文字 | E8 成稿 + 口径四条 + 无数字备选（§三）；[`../experiments/controllability_closed_form_evidence3.md`](../experiments/controllability_closed_form_evidence3.md) §5.4 |
 
 商议前可独立做、不碰合作者文字的：出 Fig. 1–4（`proposal/figs/`）与出图脚本；E6、E8 的独立句子稿。
