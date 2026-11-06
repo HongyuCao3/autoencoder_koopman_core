@@ -37,3 +37,8 @@ paper/tmp*.tmp
 # Proposal PDFs are uploaded for reference only (user 2026-11-05)
 proposal/*.pdf
 proposal/figs/*.png
+
+# local archives / scratch figure build (untracked, keep out of git_dirty)
+/KOMPAS-code-release.zip
+/autoencoder_koopman_core-main.zip
+/paper/figs/method_fig/
