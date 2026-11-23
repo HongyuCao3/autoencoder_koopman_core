@@ -73,8 +73,8 @@ scp <server>:<repo>/results/core_excite_b_identifiability/summary.json \
 |---|---|---|
 | `fig2a_memory_gain.pdf` | fig2 (a) | ≈2.4 in（含图例） |
 | `fig2b_depth.pdf` | fig2 (b) | ≈1.8 in |
-| `fig4a_reachable.pdf` | fig4 (a) | 待服务器 |
-| `fig4b_effect.pdf` | fig4 (b) 三个子轴 | 待服务器 |
+| `fig4a_reachable.pdf` | fig4 (a) | 2.33 in（服务器 2026-11-23 已出，验收过） |
+| `fig4b_effect.pdf` | fig4 (b) 三个子轴 | 2.06 in（服务器 2026-11-23 已出，验收过） |
 
 **服务器待跑**（fig4 读 `results/`）：
 ```

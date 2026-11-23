@@ -508,7 +508,10 @@ if __name__ == "__main__":
         globals()[name]()
     rp = OUT / "_proposal_fig_report.json"
     old = json.load(open(rp)) if rp.exists() else {}
+    split_old = old.get("split", {})
     old.update(REPORT)
+    if "split" in REPORT:  # merge per panel: a run on fig4 alone must not drop the fig2 panel records
+        old["split"] = {**split_old, **REPORT["split"]}
     if SINGLE():
         old["layout"] = {"layout": "single", "width_in": 3.3, "min_font_pt": 8.0,
                          "spec": "docs/article/proposal_figs/TASK_single_column_redraw_2026-11-23.md"}

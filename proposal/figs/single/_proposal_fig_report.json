@@ -206,6 +206,14 @@
     "fig2b_depth": {
       "from": "fig2_memory",
       "height_in": 1.8
+    },
+    "fig4a_reachable": {
+      "from": "fig4_prompt_authority",
+      "height_in": 2.33
+    },
+    "fig4b_effect": {
+      "from": "fig4_prompt_authority",
+      "height_in": 2.06
     }
   }
 }
