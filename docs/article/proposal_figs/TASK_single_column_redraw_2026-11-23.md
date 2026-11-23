@@ -62,3 +62,22 @@ scp <server>:<repo>/results/core_excite_b_identifiability/summary.json \
 
 - 不加新数据、不改任何 id；不画 two-futures（清单里的 "Fig 3"）——描述性图、不配数字，且只对 9 月版段落有用。
 - 不画 Table 2 柱状图（11-05 决定：无 seed、无日志）。
+
+## 5. 追加（2026-11-23 下午）：面板拆分 `--split`
+
+动机：proposal 页边余量 ≈0.55 页，图大概率走 `wrapfigure`；3.3 × 4.2 in 的竖长合并图需要 25 行文字陪衬，prelim 段只有十几行。Fig 2 (a)/(b) 与 Fig 4 (a)/(b) 各自都能独立成句，拆开后每张 ≈2 in 高，哪里都能放；合并版保留给排版者二选一。
+
+做法（已实现，本地已验证 fig2）：`--split`（仅限 `--layout single`）把 fig2 / fig4 的每个面板裁成独立文件，矢量内容不动，只裁纵向范围，宽度保持 3.3 in；面板标题去掉 "(a)/(b)" 前缀。合并版文件不被覆盖（由不带 `--split` 的运行产生）。输出：
+
+| 文件 | 来源 | 高度 |
+|---|---|---|
+| `fig2a_memory_gain.pdf` | fig2 (a) | ≈2.4 in（含图例） |
+| `fig2b_depth.pdf` | fig2 (b) | ≈1.8 in |
+| `fig4a_reachable.pdf` | fig4 (a) | 待服务器 |
+| `fig4b_effect.pdf` | fig4 (b) 三个子轴 | 待服务器 |
+
+**服务器待跑**（fig4 读 `results/`）：
+```
+python docs/article/proposal_figs/make_proposal_figs.py --layout single --split fig4
+```
+验收脚本会自动把 `fig4a/4b` 一并检查。跑完后把 `proposal/figs/single/fig4a_reachable.{pdf,png}`、`fig4b_effect.{pdf,png}` 和更新后的 `_proposal_fig_report.json` 拉回本地，并复制到分享目录 `MFAI_share_2026-11-23/figs/`。

@@ -57,6 +57,14 @@ GAIN = ["n_main_013", "n_main_045", "n_main_029", "n_main_109", "n_main_148", "n
 LIFT = ["n_main_015", "n_main_047", "n_main_031", "n_main_111", "n_main_151", "n_main_135", "n_main_183"]
 REPORT: dict = {}
 LAYOUT = "wide"  # set from --layout in __main__
+SPLIT = False    # set from --split in __main__: also write each panel of fig2 / fig4 as its own file
+SPLIT_NAMES = {"fig2_memory": ("fig2a_memory_gain", "fig2b_depth"),
+               "fig4_prompt_authority": ("fig4a_reachable", "fig4b_effect")}
+
+
+def PT(letter: str, text: str) -> str:
+    """Panel title: '(a) text' in the combined figure, bare text when panels are also written separately."""
+    return text if SPLIT else f"({letter}) {text}"
 
 
 def FS(x: float) -> float:
@@ -101,9 +109,15 @@ def one_line(t: str) -> str:
     return PLAIN[t].replace("-\n", "").replace("\n", " ")
 
 
-def save(fig, name):
+def save(fig, name, groups=None):
+    """groups: [(axes list), (axes list)] -> with --split, each group is also cropped to its own PDF/PNG
+    (vector content untouched; full 3.3 in width kept, only the vertical extent is trimmed)."""
     OUT.mkdir(parents=True, exist_ok=True)
     if SINGLE():  # exact canvas: width is what was asked for, not what a tight bbox grows to
+        if SPLIT and groups:  # panels only; the combined file (with "(a)/(b)" titles) comes from a run without --split
+            split_panels(fig, name, groups)
+            plt.close(fig)
+            return
         fig.savefig(OUT / f"{name}.pdf")
         fig.savefig(OUT / f"{name}.png", dpi=200, facecolor="white")
         plt.close(fig)
@@ -114,6 +128,45 @@ def save(fig, name):
 
 
 # ---------------------------------------------------------------- Fig. 1 framework (schematic)
+def split_panels(fig, name, groups):
+    from pypdf import PdfReader, PdfWriter
+    from PIL import Image
+    fig.canvas.draw()
+    rend = fig.canvas.get_renderer()
+    H = fig.get_figheight(); W = fig.get_figwidth(); dpi = fig.dpi
+    pad = 0.04  # inches
+    spans = []
+    for axes in groups:
+        bbs = [a.get_tightbbox(rend) for a in axes]
+        y0 = min(b.y0 for b in bbs) / dpi - pad; y1 = max(b.y1 for b in bbs) / dpi + pad
+        spans.append((max(0.0, y0), min(H, y1)))
+    # keep the groups from overlapping: cut midway between them
+    for i in range(len(spans) - 1):
+        (a0, a1), (b0, b1) = spans[i], spans[i + 1]
+        if a0 < b1 and b0 < a1:  # overlap in figure-inch coordinates (y grows upward)
+            mid = (max(a0, b0) + min(a1, b1)) / 2
+            if a0 > b0:
+                spans[i] = (mid, a1); spans[i + 1] = (b0, mid)
+            else:
+                spans[i] = (a0, mid); spans[i + 1] = (mid, b1)
+    import tempfile
+    tdir = tempfile.TemporaryDirectory()
+    tmp_pdf = pathlib.Path(tdir.name) / f"{name}.pdf"; tmp_png = pathlib.Path(tdir.name) / f"{name}.png"
+    fig.savefig(tmp_pdf); fig.savefig(tmp_png, dpi=200, facecolor="white")
+    rd = PdfReader(tmp_pdf)
+    png = Image.open(tmp_png)
+    for (y0, y1), out in zip(spans, SPLIT_NAMES[name]):
+        wr = PdfWriter(); pg = wr.add_page(rd.pages[0])
+        pg.mediabox.lower_left = (0, y0 * 72); pg.mediabox.upper_right = (W * 72, y1 * 72)
+        pg.cropbox.lower_left = (0, y0 * 72); pg.cropbox.upper_right = (W * 72, y1 * 72)
+        wr.write(OUT / f"{out}.pdf")
+        s = png.height / H  # px per inch
+        png.crop((0, int(round((H - y1) * s)), png.width, int(round((H - y0) * s)))).save(OUT / f"{out}.png")
+        REPORT.setdefault("split", {})[out] = {"from": name, "height_in": round(y1 - y0, 2)}
+    png.close()
+    tdir.cleanup()
+
+
 def box(ax, x, y, w, h, title, body, edge=INK, face="white", dashed=False):
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=1.2", lw=0.9,
                                 ec=edge, fc=face, ls=(0, (3, 2)) if dashed else "-", zorder=2))
@@ -216,7 +269,7 @@ def fig2():
                            Patch(fc="white", ec=BLUE, lw=0.9, label="last few readings, interval contains 0")],
                   fontsize=8, frameon=False, loc="lower left", bbox_to_anchor=(-0.02, 1.0), handlelength=1.2,
                   borderaxespad=0.2, labelspacing=0.25)
-        ax.set_title("(a) Memory vs. current reading", fontsize=TS(), loc="left", pad=42)
+        ax.set_title(PT("a", "Memory vs. current reading"), fontsize=TS(), loc="left", pad=42)
     else:
         ax.set_xticks(x, [PLAIN[t] for t in TASKS], fontsize=FS(6.3))
         ax.set_ylabel(r"Prediction skill (Skill$_H$)")
@@ -264,9 +317,9 @@ def fig2():
         bx.set_xticks([1, 2, 3, 4]); bx.set_xlim(0.85, 6.3); bx.set_ylim(-0.01, 0.27)
     bx.set_xlabel("Past readings in the state"); bx.set_ylabel("Gain over one reading")
     bx.text(0.98, 0.003, "hollow = interval contains 0", fontsize=FS(6.0), color=MUTED, ha="right", va="bottom", transform=bx.get_yaxis_transform())
-    style(bx); bx.set_title("(b) How many readings", fontsize=TS(), loc="left")
+    style(bx); bx.set_title(PT("b", "How many readings") if SINGLE() else "(b) How many readings", fontsize=TS(), loc="left")
     REPORT["fig2"] = {"a": used, "b_depth_ids": depth_ids, "ledger": str(LEDGER.relative_to(REPO))}
-    save(fig, "fig2_memory")
+    save(fig, "fig2_memory", groups=[[ax], [bx]])
 
 
 # ---------------------------------------------------------------- Fig. 3 learned lifting
@@ -344,7 +397,7 @@ def fig4():
                   fontsize=FS(6.0), frameon=False, loc="upper left", handlelength=1.6)
     ax.set_xlim(0, 105); ax.set_ylim(0, 150 if SINGLE() else 135)  # single: room for the 2-column legend
     ax.set_xlabel("Requested words"); ax.set_ylabel("Delivered words")
-    style(ax); ax.set_title("(a) Sentence length: what the prompt can reach", fontsize=TS(), loc="left")
+    style(ax); ax.set_title(PT("a", "Sentence length: what the prompt can reach") if SINGLE() else "(a) Sentence length: what the prompt can reach", fontsize=TS(), loc="left")
     # (b) identified one-step effects, each task on its own scale
     ex = json.load(open(REPO / "results" / "core_excite_b_identifiability" / "summary.json"))
     rows_b = [("Sentence length, seed %d" % s, ex["per_seed"][str(s)]["main_element_CB"]["point"],
@@ -372,11 +425,11 @@ def fig4():
             sub.tick_params(axis="y", length=0)
             sub.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(4))
             sub.set_xlabel(unit, fontsize=8, color=MUTED, labelpad=1)
-        bsubs[0].set_title("(b) One-step instruction effect, 95% interval", fontsize=TS(), loc="left")
+        bsubs[0].set_title(PT("b", "One-step instruction effect, 95% interval"), fontsize=TS(), loc="left")
         REPORT["fig4"] = {"a": ["results/core_excite_reachability/summary.json", ident.IN_TEMPLATE],
                           "b": ["results/core_excite_b_identifiability/summary.json",
                                 "results/b_identifiability/tsar_cefr.json", "results/b_identifiability/constraint.json"]}
-        return save(fig, "fig4_prompt_authority")
+        return save(fig, "fig4_prompt_authority", groups=[[ax], bsubs])
     bx.axis("off")
     groups = [(rows_b, "sentence length (normalized words)"), (rows_c, "CEFR level"), (rows_d, "constraint satisfaction")]
     sub_h, top, gap, lab_x = [0.33, 0.33, 0.14], 0.92, 0.1, 0.40
@@ -440,9 +493,13 @@ def check_single() -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--layout", choices=["wide", "single"], default="wide")
+    ap.add_argument("--split", action="store_true", help="single layout only: also write each panel of fig2/fig4 as its own file")
     ap.add_argument("figs", nargs="*", default=["fig1", "fig2", "fig3", "fig4"])
     args = ap.parse_args()
     LAYOUT = args.layout
+    SPLIT = args.split
+    if SPLIT and LAYOUT != "single":
+        raise SystemExit("--split requires --layout single")
     if SINGLE():
         OUT = OUT / "single"
         plt.rcParams.update(SINGLE_RC)

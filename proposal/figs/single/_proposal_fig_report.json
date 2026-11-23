@@ -197,5 +197,15 @@
     "width_in": 3.3,
     "min_font_pt": 8.0,
     "spec": "docs/article/proposal_figs/TASK_single_column_redraw_2026-11-23.md"
+  },
+  "split": {
+    "fig2a_memory_gain": {
+      "from": "fig2_memory",
+      "height_in": 2.4
+    },
+    "fig2b_depth": {
+      "from": "fig2_memory",
+      "height_in": 1.8
+    }
   }
 }
